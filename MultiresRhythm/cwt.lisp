@@ -1,15 +1,22 @@
-;;;; $Id:$
+;;;; -*- Lisp -*-
 ;;;;
-;;;; Continuous Wavelet transform in Fourier Domain.
-;;;; In nlisp (Matlab-alike Lisp library)
+;;;; $Id$
 ;;;;
-;;;; Copyright (c) Leigh M. Smith, 28/4/2006
+;;;; Continuous Wavelet Transform in the Fourier Domain.
 ;;;;
-;;;; Uses the morlet-wavelet-fourier function to give us a scaled version of the wavelet.
-;;;; Length of the input-data is assumed to be a power of 2 (dyadic).
-;;;; Does the convolution by multiplying in the Fourier domain.
-;;;; The maximum-time-period can really only be about 1/4 the input-data to
-;;;; still be representing the wavelets in the frequency and time domains meaningfully.
+;;;; In nlisp (Matlab-alike Common Lisp library www.nlisp.info)
+;;;;
+;;;; By Leigh M. Smith <lsmith@science.uva.nl> 
+;;;;
+;;;; Copyright (c) 2006
+;;;;
+;;;; See 
+;;;;   author =  {Leigh M. Smith},
+;;;;   title = 	 {A Multiresolution Time-Frequency Analysis and Interpretation of Musical Rhythm},
+;;;;   school =  {Department of Computer Science, University of Western Australia},
+;;;;   year =    1999,
+;;;;   month =   {June},
+;;;;   annote =  {\url{http://www.leighsmith.com/Research/Papers/MultiresRhythm.pdf}}
 ;;;;
 
 (defun morlet-wavelet-fourier (signal-time-period wavelet-scale &key (omega0 6.2))
@@ -18,7 +25,7 @@
    wavelet-scale = dilation parameter 'a'
    omega0 is the Internal frequency achieving a minimal DC component, 
    see I. Daubechies ``Ten Lectures on Wavelets'' p76
-   We use 6 in order to have pulse IOI match their theoretical time support.
+   We use 6.2 in order to have pulse IOI match their theoretical time support.
    was 5, 5.3364, 6 matches pulse trains with 8 voices per octave."
   ;; create vector of radian frequencies, (0->pi, -pi->0) discretised over the signal-time-period.
   (let* ((half-signal (/ signal-time-period 2))
@@ -90,35 +97,34 @@ still be representing the wavelets in the frequency and time domains meaningfull
     ;; loop over each voice, beginning with the highest frequency scale.
     (loop 
        for scale-index from 0 below number-of-scales
-       ;; Construct the scaled wavelet in the frequency domain. It will be the same length
-       ;; as the input-data, but mostly zero outside the Gaussian shape.
-       with scaled-wavelet = (morlet-wavelet-fourier time-in-samples (.aref period scale-index))
-
-       ;; Multiply in the Fourier domain and take the inverse FFT, thereby producing the convolution.
-       with voice-response = (ifft (.* input-data-FFT scaled-wavelet (.aref voice-scaling scale-index)))
-	 
-       ;; Produce Magnitude/Phase components from Real/Imaginary values.
-	 
-       ;; magnitude-at-scale = (./ (.abs voice-response) (.aref voice-scaling scale-index))
-       ;; magnitude-at-scale = abs((voice-response .^ 2) ./ (.aref period scale-index)); 
-       with magnitude-at-scale = (.abs voice-response)
-
-       with scale-row = (list scale-index t)
        do 
-	 (setf-subarray (val magnitude) (val magnitude-at-scale) scale-row)
+	 (let* ((scaled-wavelet (funcall fourier-domain-wavelet time-in-samples (.aref period scale-index)))
+		;; Construct the scaled wavelet in the frequency domain. It will be the same length
+		;; as the input-data, but mostly zero outside the Gaussian shape.
+		;; Multiply in the Fourier domain and take the inverse FFT, thereby producing the convolution.
+		(voice-response (ifft (.* input-data-FFT scaled-wavelet (.aref voice-scaling scale-index))))
+		;; Produce Magnitude/Phase components from Real/Imaginary values.
+		
+		;; TODO this is currently incorrectly scaled.
+		;; magnitude-at-scale = (./ (.abs voice-response) (.aref voice-scaling scale-index))
+		;; magnitude-at-scale = abs((voice-response .^ 2) ./ (.aref period scale-index)); 
+		(magnitude-at-scale (.abs voice-response))
 
-       ;; If the magnitude value is low, the phase will be ill-conditioned,
-       ;; which we will plot different to significant phase behaviour.
-       ;; atan2 used by arg will return -pi to pi.
-	 (setf-subarray (val phase) (val (.phase voice-response)) scale-row)
-	 (format t "scale-index ~d~%" scale-index))
+		(scale-row (list scale-index t)))
+
+	   (setf-subarray (val magnitude) (val magnitude-at-scale) scale-row)
+	   ;; If the magnitude value is low, the phase will be ill-conditioned,
+	   ;; which we will plot different to significant phase behaviour.
+	   ;; atan2 used by arg will return -pi to pi.
+	   (setf-subarray (val phase) (val (.phase voice-response)) scale-row)
+	   (format t "scale-index ~d~%" scale-index)))
     (format t "Finished CWT, last time period = ~d~%\n" (.aref period (1- number-of-scales)))
     (values magnitude phase)))
 
 ;; (dyadic-cwt :fourier-domain-wavelet sombrero-wavelet-fourier)
 
 (defun dyadic-length (signal-length)
-  "Returns the length of the signal padded to a dyadic (power of two) length."
+  "Returns the length of the signal if padded to a dyadic (power of two) length."
   (expt 2 (ceiling (log signal-length 2))))
 
 (defun dyadic-pad (signal)
@@ -128,32 +134,29 @@ Protects signals from unsightly window edge conditions! ...sorry couldn't resist
 Instead we actually pad either side of the signal with mirrored portions
 of the signal to a dyadic length to enable efficient FFTs.
 
-Returns (pad_signal trimDyadic).
+Returns multiple values (pad-signal trim-dyadic).
 "
-  (let* ((signal-length (length signal))
-	 (paddedLength (dyadic-length signal-length))
-	 (toPad (- paddedLength signal-length))
-	 (halfPad = (floor toPad 2))
-	 (offByOne = (- toPad (* halfPad 2)))
-	 (trimDyadic)
-	 (pad_signal))
-
-    ;; we can generate a empty matrix warning if the newLength matches
-    ;; the signal-length.
-    (if (== toPad 0)
-	(setf pad_signal signal)
-	;; padding with the signal ensures a periodicity of the window
-	;; pad_signal = [zeros(halfPad + offByOne, 1); signal; zeros(halfPad, 1)];
-	lastbit = signal(:, signal-length - (halfPad + offByOne - 1) : signal-length);
-	pad_signal = [lastbit, signal, signal(:, 1 : halfPad)];
-	)
-
-    ;; trim the padded regions to make the plots readable.
-    (setf trimDyadic (if (!= toPad 0)
-			 (list t (list (+ halfPad offByOne 1) (- paddedLength halfPad)))
-			 (list t signal-length)))
-
-    (values pad_signal trimDyadic)))
+  (let* ((signal-length (.array-dimension signal 0))
+	 (padded-length (dyadic-length signal-length))
+	 (to-pad (- padded-length signal-length)))
+    (multiple-value-bind (half-pad off-by-one) (floor to-pad 2)
+      ;; we can generate a empty matrix warning if the newLength matches the
+      ;; signal-length.
+      (values 
+       (if (zerop to-pad)
+	   ;; Redundant case
+	   signal
+	   ;; Create the padded signal.
+	   ;; padding with the signal ensures a periodicity of the window
+	   ;; pad-signal = [zeros(half-pad + off-by-one, 1); signal; zeros(half-pad, 1)];
+	   (let* ((last-region (list (- signal-length (+ half-pad off-by-one)) (1- signal-length)))
+		  (lastbit (.subarray signal (list 0 last-region))))
+	     (.concatenate lastbit signal (.subarray signal (list 0 (list 0 half-pad))))))
+       
+       ;; Create the .subarray trim description.
+       (if (zerop to-pad)
+	   (list 0 (1- signal-length))
+	   (list 0 (list (+ half-pad off-by-one) (- padded-length half-pad 1))))))))
 
 ;;; The public interface to the continuous wavelet transform.
 (defun cwt (signal voices-per-octave &key (max-wavelet-period (dyadic-length (./ (length signal) 4))))
@@ -162,6 +165,6 @@ using dyadic-cwt, trimming off the returned result.
 Returns multiple items (magnitude phase)"
   ;; The wavelet transform operates on 1 x N vector
   (multiple-value-bind (pad-signal trim) (dyadic-pad signal)
-    (multiple-item-bind (padded-magnitude padded-phase)
+    (multiple-value-bind (padded-magnitude padded-phase)
 			(dyadic-cwt pad-signal voices-per-octave max-wavelet-period)
 			(values (.subarray padded-magnitude trim) (.subarray padded-phase trim)))))
