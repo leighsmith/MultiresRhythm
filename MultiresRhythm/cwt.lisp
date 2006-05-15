@@ -19,6 +19,13 @@
 ;;;;   annote =  {\url{http://www.leighsmith.com/Research/Papers/MultiresRhythm.pdf}}
 ;;;;
 
+;; voicesPerOctave
+(defun gaussian-envelope (width)
+  "Compute a gaussian envelope.
+   width is in the number of points to range an envelope over 3 standard deviations."
+  (let ((x (.rseq -0.99 1.00 width)))
+    (.exp (.- (.expt (.* 2d0 x (/ 6d0 (sqrt 8d0))) 2.0)))))
+
 (defun morlet-wavelet-fourier (signal-time-period wavelet-scale &key (omega0 6.2))
   "Construct a Morlet wavelet filter in the Fourier domain within the length of the signal (so we can multiply).
 
