@@ -1,22 +1,79 @@
-;;;; $Id:$
+;;;; -*- Lisp -*-
+;;;;
+;;;; $Id$
+;;;; 
+;;;; A multiresolution model of musical rhythm.
+;;;;
+;;;; By Leigh M. Smith <lsmith@science.uva.nl> 
+;;;;
+;;;; Copyright (c) 2006
+;;;;
+;;;; In nlisp (Matlab-alike Common Lisp library www.nlisp.info)
+;;;;
+;;;; See 
+;;;;   author =  {Leigh M. Smith},
+;;;;   title = 	 {A Multiresolution Time-Frequency Analysis and Interpretation of Musical Rhythm},
+;;;;   school =  {Department of Computer Science, University of Western Australia},
+;;;;   year =    1999,
+;;;;   month =   {June},
+;;;;   annote =  {\url{http://www.leighsmith.com/Research/Papers/MultiresRhythm.pdf}}
+;;;;
 
 ;;; (in-package multires-rhythm)
 
-(defclass rhythm
-description
-signal
-sample-rate
-)
+;;; A rhythm includes a textual description, the sample rate and a general description of
+;;; a signal. This allows representing a rhythm as a continuum between
+;;; a signal processing representation (high sample rate) and a symbolic representation
+;;; (low sample rate).
+(defclass rhythm ()
+  ((description :initform "")
+   (signal :initarg :signal :initform (make-double-array '(1) :accessor :signal))
+   sample-rate))
+
+(defgeneric tactus-for-rhythm (rhythm-to-analyse &key voices-per-octave)
+  (:documentation "Returns the selected tactus for the rhythm."))
+
+
+;; Highest two octaves (with an time domain extent of 0-1,1-2) don't tell us much,
+;; so we save computation time by skipping them.
+(defun time-support (scales wavelets-per-octave &key (skip-initial-octaves 2))
+  "Function to return a vector of periods of time support (in samples) from scale numbers."
+  (.expt 2.0 (.+ (./ scales wavelets-per-octave) skip-initial-octaves)))
+
+(defun preferred-tempo (magnitude phase voices-per-octave rhythm-sample-rate 
+			;; Fraisse's "spontaneous tempo" interval in seconds
+			&key (tempo-salience-peak 0.600))
+  "Determine the scale which Fraisse's spontaneous tempo would occur at.
+This is weighted by absolute constraints, look in the 600ms period range."
+
+  (let* ((salient-IOI (* rhythm-sample-rate tempo-salience-peak)))
+    ;; Convert salient-IOI into the scale to begin checking.
+    ;; This assumes the highest frequency scale (shortest time support)
+    ;; is index 0, lowest frequency (longest time support) is nScale.
+    (floor (scale-from-period salient-IOI voices-per-octave))))
+
+;; Scale index 1 is the highest frequency (smallest dilation) scale.
+(defun tempo-salience-weighting (salient-scale time-frequency-dimensions)
+  "Produce a weighting matching the analysis window using tempo preference."
+  (let* ((nscale (first time-frequency-dimensions))
+	 (ntime (second time-frequency-dimensions))
+	 (tempo-weighting-over-time (make-double-array time-frequency-dimensions))
+	 (tempo-scale-weighting (shift (gaussian-envelope nscale) (- salient-scale (/ nscale 2)))))
+    (format t "preferred tempo scale = ~d~%" salient-Scale)
+
+    (dotimes (scale nscale)
+      (setf-subarray tempo-weighting-over-time (.aref tempo-scale-weighting scale) (list scale t)))
+    (plot (.subarray tempo-scale-weighting (list 0 t))
+	  :title "Preferred tempo weighting profile")
+    tempo-weighting-over-time))
+
+#|
 
   ;; We set any ill-conditioned phase (negligible magnitude) to zero here
   ;; after we take the phase derivative (in ridgesStatPhase) as it would
   ;; create false changes.
   phase = cleanPhase(mag, phase);
 
-(defun preferred-tempo (magnitude phase voices-per-octave sample-rate)
-  )
-
-#|
   (format t "Stationary Phase~%")
   (format t "Local Phase Congruency~%")
   ;; redundant
@@ -29,32 +86,160 @@ sample-rate
   )
 |#
 
-(defun stationary-phase (magnitude phase voices-per-octave)
-)
-
-(defun local-phase-congruency (magnitude phase)
-)
-
 (defun normalise-by-scale (magnitude)
-"Normalise an analysis finding the maximum scale at each time point.
+  "Normalise a magnitude finding the maximum scale at each time point.
  We assume values are positive values only"
-  sz = (.array-dimensions size(analysis);
-  nScale = sz(1);
-  nTime = sz(2);
+  (let* ((time-frequency-dimensions (.array-dimensions magnitude))
+	 (nScale (first time-frequency-dimensions))
+	 (maxVals (make-double-array time-frequency-dimensions))
+	 ;; Determine the maximum scale at each time.
+	 (maxScalePerTime (.max (.abs magnitude)))
+	 ;; If a maximum scale value is 0, then make those 1 to keep the division healthy.
+	 (maxScalePerTime (.+ maxScalePerTime (.not maxScalePerTime))))
+    ;; Duplicate the maximum scales per time for each scale to enable element-wise division.
+    (dotimes (i nScale)
+      (setf-subarray maxVals maxScalePerTime '(i t))
+    ;; normalised 
+    (./ magnitude maxVals)))
 
-  maxVals = zeros(sz);
-  ;; Determine the maximum scale at each time.
-  maxScalePerTime = max(abs(analysis));
-  ;; If a maximum scale value is 0, then make those 1 to keep the
-  ;; division healthy.
-  maxScalePerTime = maxScalePerTime + !maxScalePerTime;
-  ;; Duplicate the maximum scales per time for each scale to enable
-  ;; element-wise division.
-  for i = 1:nScale
-    maxVals(i,:) = maxScalePerTime;
-  endfor
-  normalised = analysis ./ maxVals;
-)
+(defun clamp-to-bounds (signal testSignal 
+			&key (low-bound 0) (clamp-low 0) (high-bound 0 high-bound-supplied-p) (clamp-high 0))
+  "Clip a signal according to the bounds given, by testing another signal (which can be the same as signal). 
+Anything clipped will be set to the clamp-low, clamp-high values"
+  (let* ((above-low (.> testSignal low-bound))
+	 (below-high (if high-bound-supplied-p
+			 (.< testSignal high-bound)
+			 (make-double-array (.array-dimensions signal) :initial-element 1d0))))
+    (.+ (.* (.and above-low below-high) signal)
+	(.* (.not above-low) clamp-low) 
+	(.* (.not below-high) clamp-high))))
+
+(defun stationary-phase (magnitude phase voices-per-octave &key (magnitude-minimum 0.01))
+  "Compute points of stationary phase.
+
+   Implementation of Delprat et. al's ridges from points of stationary phase
+   convergent algorithm. See: delprat:asymptotic
+
+ Inputs
+   magnitude    Magnitude output of CWT
+   phase        Phase output of CWT
+   magnitude-minimum is the minimum magnitude to accept phase as valid
+ Outputs
+   statPhase - binary array indicating presence of ridge.
+"
+  ;; the scale is the central frequency of the mother wavelet divided by
+  ;; the central frequency of the dilated wavelet
+  (let* ((time-frequency-dimensions (.array-dimensions phase))
+	 (nScale (first time-frequency-dimensions))
+	 (nTime (second time-frequency-dimensions))
+	 (ridges (make-double-array time-frequency-dimensions))
+	 (signalPhaseDiff (make-double-array time-frequency-dimensions))
+
+	 ;; Compute a discrete approximation to the partial derivative of the
+	 ;; phase with respect to translation (time) t.
+	 (dt_phase (.transpose (.diff (.transpose phase))))
+
+	 ;; Phase is -pi -> pi.
+	 ;; We need to add back 2 pi to compensate for the phase wraparound
+	 ;; from pi to -pi. This wraparound will create a dt_phase close to 2 pi.
+	 (whichwrap (.> (.abs dt_phase) (* pi 1.5))) ; anything > pi is a wraparound
+	 (phasewrap (.- (.* 2 pi) (.abs dt_phase)))
+	 ;; wrapped_dt_phase = (whichwrap == 0) .* dt_phase + phasewrap .* whichwrap;
+	 (wrapped_dt_phase (+ (.* (.not whichwrap) dt_phase) (.* phasewrap whichwrap)))
+
+	 ;; The acceleration of phase difference should be non-zero
+	 ;; (Tchamitchian and Torresani Eq. III-7 pp128)
+	 ;; phaseDiffAcceleration will therefore be two time sample points less
+	 ;; than the original phase time extent.
+	 ;; phaseDiffAcceleration = diff(wrapped_dt_phase.').';
+	 
+	 ;; Doing this will still produce NaN since the division already
+	 ;; creates Inf and the clamping uses multiplication.
+	 ;; wrapped_dt_phase = clamp-to-bounds(wrapped_dt_phase, magnitude, magnitude-minimum, 1);
+
+	 ;; convert the phase derivative into periods in time
+	 (signalPeriod (./ (.* 2 pi) wrapped_dt_phase))
+	 (scaleTimeSupport (time-support (.iseq 0 (1- nScale)) voices-per-octave))
+	 (normSignalPhaseDiff)
+	 (maximalStatPhase))
+
+    ;; When we have neglible magnitude, phase is meaningless, but can
+    ;; oscillate so rapidly we have two adjacent phase values which are
+    ;; equal (typically pi, pi/2, or 0). This can cause dt_phase to be
+    ;; zero and therefore make signalPeriod NaN. This then causes
+    ;; normaliseByScale to freakout because NaN is considered a maximum.
+    ;; Our kludge is to set those NaN signalPeriods to 0.0 so they don't
+    ;; cause excessive extrema and they will be zeroed out of the final
+    ;; result using clamp-to-bounds. Strictly speaking, we should verify
+    ;; mag is below magnitude-minimum before setting these zero dt_phase values.
+    ;; Use fortran indexing.
+    (setf (.aref signalPeriod (find (.not dt_phase))) 0.0)
+
+    (dotimes (i nScale)
+      ;; Accept if the signal period (from its phase derivatives) and
+      ;; the time support of the wavelet at each dilation scale are within
+      ;; 1.5 sample of one another.
+      (setf-subarray signalPhaseDiff 
+		     (.abs (.- (.subarray signalPeriod (list i t)) (.aref scaleTimeSupport i)))
+		     (list i (1- ntime))))
+
+    (setf normSignalPhaseDiff (normalise-by-scale signalPhaseDiff))
+
+    ;; We invert the normalised phase difference so that maximum values
+    ;; indicate stationary phase -> ridges.
+    (setf maximalStatPhase (.- (make-double-array time-frequency-dimensions :initial-element 1d0) normSignalPhaseDiff))
+
+    ;; There must be some magnitude at the half-plane points of stationary phase
+    ;; for the ridge to be valid. 
+    (clamp-to-bounds maximalStatPhase magnitude magnitude-minimum 0))))
+
+(defun local-phase-congruency (magnitude phase &key (magnitude-minimum 0.01) (congruency-threshold 0.05))
+  "Compute points of local phase congruency.
+   Determines the points of phase with least deviation between adjacent scales.
+
+  Inputs
+    magnitude Magnitude output of CWT - currently ignored.
+    phase  Phase output of CWT
+    magnitude-minimum is the minimum magnitude to accept phase as valid.
+  Outputs
+    normalised-congruency - matrix indicating presence of congruency."
+
+  (let* ((time-frequency-dimensions (.array-dimensions phase))
+	 (nScale (first time-frequency-dimensions))
+	 (nTime  (second time-frequency-dimensions))
+	 (ridges (make-double-array time-frequency-dimensions))
+
+	 ;; find derivative with respect to scale s.
+	 (abs-ds-phase (.abs (.diff phase)))
+
+	 ;; Compensate for phase wrap-around with derivatives wrt scale such that
+	 ;; the maximum angular difference between vectors <= pi radians.
+	 (whichwrap (.> abs-ds-phase pi))
+	 (phasewrap (.- (.* 2 pi) abs-ds-phase))
+
+	 ;; Compute the troughs in the phase congruency, which indicates where
+	 ;; phase most closely match between adjacent scales, most indicative
+	 ;; of a frequency. 
+	 (localPhaseDiff (.+ (.* (.not whichwrap) abs-ds-phase) (.* whichwrap phasewrap)))
+
+	 ;; Since we produce the derivative from the difference, localPhaseDiff
+	 ;; is one element less, so we need to interpolate the result to
+	 ;; produce the correct value for each scale.
+	 (scalePad (make-double-array nTime))
+	 (congruency (./ 2 (.abs (.- (.concatenate localPhaseDiff scalePad) (.concatenate scalePad localPhaseDiff)))))
+
+	 ;; determine outliers, those troughs greater in difference than threshold
+	 (noOutliers (.< congruency congruency-threshold))
+
+	 ;; The local phase congruency measure should be maximum for least
+	 ;; difference, so we normalise it, then subtract from 1.
+	 (maximalLocalPC (.- (make-double-array time-frequency-dimensions :initial-element 1d0) 
+			     (normalise-by-scale congruency))))
+
+    ;; There must be some magnitude at the half-plane points of local
+    ;; phase congruency for the ridge to be valid.
+    ;; Remove outliers.
+    (.* (clamp-to-bounds maximalLocalPC magnitude magnitude-minimum 0) noOutliers)))
 
 ;; otherwise return normalisedMagnitude, statPhase or localPC individually.
 (defun correlate-ridges (magnitude phase voices-per-octave)
@@ -72,22 +257,67 @@ then can extract ridges."
     (./ (.+ normalised-magnitude stat-phase local-pc) 3d0)))
 
 (defun extract-ridges (scale-peaks)
-  (extract-ridge-walking-hills ))
+#|
+  ;; move causally, though there is not really a biological requirement
+  ;; (since the wavelet is non-causal anyway).
+  for currentTimeIndex = 1 : nTime
+    currentRidgeScales = find(ridgePeaks(:, currentTimeIndex))
+
+    ;; Eliminate all that are the same as the previous time sample,
+    ;; updating the history of the "active" ridges.
+
+    ;; For all those currentRidgeScales remaining, compute the
+    ;; difference in scale number and height between them and n previous
+    ;; scales in time. 
+
+    ridgeComparison = ones(length(prevRidgeScales),length(currentRidgeScales))
+    for i = 1:length(currentRidgeScales)
+      ridgeComparison(:,i) = prevRidgeScales;
+    endfor
+    for i = 1:length(prevRidgeScales)
+      ridgeComparison(i,:) = ridgeComparison(i,:) .- currentRidgeScales.';
+    endfor
+
+    [r, matchingRidges] = find(abs(ridgeComparison) <= 1);
+
+    currentRidgeScales(matchingRidges)
+
+    ;; All those within the difference threshold become
+    ;; the new state of each active ridge. Update the history of those
+    ;; ridges.
+
+    active(r, currentTimeIndex) = prevRidgeScales(r);
+
+    ;; Only those scales which constitute new ridges remain. Create new active
+    ;; ridges.
+
+;; Those not in c are new ridges. Save currentTimeIndex
+
+    ;; Any ridges which were not updated in the previous three cases are
+    ;; deemed inactive and marked as such.
+    
+
+
+  (extract-ridge-walking-hills )
+|#
+)
 
 ;; TODO Or should the tempo preferencing influence the selection?
 (defun select-longest-tactus (ridge-set)
 )
 
-;; TODO could make this a method for rhythm
-(defun tactus-for-rhythm (rhythm &key (voices-per-octave 16))
+;; TODO could make this a defmethod for rhythm
+(defmethod tactus-for-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
   "Returns the selected tactus given the rhythm."
-  (multiple-value-bind (mag phase) (cwt (rhythm signal) voices-per-octave)
+  (multiple-value-bind (magnitude phase) (cwt (analysis-rhythm signal) voices-per-octave)
     ;; Correlate various ridges to produce a robust version.
     (let* ((correlated-ridges (correlate-ridges magnitude phase voices-per-octave))
 	   ;; Scale index 1 is the highest frequency (smallest dilation) scale.
-	   (salient-scale (preferred-tempo mag phase voices-per-octave (rhythm sample-rate)))
+	   (salient-scale (preferred-tempo magnitude phase voices-per-octave (analysis-rhythm sample-rate)))
 	   ;; Weight by the absolute tempo preference.
-	   (tempo-weighted-ridges (.* correlated-ridges (tempo-salience salient-Scale)))
-	   (ridge-set (extract-ridges tempo-weighted-ridges)))
+	   (tempo-weighted-ridges (.* correlated-ridges 
+				      (tempo-salience-weighting salient-scale (.array-dimensions magnitude))))
+	   ;; (ridge-set (extract-ridges tempo-weighted-ridges)))
+	   (ridge-set (extract-ridges correlated-ridges)))
       ;; select out the tactus from all ridge candidates.
       (select-longest-tactus ridge-set))))
