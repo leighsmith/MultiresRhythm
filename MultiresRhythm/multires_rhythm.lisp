@@ -12,7 +12,7 @@
 ;;;;
 ;;;; See 
 ;;;;   author =  {Leigh M. Smith},
-;;;;   title = 	 {A Multiresolution Time-Frequency Analysis and Interpretation of Musical Rhythm},
+;;;;   title =   {A Multiresolution Time-Frequency Analysis and Interpretation of Musical Rhythm},
 ;;;;   school =  {Department of Computer Science, University of Western Australia},
 ;;;;   year =    1999,
 ;;;;   month =   {June},
@@ -28,11 +28,19 @@
 (defclass rhythm ()
   ((description :initform "")
    (signal :initarg :signal :initform (make-double-array '(1) :accessor :signal))
-   sample-rate))
+   (sample-rate :accessor sample-rate)))
 
 (defgeneric tactus-for-rhythm (rhythm-to-analyse &key voices-per-octave)
   (:documentation "Returns the selected tactus for the rhythm."))
 
+(defmethod diff ((a n-array) &optional order)
+  (let* ((input-dimensions (.array-dimensions a))
+	  (rows (first input-dimensions))
+	  (cols (second input-dimensions))
+	  (result (make-double-array (list rows (- cols order)))))
+    (dotimes (i order)
+      (setf result (.- result (shift result))))
+    result))
 
 ;; Highest two octaves (with an time domain extent of 0-1,1-2) don't tell us much,
 ;; so we save computation time by skipping them.
@@ -133,65 +141,66 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 	 (nScale (first time-frequency-dimensions))
 	 (nTime (second time-frequency-dimensions))
 	 (ridges (make-double-array time-frequency-dimensions))
-	 (signalPhaseDiff (make-double-array time-frequency-dimensions))
+	 (signal-phase-diff (make-double-array time-frequency-dimensions))
 
 	 ;; Compute a discrete approximation to the partial derivative of the
 	 ;; phase with respect to translation (time) t.
-	 (dt_phase (.transpose (.diff (.transpose phase))))
+	 (dt-phase (.transpose (diff (.transpose phase))))
 
 	 ;; Phase is -pi -> pi.
 	 ;; We need to add back 2 pi to compensate for the phase wraparound
-	 ;; from pi to -pi. This wraparound will create a dt_phase close to 2 pi.
-	 (whichwrap (.> (.abs dt_phase) (* pi 1.5))) ; anything > pi is a wraparound
-	 (phasewrap (.- (.* 2 pi) (.abs dt_phase)))
-	 ;; wrapped_dt_phase = (whichwrap == 0) .* dt_phase + phasewrap .* whichwrap;
-	 (wrapped_dt_phase (+ (.* (.not whichwrap) dt_phase) (.* phasewrap whichwrap)))
+	 ;; from pi to -pi. This wraparound will create a dt-phase close to 2 pi.
+	 (whichwrap (.> (.abs dt-phase) (* pi 1.5))) ; anything > pi is a wraparound
+	 (phasewrap (.- (.* 2 pi) (.abs dt-phase)))
+	 ;; wrapped-dt-phase = (whichwrap == 0) .* dt-phase + phasewrap .* whichwrap;
+	 (wrapped-dt-phase (+ (.* (.not whichwrap) dt-phase) (.* phasewrap whichwrap)))
 
 	 ;; The acceleration of phase difference should be non-zero
 	 ;; (Tchamitchian and Torresani Eq. III-7 pp128)
 	 ;; phaseDiffAcceleration will therefore be two time sample points less
 	 ;; than the original phase time extent.
-	 ;; phaseDiffAcceleration = diff(wrapped_dt_phase.').';
+	 ;; phaseDiffAcceleration = diff(wrapped-dt-phase.').';
 	 
 	 ;; Doing this will still produce NaN since the division already
 	 ;; creates Inf and the clamping uses multiplication.
-	 ;; wrapped_dt_phase = clamp-to-bounds(wrapped_dt_phase, magnitude, magnitude-minimum, 1);
+	 ;; wrapped-dt-phase = clamp-to-bounds(wrapped-dt-phase, magnitude, magnitude-minimum, 1);
 
 	 ;; convert the phase derivative into periods in time
-	 (signalPeriod (./ (.* 2 pi) wrapped_dt_phase))
-	 (scaleTimeSupport (time-support (.iseq 0 (1- nScale)) voices-per-octave))
-	 (normSignalPhaseDiff)
-	 (maximalStatPhase))
+	 (signalPeriod (./ (.* 2 pi) wrapped-dt-phase))
+	 (scale-time-support (time-support (.iseq 0 (1- nScale)) voices-per-octave))
+	 (normalised-signal-phase-diff)
+	 (maximal-stationary-phase))
 
     ;; When we have neglible magnitude, phase is meaningless, but can
     ;; oscillate so rapidly we have two adjacent phase values which are
-    ;; equal (typically pi, pi/2, or 0). This can cause dt_phase to be
+    ;; equal (typically pi, pi/2, or 0). This can cause dt-phase to be
     ;; zero and therefore make signalPeriod NaN. This then causes
     ;; normaliseByScale to freakout because NaN is considered a maximum.
     ;; Our kludge is to set those NaN signalPeriods to 0.0 so they don't
     ;; cause excessive extrema and they will be zeroed out of the final
     ;; result using clamp-to-bounds. Strictly speaking, we should verify
-    ;; mag is below magnitude-minimum before setting these zero dt_phase values.
+    ;; mag is below magnitude-minimum before setting these zero dt-phase values.
     ;; Use fortran indexing.
-    (setf (.aref signalPeriod (find (.not dt_phase))) 0.0)
+    (setf (.aref signalPeriod (find (.not dt-phase))) 0.0)
 
     (dotimes (i nScale)
       ;; Accept if the signal period (from its phase derivatives) and
       ;; the time support of the wavelet at each dilation scale are within
       ;; 1.5 sample of one another.
-      (setf-subarray signalPhaseDiff 
-		     (.abs (.- (.subarray signalPeriod (list i t)) (.aref scaleTimeSupport i)))
+      (setf-subarray signal-phase-diff 
+		     (.abs (.- (.subarray signalPeriod (list i t)) (.aref scale-time-support i)))
 		     (list i (1- ntime))))
 
-    (setf normSignalPhaseDiff (normalise-by-scale signalPhaseDiff))
+    (setf normalised-signal-phase-diff (normalise-by-scale signal-phase-diff))
 
     ;; We invert the normalised phase difference so that maximum values
     ;; indicate stationary phase -> ridges.
-    (setf maximalStatPhase (.- (make-double-array time-frequency-dimensions :initial-element 1d0) normSignalPhaseDiff))
+    (setf maximal-stationary-phase (.- (make-double-array time-frequency-dimensions :initial-element 1d0)
+			       normalised-signal-phase-diff))
 
     ;; There must be some magnitude at the half-plane points of stationary phase
     ;; for the ridge to be valid. 
-    (clamp-to-bounds maximalStatPhase magnitude magnitude-minimum 0))))
+    (clamp-to-bounds maximal-stationary-phase magnitude magnitude-minimum 0))))
 
 (defun local-phase-congruency (magnitude phase &key (magnitude-minimum 0.01) (congruency-threshold 0.05))
   "Compute points of local phase congruency.
@@ -210,7 +219,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 	 (ridges (make-double-array time-frequency-dimensions))
 
 	 ;; find derivative with respect to scale s.
-	 (abs-ds-phase (.abs (.diff phase)))
+	 (abs-ds-phase (.abs (diff phase)))
 
 	 ;; Compensate for phase wrap-around with derivatives wrt scale such that
 	 ;; the maximum angular difference between vectors <= pi radians.
@@ -220,13 +229,13 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 	 ;; Compute the troughs in the phase congruency, which indicates where
 	 ;; phase most closely match between adjacent scales, most indicative
 	 ;; of a frequency. 
-	 (localPhaseDiff (.+ (.* (.not whichwrap) abs-ds-phase) (.* whichwrap phasewrap)))
+	 (local-phase-diff (.+ (.* (.not whichwrap) abs-ds-phase) (.* whichwrap phasewrap)))
 
-	 ;; Since we produce the derivative from the difference, localPhaseDiff
+	 ;; Since we produce the derivative from the difference, local-phase-diff
 	 ;; is one element less, so we need to interpolate the result to
 	 ;; produce the correct value for each scale.
 	 (scalePad (make-double-array nTime))
-	 (congruency (./ 2 (.abs (.- (.concatenate localPhaseDiff scalePad) (.concatenate scalePad localPhaseDiff)))))
+	 (congruency (./ 2 (.abs (.- (.concatenate local-phase-diff scalePad) (.concatenate scalePad local-phase-diff)))))
 
 	 ;; determine outliers, those troughs greater in difference than threshold
 	 (noOutliers (.< congruency congruency-threshold))
@@ -304,16 +313,17 @@ then can extract ridges."
 
 ;; TODO Or should the tempo preferencing influence the selection?
 (defun select-longest-tactus (ridge-set)
+  "Returns a time sequence of scales"
+  ;;(make-fixnum-array 
 )
 
-;; TODO could make this a defmethod for rhythm
 (defmethod tactus-for-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
   "Returns the selected tactus given the rhythm."
-  (multiple-value-bind (magnitude phase) (cwt (analysis-rhythm signal) voices-per-octave)
+  (multiple-value-bind (magnitude phase) (cwt (signal analysis-rhythm) voices-per-octave)
     ;; Correlate various ridges to produce a robust version.
     (let* ((correlated-ridges (correlate-ridges magnitude phase voices-per-octave))
 	   ;; Scale index 1 is the highest frequency (smallest dilation) scale.
-	   (salient-scale (preferred-tempo magnitude phase voices-per-octave (analysis-rhythm sample-rate)))
+	   (salient-scale (preferred-tempo magnitude phase voices-per-octave (sample-rate analysis-rhythm)))
 	   ;; Weight by the absolute tempo preference.
 	   (tempo-weighted-ridges (.* correlated-ridges 
 				      (tempo-salience-weighting salient-scale (.array-dimensions magnitude))))
