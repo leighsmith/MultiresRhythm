@@ -12,7 +12,7 @@
 ;;;;
 ;;;; See 
 ;;;;   author =  {Leigh M. Smith},
-;;;;   title = 	 {A Multiresolution Time-Frequency Analysis and Interpretation of Musical Rhythm},
+;;;;   title =   {A Multiresolution Time-Frequency Analysis and Interpretation of Musical Rhythm},
 ;;;;   school =  {Department of Computer Science, University of Western Australia},
 ;;;;   year =    1999,
 ;;;;   month =   {June},
@@ -67,7 +67,7 @@
   "Function to return a vector of periods of time support (in samples) from scale numbers.
    The highest two octaves (time domain extent 0-1,1-2) don't tell us much, so we save
    computation time by skipping them."
-  (.expt 2d0 (.+ (./ scales (* wavelets-per-octave 1d0)) skip-initial-octaves)))
+  (.expt 2d0 (.+ (./ scales (.* wavelets-per-octave 1d0)) skip-initial-octaves)))
 
 ;;; Dyadic version assumes the input data is a power of 2.
 (defun dyadic-cwt (input-data wavelets-per-octave maximum-time-period 
