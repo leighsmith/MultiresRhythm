@@ -1,0 +1,8 @@
+Plotting fix the transpose issue with large arrays
+Plotting comare to using cl-png library
+Local Phase Congruency
+Stationary Phase
+correlate-ridges
+normalise-by-scale
+shift
+diff
