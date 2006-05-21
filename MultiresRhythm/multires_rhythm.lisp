@@ -42,12 +42,6 @@
       (setf result (.- result (shift result))))
     result))
 
-;; Highest two octaves (with an time domain extent of 0-1,1-2) don't tell us much,
-;; so we save computation time by skipping them.
-(defun time-support (scales wavelets-per-octave &key (skip-initial-octaves 2))
-  "Function to return a vector of periods of time support (in samples) from scale numbers."
-  (.expt 2.0 (.+ (./ scales wavelets-per-octave) skip-initial-octaves)))
-
 (defun preferred-tempo (magnitude phase voices-per-octave rhythm-sample-rate 
 			;; Fraisse's "spontaneous tempo" interval in seconds
 			&key (tempo-salience-peak 0.600))
@@ -264,58 +258,6 @@ then can extract ridges."
     ;; local phase congruency. Since statPhase and local PC are both
     ;; conditioned on a minimal magnitude, we reduce false positives.
     (./ (.+ normalised-magnitude stat-phase local-pc) 3d0)))
-
-(defun extract-ridges (scale-peaks)
-#|
-  ;; move causally, though there is not really a biological requirement
-  ;; (since the wavelet is non-causal anyway).
-  for currentTimeIndex = 1 : nTime
-    currentRidgeScales = find(ridgePeaks(:, currentTimeIndex))
-
-    ;; Eliminate all that are the same as the previous time sample,
-    ;; updating the history of the "active" ridges.
-
-    ;; For all those currentRidgeScales remaining, compute the
-    ;; difference in scale number and height between them and n previous
-    ;; scales in time. 
-
-    ridgeComparison = ones(length(prevRidgeScales),length(currentRidgeScales))
-    for i = 1:length(currentRidgeScales)
-      ridgeComparison(:,i) = prevRidgeScales;
-    endfor
-    for i = 1:length(prevRidgeScales)
-      ridgeComparison(i,:) = ridgeComparison(i,:) .- currentRidgeScales.';
-    endfor
-
-    [r, matchingRidges] = find(abs(ridgeComparison) <= 1);
-
-    currentRidgeScales(matchingRidges)
-
-    ;; All those within the difference threshold become
-    ;; the new state of each active ridge. Update the history of those
-    ;; ridges.
-
-    active(r, currentTimeIndex) = prevRidgeScales(r);
-
-    ;; Only those scales which constitute new ridges remain. Create new active
-    ;; ridges.
-
-;; Those not in c are new ridges. Save currentTimeIndex
-
-    ;; Any ridges which were not updated in the previous three cases are
-    ;; deemed inactive and marked as such.
-    
-
-
-  (extract-ridge-walking-hills )
-|#
-)
-
-;; TODO Or should the tempo preferencing influence the selection?
-(defun select-longest-tactus (ridge-set)
-  "Returns a time sequence of scales"
-  ;;(make-fixnum-array 
-)
 
 (defmethod tactus-for-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
   "Returns the selected tactus given the rhythm."
