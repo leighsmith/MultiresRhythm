@@ -128,7 +128,7 @@ still be representing the wavelets in the frequency and time domains meaningfull
     (format t "Finished CWT, last time period = ~d~%\n" (.aref period (1- number-of-scales)))
     (values magnitude phase)))
 
-;; (dyadic-cwt :fourier-domain-wavelet sombrero-wavelet-fourier)
+;; (dyadic-cwt :fourier-domain-wavelet #'sombrero-wavelet-fourier)
 
 (defun dyadic-length (signal-length)
   "Returns the length of the signal if padded to a dyadic (power of two) length."
