@@ -1,6 +1,6 @@
 ;;;; -*- Lisp -*-
 ;;;;
-;;;; $Id: multires_rhythm.lisp 10 2006-05-17 16:49:06Z leigh $
+;;;; $Id$
 ;;;; 
 ;;;; Multiresolution ridge extraction.
 ;;;;
@@ -30,7 +30,8 @@
 
 (defmethod reverse-time ((the-ridge ridge))
   "Returns the ridge, with it's scale-list reversed in time."
-  (setf (scale-list the-ridge) (reverse (scale-list the-ridge))))
+  (setf (scale-list the-ridge) (reverse (scale-list the-ridge)))
+  the-ridge)
 
 (defmethod duration ((the-ridge ridge))
   "Returns the duration in samples of the ridge."
@@ -117,9 +118,9 @@
   "Extract ridges by ``hill trekking''. That is, hike along the tops of the ridges,
   following the peaks. Returns a list of each ridge in time order (actually reversed)."
   ;; Moves causally, though there is not really a biological requirement (since the wavelet is non-causal anyway).
-  (let ((time-span (.array-dimension scale-peaks 1)))
     (loop
-       for current-time-index from 0 below 50 ; time-span
+       with time-span = (.array-dimension scale-peaks 1)
+       for current-time-index from 0 below time-span
        with current-ridge-scales
        with all-ridges = '()
        for prev-ridge-scales = '() then current-ridge-scales
@@ -146,25 +147,32 @@
 	   (setf all-ridges (append (add-new-ridges 
 				     (set-difference current-ridge-scales scales-of-matching-ridges)
 				     current-time-index) all-ridges)))
-       finally (return all-ridges))))
+       finally (return (mapcar #'reverse-time all-ridges))))
 
 
-;; TODO Or should the tempo preferencing influence the selection?
-;; This could be more efficient but for now, sorting the entire table gives us some good alternatives.
+;; TODO Or should the tempo preferencing influence the selection rather than the ridge height?
+
+;; This could be more efficient but for now, sorting the entire table gives us some good
+;; alternatives. Unfortunately it does it destructively and leaves ridge-set half it's size?
 (defun select-longest-tactus (ridge-set)
-  "Returns a time sequence of scales"
+  "Returns a time sequence of scales."
   (first (sort ridge-set #'>= :key #'duration)))
 
-; (reduce #'max ridge-set :key #'duration)
+;;  (setf sorted-ridge-set (sort ridge-set #'>= :key #'duration))
 
 (defun test-ridges (filename)
-  (let* ((absolute-pathname (concatenate 'string "/Users/leigh/Research/Data/NewAnalysedRhythms/" filename ".ridges"))
+  (let* ((data-directory "/Users/leigh/Research/Data/NewAnalysedRhythms/")
+	 (absolute-pathname (concatenate 'string data-directory filename ".ridges"))
 	 (determined-ridges (.load-octave-file absolute-pathname))
-	 (ridge-set (extract-ridges determined-ridges)))
-    (select-longest-tactus ridge-set)))
+	 (ridge-set (extract-ridges determined-ridges))
+	 (longest-tactus (select-longest-tactus ridge-set)))
+    (.save-to-octave-file (scale-list longest-tactus)
+			  (concatenate 'string data-directory filename ".tactus")
+			  :variable-name "tactus")))
 
 ;; (test-ridges "greensleeves-perform-medium")
 ;; (setf determined-ridges (.load-octave-file "/Users/leigh/Research/Data/NewAnalysedRhythms/greensleeves-perform-medium.ridges"))
 ;; (setf ridge-set (extract-ridges determined-ridges))
-;; (scale-list (select-longest-tactus ridge-set))
-
+;; (setf longest-tactus (select-longest-tactus ridge-set))
+;; (.save-to-octave-file (scale-list longest-tactus) "/Users/leigh/Research/Data/NewAnalysedRhythms/greensleeves-perform-medium.tactus" :variable-name "tactus")
+;; (start-sample longest-tactus)
