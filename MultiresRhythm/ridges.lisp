@@ -22,6 +22,7 @@
 (defclass ridge ()
   ((active :initform nil :initarg :set-active :accessor active)
    ;; Holds a time sequence of scale indices.
+   ;; TODO This could become an array using fill pointers to reduce memory foot-print.
    (scale-list :initform nil :initarg :scale-list :accessor scale-list)
    ;; The time as a sample index that the ridge begins on.
    (start-sample :initarg :start-sample :accessor start-sample)))
@@ -133,7 +134,7 @@
 
 ;;; TODO Assumes we have determined the peaks, in the final version the correlated TF
 ;;; profile should be passed in and the ridges determined within this function.
-;;; TODO perhaps keeping the active and inactive ridges in two separate lists will be more
+;;; TODO Probably keeping the active and inactive ridges in two separate lists will be more
 ;;; efficient since it removes the requirement to extract out on each iteration.
 (defun extract-ridges (scale-peaks)
   "Extract ridges by ``hill trekking''. That is, hike along the tops of the ridges,
@@ -158,6 +159,7 @@
 		;;   scales-of-matching-ridges prev-matching-ridges)
 	   
 	   ;; Any ridges no longer matching are deemed inactive and are retired from the all-ridges.
+	   ;; TODO (append inactive-ridges (deactivate-ridges active-ridges (set-difference  prev-ridge-scales prev-matching-ridges))
 	   (deactivate-ridges all-ridges (set-difference prev-ridge-scales prev-matching-ridges))
 	   
 	   ;; All those within the difference threshold become the new state of each
@@ -200,14 +202,9 @@
 	 (absolute-pathname (concatenate 'string data-directory filename ".ridges"))
 	 (determined-ridges (.load-octave-file absolute-pathname))
 	 (ridge-set (extract-ridges determined-ridges))
-	 (longest-tactus (select-longest-tactus ridge-set))
-	 (example-ridge (ridge-containing-scale-and-time (- 144 (1+ 54)) 209 ridge-set)))
+	 (longest-tactus (select-longest-tactus ridge-set)))
     (.save-to-octave-file (scale-list longest-tactus)
 			  (concatenate 'string data-directory filename ".tactus")
-			  :variable-name "tactus")
-    (format t "start sample ~a~%" (start-sample example-ridge))
-    (.save-to-octave-file (scale-list example-ridge)
-			  "/Users/leigh/Research/Data/NewAnalysedRhythms/greensleeves-example-ridge.tactus"
 			  :variable-name "tactus")
     ridge-set))
 
@@ -217,3 +214,9 @@
 ;; (setf longest-tactus (select-longest-tactus ridge-set))
 ;; (.save-to-octave-file (scale-list longest-tactus) "/Users/leigh/Research/Data/NewAnalysedRhythms/greensleeves-perform-medium.tactus" :variable-name "tactus")
 ;; (start-sample longest-tactus)
+
+;; 	 (example-ridge (ridge-containing-scale-and-time (- 144 (1+ 54)) 209 ridge-set)))
+;;     (.save-to-octave-file (scale-list example-ridge)
+;;			  "/Users/leigh/Research/Data/NewAnalysedRhythms/greensleeves-example-ridge.tactus"
+;;			  :variable-name "tactus")
+;;    (format t "start sample ~a~%" (start-sample example-ridge))
