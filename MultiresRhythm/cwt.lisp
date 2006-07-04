@@ -51,10 +51,10 @@
   (.- (.exp (.- (./ (.expt (.- omega omega0) 2) 2)))
       (.exp (.- (./ (.+ (.expt omega 2) (.expt omega0 2)) 2))))))
 
-; (plot (.realpart (morlet-wavelet-fourier 1024 12)) nil)
-; (setf time-wavelet (ifft (morlet-wavelet-fourier 1024 128)))
-; (nplot (list (.realpart time-wavelet) (.imagpart time-wavelet)) nil :legends (list "Real Part" "Imaginary Part"))
-
+;;; Debugging
+;;; (plot (.realpart (morlet-wavelet-fourier 1024 12)) nil)
+;;; (setf time-wavelet (ifft (morlet-wavelet-fourier 1024 128)))
+;;; (nplot (list (.realpart time-wavelet) (.imagpart time-wavelet)) nil :legends (list "Real Part" "Imaginary Part"))
 
 (defun scale-from-period (time-periods voices-per-octave &key (skip-initial-octaves 2))
   "Function to return a vector of scale numbers from periods of time support (in samples).

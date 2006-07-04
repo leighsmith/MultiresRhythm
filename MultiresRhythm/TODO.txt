@@ -1,5 +1,5 @@
 Plotting fix the transpose issue with large arrays
-Plotting comare to using cl-png library
+Plotting compare to using cl-png library
 Local Phase Congruency
 Stationary Phase
 correlate-ridges

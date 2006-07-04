@@ -10,4 +10,5 @@
     fm-signal))
 
 ;; (multiple-value-setq (fm-mag fm-phase) (dyadic-cwt (fm-test) 8 512))
+;; (plot-cwt (dyadic-cwt (fm-test) 8 512))
 ;; (setf x (dyadic-cwt (fm-test :signal-length 256) 8 256))
