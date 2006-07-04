@@ -1,6 +1,6 @@
 ;;;; -*- Lisp -*-
 ;;;;
-;;;; $Id: plotCWT.m 4714 2006-03-21 10:17:35Z leigh $
+;;;; $Id$
 ;;;;
 ;;;; Functions for plotting various signals.
 ;;;;
@@ -21,10 +21,8 @@
 
 ;; (require 'zlib)
 ;; (require 'imago)
-;; (use-package 'imago)
 
-;; (setf mk-icon-image (imago:read-image "/Library/Documentation/MusicKit/Images/MK_icon.png"))
-;; (write-png mk-icon-image "/Users/leigh/mk-icon-new-1.png")
+;;; Colour map generating functions
 
 (defun greyscale-colormap (map-length &key (alpha 255))
   (declare (type fixnum map-length))
@@ -75,6 +73,9 @@
        (setf rgba (append (mapcar (lambda (x) (floor (* x 255))) normalised-rgb) (list alpha)))
        (setf (aref color-map map-index) (apply #'imago:make-color rgba))
      finally (return color-map)))
+
+;;; Functions to create IMAGO image instances from magnitude and phase components of a
+;;; CWT.
 
 (defun magnitude-image (magnitude 
 			&key (magnitude-limit 0 magnitude-limit-supplied-p)
@@ -131,7 +132,8 @@
     (setf (slot-value plotable-phase-image 'imago::colormap) phase-colormap)
     plotable-phase-image))
 
-;; Split up into phase-image functions
+;;; Creates PNG files of the supplied magnitude and phase components of a continuous
+;;; wavelet transform.
 (defun plot-cwt (magnitude &optional (phase nil phase-supplied-p)
 		&key (title "unnamed" title-supplied-p)
 		(magnitude-limit 0 magnitude-limit-supplied-p)
@@ -168,6 +170,8 @@ TODO:would be nice to use saturation to indicate magnitude value on the phase pl
 	plotable-mag-image)))
 
 #|
+;; How to plot using nlisp (unfortunately the data transferred between gnuplot and nlisp is too much.
+
     (palette-defined '((0 "#FF0000")
 		       (2 "#00FFFF")
 		       (6 "#0000FF")))
@@ -193,16 +197,16 @@ TODO:would be nice to use saturation to indicate magnitude value on the phase pl
   time-axis-decimation = 4;
 
   ;; Downsample the data 
-  downSampledRidges = (decimate ridges (1 time-axis-decimation))
-  downSampledTactus = (decimate computedTactus (1 time-axis-decimation))
+  downSampledRidges = (decimate ridges (list 1 time-axis-decimation))
+  downSampledTactus = (decimate computedTactus (list 1 time-axis-decimation))
   plotableTactus = zeros(size(downSampledRidges));
 
-  greyscale = colormap("default");
-  maxcolours = length(greyscale);
+  greyscale = (greyscale-colormap max-colours)
+  max-colours = 256
   maxRidgeColours = maxcolours - 1;
 
   ;; red is for the ridge.
-  red = [1.0 0.0 0.0];
+  red = (imago:make-color 255 0 0)
 
   ;; Create a color map that is a greyscale for all values except the
   ;; topmost which is red.
