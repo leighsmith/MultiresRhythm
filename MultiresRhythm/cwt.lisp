@@ -141,7 +141,7 @@ Protects signals from unsightly window edge conditions! ...sorry couldn't resist
 Instead we actually pad either side of the signal with mirrored portions
 of the signal to a dyadic length to enable efficient FFTs.
 
-Returns multiple values (pad-signal trim-dyadic).
+Returns multiple values pad-signal, trim-dyadic (on time-axis).
 "
   (let* ((signal-length (.array-dimension signal 0))
 	 (padded-length (dyadic-length signal-length))
@@ -155,6 +155,7 @@ Returns multiple values (pad-signal trim-dyadic).
 	   signal
 	   ;; Create the padded signal.
 	   ;; padding with the signal ensures a periodicity of the window
+	   ;; TODO alternatively pad with zeros:
 	   ;; pad-signal = [zeros(half-pad + off-by-one, 1); signal; zeros(half-pad, 1)];
 	   (let* ((last-region (list (- signal-length (+ half-pad off-by-one)) (1- signal-length)))
 		  (lastbit (.subarray signal (list 0 last-region))))
@@ -163,15 +164,18 @@ Returns multiple values (pad-signal trim-dyadic).
        ;; Create the .subarray trim description.
        (if (zerop to-pad)
 	   (list 0 (1- signal-length))
-	   (list 0 (list (+ half-pad off-by-one) (- padded-length half-pad 1))))))))
+	   (list (+ half-pad off-by-one) (- padded-length half-pad 1)))))))
 
-;;; The public interface to the continuous wavelet transform.
-(defun cwt (signal voices-per-octave &key (max-wavelet-period (dyadic-length (./ (length signal) 4))))
+;;; The public interface to the continuous wavelet transform for non-dyadic signals
+(defun cwt (signal voices-per-octave 
+	    &key (max-wavelet-period (dyadic-length (./ (.array-dimension signal 0) 4))))
   "Pads the signal to a dyadic length, then performs the continuous wavelet transform,
-using dyadic-cwt, trimming off the returned result.
-Returns multiple items (magnitude phase)"
+   using dyadic-cwt, trimming off the returned result to match the original signal length.
+   Returns multiple items (magnitude phase)"
   ;; The wavelet transform operates on 1 x N vector
-  (multiple-value-bind (pad-signal trim) (dyadic-pad signal)
+  (multiple-value-bind (pad-signal time-trim) (dyadic-pad signal)
     (multiple-value-bind (padded-magnitude padded-phase)
-			(dyadic-cwt pad-signal voices-per-octave max-wavelet-period)
-			(values (.subarray padded-magnitude trim) (.subarray padded-phase trim)))))
+	(dyadic-cwt pad-signal voices-per-octave max-wavelet-period)
+      (let* ((scale-rows (.array-dimension padded-magnitude 0))
+	     (trim (list (list 0 (1- scale-rows)) time-trim)))
+	(values (.subarray padded-magnitude trim) (.subarray padded-phase trim))))))
