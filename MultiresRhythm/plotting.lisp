@@ -26,70 +26,55 @@
 ;; (setf mk-icon-image (imago:read-image "/Library/Documentation/MusicKit/Images/MK_icon.png"))
 ;; (write-png mk-icon-image "/Users/leigh/mk-icon-new-1.png")
 
-;; (defun set-spectrum ((image indexed-image) &key (alpha 255))
-;;   (with-slots (colormap) image
-;;     (loop for i below (length colormap)
-;;           do (multiple-value-bind (r g b)
-;;                  (color-rgb (aref colormap i))
-;;                (setf (aref colormap i) (make-color r g b alpha))))))
-
 (defun greyscale-colormap (map-length &key (alpha 255))
   (declare (type fixnum map-length))
   (loop for map-index below map-length
      with color-map = (make-array map-length)
      with color-increment = (/ 256 map-length) ; color map colors range from 0 - 255
-     with color-value
+     with grey-value
      do 
-       (setf color-value (floor (* map-index color-increment)))
-       (setf (aref color-map map-index) (imago:make-color color-value color-value color-value alpha))
+       (setf grey-value (floor (* map-index color-increment)))
+       (setf (aref color-map map-index) (imago:make-color grey-value grey-value grey-value alpha))
      finally (return color-map)))
 
-#|
-;;; From Van Dam and Foley (1982) p619.
 (defun hls-value (n1 n2 hue)
-"Sub-function to convert from hue (0-360 degrees) and positions within the 
- colour pyramid to a value usable for conversion to RGB."
-
-  for i = 1:length(hue)
-    if hue(i) > 360
-      hue(i) = hue(i) - 360;
-    endif
-    if hue(i) < 0
-      hue(i) = hue(i) + 360;
-    endif
-    if hue(i) < 60
-      value(i) = n1(i) + (n2(i) - n1(i)) .* hue(i) / 60;
-    elseif hue(i) < 180
-      value(i) = n2(i);
-    elseif hue(i) < 240
-      value(i) = n1(i) + (n2(i) - n1(i)) .* (240 - hue(i)) / 60;
-    else
-      value(i) = n1(i);
-    endif
-  endfor
-value)
+  "Sub-function to convert from hue (0-360 degrees) and positions within the 
+   colour pyramid to a value usable for conversion to RGB. From Van Dam and Foley (1982) p619."
+    (setf hue (cond ((> hue 360) (- hue 360))
+		    ((< hue 0) (+ hue 360))
+		    (t hue)))
+    (cond ((< hue 60) (+ n1 (* (- n2 n1) (/ hue 60))))
+	  ((< hue 180) n2)
+	  ((< hue 240) (+ n1 (* (- n2 n1) (/ (- 240 hue) 60))))
+	  (t n1)))
 
 (defun hls-to-rgb (hue lightness saturation)
-  "Converts from hue (0-360 degrees) lightness (0-1) and saturation (0-1) to RGB values. 
+  "Converts from hue (0-360 degrees) lightness (0-1) and saturation (0-1) to normalised RGB values. 
    From Van Dam and Foley (1982) p617."
   ;; assume lightness > 0.5
-  (let* ((m2 (.- (.+ lightness saturation) (.* lightness saturation)))
-	 (m1 (.- (.* 2 lightness) m2))
+  (let* ((m2 (- (+ lightness saturation) (* lightness saturation)))
+	 (m1 (- (* 2 lightness) m2)))
+    (if (not (= saturation 0))
+	(list (hls-value m1 m2 (+ hue 120))   ; R
+	      (hls-value m1 m2 hue)	      ; G
+	      (hls-value m1 m2 (- hue 120)))  ; B
+	(list 0 0 0))))
 
-  (if (saturation != 0)
-    r = (hls-value m1 m2 (+ hue 120))
-    g = (hls-value m1 m2 hue)
-    b = (hls-value m1 m2 (- hue 120))
-  )
-  rgb = [r.', g.', b.'];
-)
-|#
-
-(defun spectral-colormap (&optional (n 64))
-  "Create a colormap of length n which is a spectral distribution, the colors forming a hue wheel."
-  (let ((light (make-array n :initial-element 0.5))
-	(saturation (make-array n :initial-element 1.0)))
-    (hls-to-rgb (.rseq 1 360 n) light saturation)))
+(defun spectral-colormap (map-length &key (alpha 255))
+  "Create a colormap of length map-length which is a spectral distribution, the colors forming a hue wheel."
+  (declare (type fixnum map-length))
+  (loop for map-index below map-length
+     with light = 0.5
+     with saturation = 1.0
+     with color-map = (make-array map-length)
+     with hue-polar-increment = (/ 360 map-length)
+     with normalised-rgb ; RGB values 0-1.
+     with rgba ; 0-255, including alpha channel
+     do 
+       (setf normalised-rgb (hls-to-rgb (* map-index hue-polar-increment) light saturation))
+       (setf rgba (append (mapcar (lambda (x) (floor (* x 255))) normalised-rgb) (list alpha)))
+       (setf (aref color-map map-index) (apply #'imago:make-color rgba))
+     finally (return color-map)))
 
 (defun magnitude-image (magnitude 
 			&key (magnitude-limit 0 magnitude-limit-supplied-p)
@@ -115,7 +100,6 @@ value)
     (setf mag-range (- maxmag minmag))
     (setf plotable-mag (.floor (.- maximum-colour-value (.* (./ (.- magnitude minmag) mag-range)
 							    maximum-colour-value))))
-
     (setf plotable-mag-image (make-instance 'imago:indexed-image
  					    :width (.array-dimension plotable-mag 0)
  					    :height (.array-dimension plotable-mag 1)
@@ -131,7 +115,7 @@ value)
   ;; the rest a spectral distribution from red -> violet.
   (let* ((white (imago:make-color maximum-colour-value maximum-colour-value maximum-colour-value))
 	 ;; use maximum-colour-value rather than the number of colours for 1 less.
-	 (phase-colormap (concatenate 'array white (spectral-colormap maximum-colour-value)))
+	 (phase-colormap (concatenate 'vector (vector white) (spectral-colormap maximum-colour-value)))
 
 	 ;; Phase assumed [-pi -> pi], map it to [1 -> maximum-colour-value].
 	 ;; When magnitude < magnitude-minimum, set the phase to 0, 
@@ -149,7 +133,7 @@ value)
 
 ;; Split up into phase-image functions
 (defun plot-cwt (magnitude &optional (phase nil phase-supplied-p)
-		&key (title "" title-supplied-p)
+		&key (title "unnamed" title-supplied-p)
 		(magnitude-limit 0 magnitude-limit-supplied-p)
 		(magnitude-minimum 0.001) 
 		(time-axis-decimation 4))
@@ -174,18 +158,14 @@ TODO:would be nice to use saturation to indicate magnitude value on the phase pl
 	 (down-sampled-magnitude (decimate magnitude (list 1 time-axis-decimation)))
 	 (plotable-mag-image (magnitude-image down-sampled-magnitude)))
     ;; [title, "-magnitude"]
-    (imago:write-png plotable-mag-image filename)
+    ;(imago:write-png plotable-mag-image filename)
     (if phase-supplied-p
-	(let* ((plotable-phase-image (phase-image (decimate phase (1 time-axis-decimation))
+	(let* ((plotable-phase-image (phase-image (decimate phase (list 1 time-axis-decimation))
 						  down-sampled-magnitude)))
 	  ;; "-phase"
-	  (imago:write-png plotable-phase-image filename))))
-  plotable-mag-image)
-
-;; (with-slots (imago::colormap) empty-image (setf (aref imago::colormap 255) (make-color 255 255 255)))
-;; (with-slots (imago::colormap) empty-image (setf (aref imago::colormap 0) (make-color 0 255 255)))
-;; (image-colormap empty-image)
-;; (setf (image-pixel empty-image 25 50) 255)
+	  ;(imago:write-png plotable-phase-image filename)
+	  (values plotable-mag-image plotable-phase-image))
+	plotable-mag-image)))
 
 #|
     (palette-defined '((0 "#FF0000")
