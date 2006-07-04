@@ -26,7 +26,8 @@
 ;;; a signal processing representation (high sample rate) and a symbolic representation
 ;;; (low sample rate).
 (defclass rhythm ()
-  ((description :initform "")
+  ((name :initform "unnamed")
+   (description :initform "")
    (signal :initarg :signal :initform (make-double-array '(1) :accessor :signal))
    (sample-rate :accessor sample-rate)))
 
@@ -262,6 +263,7 @@ then can extract ridges."
 (defmethod tactus-for-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
   "Returns the selected tactus given the rhythm."
   (multiple-value-bind (magnitude phase) (cwt (signal analysis-rhythm) voices-per-octave)
+    ;; (plot-cwt magnitude phase :title (name analysis-rhythm))
     ;; Correlate various ridges to produce a robust version.
     (let* ((correlated-ridges (correlate-ridges magnitude phase voices-per-octave))
 	   ;; Scale index 1 is the highest frequency (smallest dilation) scale.
