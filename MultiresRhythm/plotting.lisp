@@ -155,17 +155,22 @@ interpreting the magnitude density plots for local extrema.
 
 TODO:would be nice to use saturation to indicate magnitude value on the phase plot.
 "
-  (let* ((filename "/Users/leigh/empty-image.png")
+  (let* ((temp-directory "tmp")
+	 (png-type "png")
+	 (mag-pathname (make-pathname :directory (list :absolute temp-directory) 
+				      :name (concatenate 'string title "-magnitude")
+				      :type png-type))
+	 (phase-pathname (make-pathname :directory (list :absolute temp-directory) 
+					:name (concatenate 'string title "-phase")
+					:type png-type))
 	 ;; Downsample the data 
 	 (down-sampled-magnitude (decimate magnitude (list 1 time-axis-decimation)))
 	 (plotable-mag-image (magnitude-image down-sampled-magnitude)))
-    ;; [title, "-magnitude"]
-    ;(imago:write-png plotable-mag-image filename)
+    (imago:write-png plotable-mag-image mag-pathname)
     (if phase-supplied-p
 	(let* ((plotable-phase-image (phase-image (decimate phase (list 1 time-axis-decimation))
 						  down-sampled-magnitude)))
-	  ;; "-phase"
-	  ;(imago:write-png plotable-phase-image filename)
+	  (imago:write-png plotable-phase-image phase-pathname)
 	  (values plotable-mag-image plotable-phase-image))
 	plotable-mag-image)))
 
