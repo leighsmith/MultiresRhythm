@@ -34,7 +34,7 @@
 ;; (multiple-value-setq (fm-mag fm-phase) (cwt (fm-test) 8))
 ;; (plot-cwt (cwt (fm-test) 8))
 ;; (setf x (dyadic-cwt (fm-test :signal-length 256) 8 256))
-;; (multiple-value-bind (fm-mag fm-phase) (cwt (fm-test) 8) (plot-cwt fm-mag fm-phase))
+;; (multiple-value-bind (fm-mag fm-phase) (cwt (fm-test) 16) (plot-cwt fm-mag fm-phase :title "fm"))
 
 ;;; 
 (defun rising-harmonic-test (&key (signal-length 2048))
@@ -51,3 +51,12 @@
     rising-harmonic-signal))
 	 
 ;; (multiple-value-bind (rising-harmonic-mag rising-harmonic-phase) (cwt (rising-harmonic-test) 8) (plot-cwt rising-harmonic-mag rising-harmonic-phase :title "rising-harmonic"))
+
+(defun test-rhythm ()
+  (let* ((rhythmic-list (rhythmic-grid-to-signal '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0 1)))
+	 (rhythm-array (make-array (length rhythmic-list) :element-type 'fixnum :initial-contents rhythmic-list))
+	 (rhythm-signal (make-instance 'n-fixnum-array :ival rhythm-array)))
+    (multiple-value-bind (rhythm-mag rhythm-phase) (cwt rhythm-signal 8)
+      (plot-cwt rhythm-mag rhythm-phase :title "rhythm"))))
+
+;; (setf b (rhythmic-grid-to-signal '(1 1 1 1) :tempo 60))
