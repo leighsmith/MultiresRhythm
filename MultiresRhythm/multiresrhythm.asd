@@ -1,6 +1,6 @@
 ;;; -*- Lisp -*-
 ;;;
-;;; $Id:$
+;;; $Id$
 ;;;
 (defpackage #:multiresrhythm-system (:use #:cl #:asdf))
 (in-package :multiresrhythm-system)
@@ -11,5 +11,6 @@
 	   :depends-on (:nlisp :zlib :imago)
            :components ((:file "cwt")
 			(:file "ridges")
+			(:file "rhythm")
 			(:file "plotting")
 			(:file "multires_rhythm")))
