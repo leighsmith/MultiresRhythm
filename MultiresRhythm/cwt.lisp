@@ -30,8 +30,8 @@
   "Construct a Morlet wavelet filter in the Fourier domain within the length of the signal (so we can multiply).
 
    wavelet-scale = dilation parameter 'a'
-   omega0 is the Internal frequency achieving a minimal DC component, 
-   see I. Daubechies ``Ten Lectures on Wavelets'' p76
+   omega0 = the Internal frequency achieving a minimal DC component, 
+   See I. Daubechies ``Ten Lectures on Wavelets'' p76
    We use 6.2 in order to have pulse IOI match their theoretical time support.
    was 5, 5.3364, 6 matches pulse trains with 8 voices per octave."
   ;; create vector of radian frequencies, (0->pi, -pi->0) discretised over the signal-time-period.
@@ -160,12 +160,14 @@ Returns multiple values pad-signal, trim-dyadic (on time-axis).
 	   ;; pad-signal = [zeros(half-pad + off-by-one, 1); signal; zeros(half-pad, 1)];
 	   (let* ((last-region (list (- signal-length (+ half-pad off-by-one)) (1- signal-length)))
 		  (lastbit (.subarray signal (list 0 last-region))))
-	     (.concatenate lastbit signal (.subarray signal (list 0 (list 0 half-pad))))))
+	     (.concatenate lastbit signal (.subarray signal (list 0 (list 0 (1- half-pad)))))))
        
        ;; Create the .subarray trim description.
        (if (zerop to-pad)
 	   (list 0 (1- signal-length))
 	   (list (+ half-pad off-by-one) (- padded-length half-pad 1)))))))
+
+;; (dyadic-pad (.rseq 0 9 10))
 
 ;;; The public interface to the continuous wavelet transform for non-dyadic signals
 (defun cwt (signal voices-per-octave 
