@@ -26,22 +26,43 @@
 ;;; a signal processing representation (high sample rate) and a symbolic representation
 ;;; (low sample rate).
 (defclass rhythm ()
-  ((name :initform "unnamed")
-   (description :initform "")
-   (signal :initarg :signal :initform (make-double-array '(1) :accessor :signal))
-   (sample-rate :accessor sample-rate)))
+  ((name :initarg :name :accessor name :initform "unnamed")
+   (description :initarg :description :accessor description :initform "")
+   (time-signal :initarg :time-signal :accessor time-signal :initform (make-double-array '(1)))
+   (sample-rate :initarg :sample-rate :accessor sample-rate :initform 200)))
 
 (defgeneric tactus-for-rhythm (rhythm-to-analyse &key voices-per-octave)
   (:documentation "Returns the selected tactus for the rhythm."))
 
-(defmethod diff ((a n-array) &optional order)
+;; (defmethod diff ((a n-array) &optional order)
+;;   (let* ((input-dimensions (.array-dimensions a))
+;; 	  (rows (first input-dimensions))
+;; 	  (cols (second input-dimensions))
+;; 	  (result (make-double-array (list rows (- cols order)))))
+;;     (dotimes (i order)
+;;       (setf result (.- result (shift result))))
+;;     result))
+
+;; TODO alternatively
+(defmethod diff ((a n-array) &optional (order 1))
   (let* ((input-dimensions (.array-dimensions a))
-	  (rows (first input-dimensions))
-	  (cols (second input-dimensions))
-	  (result (make-double-array (list rows (- cols order)))))
-    (dotimes (i order)
-      (setf result (.- result (shift result))))
-    result))
+	 (rows (first input-dimensions))
+	 (columns (second input-dimensions))
+	 (new-cols (- columns order)))
+    (.- (.subarray a (list (list 0 (1- rows)) (list 0 (1- new-cols))))
+	(.subarray a (list (list 0 (1- rows)) (list order (1- columns)))))))
+
+#|
+(defmethod diff ((a n-array) &optional (order 1))
+  (let* ((input-dimensions (.array-dimensions a))
+	 (rows (first input-dimensions))
+	 (columns (second input-dimensions))
+	 (new-cols (- columns order))
+ 	 (shortened-a (make-instance 'n-fixnum-array :ival (make-array (list rows new-cols) :displaced-to (val a))))
+ 	 (shifted-a (make-instance 'n-fixnum-array :ival (make-array (list rows new-cols) :displaced-to (val a) :displaced-index-offset 1))))
+    (.- shortened-a shifted-a)))
+|#
+
 
 (defun preferred-tempo (magnitude phase voices-per-octave rhythm-sample-rate 
 			;; Fraisse's "spontaneous tempo" interval in seconds
@@ -89,6 +110,8 @@ This is weighted by absolute constraints, look in the 600ms period range."
   )
 |#
 
+;; TODO Won't normalising by scale distort the topography? Perhaps just use:
+;; (./ fm-mag (.max fm-mag))
 (defun normalise-by-scale (magnitude)
   "Normalise a magnitude finding the maximum scale at each time point.
  We assume values are positive values only"
@@ -184,7 +207,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
       ;; 1.5 sample of one another.
       (setf-subarray signal-phase-diff 
 		     (.abs (.- (.subarray signalPeriod (list i t)) (.aref scale-time-support i)))
-		     (list i (1- ntime))))
+		     (list i (1- nTime))))
 
     (setf normalised-signal-phase-diff (normalise-by-scale signal-phase-diff))
 
@@ -245,7 +268,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
     ;; Remove outliers.
     (.* (clamp-to-bounds maximalLocalPC magnitude magnitude-minimum 0) noOutliers)))
 
-;; otherwise return normalisedMagnitude, statPhase or localPC individually.
+;; TODO alternatively return normalised-magnitude, stationary-phase or local-phase-congruency individually.
 (defun correlate-ridges (magnitude phase voices-per-octave)
   "Computes independent surfaces analysing the magnitude and phase
 which are then combined to form an analytic surface from which we
@@ -262,8 +285,8 @@ then can extract ridges."
 
 (defmethod tactus-for-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
   "Returns the selected tactus given the rhythm."
-  (multiple-value-bind (magnitude phase) (cwt (signal analysis-rhythm) voices-per-octave)
-    ;; (plot-cwt magnitude phase :title (name analysis-rhythm))
+  (multiple-value-bind (magnitude phase) (cwt (time-signal analysis-rhythm) voices-per-octave)
+    (plot-cwt magnitude phase :title (name analysis-rhythm))
     ;; Correlate various ridges to produce a robust version.
     (let* ((correlated-ridges (correlate-ridges magnitude phase voices-per-octave))
 	   ;; Scale index 1 is the highest frequency (smallest dilation) scale.
