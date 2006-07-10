@@ -13,4 +13,5 @@
 			(:file "ridges")
 			(:file "rhythm")
 			(:file "plotting")
-			(:file "multires_rhythm")))
+			(:file "multires_rhythm")
+			(:file "test-examples")))
