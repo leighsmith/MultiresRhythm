@@ -7,6 +7,8 @@
 ;;;; Leigh Smith <lsmith@science.uva.nl>
 ;;;;
 
+;;; (in-package multires-rhythm)
+
 (defun intervals-in-samples (intervals &key ((:tempo tempo-in-bpm) 60)
 			     (ioi 1.0 interval-supplied-p)
 			     (sample-rate 1000)) ; in Hz (samples per second)
@@ -53,9 +55,15 @@
       (cons (- (second onsets) (first onsets)) (onsets-to-iois (rest onsets)))))
 
 (defun rhythmic-grid-to-signal (grid &key (tempo 80) (sample-rate 200))
-  "Returns rhythmic grid as a (long) list, TODO should be a vector."
-  (onsets-to-grid (iois-to-onsets (intervals-in-samples (onsets-to-iois (grid-to-onsets grid))
-						   :tempo tempo :sample-rate sample-rate))))
+  "Returns rhythmic grid as a nlisp array."
+  (let* ((rhythmic-signal-list (onsets-to-grid (iois-to-onsets 
+						(intervals-in-samples 
+						 (onsets-to-iois (grid-to-onsets grid))
+						 :tempo tempo :sample-rate sample-rate))))
+	 (rhythm-array (make-array (length rhythmic-signal-list) 
+				   :element-type 'fixnum :initial-contents rhythmic-signal-list)))
+    (make-instance 'n-fixnum-array :ival rhythm-array)))
+
 
 (defun repeat-rhythm (rhythm repeat)
   (if (> repeat 0)
