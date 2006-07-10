@@ -19,6 +19,8 @@
 ;;;;   annote =  {\url{http://www.leighsmith.com/Research/Papers/MultiresRhythm.pdf}}
 ;;;;
 
+;;; (in-package multires-rhythm)
+
 ;; (require 'zlib)
 ;; (require 'imago)
 
@@ -77,6 +79,16 @@
 ;;; Functions to create IMAGO image instances from magnitude and phase components of a
 ;;; CWT.
 
+(defun make-colour-mapped-image (matrix-to-plot colour-map)
+  "Creates an Imago image instance from the supplied nlisp matrix and colour-map"
+  (let ((image (make-instance 'imago:indexed-image
+			      :width (.array-dimension matrix-to-plot 0)
+			      :height (.array-dimension matrix-to-plot 1)
+			      :color-count (length colour-map))))
+    (setf (slot-value image 'imago::pixels) (val matrix-to-plot))
+    (setf (slot-value image 'imago::colormap) colour-map)
+    image))
+
 (defun magnitude-image (magnitude 
 			&key (magnitude-limit 0 magnitude-limit-supplied-p)
 			(maximum-colour-value 255))
@@ -90,8 +102,7 @@
 	 ;; Therefore we allow clamping the magnitude at a given limit.
 	 (maxmag)
 	 (mag-range)
-	 (plotable-mag)
-	 (plotable-mag-image))
+	 (plotable-mag))
     (if magnitude-limit-supplied-p
  	;; Replace with clamp-to-bounds?
  	(let ((exceeded (.> magnitude magnitude-limit)))
@@ -101,13 +112,7 @@
     (setf mag-range (- maxmag minmag))
     (setf plotable-mag (.floor (.- maximum-colour-value (.* (./ (.- magnitude minmag) mag-range)
 							    maximum-colour-value))))
-    (setf plotable-mag-image (make-instance 'imago:indexed-image
- 					    :width (.array-dimension plotable-mag 0)
- 					    :height (.array-dimension plotable-mag 1)
- 					    :color-count (1+ maximum-colour-value)))
-    (setf (slot-value plotable-mag-image 'imago::pixels) (val plotable-mag))
-    (setf (slot-value plotable-mag-image 'imago::colormap) greyscale)
-    plotable-mag-image))
+    (make-colour-mapped-image plotable-mag greyscale)))
 
 (defun phase-image (phase magnitude
 		    &key (maximum-colour-value 255)
@@ -123,14 +128,33 @@
 	 ;; the first colormap index (0) is set to be white.
 	 (plotable-phase (.floor (.* (.> magnitude magnitude-minimum-for-phase-plot) 
 				     (.+ (.* (.+ (./ phase (* 2 pi)) 0.5) 
-					     (1- maximum-colour-value)) 1.0))))
-	 (plotable-phase-image (make-instance 'imago:indexed-image
-					      :width (.array-dimension plotable-phase 0)
-					      :height (.array-dimension plotable-phase 1)
-					      :color-count (1+ maximum-colour-value))))
-    (setf (slot-value plotable-phase-image 'imago::pixels) (val plotable-phase))
-    (setf (slot-value plotable-phase-image 'imago::colormap) phase-colormap)
-    plotable-phase-image))
+					     (1- maximum-colour-value)) 1.0)))))
+    (make-colour-mapped-image plotable-phase phase-colormap)))
+
+#|
+(defun tactus-image (ridges tactus)
+  (let* ((ridge-colour (imago:make-color maximum-colour-value 0 0)) ; red is for the ridge.
+	 ;; Create a color map that is a greyscale for all values except the topmost which is red.
+	 (ridge-colormap (concatenate 'vector (greyscale-colormap maximum-colour-value) (vector ridge-colour)))
+	 (max-ridge-colours maximum-colour-value)
+	 (min-ridge (.min ridges))
+	 (ridge-range (.- (.max ridges) min-ridge))
+	 (plotable-ridges (.- max-ridge-colours (.* (./ (.- ridges min-ridge) ridge-range) max-ridge-colours)))
+
+	 (plotable-tactus = zeros(size(ridges))
+
+
+  ;; Convert the column indexes into a fortran indexed vector
+  fortranIndexedTactus = ((find(tactus) - 1) * \
+			  rows(ridges)) + downSampledTactus;
+  plotableTactus(fortranIndexedTactus) = 1;
+
+  ridges-and-tactus = (.+ (.* plotable-ridges (~ plotable-tactus)) (.* plotable-tactus maxcolours))
+
+    (make-colour-mapped-image ridges-and-tactus ridge-colormap))
+|#
+
+;;; TODO perhaps (plot 
 
 ;;; Creates PNG files of the supplied magnitude and phase components of a continuous
 ;;; wavelet transform.
@@ -187,52 +211,27 @@ TODO:would be nice to use saturation to indicate magnitude value on the phase pl
 |#
 
 
-#|
-;;;
-;;; Plot the ridges in greyscale and the computed tactus in red, 
-;;; expected tactus in blue.
-;;;
-(defun plotRidgesAndTactus (comment ridges computedTactus expectedTactus)
-  magnitude-minimum = 0.001;
-  ;; The amount of downsampling of the cwt result on the translation axis
-  ;; we do before we plot.
+(defun plot-ridges-and-tactus (title ridges computed-tactus &key 
+			       (expected-tactus nil)
+			       (time-axis-decimation 4))
+  "Plot the ridges in greyscale and the computed tactus in red, expected tactus in blue."
+
+  ;; The amount of downsampling of the cwt result on the translation axis we do before we plot.
   ;; We could do away with this since we can process the data without
   ;; excess resource strain, but the images usually exceed the width of
-  ;; a window, so this is mainly to provide a useful viewing aspect ratio.
-  time-axis-decimation = 4;
+  ;; a window, so this is mainly to provide a useful viewing aspect ratio."
 
-  ;; Downsample the data 
-  downSampledRidges = (decimate ridges (list 1 time-axis-decimation))
-  downSampledTactus = (decimate computedTactus (list 1 time-axis-decimation))
-  plotableTactus = zeros(size(downSampledRidges));
+  ;; Downsample the data
+  (let* ((downSampledRidges (decimate ridges (list 1 time-axis-decimation)))
+	 ;; TODO this is wrong, the tactus is a object, not a nlisp vector.
+	 (downSampledTactus (decimate computed-tactus (list 1 time-axis-decimation))))
+    
+    (tactus-image downSampledRidges downSampledTactus)
+	 ;; "tactus"
+))
 
-  greyscale = (greyscale-colormap max-colours)
-  max-colours = 256
-  maxRidgeColours = maxcolours - 1;
 
-  ;; red is for the ridge.
-  red = (imago:make-color 255 0 0)
-
-  ;; Create a color map that is a greyscale for all values except the
-  ;; topmost which is red.
-  ridgeColourMap = [greyscale(1: length(greyscale) - 1, :); red];
-
-  colormap(ridgeColourMap);
-
-  maxridge = max(max(downSampledRidges));
-  minridge = min(min(downSampledRidges));
-  ridgerange = maxridge - minridge;
-  plotableRidges = maxRidgeColours - (((downSampledRidges - minridge) ./ ridgerange) .* maxRidgeColours);
-
-  ;; Convert the column indexes into a fortran indexed vector
-  fortranIndexedTactus = ((find(downSampledTactus) - 1) * \
-			  rows(downSampledRidges)) + downSampledTactus;
-  plotableTactus(fortranIndexedTactus) = 1;
-
-  plotableImage = plotableRidges .* ~plotableTactus + plotableTactus * maxcolours;
-  namedImage("tactus", plotableImage, 1);
-)
-
+#|
 ;;;
 ;;; Plot locations of original beats, computed claps, the foot tap
 ;;; amplitude modulation/phase and reference expected clap points.
