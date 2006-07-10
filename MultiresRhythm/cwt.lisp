@@ -19,6 +19,8 @@
 ;;;;   annote =  {\url{http://www.leighsmith.com/Research/Papers/MultiresRhythm.pdf}}
 ;;;;
 
+;;; (in-package multires-rhythm)
+
 ;; voicesPerOctave
 (defun gaussian-envelope (width)
   "Compute a gaussian envelope.

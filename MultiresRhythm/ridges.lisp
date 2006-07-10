@@ -19,6 +19,8 @@
 ;;;;   annote =  {\url{http://www.leighsmith.com/Research/Papers/MultiresRhythm.pdf}}
 ;;;;
 
+;;; (in-package multires-rhythm)
+
 (defclass ridge ()
   ((active :initform nil :initarg :set-active :accessor active)
    ;; Holds a time sequence of scale indices.
