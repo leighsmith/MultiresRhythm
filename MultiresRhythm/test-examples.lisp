@@ -19,6 +19,8 @@
 ;;;;   annote =  {\url{http://www.leighsmith.com/Research/Papers/MultiresRhythm.pdf}}
 ;;;;
 
+;;; (in-package multires-rhythm)
+
 (defun fm-test (&key (signal-length 2048))
   "Frequency modulating signal for wavelet analysis."
   (let* ((carrierFreq 16)
@@ -53,10 +55,21 @@
 ;; (multiple-value-bind (rising-harmonic-mag rising-harmonic-phase) (cwt (rising-harmonic-test) 8) (plot-cwt rising-harmonic-mag rising-harmonic-phase :title "rising-harmonic"))
 
 (defun test-rhythm ()
-  (let* ((rhythmic-list (rhythmic-grid-to-signal '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0 1)))
-	 (rhythm-array (make-array (length rhythmic-list) :element-type 'fixnum :initial-contents rhythmic-list))
-	 (rhythm-signal (make-instance 'n-fixnum-array :ival rhythm-array)))
+  (let* ((rhythm-signal (rhythmic-grid-to-signal '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0 1))))
     (multiple-value-bind (rhythm-mag rhythm-phase) (cwt rhythm-signal 8)
       (plot-cwt rhythm-mag rhythm-phase :title "rhythm"))))
 
 ;; (setf b (rhythmic-grid-to-signal '(1 1 1 1) :tempo 60))
+
+(defun test-tactus ()
+  (let ((shmulevich-rhythm 
+	 (make-instance 'rhythm 
+			:name "shmulevich-rhythm-1"
+			:description "shmulevich rhythm 1" 
+			:time-signal (rhythmic-grid-to-signal '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0 1) 
+							      :sample-rate 200)
+			:sample-rate 200)))
+    (tactus-for-rhythm shmulevich-rhythm)))
+
+;; (setf isochronous-rhythm (make-double-array (2048)))
+
