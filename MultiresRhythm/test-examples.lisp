@@ -32,10 +32,14 @@
     (plot fm-signal nil)
     fm-signal))
 
+;; Test dyadic signals:
 ;; (multiple-value-setq (fm-mag fm-phase) (dyadic-cwt (fm-test) 8 512))
+;; Test any length signals:
 ;; (multiple-value-setq (fm-mag fm-phase) (cwt (fm-test) 8))
+;; Test plotting of magnitude only:
 ;; (plot-cwt (cwt (fm-test) 8))
 ;; (setf x (dyadic-cwt (fm-test :signal-length 256) 8 256))
+;; Test plotting of both magnitude and phase:
 ;; (multiple-value-bind (fm-mag fm-phase) (cwt (fm-test) 16) (plot-cwt fm-mag fm-phase :title "fm"))
 
 ;;; 
@@ -51,8 +55,15 @@
 				     (.* 0.33 (.cos (.* norm-signal 2.0 pi periodicity3))))))
     (plot rising-harmonic-signal nil)
     rising-harmonic-signal))
-	 
+
 ;; (multiple-value-bind (rising-harmonic-mag rising-harmonic-phase) (cwt (rising-harmonic-test) 8) (plot-cwt rising-harmonic-mag rising-harmonic-phase :title "rising-harmonic"))
+
+(defun test-lpc ()
+  (multiple-value-bind (fm-mag fm-phase) (cwt (fm-test) 8)
+    ;; (plot-cwt fm-mag fm-phase :title "fm")
+    (plot-image #'magnitude-image "-lpc" (list (local-phase-congruency fm-mag fm-phase)) :title "fm")))
+  
+;; (test-lpc)
 
 (defun test-rhythm ()
   (let* ((rhythm-signal (rhythmic-grid-to-signal '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0 1))))
