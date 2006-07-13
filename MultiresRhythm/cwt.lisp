@@ -125,8 +125,8 @@ still be representing the wavelets in the frequency and time domains meaningfull
 	   ;; If the magnitude value is low, the phase will be ill-conditioned,
 	   ;; which we will plot different to significant phase behaviour.
 	   ;; atan2 used by arg will return -pi to pi.
-	   (setf-subarray (val phase) (val (.phase voice-response)) scale-row)
-	   (format t "scale-index ~d~%" scale-index)))
+	   (setf-subarray (val phase) (val (.phase voice-response)) scale-row)))
+	   ;; (format t "scale-index ~d~%" scale-index)
     (format t "Finished CWT, last time period = ~d~%" (.aref period (1- number-of-scales)))
     (values magnitude phase)))
 
