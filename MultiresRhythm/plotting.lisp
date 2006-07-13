@@ -92,7 +92,9 @@
 (defun magnitude-image (magnitude 
 			&key (magnitude-limit 0 magnitude-limit-supplied-p)
 			(maximum-colour-value 255))
-  "Creates a plotable image object from the magnitude using a greyscale colour map"
+  "Creates a plotable image object from the magnitude using a greyscale colour map.
+   magnitude-limit = Can be used to clamp the global extrema at limits to allow
+   interpreting the magnitude density plots for local extrema."
   ;; 0 - maximum-colour-value inclusive:
   (let* ((greyscale (greyscale-colormap (1+ maximum-colour-value))) 
 	 (minmag (.min magnitude))
@@ -114,9 +116,12 @@
 							    maximum-colour-value))))
     (make-colour-mapped-image plotable-mag greyscale)))
 
+;; TODO: would be nice to use saturation to indicate magnitude value on the phase plot.
 (defun phase-image (phase magnitude
 		    &key (maximum-colour-value 255)
 		    (magnitude-minimum-for-phase-plot 0.001))
+  "Assumes the magnitude value is positive, phase is -pi -> pi.
+   Ill-conditioned phase measures due to low magnitude are displayed as white."
   ;; use a colormap which has the lowest value white, for ill-conditioned phase values,
   ;; the rest a spectral distribution from red -> violet.
   (let* ((white (imago:make-color maximum-colour-value maximum-colour-value maximum-colour-value))
@@ -154,49 +159,42 @@
     (make-colour-mapped-image ridges-and-tactus ridge-colormap))
 |#
 
-;;; TODO perhaps (plot 
+(defun plot-image (image-generator file-extension data-to-plot
+		   &key (title "unnamed")
+		   (time-axis-decimation 4)
+		   (temp-directory "tmp")
+		   (png-type "png"))
+   "time-axis-decimation = The amount of downsampling of the data along the translation axis before we plot.
+   We could do away with this when we can process the data without excess resource strain,
+   but it makes for diagrams which are not so wide, making them easier to view and interpret."
+  (let* ((pathname (make-pathname :directory (list :absolute temp-directory) 
+				  :name (concatenate 'string title file-extension)
+				  :type png-type))
+	 ;; Downsample the data 
+	 (down-sampled-data (mapcar (lambda (x) (decimate x (list 1 time-axis-decimation))) data-to-plot))
+	 (plotable-image (apply image-generator down-sampled-data)))
+    (imago:write-png plotable-image pathname)
+    plotable-image))
 
+;; (plot-image #'magnitude-image "-magnitude" (list magnitude))
+;; (plot-image #'phase-image "-phase" (list phase magnitude))
+;; (plot-image #'tactus-image "-tactus" (list ridges tactus))
+;; (apply #'plot-image (list #'magnitude-image "-magnitude" (list magnitude) :title "blah")) 
+
+(defun plot-images (image-list &key (title "unnamed"))
+  ;; (format t "title is ~a image-list is ~a~%" title image-list)
+  (mapcar (lambda (x) (apply #'plot-image (append x (list :title title)))) image-list))
+  ;; (mapcar (lambda (x) (format t "parameters ~a~%" x)) image-list))
+ 
 ;;; Creates PNG files of the supplied magnitude and phase components of a continuous
 ;;; wavelet transform.
-(defun plot-cwt (magnitude &optional (phase nil phase-supplied-p)
-		&key (title "unnamed" title-supplied-p)
-		(magnitude-limit 0 magnitude-limit-supplied-p)
-		(magnitude-minimum 0.001) 
-		(time-axis-decimation 4))
+(defun plot-cwt (magnitude phase
+		 &key (title "unnamed")
+		 (time-axis-decimation 4))
   "Function to plot the magnitude and phase components of the result of
-a continuous wavelet transform on a signal.
-
-Assumes the magnitude value is positive, phase is -pi -> pi.
-Ill-conditioned phase measures due to low magnitude are displayed as white.
-
-magnitude-limit = Can be used to clamp the global extrema at limits to allow
-interpreting the magnitude density plots for local extrema.
-
- time-axis-decimation = The amount of downsampling of the cwt result on the translation
- axis we do before we plot.
- We could do away with this when we can process the data without excess resource strain,
- but it makes for diagrams which are not so wide, making them easier to view and interpret.
-
-TODO:would be nice to use saturation to indicate magnitude value on the phase plot.
-"
-  (let* ((temp-directory "tmp")
-	 (png-type "png")
-	 (mag-pathname (make-pathname :directory (list :absolute temp-directory) 
-				      :name (concatenate 'string title "-magnitude")
-				      :type png-type))
-	 (phase-pathname (make-pathname :directory (list :absolute temp-directory) 
-					:name (concatenate 'string title "-phase")
-					:type png-type))
-	 ;; Downsample the data 
-	 (down-sampled-magnitude (decimate magnitude (list 1 time-axis-decimation)))
-	 (plotable-mag-image (magnitude-image down-sampled-magnitude)))
-    (imago:write-png plotable-mag-image mag-pathname)
-    (if phase-supplied-p
-	(let* ((plotable-phase-image (phase-image (decimate phase (list 1 time-axis-decimation))
-						  down-sampled-magnitude)))
-	  (imago:write-png plotable-phase-image phase-pathname)
-	  (values plotable-mag-image plotable-phase-image))
-	plotable-mag-image)))
+   a continuous wavelet transform on a signal."
+  (plot-images (list (list #'magnitude-image "-magnitude" (list magnitude))
+		     (list #'phase-image "-phase" (list phase magnitude))) :title title))
 
 #|
 ;; How to plot using nlisp (unfortunately the data transferred between gnuplot and nlisp is too much.
@@ -224,6 +222,7 @@ TODO:would be nice to use saturation to indicate magnitude value on the phase pl
   ;; Downsample the data
   (let* ((downSampledRidges (decimate ridges (list 1 time-axis-decimation)))
 	 ;; TODO this is wrong, the tactus is a object, not a nlisp vector.
+	 ;; Perhaps create a decimate method specialised on tactus?
 	 (downSampledTactus (decimate computed-tactus (list 1 time-axis-decimation))))
     
     (tactus-image downSampledRidges downSampledTactus)
