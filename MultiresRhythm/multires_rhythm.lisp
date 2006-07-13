@@ -26,31 +26,13 @@
 ;;; a signal processing representation (high sample rate) and a symbolic representation
 ;;; (low sample rate).
 (defclass rhythm ()
-  ((name :initarg :name :accessor name :initform "unnamed")
+  ((name        :initarg :name        :accessor name        :initform "unnamed")
    (description :initarg :description :accessor description :initform "")
    (time-signal :initarg :time-signal :accessor time-signal :initform (make-double-array '(1)))
    (sample-rate :initarg :sample-rate :accessor sample-rate :initform 200)))
 
 (defgeneric tactus-for-rhythm (rhythm-to-analyse &key voices-per-octave)
   (:documentation "Returns the selected tactus for the rhythm."))
-
-;; (defmethod diff ((a n-array) &optional order)
-;;   (let* ((input-dimensions (.array-dimensions a))
-;; 	  (rows (first input-dimensions))
-;; 	  (cols (second input-dimensions))
-;; 	  (result (make-double-array (list rows (- cols order)))))
-;;     (dotimes (i order)
-;;       (setf result (.- result (shift result))))
-;;     result))
-
-;; TODO alternatively
-(defmethod diff ((a n-array) &optional (order 1))
-  (let* ((input-dimensions (.array-dimensions a))
-	 (rows (first input-dimensions))
-	 (columns (second input-dimensions))
-	 (new-cols (- columns order)))
-    (.- (.subarray a (list (list 0 (1- rows)) (list 0 (1- new-cols))))
-	(.subarray a (list (list 0 (1- rows)) (list order (1- columns)))))))
 
 #|
 (defmethod diff ((a n-array) &optional (order 1))
@@ -61,8 +43,26 @@
  	 (shortened-a (make-instance 'n-fixnum-array :ival (make-array (list rows new-cols) :displaced-to (val a))))
  	 (shifted-a (make-instance 'n-fixnum-array :ival (make-array (list rows new-cols) :displaced-to (val a) :displaced-index-offset 1))))
     (.- shortened-a shifted-a)))
+
+(defmethod diff ((a n-array) &optional order)
+  (let* ((input-dimensions (.array-dimensions a))
+	  (rows (first input-dimensions))
+	  (cols (second input-dimensions))
+	  (result (make-double-array (list rows (- cols order)))))
+    (dotimes (i order)
+      (setf result (.- result (shift result))))
+    result))
 |#
 
+;; TODO This could prove very slow with large matrices.
+(defmethod diff ((a n-array) &optional (order 1))
+  "Returns the n-th order difference between array columns, including vectors"
+  (let* ((input-dimensions (.array-dimensions a))
+	 (rows (if (> (length input-dimensions) 1) (first input-dimensions) 1))
+	 (columns (if (> (length input-dimensions) 1) (second input-dimensions) (first input-dimensions)))
+	 (new-cols (- columns order)))
+    (.- (.subarray a (list (list 0 (1- rows)) (list 0 (1- new-cols))))
+	(.subarray a (list (list 0 (1- rows)) (list order (1- columns)))))))
 
 (defun preferred-tempo (magnitude phase voices-per-octave rhythm-sample-rate 
 			;; Fraisse's "spontaneous tempo" interval in seconds
@@ -110,8 +110,11 @@ This is weighted by absolute constraints, look in the 600ms period range."
   )
 |#
 
-;; TODO Won't normalising by scale distort the topography? Perhaps just use:
-;; (./ fm-mag (.max fm-mag))
+;; if normalise-by-scale distorts the topography?
+(defun normalise (magnitude)
+  "Normalise magnitude over the entire signal. This may not be realistic"
+  (./ magnitude (.max magnitude)))
+
 (defun normalise-by-scale (magnitude)
   "Normalise a magnitude finding the maximum scale at each time point.
  We assume values are positive values only"
@@ -128,17 +131,22 @@ This is weighted by absolute constraints, look in the 600ms period range."
     ;; normalised 
     (./ magnitude maxVals)))
 
-(defun clamp-to-bounds (signal testSignal 
+(defun clamp-to-bounds (signal test-signal 
 			&key (low-bound 0) (clamp-low 0) (high-bound 0 high-bound-supplied-p) (clamp-high 0))
   "Clip a signal according to the bounds given, by testing another signal (which can be the same as signal). 
 Anything clipped will be set to the clamp-low, clamp-high values"
-  (let* ((above-low (.> testSignal low-bound))
+  (let* ((above-low (.> test-signal low-bound))
 	 (below-high (if high-bound-supplied-p
-			 (.< testSignal high-bound)
-			 (make-double-array (.array-dimensions signal) :initial-element 1d0))))
+			 (.< test-signal high-bound)
+			 1d0)))
     (.+ (.* (.and above-low below-high) signal)
 	(.* (.not above-low) clamp-low) 
 	(.* (.not below-high) clamp-high))))
+
+;; (setf a (.rseq2 0 9 10))
+;; (setf b (.rseq2 9 0 10))
+;; (clamp-to-bounds b a :low-bound 5d0 :clamp-low -1d0)
+
 
 (defun stationary-phase (magnitude phase voices-per-octave &key (magnitude-minimum 0.01))
   "Compute points of stationary phase.
@@ -218,9 +226,11 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 
     ;; There must be some magnitude at the half-plane points of stationary phase
     ;; for the ridge to be valid. 
-    (clamp-to-bounds maximal-stationary-phase magnitude magnitude-minimum 0))))
+    (clamp-to-bounds maximal-stationary-phase magnitude :low-bound magnitude-minimum :clamp-low 0))))
 
-(defun local-phase-congruency (magnitude phase &key (magnitude-minimum 0.01) (congruency-threshold 0.05))
+(defun local-phase-congruency (magnitude phase 
+			       &key (magnitude-minimum 0.01)
+			       (congruency-threshold (/ pi 2)))
   "Compute points of local phase congruency.
    Determines the points of phase with least deviation between adjacent scales.
 
@@ -228,47 +238,67 @@ Anything clipped will be set to the clamp-low, clamp-high values"
     magnitude Magnitude output of CWT - currently ignored.
     phase  Phase output of CWT
     magnitude-minimum is the minimum magnitude to accept phase as valid.
+    congruency-threshold maximum deviation 
   Outputs
-    normalised-congruency - matrix indicating presence of congruency."
+    matrix indicating presence of congruency."
 
   (let* ((time-frequency-dimensions (.array-dimensions phase))
-	 (nScale (first time-frequency-dimensions))
-	 (nTime  (second time-frequency-dimensions))
-	 (ridges (make-double-array time-frequency-dimensions))
+	 (num-of-scales (first time-frequency-dimensions))
 
-	 ;; find derivative with respect to scale s.
-	 (abs-ds-phase (.abs (diff phase)))
+	 ;; Find derivative with respect to scale s. Transposes phase so that diffence is
+	 ;; across rows (i.e scales).
+	 (abs-ds-phase (.abs (diff (.transpose phase))))
 
-	 ;; Compensate for phase wrap-around with derivatives wrt scale such that
-	 ;; the maximum angular difference between vectors <= pi radians.
-	 (whichwrap (.> abs-ds-phase pi))
-	 (phasewrap (.- (.* 2 pi) abs-ds-phase))
+	 ;; Compensate for phase wrap-around with derivatives with respect to scale (ds) such that
+	 ;; the maximum angular difference between vectors is <= pi radians.
+	 (which-wrapped (.> abs-ds-phase pi))
+	 (phase-wrap (.- (* 2 pi) abs-ds-phase))
 
 	 ;; Compute the troughs in the phase congruency, which indicates where
 	 ;; phase most closely match between adjacent scales, most indicative
 	 ;; of a frequency. 
-	 (local-phase-diff (.+ (.* (.not whichwrap) abs-ds-phase) (.* whichwrap phasewrap)))
+	 (local-phase-diff (.+ (.* (.not which-wrapped) abs-ds-phase) (.* which-wrapped phase-wrap)))
+	 (congruency (make-double-array time-frequency-dimensions))
+	 (maximal-local-pc)
+	 (local-pc-for-mag)
+	 (no-outliers))
+    ;; Since we produce the derivative from the difference, local-phase-diff is one
+    ;; element less.
+    (setf-subarray (val congruency) (val (.transpose local-phase-diff)) (list (list 1 (1- num-of-scales)) t))
 
-	 ;; Since we produce the derivative from the difference, local-phase-diff
-	 ;; is one element less, so we need to interpolate the result to
+#|
+    ;; so we need to interpolate the result to
 	 ;; produce the correct value for each scale.
-	 (scalePad (make-double-array nTime))
-	 (congruency (./ 2 (.abs (.- (.concatenate local-phase-diff scalePad) (.concatenate scalePad local-phase-diff)))))
+	 (congruency (./ (.abs (.+ (.concatenate local-phase-diff scale-pad) 
+	 (.concatenate scale-pad local-phase-diff)))) 2)
+;; or
+	 (congruency (.transpose local-phase-diff))
+|#
 
-	 ;; determine outliers, those troughs greater in difference than threshold
-	 (noOutliers (.< congruency congruency-threshold))
+    ;; The local phase congruency measure should be maximal at points of minimal
+    ;; difference between scales, so we normalise it, then subtract from 1.
+    ;; (setf maximal-local-pc (.- 1d0 (normalise-by-scale congruency)))
+    (setf maximal-local-pc (.- 1d0 (normalise congruency)))
 
-	 ;; The local phase congruency measure should be maximum for least
-	 ;; difference, so we normalise it, then subtract from 1.
-	 (maximalLocalPC (.- (make-double-array time-frequency-dimensions :initial-element 1d0) 
-			     (normalise-by-scale congruency))))
+    ;; There must be some magnitude at the half-plane points of local phase congruency for
+    ;; the ridge to be valid.  
+    (setf local-pc-for-mag (clamp-to-bounds maximal-local-pc magnitude :low-bound magnitude-minimum :clamp-low 0))
+    local-pc-for-mag))
+#|
+    (plot-image #'magnitude-image "-clampedpc" (list local-pc-for-mag))
+    (plot (.subarray local-pc-for-mag '(t 182)) nil)
 
-    ;; There must be some magnitude at the half-plane points of local
-    ;; phase congruency for the ridge to be valid.
+    ;; determine outliers: those troughs greater in difference than threshold.
+    (setf no-outliers (.< congruency congruency-threshold))
+
     ;; Remove outliers.
-    (.* (clamp-to-bounds maximalLocalPC magnitude magnitude-minimum 0) noOutliers)))
+    (.* local-pc-for-mag no-outliers)))
+|#
 
-;; TODO alternatively return normalised-magnitude, stationary-phase or local-phase-congruency individually.
+;; TODO alternatively return normalised-magnitude, stationary-phase or
+;; local-phase-congruency individually.
+;; Should use a functional approach, passing the functions applicable as a list:
+;; (&key analyzers '(#'stationary-phase #'local-phase-congruency #'normalise))
 (defun correlate-ridges (magnitude phase voices-per-octave)
   "Computes independent surfaces analysing the magnitude and phase
 which are then combined to form an analytic surface from which we
@@ -276,7 +306,7 @@ then can extract ridges."
   ;; ahh, parallel machine anyone??
   (let ((stat-phase (stationary-phase magnitude phase voices-per-octave))
 	(local-pc (local-phase-congruency magnitude phase))
-	;; magnitude = abs(magnitude)
+	;; (normalised-magnitude (normalise magnitude))
 	(normalised-magnitude (normalise-by-scale magnitude)))
     ;; correlate (by averaging) the energy modulus, stationary phase and
     ;; local phase congruency. Since statPhase and local PC are both
