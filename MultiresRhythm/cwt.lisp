@@ -21,11 +21,11 @@
 
 ;;; (in-package multires-rhythm)
 
-;; voicesPerOctave
-(defun gaussian-envelope (width)
+(defun gaussian-envelope (width &key (center 0.0))
   "Compute a gaussian envelope.
-   width is in the number of points to range an envelope over 3 standard deviations."
-  (let ((x (.rseq -0.99 1.00 width)))
+   width is in the number of points to range an envelope over 3 standard deviations.
+   center determines the position of the envelope within the width number of samples."
+  (let ((x (.rseq (- center 1.0) (+ center 1.0) width)))
     (.exp (.- (.expt (.* 2d0 x (/ 6d0 (sqrt 8d0))) 2.0)))))
 
 (defun morlet-wavelet-fourier (signal-time-period wavelet-scale &key (omega0 6.2))
