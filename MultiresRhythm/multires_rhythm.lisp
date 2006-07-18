@@ -34,36 +34,6 @@
 (defgeneric tactus-for-rhythm (rhythm-to-analyse &key voices-per-octave)
   (:documentation "Returns the selected tactus for the rhythm."))
 
-#|
-(defmethod diff ((a n-array) &optional (order 1))
-  (let* ((input-dimensions (.array-dimensions a))
-	 (rows (first input-dimensions))
-	 (columns (second input-dimensions))
-	 (new-cols (- columns order))
- 	 (shortened-a (make-instance 'n-fixnum-array :ival (make-array (list rows new-cols) :displaced-to (val a))))
- 	 (shifted-a (make-instance 'n-fixnum-array :ival (make-array (list rows new-cols) :displaced-to (val a) :displaced-index-offset 1))))
-    (.- shortened-a shifted-a)))
-
-(defmethod diff ((a n-array) &optional order)
-  (let* ((input-dimensions (.array-dimensions a))
-	  (rows (first input-dimensions))
-	  (cols (second input-dimensions))
-	  (result (make-double-array (list rows (- cols order)))))
-    (dotimes (i order)
-      (setf result (.- result (shift result))))
-    result))
-|#
-
-;; TODO This could prove very slow with large matrices.
-(defmethod diff ((a n-array) &optional (order 1))
-  "Returns the n-th order difference between array columns, including vectors"
-  (let* ((input-dimensions (.array-dimensions a))
-	 (rows (if (> (length input-dimensions) 1) (first input-dimensions) 1))
-	 (columns (if (> (length input-dimensions) 1) (second input-dimensions) (first input-dimensions)))
-	 (new-cols (- columns order)))
-    (.- (.subarray a (list (list 0 (1- rows)) (list 0 (1- new-cols))))
-	(.subarray a (list (list 0 (1- rows)) (list order (1- columns)))))))
-
 (defun preferred-tempo (magnitude phase voices-per-octave rhythm-sample-rate 
 			;; Fraisse's "spontaneous tempo" interval in seconds
 			&key (tempo-salience-peak 0.600))
@@ -82,13 +52,14 @@ This is weighted by absolute constraints, look in the 600ms period range."
   (let* ((nscale (first time-frequency-dimensions))
 	 (ntime (second time-frequency-dimensions))
 	 (tempo-weighting-over-time (make-double-array time-frequency-dimensions))
-	 (tempo-scale-weighting (shift (gaussian-envelope nscale) (- salient-scale (/ nscale 2)))))
+	 ;; Create a Gaussian envelope spanning the number of scales.
+	 (tempo-scale-weighting (gaussian-envelope nscale :center (- 1.0 (/ (* 2.0 salient-scale) nscale)))))
     (format t "preferred tempo scale = ~d~%" salient-Scale)
 
-    (dotimes (scale nscale)
-      (setf-subarray tempo-weighting-over-time (.aref tempo-scale-weighting scale) (list scale t)))
-    (plot (.subarray tempo-scale-weighting (list 0 t))
-	  :title "Preferred tempo weighting profile")
+    (dotimes (time ntime)
+      (setf-subarray (val tempo-weighting-over-time) 
+		     (val (.reshape tempo-scale-weighting (list nscale 1))) (list t time)))
+    (plot (.column tempo-weighting-over-time 0) nil :title "Preferred tempo weighting profile")
     tempo-weighting-over-time))
 
 #|
@@ -120,16 +91,22 @@ This is weighted by absolute constraints, look in the 600ms period range."
  We assume values are positive values only"
   (let* ((time-frequency-dimensions (.array-dimensions magnitude))
 	 (nScale (first time-frequency-dimensions))
-	 (maxVals (make-double-array time-frequency-dimensions))
-	 ;; Determine the maximum scale at each time.
-	 (maxScalePerTime (.max (.abs magnitude)))
-	 ;; If a maximum scale value is 0, then make those 1 to keep the division healthy.
-	 (maxScalePerTime (.+ maxScalePerTime (.not maxScalePerTime))))
+	 (nTime (second time-frequency-dimensions))
+	 (normalised-values (make-double-array time-frequency-dimensions)))
     ;; Duplicate the maximum scales per time for each scale to enable element-wise division.
-    (dotimes (i nScale)
-      (setf-subarray maxVals maxScalePerTime '(i t))
-    ;; normalised 
-    (./ magnitude maxVals)))
+    (dotimes (i nTime)
+      (let* ((scales-per-time (.column magnitude i))
+	     ;; Determine the maximum scale at each time.
+	     (maxScalePerTime (.max (.abs scales-per-time)))
+	     ;; Normalise each time-slice.
+	     ;; If a maximum scale value is 0, then make it 1 to keep the division healthy.
+	     (normalised-time-slice (./ scales-per-time (if (zerop maxScalePerTime) 1 maxScalePerTime))))
+	;; scales-per-time will be returned as a vector, we need to reshape it in order to
+	;; store it.
+	(setf-subarray (val normalised-values) 
+		       (val (.reshape normalised-time-slice (list nScale 1)))
+		       (list t i))))
+    normalised-values))
 
 (defun clamp-to-bounds (signal test-signal 
 			&key (low-bound 0) (clamp-low 0) (high-bound 0 high-bound-supplied-p) (clamp-high 0))
@@ -147,20 +124,17 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 ;; (setf b (.rseq2 9 0 10))
 ;; (clamp-to-bounds b a :low-bound 5d0 :clamp-low -1d0)
 
-
 (defun stationary-phase (magnitude phase voices-per-octave &key (magnitude-minimum 0.01))
-  "Compute points of stationary phase.
+  "Compute points of stationary phase. Implementation of Delprat
+   et. al's ridges from points of stationary phase convergent
+   algorithm. See: delprat:asymptotic
 
-   Implementation of Delprat et. al's ridges from points of stationary phase
-   convergent algorithm. See: delprat:asymptotic
-
- Inputs
-   magnitude    Magnitude output of CWT
-   phase        Phase output of CWT
-   magnitude-minimum is the minimum magnitude to accept phase as valid
- Outputs
-   statPhase - binary array indicating presence of ridge.
-"
+   Inputs
+     magnitude    Magnitude output of CWT
+     phase        Phase output of CWT
+     magnitude-minimum is the minimum magnitude to accept phase as valid
+   Outputs
+     binary array indicating presence of ridge."
   ;; the scale is the central frequency of the mother wavelet divided by
   ;; the central frequency of the dilated wavelet
   (let* ((time-frequency-dimensions (.array-dimensions phase))
@@ -171,62 +145,54 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 
 	 ;; Compute a discrete approximation to the partial derivative of the
 	 ;; phase with respect to translation (time) t.
-	 (dt-phase (.transpose (diff (.transpose phase))))
+	 (dt-phase (diff phase))
 
 	 ;; Phase is -pi -> pi.
 	 ;; We need to add back 2 pi to compensate for the phase wraparound
 	 ;; from pi to -pi. This wraparound will create a dt-phase close to 2 pi.
-	 (whichwrap (.> (.abs dt-phase) (* pi 1.5))) ; anything > pi is a wraparound
-	 (phasewrap (.- (.* 2 pi) (.abs dt-phase)))
-	 ;; wrapped-dt-phase = (whichwrap == 0) .* dt-phase + phasewrap .* whichwrap;
-	 (wrapped-dt-phase (+ (.* (.not whichwrap) dt-phase) (.* phasewrap whichwrap)))
+	 (which-wrapped (.> (.abs dt-phase) (* pi 1.5))) ; anything > pi is a wraparound
+	 (phase-wrap (.- (* 2 pi) (.abs dt-phase)))
+	 (wrapped-dt-phase (.+ (.* (.not which-wrapped) dt-phase) (.* phase-wrap which-wrapped)))
 
-	 ;; The acceleration of phase difference should be non-zero
-	 ;; (Tchamitchian and Torresani Eq. III-7 pp128)
-	 ;; phaseDiffAcceleration will therefore be two time sample points less
-	 ;; than the original phase time extent.
+	 ;; The acceleration of phase difference should be non-zero (Tchamitchian and
+	 ;; Torresani Eq. III-7 pp128) phaseDiffAcceleration will therefore be two time
+	 ;; sample points less than the original phase time extent.
 	 ;; phaseDiffAcceleration = diff(wrapped-dt-phase.').';
-	 
+	 ;;
 	 ;; Doing this will still produce NaN since the division already
 	 ;; creates Inf and the clamping uses multiplication.
-	 ;; wrapped-dt-phase = clamp-to-bounds(wrapped-dt-phase, magnitude, magnitude-minimum, 1);
+	 ;; wrapped-dt-phase = (clamp-to-bounds wrapped-dt-phase magnitude magnitude-minimum 1)
 
 	 ;; convert the phase derivative into periods in time
-	 (signalPeriod (./ (.* 2 pi) wrapped-dt-phase))
+	 (signal-period (./ (* 2 pi) wrapped-dt-phase))
 	 (scale-time-support (time-support (.iseq 0 (1- nScale)) voices-per-octave))
 	 (normalised-signal-phase-diff)
 	 (maximal-stationary-phase))
 
-    ;; When we have neglible magnitude, phase is meaningless, but can
-    ;; oscillate so rapidly we have two adjacent phase values which are
-    ;; equal (typically pi, pi/2, or 0). This can cause dt-phase to be
-    ;; zero and therefore make signalPeriod NaN. This then causes
-    ;; normaliseByScale to freakout because NaN is considered a maximum.
-    ;; Our kludge is to set those NaN signalPeriods to 0.0 so they don't
-    ;; cause excessive extrema and they will be zeroed out of the final
-    ;; result using clamp-to-bounds. Strictly speaking, we should verify
-    ;; mag is below magnitude-minimum before setting these zero dt-phase values.
-    ;; Use fortran indexing.
-    (setf (.aref signalPeriod (find (.not dt-phase))) 0.0)
+    ;; When we have neglible magnitude, phase is meaningless, but can oscillate so rapidly
+    ;; we have two adjacent phase values which are equal (typically pi, pi/2, or 0). This
+    ;; can cause dt-phase to be zero and therefore make signal-period NaN. This then
+    ;; causes normalise-by-scale to freak out because NaN is considered a maximum.  Our
+    ;; kludge is to set those NaN signal-periods to 0.0 so they don't cause excessive
+    ;; extrema and they will be zeroed out of the final result using
+    ;; clamp-to-bounds. Strictly speaking, we should verify mag is below magnitude-minimum
+    ;; before setting these zero dt-phase values.
+    ;; (setf (.aref signal-period (find (.not dt-phase))) 0.0)
 
     (dotimes (i nScale)
-      ;; Accept if the signal period (from its phase derivatives) and
-      ;; the time support of the wavelet at each dilation scale are within
-      ;; 1.5 sample of one another.
-      (setf-subarray signal-phase-diff 
-		     (.abs (.- (.subarray signalPeriod (list i t)) (.aref scale-time-support i)))
+      ;; Accept if the signal period (from its phase derivatives) and the time support of
+      ;; the wavelet at each dilation scale are within 1.5 sample of one another.
+      (setf-subarray (val signal-phase-diff)
+		     (val (.abs (.- (.subarray signal-period (list i t)) (.aref scale-time-support i))))
 		     (list i (1- nTime))))
 
-    (setf normalised-signal-phase-diff (normalise-by-scale signal-phase-diff))
+    ;; We invert the normalised phase difference so that maximum values indicate
+    ;; stationary phase -> ridges.
+    (setf maximal-stationary-phase (.- 1d0 (normalise-by-scale signal-phase-diff)))
 
-    ;; We invert the normalised phase difference so that maximum values
-    ;; indicate stationary phase -> ridges.
-    (setf maximal-stationary-phase (.- (make-double-array time-frequency-dimensions :initial-element 1d0)
-			       normalised-signal-phase-diff))
-
-    ;; There must be some magnitude at the half-plane points of stationary phase
-    ;; for the ridge to be valid. 
-    (clamp-to-bounds maximal-stationary-phase magnitude :low-bound magnitude-minimum :clamp-low 0))))
+    ;; There must be some magnitude at the half-plane points of stationary phase for the
+    ;; ridge to be valid.
+    (clamp-to-bounds maximal-stationary-phase magnitude :low-bound magnitude-minimum :clamp-low 0)))
 
 (defun local-phase-congruency (magnitude phase 
 			       &key (magnitude-minimum 0.01)
@@ -324,7 +290,7 @@ then can extract ridges."
 	   ;; Weight by the absolute tempo preference.
 	   (tempo-weighted-ridges (.* correlated-ridges 
 				      (tempo-salience-weighting salient-scale (.array-dimensions magnitude))))
-	   ;; (ridge-set (extract-ridges tempo-weighted-ridges)))
+	   ;; TODO (ridge-set (extract-ridges tempo-weighted-ridges)))
 	   (ridge-set (extract-ridges correlated-ridges)))
       ;; select out the tactus from all ridge candidates.
       (select-longest-tactus ridge-set))))
