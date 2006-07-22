@@ -19,7 +19,8 @@
 ;;;;   annote =  {\url{http://www.leighsmith.com/Research/Papers/MultiresRhythm.pdf}}
 ;;;;
 
-;;; (in-package multires-rhythm)
+(in-package :multires-rhythm)
+(use-package :nlisp)
 
 ;;; A rhythm includes a textual description, the sample rate and a general description of
 ;;; a signal. This allows representing a rhythm as a continuum between
@@ -40,6 +41,7 @@
   "Determine the scale which Fraisse's spontaneous tempo would occur at.
 This is weighted by absolute constraints, look in the 600ms period range."
 
+  (declare (ignore magnitude phase))
   (let* ((salient-IOI (* rhythm-sample-rate tempo-salience-peak)))
     ;; Convert salient-IOI into the scale to begin checking.
     ;; This assumes the highest frequency scale (shortest time support)
@@ -140,7 +142,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
   (let* ((time-frequency-dimensions (.array-dimensions phase))
 	 (nScale (first time-frequency-dimensions))
 	 (nTime (second time-frequency-dimensions))
-	 (ridges (make-double-array time-frequency-dimensions))
+	 ;; (ridges (make-double-array time-frequency-dimensions))
 	 (signal-phase-diff (make-double-array time-frequency-dimensions))
 
 	 ;; Compute a discrete approximation to the partial derivative of the
@@ -166,7 +168,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 	 ;; convert the phase derivative into periods in time
 	 (signal-period (./ (* 2 pi) wrapped-dt-phase))
 	 (scale-time-support (time-support (.iseq 0 (1- nScale)) voices-per-octave))
-	 (normalised-signal-phase-diff)
+	 ;; (normalised-signal-phase-diff)
 	 (maximal-stationary-phase))
 
     ;; When we have neglible magnitude, phase is meaningless, but can oscillate so rapidly
@@ -275,9 +277,36 @@ then can extract ridges."
 	;; (normalised-magnitude (normalise magnitude))
 	(normalised-magnitude (normalise-by-scale magnitude)))
     ;; correlate (by averaging) the energy modulus, stationary phase and
-    ;; local phase congruency. Since statPhase and local PC are both
+    ;; local phase congruency. Since stationary phase and local phase congruency are both
     ;; conditioned on a minimal magnitude, we reduce false positives.
     (./ (.+ normalised-magnitude stat-phase local-pc) 3d0)))
+
+(defun shift-scales (scales up)
+  "Shifts the rows (rotating) upwards (towards lower indices) if up = t, down if up = nil"
+  (let* ((time-frequency-dimensions (.array-dimensions scales))
+	 (last-scale (1- (first time-frequency-dimensions)))
+	 (scales-shifted (make-double-array time-frequency-dimensions))
+	 (matrix-position (if up 
+			      (list (list (list 1 last-scale) t) (list (list 0 (1- last-scale)) t))
+			      (list (list (list 0 (1- last-scale)) t) (list (list 1 last-scale) t))))
+	 (rotated-row (if up 
+			  (list (list 0 t) (list last-scale t)) 
+			  (list (list last-scale t) (list 0 t)))))
+    (setf-subarray (val scales-shifted) (val (.subarray scales (first matrix-position))) (second matrix-position))
+    (setf-subarray (val scales-shifted) (val (.subarray scales (first rotated-row))) (second rotated-row))
+    scales-shifted))
+
+(defun determine-scale-peaks (correlated-profile &key (correlation-minimum 0.01))
+  "Finds the peaks in the combined correlation profile 
+  (of energy modulus, stationary phase and local phase congruency)
+   across the dilation scale axis at each time point."
+  (let* ((profile-shifted-up (shift-scales correlated-profile t))
+	 (profile-shifted-down (shift-scales correlated-profile nil)))
+    ;; the multiplication retains the scale peak values, clamping non maxima to zero.
+    (.* (.and (.> correlated-profile profile-shifted-down) 
+	      (.> correlated-profile profile-shifted-up) 
+	      (.> correlated-profile correlation-minimum))
+	correlated-profile)))
 
 (defmethod tactus-for-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
   "Returns the selected tactus given the rhythm."
@@ -290,7 +319,9 @@ then can extract ridges."
 	   ;; Weight by the absolute tempo preference.
 	   (tempo-weighted-ridges (.* correlated-ridges 
 				      (tempo-salience-weighting salient-scale (.array-dimensions magnitude))))
-	   ;; TODO (ridge-set (extract-ridges tempo-weighted-ridges)))
-	   (ridge-set (extract-ridges correlated-ridges)))
-      ;; select out the tactus from all ridge candidates.
-      (select-longest-tactus ridge-set))))
+	   ;; TODO substitute tempo-weighted-ridges for tempo selectivity.
+	   (correlated-ridge-scale-peaks (determine-scale-peaks correlated-ridges))
+	   (ridge-set (extract-ridges correlated-ridge-scale-peaks))
+	   ;; select out the tactus from all ridge candidates.
+	   (chosen-tactus (select-longest-tactus ridge-set)))
+      (plot-ridges-and-tactus correlated-ridge-scale-peaks chosen-tactus :title (name analysis-rhythm)))))
