@@ -19,13 +19,14 @@
 ;;;;   annote =  {\url{http://www.leighsmith.com/Research/Papers/MultiresRhythm.pdf}}
 ;;;;
 
-;;; (in-package multires-rhythm)
+(in-package :multires-rhythm)
+(use-package :nlisp)
 
 (defclass ridge ()
   ((active :initform nil :initarg :set-active :accessor active)
    ;; Holds a time sequence of scale indices.
    ;; TODO This could become an array using fill pointers to reduce memory foot-print.
-   (scale-list :initform nil :initarg :scale-list :accessor scale-list)
+   (scale-list :initform nil :initarg :scales :accessor scales)
    ;; The time as a sample index that the ridge begins on.
    (start-sample :initarg :start-sample :accessor start-sample)))
 
@@ -33,7 +34,7 @@
   (:documentation "Returns the most recent scale of the given ridge."))
 
 (defgeneric reverse-time (ridge)
-  (:documentation "Returns the ridge, with it's scale-list reversed in time."))
+  (:documentation "Returns the ridge, with it's scales list reversed in time."))
 
 (defgeneric duration (ridge)
   (:documentation "Returns the duration in samples of the ridge."))
@@ -41,25 +42,43 @@
 (defgeneric contains-scale-and-time (ridge scale time)
   (:documentation "Returns t if the given scale and time are part of this ridge."))
 
+(defgeneric tactus-image (ridge ridges &key maximum-colour-value)
+  (:documentation "Returns an Imago image object displaying all ridges and the extracted tactus ridge."))
+
+(defgeneric decimate-ridge (ridge reduce-list)
+  (:documentation "Returns the ridge instance with it's data decimated using the reduce-list"))
+
+;;; Methods
 (defmethod most-recent-scale ((the-ridge ridge))
   "Returns the most recent scale of the given ridge."
-  (first (scale-list the-ridge)))
+  (first (scales the-ridge)))
 
 (defmethod reverse-time ((the-ridge ridge))
-  "Returns the ridge, with it's scale-list reversed in time."
-  (setf (scale-list the-ridge) (reverse (scale-list the-ridge)))
+  "Returns the ridge, with it's scales list reversed in time."
+  (setf (scales the-ridge) (nreverse (scales the-ridge)))
   the-ridge)
 
 (defmethod duration ((the-ridge ridge))
   "Returns the duration in samples of the ridge."
-  (length (scale-list the-ridge)))
+  (length (scales the-ridge)))
 
 (defmethod contains-scale-and-time ((the-ridge ridge) scale time)
   "Returns t if the given scale and time are part of this ridge."
-  (let ((scale-list-index (- time (start-sample the-ridge))))
-    (and (plusp scale-list-index)
-	 (< scale-list-index (duration the-ridge))
-	 (equal scale (elt (scale-list the-ridge) scale-list-index)))))
+  (let ((scales-index (- time (start-sample the-ridge))))
+    (and (plusp scales-index)
+	 (< scales-index (duration the-ridge))
+	 (equal scale (elt (scales the-ridge) scales-index)))))
+
+(defmethod decimate-ridge ((the-ridge ridge) reduce-list)
+  "Returns the ridge instance with it's data decimated using the decimation-parameter-list"
+  (let* ((reduce-by (second reduce-list))
+	 (original-scale-list (scales the-ridge)))
+    (setf (scales the-ridge) 
+	  (loop
+	     for scale-index in original-scale-list by (lambda (x) (nthcdr reduce-by x))
+	     collect scale-index))
+    (setf (start-sample the-ridge) (/ (start-sample the-ridge) reduce-by)))
+  the-ridge)
 
 (defun find-scales-of-peaks (scale-peaks current-time-index)
   "Returns the scale indexes of each non-zero element in the scale peaks matrix."
@@ -113,14 +132,14 @@
 ;;        do (delete ridge-to-deactivate currently-active-ridges :key #'most-recent-scale)
 ;;        finally (return (values inactive-ridges currently-active-ridges))))
 
-(defun add-new-ridges (new-ridge-scales current-time-index)
-  "Creates a list of new ridge instances from the list of scales in new-ridge-scales"
-  (loop
-     for new-ridge-scale in new-ridge-scales
-     collect (make-instance 'ridge
-			    :start-sample current-time-index 
-			    :scale-list (list new-ridge-scale)
-			    :set-active t)))
+ (defun add-new-ridges (new-ridge-scales current-time-index)
+   "Creates a list of new ridge instances from the list of scales in new-ridge-scales"
+   (loop
+      for new-ridge-scale in new-ridge-scales
+      collect (make-instance 'ridge
+  			    :start-sample current-time-index 
+  			    :scales (list new-ridge-scale)
+ 			    :set-active t)))
 
 ;;; TODO can we do it more functionally using substitute? Probably not because what we want
 ;;; to substitute is a modification of the data already there.
@@ -128,13 +147,13 @@
   "Adds new-scale to the ridge in active-ridges that has the most recent scale being prev-matching-scale."
   (dolist (ridge-candidate active-ridges)
     (if (equal (most-recent-scale ridge-candidate) prev-matching-scale)
-	(setf (scale-list ridge-candidate) (cons new-scale (scale-list ridge-candidate))))))
+	(setf (scales ridge-candidate) (cons new-scale (scales ridge-candidate))))))
 
 (defun update-ridges (active-ridges prev-matching-ridges matching-ridges)
   (mapcar #'(lambda (prev current) (add-ridge-scale prev current active-ridges))
 	  prev-matching-ridges matching-ridges))
 
-;;; TODO Assumes we have determined the peaks, in the final version the correlated TF
+;;; TODO Assumes we have determined the peaks, in the final version the correlated time-frequency
 ;;; profile should be passed in and the ridges determined within this function.
 ;;; TODO Probably keeping the active and inactive ridges in two separate lists will be more
 ;;; efficient since it removes the requirement to extract out on each iteration.
@@ -199,13 +218,14 @@
   "Returns the ridge containing the given scale and time element."
   (find-if (lambda (ridge) (contains-scale-and-time ridge scale time-sample)) ridge-set))
 
+
 (defun test-ridges (filename)
   (let* ((data-directory "/Users/leigh/Research/Data/NewAnalysedRhythms/")
 	 (absolute-pathname (concatenate 'string data-directory filename ".ridges"))
 	 (determined-ridges (.load-octave-file absolute-pathname))
 	 (ridge-set (extract-ridges determined-ridges))
 	 (longest-tactus (select-longest-tactus ridge-set)))
-    (.save-to-octave-file (scale-list longest-tactus)
+    (.save-to-octave-file (scales longest-tactus)
 			  (concatenate 'string data-directory filename ".tactus")
 			  :variable-name "tactus")
     ridge-set))
@@ -214,11 +234,13 @@
 ;; (setf determined-ridges (.load-octave-file "/Users/leigh/Research/Data/NewAnalysedRhythms/greensleeves-perform-medium.ridges"))
 ;; (setf ridge-set (extract-ridges determined-ridges))
 ;; (setf longest-tactus (select-longest-tactus ridge-set))
-;; (.save-to-octave-file (scale-list longest-tactus) "/Users/leigh/Research/Data/NewAnalysedRhythms/greensleeves-perform-medium.tactus" :variable-name "tactus")
+;; (.save-to-octave-file (scales longest-tactus) "/Users/leigh/Research/Data/NewAnalysedRhythms/greensleeves-perform-medium.tactus" :variable-name "tactus")
 ;; (start-sample longest-tactus)
 
 ;; 	 (example-ridge (ridge-containing-scale-and-time (- 144 (1+ 54)) 209 ridge-set)))
-;;     (.save-to-octave-file (scale-list example-ridge)
+;;     (.save-to-octave-file (scales example-ridge)
 ;;			  "/Users/leigh/Research/Data/NewAnalysedRhythms/greensleeves-example-ridge.tactus"
 ;;			  :variable-name "tactus")
 ;;    (format t "start sample ~a~%" (start-sample example-ridge))
+
+;;(test-ridges "greensleeves-perform-medium")
