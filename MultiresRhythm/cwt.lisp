@@ -19,7 +19,8 @@
 ;;;;   annote =  {\url{http://www.leighsmith.com/Research/Papers/MultiresRhythm.pdf}}
 ;;;;
 
-;;; (in-package multires-rhythm)
+(in-package :multires-rhythm)
+(use-package :nlisp)
 
 (defun gaussian-envelope (width &key (center 0.0))
   "Compute a gaussian envelope.

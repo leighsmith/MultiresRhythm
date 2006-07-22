@@ -7,7 +7,8 @@
 ;;;; Leigh Smith <lsmith@science.uva.nl>
 ;;;;
 
-;;; (in-package multires-rhythm)
+(in-package :multires-rhythm)
+(use-package :nlisp)
 
 (defun intervals-in-samples (intervals &key ((:tempo tempo-in-bpm) 60)
 			     (ioi 1.0 interval-supplied-p)
