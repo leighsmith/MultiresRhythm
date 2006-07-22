@@ -19,16 +19,23 @@
 ;;;;   annote =  {\url{http://www.leighsmith.com/Research/Papers/MultiresRhythm.pdf}}
 ;;;;
 
-(defpackage #:multiresrhythm-system (:use #:cl #:asdf))
-(in-package :multiresrhythm-system)
+(defpackage #:multires-rhythm (:use #:cl #:asdf #:nlisp))
+(in-package :multires-rhythm)
+
+;; This is required to get around a fucking Package Lock Violation deep within SBCL's CLOS?
+;;(in-package :cl)
+(sb-ext:add-implementation-package :multires-rhythm :cl)
+;;(in-package :multires-rhythm)
+
 
 (defsystem :multiresrhythm
-           :version "1.0"
-	   :author "Leigh M. Smith"
-	   :depends-on (:nlisp :zlib :imago)
-           :components ((:file "cwt")
-			(:file "ridges")
-			(:file "rhythm")
-			(:file "plotting" :depends-on ("ridges"))
-			(:file "multires_rhythm" :depends-on ("cwt" "plotting"))
-			(:file "test-examples" :depends-on ("rhythm" "multires_rhythm"))))
+  :description "A Multiresolution Time-Frequency Analysis and Interpretation of Musical Rhythm"
+  :version "1.0"
+  :author "Leigh M. Smith"
+  :depends-on (:nlisp :zlib :imago)
+  :components ((:file "cwt")
+	       (:file "ridges")
+	       (:file "rhythm")
+	       (:file "plotting" :depends-on ("ridges"))
+	       (:file "multires_rhythm" :depends-on ("cwt" "plotting"))
+	       (:file "test-examples" :depends-on ("rhythm" "multires_rhythm"))))
