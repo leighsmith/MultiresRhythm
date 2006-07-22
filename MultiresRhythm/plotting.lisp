@@ -19,10 +19,8 @@
 ;;;;   annote =  {\url{http://www.leighsmith.com/Research/Papers/MultiresRhythm.pdf}}
 ;;;;
 
-;;; (in-package multires-rhythm)
-
-;; (require 'zlib)
-;; (require 'imago)
+(in-package :multires-rhythm)
+(use-package :nlisp)
 
 ;;; Colour map generating functions
 
@@ -93,6 +91,7 @@
 			&key (magnitude-limit 0 magnitude-limit-supplied-p)
 			(maximum-colour-value 255))
   "Creates a plotable image object from the magnitude using a greyscale colour map.
+   Dark values are higher valued, lighter values are lower valued.
    magnitude-limit = Can be used to clamp the global extrema at limits to allow
    interpreting the magnitude density plots for local extrema."
   ;; 0 - maximum-colour-value inclusive:
@@ -136,28 +135,40 @@
 					     (1- maximum-colour-value)) 1.0)))))
     (make-colour-mapped-image plotable-phase phase-colormap)))
 
-#|
-(defun tactus-image (ridges tactus)
-  (let* ((ridge-colour (imago:make-color maximum-colour-value 0 0)) ; red is for the ridge.
+(defmethod tactus-image ((tactus ridge) ridges &key (maximum-colour-value 255))
+  "Plot the ridges in greyscale and the computed tactus in red, expected tactus in blue."
+  (let* ((tactus-colour (imago:make-color maximum-colour-value 0 0)) ; red is for the ridge.
 	 ;; Create a color map that is a greyscale for all values except the topmost which is red.
-	 (ridge-colormap (concatenate 'vector (greyscale-colormap maximum-colour-value) (vector ridge-colour)))
-	 (max-ridge-colours maximum-colour-value)
+	 (ridge-colormap (concatenate 'vector (greyscale-colormap maximum-colour-value) (vector tactus-colour)))
+	 (max-ridge-colours (1- maximum-colour-value))
 	 (min-ridge (.min ridges))
 	 (ridge-range (.- (.max ridges) min-ridge))
-	 (plotable-ridges (.- max-ridge-colours (.* (./ (.- ridges min-ridge) ridge-range) max-ridge-colours)))
+	 (plotable-ridges (.floor (.- max-ridge-colours 
+				      (.* (./ (.- ridges min-ridge) ridge-range) max-ridge-colours)))))
+    (loop
+       for row-index in (scales tactus)
+       and tactus-index = 0 then (1+ tactus-index)
+       with start-column = (start-sample tactus)
+       do
+	 (setf (.aref plotable-ridges row-index (+ start-column tactus-index)) maximum-colour-value))
+    (make-colour-mapped-image plotable-ridges ridge-colormap)))
 
+#|
 	 (plotable-tactus = zeros(size(ridges))
 
+  rowsToIndent = floor((tactusStartSample) / plotReduction);
+  ;; Convert the column indexes into a fortran indexed vector
+  rowMajorIndexedTactus = ((find(downSampledTactus) .+ rowsToIndent .- 1) * \
+			  rows(downSampledRidges)) .+ downSampledTactus;
 
   ;; Convert the column indexes into a fortran indexed vector
   fortranIndexedTactus = ((find(tactus) - 1) * \
-			  rows(ridges)) + downSampledTactus;
+			  rows(ridges)) + tactus;
   plotableTactus(fortranIndexedTactus) = 1;
 
-  ridges-and-tactus = (.+ (.* plotable-ridges (~ plotable-tactus)) (.* plotable-tactus maxcolours))
-
-    (make-colour-mapped-image ridges-and-tactus ridge-colormap))
+  ridges-and-tactus = (.+ (.* plotable-ridges (.not plotable-tactus)) (.* plotable-tactus ))
 |#
+
 
 (defun plot-image (image-generator file-extension data-to-plot
 		   &key (title "unnamed")
@@ -182,9 +193,8 @@
 ;; (apply #'plot-image (list #'magnitude-image "-magnitude" (list magnitude) :title "blah")) 
 
 (defun plot-images (image-list &key (title "unnamed"))
-  ;; (format t "title is ~a image-list is ~a~%" title image-list)
+  "Plot a number of images as supplied in image-list"
   (mapcar (lambda (x) (apply #'plot-image (append x (list :title title)))) image-list))
-  ;; (mapcar (lambda (x) (format t "parameters ~a~%" x)) image-list))
  
 ;;; Creates PNG files of the supplied magnitude and phase components of a continuous
 ;;; wavelet transform.
@@ -208,27 +218,26 @@
 	   :xlabel "time" :ylabel "dilation scale")))
 |#
 
-
-(defun plot-ridges-and-tactus (title ridges computed-tactus &key 
+;; TODO all this can be replaced with:
+;; (plot-image #'tactus-image "-tactus" (list computed-tactus ridges))
+;; once we have decimate as a method, but this might be problematic defining a method elsewhere.
+(defun plot-ridges-and-tactus (ridges computed-tactus &key 
+			       (title "unnamed")
 			       (expected-tactus nil)
 			       (time-axis-decimation 4))
   "Plot the ridges in greyscale and the computed tactus in red, expected tactus in blue."
 
-  ;; The amount of downsampling of the cwt result on the translation axis we do before we plot.
-  ;; We could do away with this since we can process the data without
-  ;; excess resource strain, but the images usually exceed the width of
-  ;; a window, so this is mainly to provide a useful viewing aspect ratio."
-
-  ;; Downsample the data
-  (let* ((downSampledRidges (decimate ridges (list 1 time-axis-decimation)))
+  (let* ((pathname (make-pathname :directory (list :absolute "tmp") 
+				  :name (concatenate 'string title "-tactus")
+				  :type "png"))
+	 ;; Downsample the data
+	 (downSampledRidges (decimate ridges (list 1 time-axis-decimation)))
 	 ;; TODO this is wrong, the tactus is a object, not a nlisp vector.
 	 ;; Perhaps create a decimate method specialised on tactus?
-	 (downSampledTactus (decimate computed-tactus (list 1 time-axis-decimation))))
-    
-    (tactus-image downSampledRidges downSampledTactus)
-	 ;; "tactus"
-))
-
+	 (downSampledTactus (decimate-ridge computed-tactus (list 1 time-axis-decimation)))
+	 (plotable-image (tactus-image downSampledTactus downSampledRidges)))
+    (imago:write-png plotable-image pathname)
+    plotable-image))
 
 #|
 ;;;
