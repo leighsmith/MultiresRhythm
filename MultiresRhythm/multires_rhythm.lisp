@@ -45,7 +45,7 @@ This is weighted by absolute constraints, look in the 600ms period range."
   (let* ((salient-IOI (* rhythm-sample-rate tempo-salience-peak)))
     ;; Convert salient-IOI into the scale to begin checking.
     ;; This assumes the highest frequency scale (shortest time support)
-    ;; is index 0, lowest frequency (longest time support) is nScale.
+    ;; is index 0, lowest frequency (longest time support) is number-of-scales.
     (floor (scale-from-period salient-IOI voices-per-octave))))
 
 ;; Scale index 1 is the highest frequency (smallest dilation) scale.
@@ -92,7 +92,7 @@ This is weighted by absolute constraints, look in the 600ms period range."
   "Normalise a magnitude finding the maximum scale at each time point.
  We assume values are positive values only"
   (let* ((time-frequency-dimensions (.array-dimensions magnitude))
-	 (nScale (first time-frequency-dimensions))
+	 (number-of-scales (first time-frequency-dimensions))
 	 (nTime (second time-frequency-dimensions))
 	 (normalised-values (make-double-array time-frequency-dimensions)))
     ;; Duplicate the maximum scales per time for each scale to enable element-wise division.
@@ -106,10 +106,12 @@ This is weighted by absolute constraints, look in the 600ms period range."
 	;; scales-per-time will be returned as a vector, we need to reshape it in order to
 	;; store it.
 	(setf-subarray (val normalised-values) 
-		       (val (.reshape normalised-time-slice (list nScale 1)))
+		       (val (.reshape normalised-time-slice (list number-of-scales 1)))
 		       (list t i))))
     normalised-values))
 
+;;thresholdMag = magnitude > threshold;
+;;newphase = (thresholdMag .* phase) + (!thresholdMag .* clamp);
 (defun clamp-to-bounds (signal test-signal 
 			&key (low-bound 0) (clamp-low 0) (high-bound 0 high-bound-supplied-p) (clamp-high 0))
   "Clip a signal according to the bounds given, by testing another signal (which can be the same as signal). 
@@ -140,7 +142,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
   ;; the scale is the central frequency of the mother wavelet divided by
   ;; the central frequency of the dilated wavelet
   (let* ((time-frequency-dimensions (.array-dimensions phase))
-	 (nScale (first time-frequency-dimensions))
+	 (number-of-scales (first time-frequency-dimensions))
 	 (nTime (second time-frequency-dimensions))
 	 ;; (ridges (make-double-array time-frequency-dimensions))
 	 (signal-phase-diff (make-double-array time-frequency-dimensions))
@@ -157,9 +159,9 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 	 (wrapped-dt-phase (.+ (.* (.not which-wrapped) dt-phase) (.* phase-wrap which-wrapped)))
 
 	 ;; The acceleration of phase difference should be non-zero (Tchamitchian and
-	 ;; Torresani Eq. III-7 pp128) phaseDiffAcceleration will therefore be two time
+	 ;; Torresani Eq. III-7 pp128) phase-diff-acceleration will therefore be two time
 	 ;; sample points less than the original phase time extent.
-	 ;; phaseDiffAcceleration = diff(wrapped-dt-phase.').';
+	 ;; phase-diff-acceleration = diff(wrapped-dt-phase.').';
 	 ;;
 	 ;; Doing this will still produce NaN since the division already
 	 ;; creates Inf and the clamping uses multiplication.
@@ -167,7 +169,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 
 	 ;; convert the phase derivative into periods in time
 	 (signal-period (./ (* 2 pi) wrapped-dt-phase))
-	 (scale-time-support (time-support (.iseq 0 (1- nScale)) voices-per-octave))
+	 (scale-time-support (time-support (.iseq 0 (1- number-of-scales)) voices-per-octave))
 	 ;; (normalised-signal-phase-diff)
 	 (maximal-stationary-phase))
 
@@ -181,7 +183,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
     ;; before setting these zero dt-phase values.
     ;; (setf (.aref signal-period (find (.not dt-phase))) 0.0)
 
-    (dotimes (i nScale)
+    (dotimes (i number-of-scales)
       ;; Accept if the signal period (from its phase derivatives) and the time support of
       ;; the wavelet at each dilation scale are within 1.5 sample of one another.
       (setf-subarray (val signal-phase-diff)
@@ -281,15 +283,15 @@ then can extract ridges."
     ;; conditioned on a minimal magnitude, we reduce false positives.
     (./ (.+ normalised-magnitude stat-phase local-pc) 3d0)))
 
-(defun shift-scales (scales up)
-  "Shifts the rows (rotating) upwards (towards lower indices) if up = t, down if up = nil"
+(defun shift-scales (scales direction)
+  "Shifts the rows (rotating) upwards (towards lower indices) if direction = :up, down if direction = :down"
   (let* ((time-frequency-dimensions (.array-dimensions scales))
 	 (last-scale (1- (first time-frequency-dimensions)))
 	 (scales-shifted (make-double-array time-frequency-dimensions))
-	 (matrix-position (if up 
+	 (matrix-position (if (eql direction :up)
 			      (list (list (list 1 last-scale) t) (list (list 0 (1- last-scale)) t))
 			      (list (list (list 0 (1- last-scale)) t) (list (list 1 last-scale) t))))
-	 (rotated-row (if up 
+	 (rotated-row (if (eql direction :up) 
 			  (list (list 0 t) (list last-scale t)) 
 			  (list (list last-scale t) (list 0 t)))))
     (setf-subarray (val scales-shifted) (val (.subarray scales (first matrix-position))) (second matrix-position))
@@ -300,8 +302,8 @@ then can extract ridges."
   "Finds the peaks in the combined correlation profile 
   (of energy modulus, stationary phase and local phase congruency)
    across the dilation scale axis at each time point."
-  (let* ((profile-shifted-up (shift-scales correlated-profile t))
-	 (profile-shifted-down (shift-scales correlated-profile nil)))
+  (let* ((profile-shifted-up (shift-scales correlated-profile :up))
+	 (profile-shifted-down (shift-scales correlated-profile :down)))
     ;; the multiplication retains the scale peak values, clamping non maxima to zero.
     (.* (.and (.> correlated-profile profile-shifted-down) 
 	      (.> correlated-profile profile-shifted-up) 
@@ -319,9 +321,79 @@ then can extract ridges."
 	   ;; Weight by the absolute tempo preference.
 	   (tempo-weighted-ridges (.* correlated-ridges 
 				      (tempo-salience-weighting salient-scale (.array-dimensions magnitude))))
-	   ;; TODO substitute tempo-weighted-ridges for tempo selectivity.
+	   ;; TODO substitute tempo-weighted-ridges for correlated-ridges to enable tempo selectivity.
 	   (correlated-ridge-scale-peaks (determine-scale-peaks correlated-ridges))
-	   (ridge-set (extract-ridges correlated-ridge-scale-peaks))
+	   (skeleton (extract-ridges correlated-ridge-scale-peaks))
 	   ;; select out the tactus from all ridge candidates.
-	   (chosen-tactus (select-longest-tactus ridge-set)))
-      (plot-ridges-and-tactus correlated-ridge-scale-peaks chosen-tactus :title (name analysis-rhythm)))))
+	   (chosen-tactus (select-longest-tactus skeleton)))
+      (plot-ridges-and-tactus correlated-ridge-scale-peaks chosen-tactus :title (name analysis-rhythm))
+      chosen-tactus)))
+
+(defun clean-phase (magnitude phase &key (threshold 0.001) (clamp 0.0))
+  "We clamp any ill-conditioned phase (negligble magnitude) to the value given (defaulting to zero)"
+  (clamp-to-bounds phase magnitude :low-bound threshold :clamp-low clamp))
+
+(defun clap-to-tactus-phase (original-rhythm magnitude phase tactus 
+			     &key (voices-per-octave 16) (start-from-beat 0))
+  "Function to compute times to clap and how hard from the extracted tactus.
+   Returns a matrix where row 1 is the time to tap at, row 2 is the intensity."
+  (let* ((time-frequency-dimensions (.array-dimensions magnitude))
+	 (number-of-scales (first time-frequency-dimensions))
+	 (nTime (second time-frequency-dimensions))
+
+	 ;; The right way to do this is with a tight (well, two octave)
+	 ;; Gaussian envelope over it.
+	 ;; tactus-mag (gauss-centered tactusPeak voices-per-octave)
+	 ;; But just a single voice alone produces the correct oscillation, with lower amplitude:
+	 (tactus-mag (insert-ridge tactus (make-double-array time-frequency-dimensions) :constant-value 1))
+  
+	 ;; debugging plot (downsampled)
+	 ;; (plot-cwt tactus-mag phase)
+
+	 ;; TODO To be completely correct the original padded output from dyadic-cwt should be used
+	 ;; for input to the dyadic-icwt, but the effect is subtle and it's a pain to use globals or hand
+	 ;; around a padded version of the CWT output. What we should do is unify the
+	 ;; output of cwt into a scalogram class that holds magnitude, phase and padded versions.
+	 ;; global padMagnitude;
+	 ;; global padPhase;
+
+	 ;; use the modified magnitude and original phase to compute a sinusoid and it's
+	 ;; Hilbert transform, from that, determine the phase of the sinusoid.
+	 (foot-tap-phase (.phase (icwt tactus-mag phase voices-per-octave))))
+
+#|
+	 ;; Note the phase of the oscillating sinusoid at the beat to start tapping from.
+	 beat-positions = (find (rhythm-signal original-rhythm))
+	 down-beat-sample = (beat-positions start-from-beat)
+
+(down-beat-sample (.find (rhythm-signal original-rhythm) :count start-from-beat))
+
+(loop while next-non-zero-position 
+next-non-zero-position (position-if-not #'zerop #(1 0 0 0 0 0.8 0 0 0 0 1) :start (+1 next-non-zero-position))
+collect 
+
+	 (clap-on-phase-datum (.aref foot-tap-phase down-beat-sample)))
+
+(format t "Handclapping from beat ~d of original rhythm, sample ~d~%" start-from-beat down-beat-sample)
+
+  ;; check clap-on-phase-datum >= current and < next phase measure.
+  ;; this could be a problem on the last phase point before 2 pi wrap.
+  t      = 1:nTime;
+  tminus  = shift(t, -1);
+    
+  ;; identify reoccurance of the initial clap phase across the translation (time) axis
+  phase-reoccured (.and (.>= clap-on-phase-datum foot-tap-phase) 
+			(.< clap-on-phase-datum foot-tap-phase(tminus)))
+  clap-at = find(phase-reoccured);
+  nClaps = length(clap-aAt)
+
+  claps = zeros(2, nClaps);
+  claps(1,:) = clapAt;
+  ;; use constant intensity claps but weight the amplitude for when we mix in Common Music.
+  claps(2,:) = ones(1,nClaps) * 0.6;
+
+	;; Just return ((time intensity) (time intensity) ...)
+|#
+
+))
+
