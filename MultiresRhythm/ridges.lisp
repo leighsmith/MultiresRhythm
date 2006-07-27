@@ -48,6 +48,12 @@
 (defgeneric decimate-ridge (ridge reduce-list)
   (:documentation "Returns the ridge instance with it's data decimated using the reduce-list"))
 
+(defgeneric scales-as-array (ridge)
+  (:documentation "Returns the scales list as an nlisp array"))
+
+(defgeneric insert-ridge (ridge time-frequency-plane &key constant-value)
+  (:documentation "Insert the given ridge into the time-frequency plane, overwriting existing values with constant-value"))
+
 ;;; Methods
 (defmethod most-recent-scale ((the-ridge ridge))
   "Returns the most recent scale of the given ridge."
@@ -200,44 +206,72 @@
 
 ;; Sorting the entire table gives us a graded set of good alternatives. 
 ;; TODO Unfortunately it
-;; does it destructively and leaves ridge-set half it's size?
-;; (defun select-longest-tactus (ridge-set)
+;; does it destructively and leaves skeleton half it's size?
+;; (defun select-longest-tactus (skeleton)
 ;;   "Returns a time sequence of scales."
-;;   (first (sort ridge-set #'>= :key #'duration)))
+;;   (first (sort skeleton #'>= :key #'duration)))
 
 ;; TODO Can this be implemented more simply?
-(defun select-longest-tactus (ridge-set)
+(defun select-longest-tactus (skeleton)
   "Returns the longest duration ridge."
   (let ((max-ridge (make-instance 'ridge)))
-    (dolist (ridge ridge-set)
+    (dolist (ridge skeleton)
       (if (< (duration max-ridge) (duration ridge))
 	  (setf max-ridge ridge)))
     max-ridge))
 
-(defun ridge-containing-scale-and-time (scale time-sample ridge-set)
+(defun ridge-containing-scale-and-time (scale time-sample skeleton)
   "Returns the ridge containing the given scale and time element."
-  (find-if (lambda (ridge) (contains-scale-and-time ridge scale time-sample)) ridge-set))
+  (find-if (lambda (ridge) (contains-scale-and-time ridge scale time-sample)) skeleton))
 
+(defmethod scales-as-array ((the-ridge ridge))
+  "Returns the scales list as an nlisp array"
+  (make-instance 'n-fixnum-array :ival (make-array (duration the-ridge) :initial-contents
+					     (scales the-ridge))))
+
+#|
+  (loop
+       for row-index in (scales tactus)
+       and tactus-index = 0 then (1+ tactus-index)
+       with start-column = (start-sample tactus)
+       do
+	 (setf (.aref plotable-ridges row-index (+ start-column tactus-index)) maximum-colour-value))
+
+  ;; Octave uses column major indices.
+  column-major-indices (.+ (.* (.iseq (start-sample ridge-to-insert) 
+			     (1- (duration ridge-to-insert))) number-of-scales)
+		      (scales-as-array ridge-to-insert))
+|#
+
+(defmethod insert-ridge ((ridge-to-insert ridge) time-frequency-plane &key constant-value)
+  "Insert the given ridge into the time-frequency plane, overwriting existing values with constant-value"
+  ;; this assumes there is a single scale index per time in tactusIndices
+  (let* ((time-in-samples (.array-dimension time-frequency-plane 1))
+	 (row-major-indices (.+ (.* (scales-as-array ridge-to-insert) time-in-samples) 
+				(.iseq (start-sample ridge-to-insert) (1- (duration ridge-to-insert))))))
+    (map nil 
+	 (lambda (row-major-index) (setf (row-major-aref (val time-frequency-plane) row-major-index) constant-value)) 
+	 (val row-major-indices))))
 
 (defun test-ridges (filename)
   (let* ((data-directory "/Users/leigh/Research/Data/NewAnalysedRhythms/")
 	 (absolute-pathname (concatenate 'string data-directory filename ".ridges"))
 	 (determined-ridges (.load-octave-file absolute-pathname))
-	 (ridge-set (extract-ridges determined-ridges))
-	 (longest-tactus (select-longest-tactus ridge-set)))
+	 (skeleton (extract-ridges determined-ridges))
+	 (longest-tactus (select-longest-tactus skeleton)))
     (.save-to-octave-file (scales longest-tactus)
 			  (concatenate 'string data-directory filename ".tactus")
 			  :variable-name "tactus")
-    ridge-set))
+    skeleton))
 
-;; (setf ridge-set (test-ridges "greensleeves-perform-medium"))
+;; (setf skeleton (test-ridges "greensleeves-perform-medium"))
 ;; (setf determined-ridges (.load-octave-file "/Users/leigh/Research/Data/NewAnalysedRhythms/greensleeves-perform-medium.ridges"))
-;; (setf ridge-set (extract-ridges determined-ridges))
-;; (setf longest-tactus (select-longest-tactus ridge-set))
+;; (setf skeleton (extract-ridges determined-ridges))
+;; (setf longest-tactus (select-longest-tactus skeleton))
 ;; (.save-to-octave-file (scales longest-tactus) "/Users/leigh/Research/Data/NewAnalysedRhythms/greensleeves-perform-medium.tactus" :variable-name "tactus")
 ;; (start-sample longest-tactus)
 
-;; 	 (example-ridge (ridge-containing-scale-and-time (- 144 (1+ 54)) 209 ridge-set)))
+;; 	 (example-ridge (ridge-containing-scale-and-time (- 144 (1+ 54)) 209 skeleton)))
 ;;     (.save-to-octave-file (scales example-ridge)
 ;;			  "/Users/leigh/Research/Data/NewAnalysedRhythms/greensleeves-example-ridge.tactus"
 ;;			  :variable-name "tactus")
