@@ -76,15 +76,12 @@
 (defun dyadic-cwt (input-data wavelets-per-octave maximum-time-period 
 		   &key (fourier-domain-wavelet #'morlet-wavelet-fourier))
   "Continuous wavelet transform computed in the Fourier domain.
-
-Returns multiple items (magnitude phase).
-
-Uses the morlet-wavelet-fourier function to give us a scaled version of the wavelet.
-Length of the input-data is assumed to be a power of 2 (dyadic).
-Does the convolution by multiplying in the Fourier domain.
-The maximum-time-period can really only be about 1/4 the input-data to
-still be representing the wavelets in the frequency and time domains meaningfully.
-"
+   Returns multiple items (magnitude phase).
+   Uses the morlet-wavelet-fourier function to give us a scaled version of the wavelet.
+   Length of the input-data is assumed to be a power of 2 (dyadic).
+   Does the convolution by multiplying in the Fourier domain.
+   The maximum-time-period can really only be about 1/4 the input-data to
+   still be representing the wavelets in the frequency and time domains meaningfully."
   (let* ((number-of-scales (floor (scale-from-period maximum-time-period wavelets-per-octave)))
 	 (time-in-samples (.array-dimension input-data 0))	; time-in-samples is assumed to be a power of 2.
 	 ;; This could be very slow to convert to from double-real to complex double
@@ -140,35 +137,30 @@ still be representing the wavelets in the frequency and time domains meaningfull
 
 (defun dyadic-pad (signal)
   "The latest in signal processing hygene, the soft, comfortable dyadic-pad!
-Protects signals from unsightly window edge conditions! ...sorry couldn't resist :-)
+   Protects signals from unsightly window edge conditions! ...sorry couldn't resist :^)
 
-Instead we actually pad either side of the signal with mirrored portions
-of the signal to a dyadic length to enable efficient FFTs.
+   Instead we actually pad either side of the signal with mirrored portions
+   of the signal to a dyadic length to enable efficient FFTs.
 
-Returns multiple values pad-signal, trim-dyadic (on time-axis).
-"
-  (let* ((signal-length (.array-dimension signal 0))
+   Returns multiple values pad-signal, trim-dyadic (on time-axis)."
+  (let* ((matrix-or-vector (if (equalp (array-rank (val signal)) 1) 0 t)) 
+	 (signal-length (.length signal))
 	 (padded-length (dyadic-length signal-length))
 	 (to-pad (- padded-length signal-length)))
     (multiple-value-bind (half-pad off-by-one) (floor to-pad 2)
-      ;; we can generate a empty matrix warning if the newLength matches the
-      ;; signal-length.
-      (values 
-       (if (zerop to-pad)
-	   ;; Redundant case
-	   signal
-	   ;; Create the padded signal.
-	   ;; padding with the signal ensures a periodicity of the window
+      (if (zerop to-pad)
+	  ;; Redundant case
+	  (values signal (list matrix-or-vector (list 0 (1- signal-length))))
+	  (values
+	   ;; Create the padded signal. Padding with the signal ensures a periodicity of the window.
 	   ;; TODO alternatively pad with zeros:
 	   ;; pad-signal = [zeros(half-pad + off-by-one, 1); signal; zeros(half-pad, 1)];
 	   (let* ((last-region (list (- signal-length (+ half-pad off-by-one)) (1- signal-length)))
-		  (lastbit (.subarray signal (list 0 last-region))))
-	     (.concatenate lastbit signal (.subarray signal (list 0 (list 0 (1- half-pad)))))))
-       
-       ;; Create the .subarray trim description.
-       (if (zerop to-pad)
-	   (list 0 (1- signal-length))
-	   (list (+ half-pad off-by-one) (- padded-length half-pad 1)))))))
+		  (lastbit (.subarray signal (list matrix-or-vector last-region)))
+		  (firstbit (.subarray signal (list matrix-or-vector (list 0 (1- half-pad))))))
+	     (.concatenate lastbit signal firstbit))
+	   ;; Create the .subarray trim description.
+	   (list matrix-or-vector (list (+ half-pad off-by-one) (- padded-length half-pad 1))))))))
 
 ;; (dyadic-pad (.rseq 0 9 10))
 
@@ -183,5 +175,65 @@ Returns multiple values pad-signal, trim-dyadic (on time-axis).
     (multiple-value-bind (padded-magnitude padded-phase)
 	(dyadic-cwt pad-signal voices-per-octave max-wavelet-period)
       (let* ((scale-rows (.array-dimension padded-magnitude 0))
-	     (trim (list (list 0 (1- scale-rows)) time-trim)))
+	     (trim (list (list 0 (1- scale-rows)) (second time-trim))))
 	(values (.subarray padded-magnitude trim) (.subarray padded-phase trim))))))
+
+;;; For inverse CWT.
+;;; To achieve conservation of energy between domains, c_g is chosen according to the wavelet.
+(defun dyadic-icwt (magnitude phase wavelets-per-octave
+		    &key (fourier-domain-wavelet #'morlet-wavelet-fourier)
+		    (c_g 1.7))
+  "Perform the inverse CWT, reconstructing and the time domain signal from
+   the time-frequency domain magnitude and phase components.
+   Uses the morlet-wavelet-fourier function to give us a scaled version
+   of the wavelet and operations are performed in the Fourier domain.
+   Length of the magnitude/phase (the time axis) is assumed to be a power of 2."
+  (let* ((time-frequency-dimensions (.array-dimensions magnitude))
+	 (number-of-scales (first time-frequency-dimensions))
+	 (time-in-samples (second time-frequency-dimensions))
+	 ;; we do everything in transpose, so we transpose the convolved result.
+	 (time-domain-signal (make-double-array time-in-samples))
+	 ;; Reconstruct coefficients as complex numbers from their magnitude and phase components.
+	 (complex-coeff (.+ (.* magnitude (.cos phase)) (.* #C(0d0 1d0) magnitude (.sin phase))))
+	 ;; for the wavelet generation. TODO check start at 0 or 1?
+	 (period (time-support (.iseq 1 number-of-scales) wavelets-per-octave))
+	 (voice-scaling (.* c_g (.sqrt period))))
+
+    (format t "In dyadic-cwt dimensions ~a~%" time-frequency-dimensions)
+
+    ;; loop over each "voice", beginning with the highest frequency scale.
+    (loop 
+       for scale-index from 0 below number-of-scales
+       do (let* ((coeff-scale-FFT (fft (.row complex-coeff scale-index))) ; Convert to Fourier domain.
+		 (scaled-wavelet (funcall fourier-domain-wavelet time-in-samples (.aref period scale-index)))
+	       
+		 ;; multiply coefficients for each scale with each of the Fourier domain
+		 ;; dilated wavelets and divide by the scale.
+		 (convolved (./ (ifft (.* coeff-scale-FFT scaled-wavelet))
+				(.aref voice-scaling scale-index))))
+
+	    ;; Sum each scales contributions. The real portion is the original signal, the
+	    ;; imaginary is the signal 90 degrees out of phase. This also allows the phase
+	    ;; to be extracted.
+	    (setf time-domain-signal (.+ time-domain-signal convolved))))
+    time-domain-signal))
+
+;;; non-dyadic version
+(defun icwt (magnitude phase &rest parameters)
+  "Performs the inverse CWT on the given magnitude and phase values. If the magnitude and
+   phase components are not dyadic length (power of 2), pads them to a dyadic length
+   before performing the inverse cwt (using dyadic-icwt)."
+  ;; pad the magnitude and phase 
+  (multiple-value-bind (padded-magnitude time-trim) (dyadic-pad magnitude)
+    (let ((padded-phase (dyadic-pad phase)))
+
+      ;; To be completely correct the original padded output from dyadic-cwt should be used
+      ;; for input to the dyadic-icwt, but the effect is subtle and it's a pain to use globals or hand
+      ;; around a padded version of the CWT output.
+      ;; global padded-magnitude
+      ;; global padded-phase
+
+      (format t "padded-magnitude ~a ~a~%" (.array-dimensions padded-magnitude) time-trim)
+
+      ;; Returns the signal and it's Hilbert transform.
+      (.subarray (apply #'dyadic-icwt padded-magnitude padded-phase parameters) time-trim))))
