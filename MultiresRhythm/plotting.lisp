@@ -145,46 +145,25 @@
 	 (ridge-range (.- (.max ridges) min-ridge))
 	 (plotable-ridges (.floor (.- max-ridge-colours 
 				      (.* (./ (.- ridges min-ridge) ridge-range) max-ridge-colours)))))
-    (loop
-       for row-index in (scales tactus)
-       and tactus-index = 0 then (1+ tactus-index)
-       with start-column = (start-sample tactus)
-       do
-	 (setf (.aref plotable-ridges row-index (+ start-column tactus-index)) maximum-colour-value))
-    (make-colour-mapped-image plotable-ridges ridge-colormap)))
-
-#|
-	 (plotable-tactus = zeros(size(ridges))
-
-  rowsToIndent = floor((tactusStartSample) / plotReduction);
-  ;; Convert the column indexes into a fortran indexed vector
-  rowMajorIndexedTactus = ((find(downSampledTactus) .+ rowsToIndent .- 1) * \
-			  rows(downSampledRidges)) .+ downSampledTactus;
-
-  ;; Convert the column indexes into a fortran indexed vector
-  fortranIndexedTactus = ((find(tactus) - 1) * \
-			  rows(ridges)) + tactus;
-  plotableTactus(fortranIndexedTactus) = 1;
-
-  ridges-and-tactus = (.+ (.* plotable-ridges (.not plotable-tactus)) (.* plotable-tactus ))
-|#
-
+    (insert-ridge tactus plotable-ridges :constant-value maximum-colour-value)
+  (make-colour-mapped-image plotable-ridges ridge-colormap)))
 
 (defun plot-image (image-generator file-extension data-to-plot
 		   &key (title "unnamed")
 		   (time-axis-decimation 4)
 		   (temp-directory "tmp")
-		   (png-type "png"))
+		   (image-file-type "pnm")) ; Can be "png"
    "time-axis-decimation = The amount of downsampling of the data along the translation axis before we plot.
    We could do away with this when we can process the data without excess resource strain,
    but it makes for diagrams which are not so wide, making them easier to view and interpret."
   (let* ((pathname (make-pathname :directory (list :absolute temp-directory) 
 				  :name (concatenate 'string title file-extension)
-				  :type png-type))
+				  :type image-file-type))
 	 ;; Downsample the data 
 	 (down-sampled-data (mapcar (lambda (x) (decimate x (list 1 time-axis-decimation))) data-to-plot))
 	 (plotable-image (apply image-generator down-sampled-data)))
-    (imago:write-png plotable-image pathname)
+    ;; (imago:write-png plotable-image pathname)
+    (imago:write-pnm plotable-image pathname :ascii)
     plotable-image))
 
 ;; (plot-image #'magnitude-image "-magnitude" (list magnitude))
@@ -196,11 +175,9 @@
   "Plot a number of images as supplied in image-list"
   (mapcar (lambda (x) (apply #'plot-image (append x (list :title title)))) image-list))
  
-;;; Creates PNG files of the supplied magnitude and phase components of a continuous
+;;; Creates standard image files of the supplied magnitude and phase components of a continuous
 ;;; wavelet transform.
-(defun plot-cwt (magnitude phase
-		 &key (title "unnamed")
-		 (time-axis-decimation 4))
+(defun plot-cwt (magnitude phase &key (title "unnamed") (time-axis-decimation 4))
   "Function to plot the magnitude and phase components of the result of
    a continuous wavelet transform on a signal."
   (plot-images (list (list #'magnitude-image "-magnitude" (list magnitude))
@@ -229,14 +206,14 @@
 
   (let* ((pathname (make-pathname :directory (list :absolute "tmp") 
 				  :name (concatenate 'string title "-tactus")
-				  :type "png"))
+				  :type "pnm"))
 	 ;; Downsample the data
 	 (downSampledRidges (decimate ridges (list 1 time-axis-decimation)))
 	 ;; TODO this is wrong, the tactus is a object, not a nlisp vector.
 	 ;; Perhaps create a decimate method specialised on tactus?
 	 (downSampledTactus (decimate-ridge computed-tactus (list 1 time-axis-decimation)))
 	 (plotable-image (tactus-image downSampledTactus downSampledRidges)))
-    (imago:write-png plotable-image pathname)
+    (imago:write-pnm plotable-image pathname :ascii)
     plotable-image))
 
 #|
