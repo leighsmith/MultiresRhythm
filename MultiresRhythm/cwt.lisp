@@ -22,6 +22,7 @@
 (in-package :multires-rhythm)
 (use-package :nlisp)
 
+;; TODO need to separate out so we can specify the variance (sigma) directly.
 (defun gaussian-envelope (width &key (center 0.0))
   "Compute a gaussian envelope.
    width is in the number of points to range an envelope over 3 standard deviations.
@@ -181,8 +182,7 @@
 ;;; For inverse CWT.
 ;;; To achieve conservation of energy between domains, c_g is chosen according to the wavelet.
 (defun dyadic-icwt (magnitude phase wavelets-per-octave
-		    &key (fourier-domain-wavelet #'morlet-wavelet-fourier)
-		    (c_g 1.7))
+		    &key (fourier-domain-wavelet #'morlet-wavelet-fourier) (c_g 1.7))
   "Perform the inverse CWT, reconstructing and the time domain signal from
    the time-frequency domain magnitude and phase components.
    Uses the morlet-wavelet-fourier function to give us a scaled version
@@ -198,8 +198,6 @@
 	 ;; for the wavelet generation. TODO check start at 0 or 1?
 	 (period (time-support (.iseq 1 number-of-scales) wavelets-per-octave))
 	 (voice-scaling (.* c_g (.sqrt period))))
-
-    (format t "In dyadic-cwt dimensions ~a~%" time-frequency-dimensions)
 
     ;; loop over each "voice", beginning with the highest frequency scale.
     (loop 
@@ -219,7 +217,7 @@
     time-domain-signal))
 
 ;;; non-dyadic version
-(defun icwt (magnitude phase &rest parameters)
+(defun icwt (magnitude phase wavelets-per-octave &rest parameters)
   "Performs the inverse CWT on the given magnitude and phase values. If the magnitude and
    phase components are not dyadic length (power of 2), pads them to a dyadic length
    before performing the inverse cwt (using dyadic-icwt)."
@@ -233,7 +231,6 @@
       ;; global padded-magnitude
       ;; global padded-phase
 
-      (format t "padded-magnitude ~a ~a~%" (.array-dimensions padded-magnitude) time-trim)
-
       ;; Returns the signal and it's Hilbert transform.
-      (.subarray (apply #'dyadic-icwt padded-magnitude padded-phase parameters) time-trim))))
+      (.subarray (apply #'dyadic-icwt padded-magnitude padded-phase wavelets-per-octave parameters)
+		 (list 0 (second time-trim))))))
