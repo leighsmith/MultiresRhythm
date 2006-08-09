@@ -171,17 +171,11 @@
 ;; (plot-image #'tactus-image "-tactus" (list ridges tactus))
 ;; (apply #'plot-image (list #'magnitude-image "-magnitude" (list magnitude) :title "blah")) 
 
-(defun plot-images (image-list &key (title "unnamed"))
+(defun plot-images (image-list &key (title "unnamed") (time-axis-decimation 4))
   "Plot a number of images as supplied in image-list"
-  (mapcar (lambda (x) (apply #'plot-image (append x (list :title title)))) image-list))
- 
-;;; Creates standard image files of the supplied magnitude and phase components of a continuous
-;;; wavelet transform.
-(defun plot-cwt (magnitude phase &key (title "unnamed") (time-axis-decimation 4))
-  "Function to plot the magnitude and phase components of the result of
-   a continuous wavelet transform on a signal."
-  (plot-images (list (list #'magnitude-image "-magnitude" (list magnitude))
-		     (list #'phase-image "-phase" (list phase magnitude))) :title title))
+  (mapcar 
+   (lambda (x) (apply #'plot-image (append x (list :title title :time-axis-decimation time-axis-decimation))))
+   image-list))
 
 #|
 ;; How to plot using nlisp (unfortunately the data transferred between gnuplot and nlisp is too much.
