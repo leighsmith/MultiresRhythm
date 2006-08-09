@@ -35,13 +35,11 @@
 
 ;; Test dyadic signals:
 ;; (multiple-value-setq (fm-mag fm-phase) (dyadic-cwt (fm-test) 8 512))
+;; (setf x (dyadic-cwt (fm-test :signal-length 256) 8 256)) ; magnitude only.
 ;; Test any length signals:
-;; (multiple-value-setq (fm-mag fm-phase) (cwt (fm-test) 8))
-;; Test plotting of magnitude only:
-;; (plot-cwt (cwt (fm-test) 8))
-;; (setf x (dyadic-cwt (fm-test :signal-length 256) 8 256))
+;; (setf fm-scaleogram (cwt (fm-test) 8))
 ;; Test plotting of both magnitude and phase:
-;; (multiple-value-bind (fm-mag fm-phase) (cwt (fm-test) 16) (plot-cwt fm-mag fm-phase :title "fm"))
+;; (plot-cwt (cwt (fm-test) 16) :title "fm")
 
 ;;; 
 (defun rising-harmonic-test (&key (signal-length 2048))
@@ -57,20 +55,24 @@
     (plot rising-harmonic-signal nil)
     rising-harmonic-signal))
 
-;; (multiple-value-bind (rising-harmonic-mag rising-harmonic-phase) (cwt (rising-harmonic-test) 8) (plot-cwt rising-harmonic-mag rising-harmonic-phase :title "rising-harmonic"))
+;; (plot-cwt (cwt (rising-harmonic-test) 8) :title "rising-harmonic")
 
 (defun test-lpc ()
-  (multiple-value-bind (fm-mag fm-phase) (cwt (fm-test) 8)
-    ;; (plot-cwt fm-mag fm-phase :title "fm")
-    (plot-image #'magnitude-image "-lpc" (list (local-phase-congruency fm-mag fm-phase)) :title "fm")))
+  (let ((fm-scaleogram (cwt (fm-test) 8)))
+    ;; (plot-cwt fm-scaleogram :title "fm")
+    (plot-image #'magnitude-image "-lpc" 
+		(list (local-phase-congruency (scaleogram-magnitude fm-scaleogram)
+					      (scaleogram-phase fm-scaleogram))) 
+		:title "fm")))
   
 ;; (test-lpc)
 
 (defun test-rhythm ()
-  (let* ((rhythm-signal (rhythmic-grid-to-signal '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0 1))))
-    (multiple-value-bind (rhythm-mag rhythm-phase) (cwt rhythm-signal 8)
-      (plot-cwt rhythm-mag rhythm-phase :title "rhythm"))))
+  (let* ((rhythm-signal (rhythmic-grid-to-signal '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0 1)))
+	 (rhythm-scaleogram (cwt rhythm-signal 8)))
+    (plot-cwt rhythm-scaleogram :title "rhythm")))
 
+;; (test-rhythm)
 ;; (setf b (rhythmic-grid-to-signal '(1 1 1 1) :tempo 60))
 
 (defun test-tactus-for-rhythm (name rhythm-grid)
@@ -89,26 +91,22 @@
 ;;;
 (defun test-reconstruction (test-signal &key (voices-per-octave 8))
   "Verifies the invertability of the CWT and therefore it's accuracy."
-  (multiple-value-bind (mag phase) 
-      (cwt test-signal voices-per-octave) ; (/ (.array-dimension test-signal 0) 4)
+  (let* ((test-scaleogram (cwt test-signal voices-per-octave)) ; (/ (.array-dimension test-signal 0) 4)
+	 (reconstructed-signal (icwt (scaleogram-magnitude test-scaleogram)
+				     (scaleogram-phase test-scaleogram) voices-per-octave)))
 
-    ;; plot-cwt(mag phase "random signal")
-
-;;    (let ((reconstructed-signal (dyadic-icwt mag phase voices-per-octave)))
-    (let ((reconstructed-signal (icwt mag phase voices-per-octave)))
-
-      ;; The real component of the reconstructed signal is the original
-      ;; signal, not the magnitude, since it's a Hilbert transform.
-      ;; The phase is derived from the the real and imaginary components.
-      ;; reconstructed-phase (.phase reconstructed-signal)
+    ;; The real component of the reconstructed signal is the original
+    ;; signal, not the magnitude, since it's a Hilbert transform.
+    ;; The phase is derived from the the real and imaginary components.
+    ;; reconstructed-phase (.phase reconstructed-signal)
   
-       (nplot (list test-signal (.realpart reconstructed-signal)) nil 
- 		   :legends (list "test-signal" "reconstructed signal")
- 		   :title "Reconstruction comparison")
+    (nplot (list test-signal (.realpart reconstructed-signal)) nil 
+	   :legends (list "test-signal" "reconstructed signal")
+	   :title "Reconstruction comparison")
 
-       (format t "maximum difference between test-signal and reconstruction ~f~%"
- 	      (.max (.- test-signal (.realpart reconstructed-signal))))
-      reconstructed-signal)))
+    (format t "maximum difference between test-signal and reconstruction ~f~%"
+	    (.max (.- test-signal (.realpart reconstructed-signal))))
+    reconstructed-signal))
 
 ;; Must be dyadic (base 2). Otherwise we must pad the signals.
 ;; (test-reconstruction (.cos (.rseq 0.0 (* 2 pi 16) 2048)))
@@ -117,17 +115,17 @@
 ;; (test-reconstruction (fm-test :signal-length 2200))
 
 (defun test-octave-file (filename &key (sample-rate 200 sample-rate-supplied))
-  (let ((file-path (make-pathname :directory (list :absolute "/Users/leigh/Research/Data/NewAnalysedRhythms/") 
-				  :name filename
-				  :type "octave")))
-    (multiple-value-bind (rhythm-signal rhythm-name) (.load-octave-file file-path)
-      (let* ((loaded-rhythm (make-instance 'rhythm 
-					   :name filename
-					   :description "Greensleeves performed" 
-					   :time-signal (.row rhythm-signal 0)
-					   :sample-rate sample-rate))
-	     (computed-tactus (tactus-for-rhythm loaded-rhythm)))	
-	computed-tactus))))
+  (let* ((file-path (make-pathname :directory (list :absolute "/Users/leigh/Research/Data/NewAnalysedRhythms/") 
+				   :name filename
+				   :type "octave"))
+	 (rhythm-signal (.load-octave-file file-path))
+	 (loaded-rhythm (make-instance 'rhythm 
+				       :name filename
+				       :description "Greensleeves performed" 
+				       :time-signal (.row rhythm-signal 0)
+				       :sample-rate sample-rate))
+	 (computed-tactus (tactus-for-rhythm loaded-rhythm)))
+    computed-tactus))
 
 ;; (test-octave-file "greensleeves-perform-medium" :sample-rate 400)
 ;; (test-octave-file "longuet_cliche" :sample-rate 200)

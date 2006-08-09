@@ -22,12 +22,36 @@
 (in-package :multires-rhythm)
 (use-package :nlisp)
 
+;; Holds dyadic and unpadded versions of the magnitude and phase output of the CWT.
 (defclass scaleogram ()
-  ((voices-per-octave :initarg :voices-per-octave :accessor voices-per-octave :initform 16)
-   (magnitude :initarg :magnitude :accessor scaleogram-magnitude)
-   (phase :initarg :phase :accessor scaleogram-phase)
-   (dyadic-padded-magnitude :initarg :dyadic-padded-magnitude :accessor dyadic-padded-magnitude)
-   (dyadic-padded-phase :initarg :dyadic-padded-phase :accessor dyadic-padded-phase)))
+  ((voices-per-octave 
+    :documentation "Frerquency resolution as number of scales for a doubling of frequency"
+    :initarg :voices-per-octave 
+    :accessor voices-per-octave 
+    :initform 16)
+   (magnitude 
+    :documentation "Non-dyadic (trimmed) magnitude component of the complex CWT result"
+    :initarg :magnitude 
+    :accessor scaleogram-magnitude)
+   (phase 
+    :documentation "Non-dyadic (trimmed) phase component of the complex CWT result"
+    :initarg :phase 
+    :accessor scaleogram-phase)
+   (dyadic-padded-magnitude 
+    :documentation "Dyadic (padded) magnitude component of the complex CWT result"
+    :initarg 
+    :dyadic-padded-magnitude 
+    :accessor dyadic-padded-magnitude)
+   (dyadic-padded-phase 
+    :documentation "Dyadic (padded) phase component of the complex CWT result"
+    :initarg :dyadic-padded-phase 
+    :accessor dyadic-padded-phase)
+   (time-trim
+    :documentation "Parameter to .subarray to trim the padded back to unpadded versions"
+    :accessor time-trim)))
+
+(defgeneric plot-cwt (scaleogram &key title time-axis-decimation)
+  (:documentation "Function to plot the magnitude and phase components of the result of a continuous wavelet transform on a signal."))
 
 ;; TODO need to separate out so we can specify the variance (sigma) directly.
 (defun gaussian-envelope (width &key (center 0.0))
@@ -173,18 +197,35 @@
 ;; (dyadic-pad (.rseq 0 9 10))
 
 ;;; The public interface to the continuous wavelet transform for non-dyadic signals
-(defun cwt (signal voices-per-octave 
-	    &key (max-wavelet-period (dyadic-length (./ (.array-dimension signal 0) 4))))
+(defun cwt (time-signal voices-per-octave 
+	    &key (max-wavelet-period (dyadic-length (./ (.array-dimension time-signal 0) 4))))
   "Pads the signal to a dyadic length, then performs the continuous wavelet transform,
    using dyadic-cwt, trimming off the returned result to match the original signal length.
-   Returns multiple items (magnitude phase)"
+   Returns a scaleogram instance containing magnitude and phase."
   ;; The wavelet transform operates on 1 x N vector
-  (multiple-value-bind (pad-signal time-trim) (dyadic-pad signal)
+  (multiple-value-bind (pad-signal time-trim) (dyadic-pad time-signal)
     (multiple-value-bind (padded-magnitude padded-phase)
 	(dyadic-cwt pad-signal voices-per-octave max-wavelet-period)
-      (let* ((scale-rows (.array-dimension padded-magnitude 0))
+      (let* ((scaleogram-result (make-instance 'scaleogram :voices-per-octave voices-per-octave))
+	     (scale-rows (.array-dimension padded-magnitude 0))
 	     (trim (list (list 0 (1- scale-rows)) (second time-trim))))
-	(values (.subarray padded-magnitude trim) (.subarray padded-phase trim))))))
+	(setf (time-trim scaleogram-result) trim)
+	(setf (dyadic-padded-magnitude scaleogram-result) padded-magnitude)
+	(setf (dyadic-padded-phase scaleogram-result) padded-phase)
+	(setf (scaleogram-magnitude scaleogram-result) (.subarray padded-magnitude trim))
+	(setf (scaleogram-phase scaleogram-result) (.subarray padded-phase trim))
+	scaleogram-result))))
+
+;;; Creates standard image files of the supplied magnitude and phase components of a continuous
+;;; wavelet transform.
+(defmethod plot-cwt ((scaleogram-to-plot scaleogram) &key (title "unnamed") (time-axis-decimation 4))
+  "Function to plot the magnitude and phase components of the result of
+   a continuous wavelet transform on a signal."
+  (plot-images (list (list #'magnitude-image "-magnitude" (list (scaleogram-magnitude scaleogram-to-plot)))
+		     (list #'phase-image "-phase" (list (scaleogram-phase scaleogram-to-plot)
+							(scaleogram-magnitude scaleogram-to-plot))))
+	       :title title
+	       :time-axis-decimation time-axis-decimation))
 
 ;;; For inverse CWT.
 ;;; To achieve conservation of energy between domains, c_g is chosen according to the wavelet.
@@ -241,3 +282,4 @@
       ;; Returns the signal and it's Hilbert transform.
       (.subarray (apply #'dyadic-icwt padded-magnitude padded-phase wavelets-per-octave parameters)
 		 (list 0 (second time-trim))))))
+

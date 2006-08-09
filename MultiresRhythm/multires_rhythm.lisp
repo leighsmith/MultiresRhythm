@@ -79,7 +79,7 @@ This is weighted by absolute constraints, look in the 600ms period range."
   fprintf(promptStream, "Finding ridge (by scale)\n");
 
   ;; show what we got as an intensity plot
-  plotCWT("correlation", correlation)
+  plot-CWT("correlation", correlation)
   )
 |#
 
@@ -313,30 +313,32 @@ then can extract ridges."
 ;; TODO need to separate claps from tactus, but this requires magnitude and phase to be
 ;; passed in. Need to separate out scaleogram calculation.
 (defmethod tactus-for-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
-  "Returns the selected tactus given the rhythm."
-  (multiple-value-bind (magnitude phase) (cwt (time-signal analysis-rhythm) voices-per-octave)
-    (plot-cwt magnitude phase :title (name analysis-rhythm))
-    ;; Correlate various ridges to produce a robust version.
-    (let* ((correlated-ridges (correlate-ridges magnitude phase voices-per-octave))
-	   ;; Scale index 1 is the highest frequency (smallest dilation) scale.
-	   (salient-scale (preferred-tempo magnitude phase voices-per-octave (sample-rate analysis-rhythm)))
-	   ;; Weight by the absolute tempo preference.
-	   (tempo-weighted-ridges (.* correlated-ridges 
-				      (tempo-salience-weighting salient-scale (.array-dimensions magnitude))))
-	   ;; TODO substitute tempo-weighted-ridges for correlated-ridges to enable tempo selectivity.
-	   (correlated-ridge-scale-peaks (determine-scale-peaks correlated-ridges))
-	   (skeleton (extract-ridges correlated-ridge-scale-peaks))
-	   ;; select out the tactus from all ridge candidates.
-	   (chosen-tactus (select-longest-tactus skeleton))
-	   (claps (clap-to-tactus-phase analysis-rhythm magnitude phase chosen-tactus)))
-      (plot-ridges-and-tactus correlated-ridge-scale-peaks chosen-tactus :title (name analysis-rhythm))
-      chosen-tactus)))
+  "Returns the selected tactus given the rhythm ."
+  (let* ((scaleogram (cwt (time-signal analysis-rhythm) voices-per-octave))
+	 (magnitude (scaleogram-magnitude scaleogram)) ; short-hand.
+	 (phase (scaleogram-phase scaleogram))
+	 ;; Correlate various ridges to produce a robust version.
+	 (correlated-ridges (correlate-ridges magnitude phase voices-per-octave))
+	 ;; Scale index 1 is the highest frequency (smallest dilation) scale.
+	 (salient-scale (preferred-tempo magnitude phase voices-per-octave (sample-rate analysis-rhythm)))
+	 ;; Weight by the absolute tempo preference.
+	 (tempo-weighted-ridges (.* correlated-ridges 
+				    (tempo-salience-weighting salient-scale (.array-dimensions magnitude))))
+	 ;; TODO substitute tempo-weighted-ridges for correlated-ridges to enable tempo selectivity.
+	 (correlated-ridge-scale-peaks (determine-scale-peaks correlated-ridges))
+	 (skeleton (extract-ridges correlated-ridge-scale-peaks))
+	 ;; select out the tactus from all ridge candidates.
+	 (chosen-tactus (select-longest-tactus skeleton))
+	 (claps (clap-to-tactus-phase analysis-rhythm scaleogram chosen-tactus)))
+    (plot-cwt scaleogram :title (name analysis-rhythm))
+    (plot-ridges-and-tactus correlated-ridge-scale-peaks chosen-tactus :title (name analysis-rhythm))
+    (values chosen-tactus scaleogram)))
 
 (defun clean-phase (magnitude phase &key (threshold 0.001) (clamp 0.0))
   "We clamp any ill-conditioned phase (negligble magnitude) to the value given (defaulting to zero)"
   (clamp-to-bounds phase magnitude :low-bound threshold :clamp-low clamp))
 
-(defun .find (a &key (count 0))
+(defun .find (a)
   "Returns an array of non-zero row major positions"
   (let* ((element-length (.array-total-size a))
 	 (all-positions (make-array element-length :fill-pointer 0)))
@@ -345,11 +347,13 @@ then can extract ridges."
 	  (vector-push next-non-zero-position all-positions)))
    (make-instance 'n-fixnum-array :ival (adjust-array all-positions (fill-pointer all-positions)))))
 
-(defun clap-to-tactus-phase (original-rhythm magnitude phase tactus 
-			     &key (voices-per-octave 16) (start-from-beat 0))
+;; TODO Return ((time intensity) (time intensity) ...)
+;; use constant intensity claps but weight the amplitude for when we mix in Common Music.
+(defun clap-to-tactus-phase (original-rhythm scaleogram tactus 
+			     &key (start-from-beat 0))
   "Function to compute times to clap and how hard from the extracted tactus.
    Returns a matrix where row 1 is the time to tap at, row 2 is the intensity."
-  (let* ((time-frequency-dimensions (.array-dimensions magnitude))
+  (let* ((time-frequency-dimensions (.array-dimensions (scaleogram-magnitude scaleogram)))
 	 (time-in-samples (second time-frequency-dimensions))
 
 	 ;; The right way to do this is with a tight (well, two octave)
@@ -358,17 +362,13 @@ then can extract ridges."
 	 ;; But just a single voice alone produces the correct oscillation, with lower amplitude:
 	 (tactus-mag (insert-ridge tactus (make-double-array time-frequency-dimensions) :constant-value 1d0))
   
-	 ;; debugging plot (downsampled)
-	 ;; (plot-cwt tactus-mag phase)
-
 	 ;; TODO To be completely correct the original padded output from dyadic-cwt should be used
-	 ;; for input to the dyadic-icwt, but the effect is subtle and it's a pain to use globals or hand
-	 ;; around a padded version of the CWT output. What we should do is unify the
-	 ;; output of cwt into a scalogram class that holds magnitude, phase and padded versions.
-
-	 ;; use the modified magnitude and original phase to compute a sinusoid and it's
+	 ;; for input to the dyadic-icwt.
+	 ;; Use the modified magnitude and original phase to compute a sinusoid and it's
 	 ;; Hilbert transform, from that, determine the phase of the sinusoid.
-	 (foot-tap-phase (.phase (icwt tactus-mag phase voices-per-octave)))
+	 (foot-tap-phase (.phase (icwt tactus-mag
+				       (scaleogram-phase scaleogram)
+				       (voices-per-octave scaleogram))))
 
 	 ;; Note the phase of the oscillating sinusoid at the beat to start tapping from.
 	 (beat-positions (.find (time-signal original-rhythm)))
@@ -385,11 +385,9 @@ then can extract ridges."
 	 (clap-at (.find phase-reoccured)))
 
     (format t "Handclapping from beat ~d of original rhythm, sample ~d~%" start-from-beat down-beat-sample)
-    (plot-claps (time-signal original-rhythm) clap-at :foot-tap-AM foot-tap-phase)
-    ;; TODO Just return ((time intensity) (time intensity) ...)
-    ;;   claps = zeros(2, nClaps);
-    ;;   claps(1,:) = clapAt;
-    ;;   ;; use constant intensity claps but weight the amplitude for when we mix in Common Music.
-    ;;   claps(2,:) = ones(1,nClaps) * 0.6;
+    (plot-claps (time-signal original-rhythm) 
+		clap-at 
+		:foot-tap-AM foot-tap-phase 
+		:signal-description (name original-rhythm))
     clap-at))
 
