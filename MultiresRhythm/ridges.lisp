@@ -251,7 +251,8 @@
 				(.iseq (start-sample ridge-to-insert) (1- (duration ridge-to-insert))))))
     (map nil 
 	 (lambda (row-major-index) (setf (row-major-aref (val time-frequency-plane) row-major-index) constant-value)) 
-	 (val row-major-indices))))
+	 (val row-major-indices))
+    time-frequency-plane))
 
 (defun test-ridges (filename)
   (let* ((data-directory "/Users/leigh/Research/Data/NewAnalysedRhythms/")
