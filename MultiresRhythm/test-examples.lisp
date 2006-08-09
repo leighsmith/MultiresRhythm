@@ -73,15 +73,62 @@
 
 ;; (setf b (rhythmic-grid-to-signal '(1 1 1 1) :tempo 60))
 
-(defun test-tactus ()
-  (let ((shmulevich-rhythm 
+(defun test-tactus-for-rhythm (name rhythm-grid)
+  (let ((test-rhythm 
 	 (make-instance 'rhythm 
-			:name "shmulevich-rhythm-1"
-			:description "shmulevich rhythm 1" 
-			:time-signal (rhythmic-grid-to-signal '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0 1) 
-							      :sample-rate 200)
+			:name name
+			:description name ; TODO transliterate '-' for ' '.
+			:time-signal (rhythmic-grid-to-signal rhythm-grid :sample-rate 200)
 			:sample-rate 200)))
-    (tactus-for-rhythm shmulevich-rhythm)))
+    (tactus-for-rhythm test-rhythm)))
 
-;; (setf isochronous-rhythm (make-double-array (2048)))
+;; (test-tactus-for-rhythm "shmulevich-rhythm-1" '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0 1))
+;;; Do the analysis on an impulse train.
+;; (test-tactus-for-rhythm "isochronous-rhythm"  '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1))
 
+;;;
+(defun test-reconstruction (test-signal &key (voices-per-octave 8))
+  "Verifies the invertability of the CWT and therefore it's accuracy."
+  (multiple-value-bind (mag phase) 
+      (cwt test-signal voices-per-octave) ; (/ (.array-dimension test-signal 0) 4)
+
+    ;; plot-cwt(mag phase "random signal")
+
+;;    (let ((reconstructed-signal (dyadic-icwt mag phase voices-per-octave)))
+    (let ((reconstructed-signal (icwt mag phase voices-per-octave)))
+
+      ;; The real component of the reconstructed signal is the original
+      ;; signal, not the magnitude, since it's a Hilbert transform.
+      ;; The phase is derived from the the real and imaginary components.
+      ;; reconstructed-phase (.phase reconstructed-signal)
+  
+       (nplot (list test-signal (.realpart reconstructed-signal)) nil 
+ 		   :legends (list "test-signal" "reconstructed signal")
+ 		   :title "Reconstruction comparison")
+
+       (format t "maximum difference between test-signal and reconstruction ~f~%"
+ 	      (.max (.- test-signal (.realpart reconstructed-signal))))
+      reconstructed-signal)))
+
+;; Must be dyadic (base 2). Otherwise we must pad the signals.
+;; (test-reconstruction (.cos (.rseq 0.0 (* 2 pi 16) 2048)))
+;; (test-reconstruction (rising-harmonic-test))
+;; Test non-dyadic reconstruction:
+;; (test-reconstruction (fm-test :signal-length 2200))
+
+(defun test-octave-file (filename &key (sample-rate 200 sample-rate-supplied))
+  (let ((file-path (make-pathname :directory (list :absolute "/Users/leigh/Research/Data/NewAnalysedRhythms/") 
+				  :name filename
+				  :type "octave")))
+    (multiple-value-bind (rhythm-signal rhythm-name) (.load-octave-file file-path)
+      (let* ((loaded-rhythm (make-instance 'rhythm 
+					   :name filename
+					   :description "Greensleeves performed" 
+					   :time-signal (.row rhythm-signal 0)
+					   :sample-rate sample-rate))
+	     (computed-tactus (tactus-for-rhythm loaded-rhythm)))	
+	computed-tactus))))
+
+;; (test-octave-file "greensleeves-perform-medium" :sample-rate 400)
+;; (test-octave-file "longuet_cliche" :sample-rate 200)
+;; (test-octave-file "intensity34_to_44" :sample-rate 200)
