@@ -200,9 +200,8 @@
 ;; once we have decimate as a method, but this might be problematic defining a method elsewhere.
 (defun plot-ridges-and-tactus (ridges computed-tactus &key 
 			       (title "unnamed")
-			       (expected-tactus nil)
 			       (time-axis-decimation 4))
-  "Plot the ridges in greyscale and the computed tactus in red, expected tactus in blue."
+  "Plot the ridges in greyscale and the computed tactus in red."
 
   (let* ((pathname (make-pathname :directory (list :absolute "tmp") 
 				  :name (concatenate 'string title "-tactus")
@@ -216,34 +215,21 @@
     (imago:write-pnm plotable-image pathname :ascii)
     plotable-image))
 
-#|
-;;;
-;;; Plot locations of original beats, computed claps, the foot tap
-;;; amplitude modulation/phase and reference expected clap points.
-;;;
-(defun plotClaps (comment signalDescription signal claps expectedClaps footTapAM)
-  ;; global promptStream;
-  ;; fprintf(promptStream, 
-  ;;	  ["Press a key for the clap points ", comment, " of ", signalDescription, "\n"]);
-  ;; pause
-  figure(4);
-  title(["Computed foot-tap and expected foot-tap ", comment, " of ", signalDescription]);
-  xlabel('Time')
-  ylabel('Normalised Intensity')
+(defun plot-claps (rhythm-signal claps &key foot-tap-AM (max-computed-scale 2d0)
+		   (comment "") 
+		   (signal-description ""))
+  "Plot locations of original beats, computed claps, the foot tap
+   amplitude modulation/phase and reference expected clap points."
+  (let* ((clap-signal (make-double-array (.array-dimensions rhythm-signal) :initial-element 0d0)))
+    (map nil (lambda (index) (setf (.aref clap-signal index) max-computed-scale)) (val claps))
+    (nplot (list rhythm-signal clap-signal foot-tap-AM) nil
+	   :legends '("Original Rhythm" "Computed Claps" "Foot-tap AM")
+	   :styles '("impulses linetype 6 linewidth 3" "impulses linetype 4" "dots 3")
+	   :xlabel "Time"
+	   :ylabel "Scaled Intensity/Phase"
+	   :title (format nil "Computed foot-tap ~a of ~a" comment signal-description))))
 
-  if(length(claps(1,:)) != 0)
-    if(nargin < 5)
-      plot(signal "m^;Original Rhythm;", claps(1,:), claps(2,:), "b^;Computed Claps;");
-    elseif(nargin < 6)
-      plot(signal, "m^;Original Rhythm;", claps(1,:), claps(2,:), "b^;Computed Claps;",\
-	   expectedClaps(1,:), expectedClaps(2,:), "g^;Expected Claps;");
-    else
-      ylabel('Scaled Intensity/Phase')
-      plot(signal, "m^;Original Rhythm;", \
-  	   claps(1,:), 2 * claps(2,:), "b^;Computed Claps;", \
-  	   expectedClaps(1,:), 3 * expectedClaps(2,:), "g^;Expected Claps;", \
-  	   footTapAM.', "r.;FootTap AM;");
-    )
-  )
-)
-|#
+;; Alternative plot method if not using nplot.
+;;  (let ((clap-intensity (make-double-array (.array-dimensions claps) :initial-element 2d0)))
+;;  (plot clap-intensity claps :style "impulses"))
+
