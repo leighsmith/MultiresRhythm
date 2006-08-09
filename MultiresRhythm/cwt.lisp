@@ -22,6 +22,13 @@
 (in-package :multires-rhythm)
 (use-package :nlisp)
 
+(defclass scaleogram ()
+  ((voices-per-octave :initarg :voices-per-octave :accessor voices-per-octave :initform 16)
+   (magnitude :initarg :magnitude :accessor scaleogram-magnitude)
+   (phase :initarg :phase :accessor scaleogram-phase)
+   (dyadic-padded-magnitude :initarg :dyadic-padded-magnitude :accessor dyadic-padded-magnitude)
+   (dyadic-padded-phase :initarg :dyadic-padded-phase :accessor dyadic-padded-phase)))
+
 ;; TODO need to separate out so we can specify the variance (sigma) directly.
 (defun gaussian-envelope (width &key (center 0.0))
   "Compute a gaussian envelope.
