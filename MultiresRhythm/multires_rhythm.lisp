@@ -310,6 +310,8 @@ then can extract ridges."
 	      (.> correlated-profile correlation-minimum))
 	correlated-profile)))
 
+;; TODO need to separate claps from tactus, but this requires magnitude and phase to be
+;; passed in. Need to separate out scaleogram calculation.
 (defmethod tactus-for-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
   "Returns the selected tactus given the rhythm."
   (multiple-value-bind (magnitude phase) (cwt (time-signal analysis-rhythm) voices-per-octave)
@@ -325,7 +327,8 @@ then can extract ridges."
 	   (correlated-ridge-scale-peaks (determine-scale-peaks correlated-ridges))
 	   (skeleton (extract-ridges correlated-ridge-scale-peaks))
 	   ;; select out the tactus from all ridge candidates.
-	   (chosen-tactus (select-longest-tactus skeleton)))
+	   (chosen-tactus (select-longest-tactus skeleton))
+	   (claps (clap-to-tactus-phase analysis-rhythm magnitude phase chosen-tactus)))
       (plot-ridges-and-tactus correlated-ridge-scale-peaks chosen-tactus :title (name analysis-rhythm))
       chosen-tactus)))
 
@@ -333,19 +336,27 @@ then can extract ridges."
   "We clamp any ill-conditioned phase (negligble magnitude) to the value given (defaulting to zero)"
   (clamp-to-bounds phase magnitude :low-bound threshold :clamp-low clamp))
 
+(defun .find (a &key (count 0))
+  "Returns an array of non-zero row major positions"
+  (let* ((element-length (.array-total-size a))
+	 (all-positions (make-array element-length :fill-pointer 0)))
+    (dotimes (next-non-zero-position element-length)
+      (if (not (zerop (.row-major-aref a next-non-zero-position)))
+	  (vector-push next-non-zero-position all-positions)))
+   (make-instance 'n-fixnum-array :ival (adjust-array all-positions (fill-pointer all-positions)))))
+
 (defun clap-to-tactus-phase (original-rhythm magnitude phase tactus 
 			     &key (voices-per-octave 16) (start-from-beat 0))
   "Function to compute times to clap and how hard from the extracted tactus.
    Returns a matrix where row 1 is the time to tap at, row 2 is the intensity."
   (let* ((time-frequency-dimensions (.array-dimensions magnitude))
-	 (number-of-scales (first time-frequency-dimensions))
-	 (nTime (second time-frequency-dimensions))
+	 (time-in-samples (second time-frequency-dimensions))
 
 	 ;; The right way to do this is with a tight (well, two octave)
 	 ;; Gaussian envelope over it.
 	 ;; tactus-mag (gauss-centered tactusPeak voices-per-octave)
 	 ;; But just a single voice alone produces the correct oscillation, with lower amplitude:
-	 (tactus-mag (insert-ridge tactus (make-double-array time-frequency-dimensions) :constant-value 1))
+	 (tactus-mag (insert-ridge tactus (make-double-array time-frequency-dimensions) :constant-value 1d0))
   
 	 ;; debugging plot (downsampled)
 	 ;; (plot-cwt tactus-mag phase)
@@ -354,46 +365,31 @@ then can extract ridges."
 	 ;; for input to the dyadic-icwt, but the effect is subtle and it's a pain to use globals or hand
 	 ;; around a padded version of the CWT output. What we should do is unify the
 	 ;; output of cwt into a scalogram class that holds magnitude, phase and padded versions.
-	 ;; global padMagnitude;
-	 ;; global padPhase;
 
 	 ;; use the modified magnitude and original phase to compute a sinusoid and it's
 	 ;; Hilbert transform, from that, determine the phase of the sinusoid.
-	 (foot-tap-phase (.phase (icwt tactus-mag phase voices-per-octave))))
+	 (foot-tap-phase (.phase (icwt tactus-mag phase voices-per-octave)))
 
-#|
 	 ;; Note the phase of the oscillating sinusoid at the beat to start tapping from.
-	 beat-positions = (find (rhythm-signal original-rhythm))
-	 down-beat-sample = (beat-positions start-from-beat)
+	 (beat-positions (.find (time-signal original-rhythm)))
+	 (down-beat-sample (.aref beat-positions start-from-beat))
+	 (clap-on-phase-datum (.aref foot-tap-phase down-beat-sample))
 
-(down-beat-sample (.find (rhythm-signal original-rhythm) :count start-from-beat))
+	 ;; check clap-on-phase-datum >= current and < next phase measure.
+	 ;; TODO this could be a problem on the last phase point before 2 pi wrap.
+	 ;; identify reoccurance of the initial clap phase across the translation (time) axis
+	 (phase-reoccured (.and (.>= clap-on-phase-datum 
+				     (.subarray foot-tap-phase (list 0 (list 0 (- time-in-samples 2))))) 
+				(.< clap-on-phase-datum 
+				    (.subarray foot-tap-phase (list 0 (list 1 (1- time-in-samples)))))))
+	 (clap-at (.find phase-reoccured)))
 
-(loop while next-non-zero-position 
-next-non-zero-position (position-if-not #'zerop #(1 0 0 0 0 0.8 0 0 0 0 1) :start (+1 next-non-zero-position))
-collect 
-
-	 (clap-on-phase-datum (.aref foot-tap-phase down-beat-sample)))
-
-(format t "Handclapping from beat ~d of original rhythm, sample ~d~%" start-from-beat down-beat-sample)
-
-  ;; check clap-on-phase-datum >= current and < next phase measure.
-  ;; this could be a problem on the last phase point before 2 pi wrap.
-  t      = 1:nTime;
-  tminus  = shift(t, -1);
-    
-  ;; identify reoccurance of the initial clap phase across the translation (time) axis
-  phase-reoccured (.and (.>= clap-on-phase-datum foot-tap-phase) 
-			(.< clap-on-phase-datum foot-tap-phase(tminus)))
-  clap-at = find(phase-reoccured);
-  nClaps = length(clap-aAt)
-
-  claps = zeros(2, nClaps);
-  claps(1,:) = clapAt;
-  ;; use constant intensity claps but weight the amplitude for when we mix in Common Music.
-  claps(2,:) = ones(1,nClaps) * 0.6;
-
-	;; Just return ((time intensity) (time intensity) ...)
-|#
-
-))
+    (format t "Handclapping from beat ~d of original rhythm, sample ~d~%" start-from-beat down-beat-sample)
+    (plot-claps (time-signal original-rhythm) clap-at :foot-tap-AM foot-tap-phase)
+    ;; TODO Just return ((time intensity) (time intensity) ...)
+    ;;   claps = zeros(2, nClaps);
+    ;;   claps(1,:) = clapAt;
+    ;;   ;; use constant intensity claps but weight the amplitude for when we mix in Common Music.
+    ;;   claps(2,:) = ones(1,nClaps) * 0.6;
+    clap-at))
 
