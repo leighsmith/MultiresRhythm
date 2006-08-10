@@ -82,7 +82,7 @@
 			:description name ; TODO transliterate '-' for ' '.
 			:time-signal (rhythmic-grid-to-signal rhythm-grid :sample-rate 200)
 			:sample-rate 200)))
-    (tactus-for-rhythm test-rhythm)))
+    (clap-to-rhythm test-rhythm)))
 
 ;; (test-tactus-for-rhythm "shmulevich-rhythm-1" '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0 1))
 ;;; Do the analysis on an impulse train.
@@ -114,19 +114,23 @@
 ;; Test non-dyadic reconstruction:
 ;; (test-reconstruction (fm-test :signal-length 2200))
 
-(defun test-octave-file (filename &key (sample-rate 200 sample-rate-supplied))
+(defun test-octave-file (filename &key (sample-rate 200))
   (let* ((file-path (make-pathname :directory (list :absolute "/Users/leigh/Research/Data/NewAnalysedRhythms/") 
 				   :name filename
 				   :type "octave"))
 	 (rhythm-signal (.load-octave-file file-path))
+	 ;; Signals can be read in as column or row vectors, so we align them all to a row vector.
+	 (aligned-signal (if (> (.array-dimension rhythm-signal 0) 1)
+				    (.transpose rhythm-signal)
+				    rhythm-signal))
 	 (loaded-rhythm (make-instance 'rhythm 
 				       :name filename
 				       :description "Greensleeves performed" 
-				       :time-signal (.row rhythm-signal 0)
-				       :sample-rate sample-rate))
-	 (computed-tactus (tactus-for-rhythm loaded-rhythm)))
-    computed-tactus))
+				       :time-signal (.row aligned-signal 0)
+				       :sample-rate sample-rate)))
+    (clap-to-rhythm loaded-rhythm)))
 
 ;; (test-octave-file "greensleeves-perform-medium" :sample-rate 400)
 ;; (test-octave-file "longuet_cliche" :sample-rate 200)
 ;; (test-octave-file "intensity34_to_44" :sample-rate 200)
+;; (test-octave-file "desain-unquantized" :sample-rate 200)
