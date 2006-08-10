@@ -138,11 +138,11 @@
 ;;        do (delete ridge-to-deactivate currently-active-ridges :key #'most-recent-scale)
 ;;        finally (return (values inactive-ridges currently-active-ridges))))
 
- (defun add-new-ridges (new-ridge-scales current-time-index)
-   "Creates a list of new ridge instances from the list of scales in new-ridge-scales"
-   (loop
-      for new-ridge-scale in new-ridge-scales
-      collect (make-instance 'ridge
+(defun add-new-ridges (new-ridge-scales current-time-index)
+  "Creates a list of new ridge instances from the list of scales in new-ridge-scales"
+  (loop
+     for new-ridge-scale in new-ridge-scales
+     collect (make-instance 'ridge
   			    :start-sample current-time-index 
   			    :scales (list new-ridge-scale)
  			    :set-active t)))
@@ -245,10 +245,10 @@
 
 (defmethod insert-ridge ((ridge-to-insert ridge) time-frequency-plane &key constant-value)
   "Insert the given ridge into the time-frequency plane, overwriting existing values with constant-value"
-  ;; this assumes there is a single scale index per time in tactusIndices
   (let* ((time-in-samples (.array-dimension time-frequency-plane 1))
 	 (row-major-indices (.+ (.* (scales-as-array ridge-to-insert) time-in-samples) 
-				(.iseq (start-sample ridge-to-insert) (1- (duration ridge-to-insert))))))
+				(.iseq (start-sample ridge-to-insert) 
+				       (+ (start-sample ridge-to-insert) (duration ridge-to-insert) -1)))))
     (map nil 
 	 (lambda (row-major-index) (setf (row-major-aref (val time-frequency-plane) row-major-index) constant-value)) 
 	 (val row-major-indices))
