@@ -32,21 +32,22 @@
    (time-signal :initarg :time-signal :accessor time-signal :initform (make-double-array '(1)))
    (sample-rate :initarg :sample-rate :accessor sample-rate :initform 200)))
 
-(defgeneric tactus-for-rhythm (rhythm-to-analyse &key voices-per-octave)
+(defgeneric tactus-for-rhythm (rhythm-to-analyse &key voices-per-octave tactus-selector)
   (:documentation "Returns the selected tactus for the rhythm."))
 
-(defun preferred-tempo (magnitude phase voices-per-octave rhythm-sample-rate 
+(defgeneric clap-to-rhythm (rhythm-to-analyse &key tactus-selector)
+  (:documentation "Returns a set of sample times to clap to given the supplied rhythm"))
+
+(defun preferred-tempo (rhythm-scaleogram rhythm-sample-rate 
 			;; Fraisse's "spontaneous tempo" interval in seconds
 			&key (tempo-salience-peak 0.600))
   "Determine the scale which Fraisse's spontaneous tempo would occur at.
 This is weighted by absolute constraints, look in the 600ms period range."
-
-  (declare (ignore magnitude phase))
   (let* ((salient-IOI (* rhythm-sample-rate tempo-salience-peak)))
     ;; Convert salient-IOI into the scale to begin checking.
     ;; This assumes the highest frequency scale (shortest time support)
     ;; is index 0, lowest frequency (longest time support) is number-of-scales.
-    (floor (scale-from-period salient-IOI voices-per-octave))))
+    (floor (scale-from-period salient-IOI (voices-per-octave rhythm-scaleogram)))))
 
 ;; Scale index 1 is the highest frequency (smallest dilation) scale.
 (defun tempo-salience-weighting (salient-scale time-frequency-dimensions)
@@ -161,7 +162,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 	 ;; The acceleration of phase difference should be non-zero (Tchamitchian and
 	 ;; Torresani Eq. III-7 pp128) phase-diff-acceleration will therefore be two time
 	 ;; sample points less than the original phase time extent.
-	 ;; phase-diff-acceleration = diff(wrapped-dt-phase.').';
+	 ;; phase-diff-acceleration = (diff wrapped-dt-phase)
 	 ;;
 	 ;; Doing this will still produce NaN since the division already
 	 ;; creates Inf and the clamping uses multiplication.
@@ -310,17 +311,45 @@ then can extract ridges."
 	      (.> correlated-profile correlation-minimum))
 	correlated-profile)))
 
-;; TODO need to separate claps from tactus, but this requires magnitude and phase to be
-;; passed in. Need to separate out scaleogram calculation.
-(defmethod tactus-for-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
-  "Returns the selected tactus given the rhythm ."
+#|
+(defun skeleton-for-scaleogram (scaleogram sample-rate)
+  (let* ((magnitude (scaleogram-magnitude scaleogram)) ; short-hand.
+	 (phase (scaleogram-phase scaleogram))
+	 ;; Correlate various ridges to produce a robust version.
+	 (correlated-ridges (correlate-ridges magnitude phase (voices-per-octave scaleogram)))
+	 ;; Scale index 1 is the highest frequency (smallest dilation) scale.
+	 (salient-scale (preferred-tempo scaleogram sample-rate))
+	 ;; Weight by the absolute tempo preference.
+	 (tempo-weighted-ridges (.* correlated-ridges 
+				    (tempo-salience-weighting salient-scale (.array-dimensions magnitude))))
+	 ;; TODO substitute tempo-weighted-ridges for correlated-ridges to enable tempo selectivity.
+	 (correlated-ridge-scale-peaks (determine-scale-peaks correlated-ridges)))
+    (extract-ridges correlated-ridge-scale-peaks)))
+
+(defmethod tactus-for-rhythm ((analysis-rhythm rhythm) 
+			      &key (voices-per-octave 16)
+			      (tactus-selector #'select-longest-tactus))
+  "Returns the selected tactus given the rhythm."
+  (let* ((scaleogram (cwt (time-signal analysis-rhythm) voices-per-octave))
+       	 (skeleton (skeleton-for-scaleogram scaleogram (sample-rate analysis-rhythm)))
+	 ;; select out the tactus from all ridge candidates.
+	 (chosen-tactus (funcall tactus-selector skeleton)))
+    (plot-cwt scaleogram :title (name analysis-rhythm))
+    (plot-ridges-and-tactus correlated-ridge-scale-peaks chosen-tactus :title (name analysis-rhythm))
+    (values chosen-tactus scaleogram)))
+|#
+
+(defmethod tactus-for-rhythm ((analysis-rhythm rhythm) 
+			      &key (voices-per-octave 16)
+			      (tactus-selector #'select-longest-tactus))
+  "Returns the selected tactus given the rhythm."
   (let* ((scaleogram (cwt (time-signal analysis-rhythm) voices-per-octave))
 	 (magnitude (scaleogram-magnitude scaleogram)) ; short-hand.
 	 (phase (scaleogram-phase scaleogram))
 	 ;; Correlate various ridges to produce a robust version.
 	 (correlated-ridges (correlate-ridges magnitude phase voices-per-octave))
 	 ;; Scale index 1 is the highest frequency (smallest dilation) scale.
-	 (salient-scale (preferred-tempo magnitude phase voices-per-octave (sample-rate analysis-rhythm)))
+	 (salient-scale (preferred-tempo scaleogram (sample-rate analysis-rhythm)))
 	 ;; Weight by the absolute tempo preference.
 	 (tempo-weighted-ridges (.* correlated-ridges 
 				    (tempo-salience-weighting salient-scale (.array-dimensions magnitude))))
@@ -328,7 +357,7 @@ then can extract ridges."
 	 (correlated-ridge-scale-peaks (determine-scale-peaks correlated-ridges))
 	 (skeleton (extract-ridges correlated-ridge-scale-peaks))
 	 ;; select out the tactus from all ridge candidates.
-	 (chosen-tactus (select-longest-tactus skeleton)))
+	 (chosen-tactus (funcall tactus-selector skeleton)))
     (plot-cwt scaleogram :title (name analysis-rhythm))
     (plot-ridges-and-tactus correlated-ridge-scale-peaks chosen-tactus :title (name analysis-rhythm))
     (values chosen-tactus scaleogram)))
@@ -390,7 +419,8 @@ then can extract ridges."
 		:signal-description (name original-rhythm))
     clap-at))
 
-(defun clap-to-rhythm (loaded-rhythm)
+(defmethod clap-to-rhythm ((loaded-rhythm rhythm) &key (tactus-selector #'select-longest-tactus))
   "Returns a set of sample times to clap to given the supplied rhythm"
-    (multiple-value-bind (computed-tactus rhythm-scaleogram) (tactus-for-rhythm loaded-rhythm)
+    (multiple-value-bind (computed-tactus rhythm-scaleogram) 
+	(tactus-for-rhythm loaded-rhythm :tactus-selector tactus-selector)
       (clap-to-tactus-phase loaded-rhythm rhythm-scaleogram computed-tactus)))
