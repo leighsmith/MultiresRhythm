@@ -328,8 +328,7 @@ then can extract ridges."
 	 (correlated-ridge-scale-peaks (determine-scale-peaks correlated-ridges))
 	 (skeleton (extract-ridges correlated-ridge-scale-peaks))
 	 ;; select out the tactus from all ridge candidates.
-	 (chosen-tactus (select-longest-tactus skeleton))
-	 (claps (clap-to-tactus-phase analysis-rhythm scaleogram chosen-tactus)))
+	 (chosen-tactus (select-longest-tactus skeleton)))
     (plot-cwt scaleogram :title (name analysis-rhythm))
     (plot-ridges-and-tactus correlated-ridge-scale-peaks chosen-tactus :title (name analysis-rhythm))
     (values chosen-tactus scaleogram)))
@@ -391,3 +390,7 @@ then can extract ridges."
 		:signal-description (name original-rhythm))
     clap-at))
 
+(defun clap-to-rhythm (loaded-rhythm)
+  "Returns a set of sample times to clap to given the supplied rhythm"
+    (multiple-value-bind (computed-tactus rhythm-scaleogram) (tactus-for-rhythm loaded-rhythm)
+      (clap-to-tactus-phase loaded-rhythm rhythm-scaleogram computed-tactus)))
