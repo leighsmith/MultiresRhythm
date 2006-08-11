@@ -39,6 +39,9 @@
 (defgeneric duration (ridge)
   (:documentation "Returns the duration in samples of the ridge."))
 
+(defgeneric scale-at-time (ridge time)
+  (:documentation "Returns the scale at the given time"))
+
 (defgeneric contains-scale-and-time (ridge scale time)
   (:documentation "Returns t if the given scale and time are part of this ridge."))
 
@@ -68,12 +71,26 @@
   "Returns the duration in samples of the ridge."
   (length (scales the-ridge)))
 
+(defmethod scale-at-time ((the-ridge ridge) time)
+  "Returns the scale at the given time"
+  (let ((scales-index (- time (start-sample the-ridge))))
+    (if (and (plusp scales-index)
+	     (< scales-index (duration the-ridge)))
+	(elt (scales the-ridge) scales-index)
+	nil)))
+
+(defmethod contains-scale-and-time ((the-ridge ridge) scale time)
+  "Returns t if the given scale and time are part of this ridge."
+  (equal scale (scale-at-time the-ridge time)))
+
+#|
 (defmethod contains-scale-and-time ((the-ridge ridge) scale time)
   "Returns t if the given scale and time are part of this ridge."
   (let ((scales-index (- time (start-sample the-ridge))))
     (and (plusp scales-index)
 	 (< scales-index (duration the-ridge))
 	 (equal scale (elt (scales the-ridge) scales-index)))))
+|#
 
 (defmethod decimate-ridge ((the-ridge ridge) reduce-list)
   "Returns the ridge instance with it's data decimated using the decimation-parameter-list"
@@ -83,7 +100,7 @@
 	  (loop
 	     for scale-index in original-scale-list by (lambda (x) (nthcdr reduce-by x))
 	     collect scale-index))
-    (setf (start-sample the-ridge) (/ (start-sample the-ridge) reduce-by)))
+    (setf (start-sample the-ridge) (floor (start-sample the-ridge) reduce-by)))
   the-ridge)
 
 (defun find-scales-of-peaks (scale-peaks current-time-index)
@@ -205,11 +222,12 @@
 ;; TODO Or should the tempo preferencing influence the selection rather than the ridge height?
 
 ;; Sorting the entire table gives us a graded set of good alternatives. 
-;; TODO Unfortunately it
-;; does it destructively and leaves skeleton half it's size?
-;; (defun select-longest-tactus (skeleton)
-;;   "Returns a time sequence of scales."
-;;   (first (sort skeleton #'>= :key #'duration)))
+#|
+(defun select-longest-tactus (skeleton)
+  "Returns a time sequence of scales."
+  (let ((searchable-skeleton skeleton))
+    (first (sort searchable-skeleton #'>= :key #'duration))))
+|#
 
 ;; TODO Can this be implemented more simply?
 (defun select-longest-tactus (skeleton)
