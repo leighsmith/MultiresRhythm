@@ -35,6 +35,9 @@
 (defgeneric tactus-for-rhythm (rhythm-to-analyse &key voices-per-octave tactus-selector)
   (:documentation "Returns the selected tactus for the rhythm."))
 
+(defgeneric skeleton-of-rhythm (rhythm-to-analyse &key voices-per-octave)
+  (:documentation "Returns a list of ridges (a skeleton) for the given rhythm."))
+
 (defgeneric clap-to-rhythm (rhythm-to-analyse &key tactus-selector)
   (:documentation "Returns a set of sample times to clap to given the supplied rhythm"))
 
@@ -311,8 +314,7 @@ then can extract ridges."
 	      (.> correlated-profile correlation-minimum))
 	correlated-profile)))
 
-#|
-(defun skeleton-for-scaleogram (scaleogram sample-rate)
+(defun scale-peaks-of-scaleogram (scaleogram sample-rate)
   (let* ((magnitude (scaleogram-magnitude scaleogram)) ; short-hand.
 	 (phase (scaleogram-phase scaleogram))
 	 ;; Correlate various ridges to produce a robust version.
@@ -321,41 +323,26 @@ then can extract ridges."
 	 (salient-scale (preferred-tempo scaleogram sample-rate))
 	 ;; Weight by the absolute tempo preference.
 	 (tempo-weighted-ridges (.* correlated-ridges 
-				    (tempo-salience-weighting salient-scale (.array-dimensions magnitude))))
+				    (tempo-salience-weighting salient-scale (.array-dimensions magnitude)))))
 	 ;; TODO substitute tempo-weighted-ridges for correlated-ridges to enable tempo selectivity.
-	 (correlated-ridge-scale-peaks (determine-scale-peaks correlated-ridges)))
-    (extract-ridges correlated-ridge-scale-peaks)))
+    (determine-scale-peaks correlated-ridges)))
 
-(defmethod tactus-for-rhythm ((analysis-rhythm rhythm) 
-			      &key (voices-per-octave 16)
-			      (tactus-selector #'select-longest-tactus))
-  "Returns the selected tactus given the rhythm."
+(defmethod skeleton-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
+  "Returns the skeleton given the rhythm."
   (let* ((scaleogram (cwt (time-signal analysis-rhythm) voices-per-octave))
-       	 (skeleton (skeleton-for-scaleogram scaleogram (sample-rate analysis-rhythm)))
-	 ;; select out the tactus from all ridge candidates.
-	 (chosen-tactus (funcall tactus-selector skeleton)))
+	 (correlated-ridge-scale-peaks (scale-peaks-of-scaleogram scaleogram (sample-rate analysis-rhythm)))
+       	 (skeleton (extract-ridges correlated-ridge-scale-peaks)))
     (plot-cwt scaleogram :title (name analysis-rhythm))
-    (plot-ridges-and-tactus correlated-ridge-scale-peaks chosen-tactus :title (name analysis-rhythm))
-    (values chosen-tactus scaleogram)))
-|#
+    (plot-ridges-and-tactus correlated-ridge-scale-peaks :title (name analysis-rhythm))
+    (values skeleton scaleogram)))
 
 (defmethod tactus-for-rhythm ((analysis-rhythm rhythm) 
 			      &key (voices-per-octave 16)
 			      (tactus-selector #'select-longest-tactus))
   "Returns the selected tactus given the rhythm."
   (let* ((scaleogram (cwt (time-signal analysis-rhythm) voices-per-octave))
-	 (magnitude (scaleogram-magnitude scaleogram)) ; short-hand.
-	 (phase (scaleogram-phase scaleogram))
-	 ;; Correlate various ridges to produce a robust version.
-	 (correlated-ridges (correlate-ridges magnitude phase voices-per-octave))
-	 ;; Scale index 1 is the highest frequency (smallest dilation) scale.
-	 (salient-scale (preferred-tempo scaleogram (sample-rate analysis-rhythm)))
-	 ;; Weight by the absolute tempo preference.
-	 (tempo-weighted-ridges (.* correlated-ridges 
-				    (tempo-salience-weighting salient-scale (.array-dimensions magnitude))))
-	 ;; TODO substitute tempo-weighted-ridges for correlated-ridges to enable tempo selectivity.
-	 (correlated-ridge-scale-peaks (determine-scale-peaks correlated-ridges))
-	 (skeleton (extract-ridges correlated-ridge-scale-peaks))
+	 (correlated-ridge-scale-peaks (scale-peaks-of-scaleogram scaleogram (sample-rate analysis-rhythm)))
+       	 (skeleton (extract-ridges correlated-ridge-scale-peaks))
 	 ;; select out the tactus from all ridge candidates.
 	 (chosen-tactus (funcall tactus-selector skeleton)))
     (plot-cwt scaleogram :title (name analysis-rhythm))
