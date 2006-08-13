@@ -45,11 +45,11 @@
 (defgeneric contains-scale-and-time (ridge scale time)
   (:documentation "Returns t if the given scale and time are part of this ridge."))
 
+(defgeneric average-scale (ridge)
+  (:documentation "Returns the average scale number of a ridge"))
+
 (defgeneric tactus-image (ridge ridges &key maximum-colour-value)
   (:documentation "Returns an Imago image object displaying all ridges and the extracted tactus ridge."))
-
-(defgeneric decimate-ridge (ridge reduce-list)
-  (:documentation "Returns the ridge instance with it's data decimated using the reduce-list"))
 
 (defgeneric scales-as-array (ridge)
   (:documentation "Returns the scales list as an nlisp array"))
@@ -83,17 +83,13 @@
   "Returns t if the given scale and time are part of this ridge."
   (equal scale (scale-at-time the-ridge time)))
 
-#|
-(defmethod contains-scale-and-time ((the-ridge ridge) scale time)
-  "Returns t if the given scale and time are part of this ridge."
-  (let ((scales-index (- time (start-sample the-ridge))))
-    (and (plusp scales-index)
-	 (< scales-index (duration the-ridge))
-	 (equal scale (elt (scales the-ridge) scales-index)))))
-|#
+(defmethod average-scale ((the-ridge ridge))
+  "Returns the mean average of the scale numbers"
+  (/ (.sum (scales-as-array the-ridge)) (duration the-ridge)))
 
-(defmethod decimate-ridge ((the-ridge ridge) reduce-list)
+(defmethod decimate ((the-ridge ridge) reduce-list &key (start-indices '(0 0)))
   "Returns the ridge instance with it's data decimated using the decimation-parameter-list"
+  (declare (ignore start-indices))
   (let* ((reduce-by (second reduce-list))
 	 (original-scale-list (scales the-ridge)))
     (setf (scales the-ridge) 
