@@ -153,9 +153,10 @@
 		   (time-axis-decimation 4)
 		   (temp-directory "tmp")
 		   (image-file-type "pnm")) ; Can be "png"
-   "time-axis-decimation = The amount of downsampling of the data along the translation axis before we plot.
-   We could do away with this when we can process the data without excess resource strain,
-   but it makes for diagrams which are not so wide, making them easier to view and interpret."
+   "Generates a displayable and file writable image from a given set of data to plot.
+    time-axis-decimation = The amount of downsampling of the data along the translation axis before we plot.
+    We could do away with this when we can process the data without excess resource strain,
+    but it makes for diagrams which are not so wide, making them easier to view and interpret."
   (let* ((pathname (make-pathname :directory (list :absolute temp-directory) 
 				  :name (concatenate 'string title file-extension)
 				  :type image-file-type))
@@ -177,37 +178,13 @@
    (lambda (x) (apply #'plot-image (append x (list :title title :time-axis-decimation time-axis-decimation))))
    image-list))
 
-#|
-;; How to plot using nlisp (unfortunately the data transferred between gnuplot and nlisp is too much.
-
-    (palette-defined '((0 "#FF0000")
-		       (2 "#00FFFF")
-		       (6 "#0000FF")))
-
-    (image plotable-mag nil nil
-	   :title title
-	   :xlabel "time" :ylabel "dilation scale")))
-|#
-
-;; TODO all this can be replaced with:
-;; (plot-image #'tactus-image "-tactus" (list computed-tactus ridges))
-;; once we have decimate as a method, but this might be problematic defining a method elsewhere.
 (defun plot-ridges-and-tactus (ridges computed-tactus &key 
 			       (title "unnamed")
 			       (time-axis-decimation 4))
   "Plot the ridges in greyscale and the computed tactus in red."
-
-  (let* ((pathname (make-pathname :directory (list :absolute "tmp") 
-				  :name (concatenate 'string title "-tactus")
-				  :type "pnm"))
-	 ;; Downsample the data
-	 (downSampledRidges (decimate ridges (list 1 time-axis-decimation)))
-	 ;; TODO this is wrong, the tactus is a object, not a nlisp vector.
-	 ;; Perhaps create a decimate method specialised on tactus?
-	 (downSampledTactus (decimate-ridge computed-tactus (list 1 time-axis-decimation)))
-	 (plotable-image (tactus-image downSampledTactus downSampledRidges)))
-    (imago:write-pnm plotable-image pathname :ascii)
-    plotable-image))
+  (plot-image #'tactus-image "-tactus" (list computed-tactus ridges)
+	      :title title
+	      :time-axis-decimation time-axis-decimation))
 
 (defun plot-claps (rhythm-signal claps &key foot-tap-AM (max-computed-scale 2d0)
 		   (comment "") 
@@ -227,3 +204,14 @@
 ;;  (let ((clap-intensity (make-double-array (.array-dimensions claps) :initial-element 2d0)))
 ;;  (plot clap-intensity claps :style "impulses"))
 
+#|
+;; How to plot using nlisp (unfortunately the data transferred between gnuplot and nlisp is too much.
+
+    (palette-defined '((0 "#FF0000")
+		       (2 "#00FFFF")
+		       (6 "#0000FF")))
+
+    (image plotable-mag nil nil
+	   :title title
+	   :xlabel "time" :ylabel "dilation scale")))
+|#
