@@ -114,23 +114,25 @@
 ;; Test non-dyadic reconstruction:
 ;; (test-reconstruction (fm-test :signal-length 2200))
 
-(defun test-octave-file (filename &key (sample-rate 200))
-  (let* ((file-path (make-pathname :directory (list :absolute "/Users/leigh/Research/Data/NewAnalysedRhythms/") 
-				   :name filename
-				   :type "octave"))
+(defun test-octave-file (filename &key (sample-rate 200) (description "") (tactus-selector #'select-longest-tactus))
+  (let* ((file-path (make-pathname 
+		     :directory (list :absolute "/Users/leigh/Research/Data/NewAnalysedRhythms/") 
+		     :name filename
+		     :type "octave"))
 	 (rhythm-signal (.load-octave-file file-path))
-	 ;; Signals can be read in as column or row vectors, so we align them all to a row vector.
+	 ;; Signals can be read in as column or row vectors, so we align them all to a row
+	 ;; vector transposing.
 	 (aligned-signal (if (> (.array-dimension rhythm-signal 0) 1)
 				    (.transpose rhythm-signal)
 				    rhythm-signal))
 	 (loaded-rhythm (make-instance 'rhythm 
 				       :name filename
-				       :description "Greensleeves performed" 
+				       :description description
 				       :time-signal (.row aligned-signal 0)
 				       :sample-rate sample-rate)))
-    (clap-to-rhythm loaded-rhythm)))
+    (clap-to-rhythm loaded-rhythm :tactus-selector tactus-selector)))
 
-;; (test-octave-file "greensleeves-perform-medium" :sample-rate 400)
+;; (test-octave-file "greensleeves-perform-medium" :sample-rate 400 :description "Greensleeves performed")
 ;; (test-octave-file "longuet_cliche" :sample-rate 200)
 ;; (test-octave-file "intensity34_to_44" :sample-rate 200)
-;; (test-octave-file "desain-unquantized" :sample-rate 200)
+;; (test-octave-file "desain-unquantized" :sample-rate 200 :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time 58 62 skeleton)))
