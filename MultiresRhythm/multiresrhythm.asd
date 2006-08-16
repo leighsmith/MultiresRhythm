@@ -33,9 +33,9 @@
   :version "1.0"
   :author "Leigh M. Smith"
   :depends-on (:nlisp :zlib :imago)
-  :components ((:file "cwt")
-	       (:file "ridges")
+  :components ((:file "ridges")
 	       (:file "rhythm")
 	       (:file "plotting" :depends-on ("ridges"))
+	       (:file "cwt" :depends-on ("plotting"))
 	       (:file "multires_rhythm" :depends-on ("cwt" "plotting"))
 	       (:file "test-examples" :depends-on ("rhythm" "multires_rhythm"))))
