@@ -1,10 +1,9 @@
-Plotting fix the transpose issue with large arrays - done?
-local-phase-congruency
-stationary-phase
-correlate-ridges
-normalise-by-scale
+local-phase-congruency able to recompute using trig to catch boundary conditions?
+tactus selection with manual override
+tactus selection prefering longest and lowest frequency ridge.
+ridge extraction using energy measure, not just single continuity.
 shift
-find
 sound file reading/writing code. - Surely the MusicKit or at least, libsndfile with CFFI.
 
 print-object for NLISP, print just subset of array unless a keyword is given :full
+Tempo selectivity
