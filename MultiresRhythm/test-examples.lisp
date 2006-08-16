@@ -114,7 +114,7 @@
 ;; Test non-dyadic reconstruction:
 ;; (test-reconstruction (fm-test :signal-length 2200))
 
-(defun test-octave-file (filename &key (sample-rate 200) (description "") (tactus-selector #'select-longest-tactus))
+(defun load-rhythm-file (filename &key (sample-rate 200) (description ""))
   (let* ((file-path (make-pathname 
 		     :directory (list :absolute "/Users/leigh/Research/Data/NewAnalysedRhythms/") 
 		     :name filename
@@ -124,15 +124,23 @@
 	 ;; vector transposing.
 	 (aligned-signal (if (> (.array-dimension rhythm-signal 0) 1)
 				    (.transpose rhythm-signal)
-				    rhythm-signal))
-	 (loaded-rhythm (make-instance 'rhythm 
-				       :name filename
-				       :description description
-				       :time-signal (.row aligned-signal 0)
-				       :sample-rate sample-rate)))
+				    rhythm-signal)))
+    (make-instance 'rhythm 
+		   :name filename
+		   :description description
+		   :time-signal (.row aligned-signal 0)
+		   :sample-rate sample-rate)))
+
+(defun test-octave-file (filename &key (sample-rate 200) (description "") (tactus-selector #'select-longest-lowest-tactus))
+  (let* ((loaded-rhythm (load-rhythm-file filename :description description :sample-rate sample-rate)))
     (clap-to-rhythm loaded-rhythm :tactus-selector tactus-selector)))
 
 ;; (test-octave-file "greensleeves-perform-medium" :sample-rate 400 :description "Greensleeves performed")
 ;; (test-octave-file "longuet_cliche" :sample-rate 200)
 ;; (test-octave-file "intensity34_to_44" :sample-rate 200)
+;; (test-octave-file "desain-unquantized" :sample-rate 200)
 ;; (test-octave-file "desain-unquantized" :sample-rate 200 :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time 58 62 skeleton)))
+;; (test-octave-file "desain-unquantized" :sample-rate 200 :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time 73 65 skeleton)))
+
+;; (setf desain-at-65 (mapcar (lambda (x) (scale-at-time x 65)) desain-skeleton))
+;; (loop for y in desain-at-65 when y collect y)
