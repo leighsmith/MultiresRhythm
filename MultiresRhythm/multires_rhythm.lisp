@@ -59,7 +59,9 @@ This is weighted by absolute constraints, look in the 600ms period range."
 	 (ntime (second time-frequency-dimensions))
 	 (tempo-weighting-over-time (make-double-array time-frequency-dimensions))
 	 ;; Create a Gaussian envelope spanning the number of scales.
-	 (tempo-scale-weighting (gaussian-envelope nscale :center (- 1.0 (/ (* 2.0 salient-scale) nscale)))))
+	 (tempo-scale-weighting (gaussian-envelope nscale 
+						   :mean (- 1.0 (/ (* 2.0 salient-scale) nscale))
+						   :scaling 1d0)))
     (format t "preferred tempo scale = ~d~%" salient-Scale)
 
     (dotimes (time ntime)
@@ -333,12 +335,12 @@ then can extract ridges."
 	 (correlated-ridge-scale-peaks (scale-peaks-of-scaleogram scaleogram (sample-rate analysis-rhythm)))
        	 (skeleton (extract-ridges correlated-ridge-scale-peaks)))
     (plot-cwt scaleogram :title (name analysis-rhythm))
-    (plot-ridges-and-tactus correlated-ridge-scale-peaks :title (name analysis-rhythm))
+    ;; (plot-ridges-and-tactus correlated-ridge-scale-peaks nil :title (name analysis-rhythm))
     (values skeleton scaleogram)))
 
 (defmethod tactus-for-rhythm ((analysis-rhythm rhythm) 
 			      &key (voices-per-octave 16)
-			      (tactus-selector #'select-longest-tactus))
+			      (tactus-selector #'select-longest-lowest-tactus))
   "Returns the selected tactus given the rhythm."
   (let* ((scaleogram (cwt (time-signal analysis-rhythm) voices-per-octave))
 	 (correlated-ridge-scale-peaks (scale-peaks-of-scaleogram scaleogram (sample-rate analysis-rhythm)))
@@ -406,7 +408,7 @@ then can extract ridges."
 		:signal-description (name original-rhythm))
     clap-at))
 
-(defmethod clap-to-rhythm ((loaded-rhythm rhythm) &key (tactus-selector #'select-longest-tactus))
+(defmethod clap-to-rhythm ((loaded-rhythm rhythm) &key (tactus-selector #'select-longest-lowest-tactus))
   "Returns a set of sample times to clap to given the supplied rhythm"
     (multiple-value-bind (computed-tactus rhythm-scaleogram) 
 	(tactus-for-rhythm loaded-rhythm :tactus-selector tactus-selector)

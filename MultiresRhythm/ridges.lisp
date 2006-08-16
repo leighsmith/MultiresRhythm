@@ -85,7 +85,7 @@
 
 (defmethod average-scale ((the-ridge ridge))
   "Returns the mean average of the scale numbers"
-  (/ (.sum (scales-as-array the-ridge)) (duration the-ridge)))
+  (floor (.sum (scales-as-array the-ridge)) (duration the-ridge)))
 
 (defmethod decimate ((the-ridge ridge) reduce-list &key (start-indices '(0 0)))
   "Returns the ridge instance with it's data decimated using the decimation-parameter-list"
@@ -225,12 +225,14 @@
     (first (sort searchable-skeleton #'>= :key #'duration))))
 |#
 
-;; TODO Can this be implemented more simply?
-(defun select-longest-tactus (skeleton)
-  "Returns the longest duration ridge."
+(defun select-longest-lowest-tactus (skeleton)
+  "Returns the longest duration and lowest scale ridge."
   (let ((max-ridge (make-instance 'ridge)))
     (dolist (ridge skeleton)
-      (if (< (duration max-ridge) (duration ridge))
+      (if (or (> (duration ridge) (duration max-ridge))
+	      ;; average-scale returns scale numbers indexed from the highest scales, so 
+	      (and (eql (duration ridge) (duration max-ridge))
+		   (> (average-scale ridge) (average-scale max-ridge))))
 	  (setf max-ridge ridge)))
     max-ridge))
 
@@ -273,7 +275,7 @@
 	 (absolute-pathname (concatenate 'string data-directory filename ".ridges"))
 	 (determined-ridges (.load-octave-file absolute-pathname))
 	 (skeleton (extract-ridges determined-ridges))
-	 (longest-tactus (select-longest-tactus skeleton)))
+	 (longest-tactus (select-longest-lowest-tactus skeleton)))
     (.save-to-octave-file (scales longest-tactus)
 			  (concatenate 'string data-directory filename ".tactus")
 			  :variable-name "tactus")
@@ -282,7 +284,7 @@
 ;; (setf skeleton (test-ridges "greensleeves-perform-medium"))
 ;; (setf determined-ridges (.load-octave-file "/Users/leigh/Research/Data/NewAnalysedRhythms/greensleeves-perform-medium.ridges"))
 ;; (setf skeleton (extract-ridges determined-ridges))
-;; (setf longest-tactus (select-longest-tactus skeleton))
+;; (setf longest-tactus (select-longest-lowest-tactus skeleton))
 ;; (.save-to-octave-file (scales longest-tactus) "/Users/leigh/Research/Data/NewAnalysedRhythms/greensleeves-perform-medium.tactus" :variable-name "tactus")
 ;; (start-sample longest-tactus)
 
