@@ -53,13 +53,17 @@
 (defgeneric plot-cwt (scaleogram &key title time-axis-decimation)
   (:documentation "Function to plot the magnitude and phase components of the result of a continuous wavelet transform on a signal."))
 
-;; TODO need to separate out so we can specify the variance (sigma) directly.
-(defun gaussian-envelope (width &key (center 0.0))
+(defun gaussian-envelope (width &key 
+			    (mean 0.0) 
+			    (stddev 1.0) 
+			    (scaling (/ 1d0 (* (sqrt (* 2d0 pi)) stddev))))
   "Compute a gaussian envelope.
-   width is in the number of points to range an envelope over 3 standard deviations.
-   center determines the position of the envelope within the width number of samples."
-  (let ((x (.rseq (- center 1.0) (+ center 1.0) width)))
-    (.exp (.- (.expt (.* 2d0 x (/ 6d0 (sqrt 8d0))) 2.0)))))
+   width is the sampling range of an envelope over +/-5 standard deviations.
+   mean determines the position of the envelope within the width number of samples.
+   stddev determines the standard deviation and therefore the variance of the distribution."
+  (let ((x (.rseq (- mean 5.0) (+ mean 5.0) width)))
+    (.* scaling
+	(.exp (.- (./ (.expt (.- x mean) 2.0) (.* 2d0 stddev stddev)))))))
 
 (defun morlet-wavelet-fourier (signal-time-period wavelet-scale &key (omega0 6.2))
   "Construct a Morlet wavelet filter in the Fourier domain within the length of the signal (so we can multiply).
