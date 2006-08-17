@@ -61,7 +61,7 @@
    width is the sampling range of an envelope over +/-5 standard deviations.
    mean determines the position of the envelope within the width number of samples.
    stddev determines the standard deviation and therefore the variance of the distribution."
-  (let ((x (.rseq (- mean 5.0) (+ mean 5.0) width)))
+  (let ((x (.rseq -5.0 +5.0 width)))
     (.* scaling
 	(.exp (.- (./ (.expt (.- x mean) 2.0) (.* 2d0 stddev stddev)))))))
 

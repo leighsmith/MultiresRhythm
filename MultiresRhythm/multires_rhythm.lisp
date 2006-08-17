@@ -55,18 +55,19 @@ This is weighted by absolute constraints, look in the 600ms period range."
 ;; Scale index 1 is the highest frequency (smallest dilation) scale.
 (defun tempo-salience-weighting (salient-scale time-frequency-dimensions)
   "Produce a weighting matching the analysis window using tempo preference."
-  (let* ((nscale (first time-frequency-dimensions))
-	 (ntime (second time-frequency-dimensions))
+  (let* ((number-of-scales (first time-frequency-dimensions))
+	 (time-in-samples (second time-frequency-dimensions))
 	 (tempo-weighting-over-time (make-double-array time-frequency-dimensions))
 	 ;; Create a Gaussian envelope spanning the number of scales.
-	 (tempo-scale-weighting (gaussian-envelope nscale 
-						   :mean (- 1.0 (/ (* 2.0 salient-scale) nscale))
+	 ;; Match the mean to a span across -5 < mean < 5 standard deviations.
+	 (tempo-scale-weighting (gaussian-envelope number-of-scales 
+						   :mean (- (/ (* 10.0 salient-scale) number-of-scales) 5.0)
 						   :scaling 1d0)))
     (format t "preferred tempo scale = ~d~%" salient-Scale)
 
-    (dotimes (time ntime)
+    (dotimes (time time-in-samples)
       (setf-subarray (val tempo-weighting-over-time) 
-		     (val (.reshape tempo-scale-weighting (list nscale 1))) (list t time)))
+		     (val (.reshape tempo-scale-weighting (list number-of-scales 1))) (list t time)))
     (plot (.column tempo-weighting-over-time 0) nil :title "Preferred tempo weighting profile")
     tempo-weighting-over-time))
 
@@ -99,10 +100,10 @@ This is weighted by absolute constraints, look in the 600ms period range."
  We assume values are positive values only"
   (let* ((time-frequency-dimensions (.array-dimensions magnitude))
 	 (number-of-scales (first time-frequency-dimensions))
-	 (nTime (second time-frequency-dimensions))
+	 (time-in-samples (second time-frequency-dimensions))
 	 (normalised-values (make-double-array time-frequency-dimensions)))
     ;; Duplicate the maximum scales per time for each scale to enable element-wise division.
-    (dotimes (i nTime)
+    (dotimes (i time-in-samples)
       (let* ((scales-per-time (.column magnitude i))
 	     ;; Determine the maximum scale at each time.
 	     (maxScalePerTime (.max (.abs scales-per-time)))
@@ -149,7 +150,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
   ;; the central frequency of the dilated wavelet
   (let* ((time-frequency-dimensions (.array-dimensions phase))
 	 (number-of-scales (first time-frequency-dimensions))
-	 (nTime (second time-frequency-dimensions))
+	 (time-in-samples (second time-frequency-dimensions))
 	 ;; (ridges (make-double-array time-frequency-dimensions))
 	 (signal-phase-diff (make-double-array time-frequency-dimensions))
 
@@ -194,7 +195,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
       ;; the wavelet at each dilation scale are within 1.5 sample of one another.
       (setf-subarray (val signal-phase-diff)
 		     (val (.abs (.- (.subarray signal-period (list i t)) (.aref scale-time-support i))))
-		     (list i (1- nTime))))
+		     (list i (1- time-in-samples))))
 
     ;; We invert the normalised phase difference so that maximum values indicate
     ;; stationary phase -> ridges.
@@ -219,7 +220,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
     matrix indicating presence of congruency."
 
   (let* ((time-frequency-dimensions (.array-dimensions phase))
-	 (num-of-scales (first time-frequency-dimensions))
+	 (number-of-scales (first time-frequency-dimensions))
 
 	 ;; Find derivative with respect to scale s. Transposes phase so that diffence is
 	 ;; across rows (i.e scales).
@@ -240,7 +241,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 	 (no-outliers))
     ;; Since we produce the derivative from the difference, local-phase-diff is one
     ;; element less.
-    (setf-subarray (val congruency) (val (.transpose local-phase-diff)) (list (list 1 (1- num-of-scales)) t))
+    (setf-subarray (val congruency) (val (.transpose local-phase-diff)) (list (list 1 (1- number-of-scales)) t))
 
 #|
     ;; so we need to interpolate the result to
