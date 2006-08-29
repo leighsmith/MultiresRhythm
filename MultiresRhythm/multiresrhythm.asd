@@ -19,7 +19,9 @@
 ;;;;   annote =  {\url{http://www.leighsmith.com/Research/Papers/MultiresRhythm.pdf}}
 ;;;;
 
-(defpackage #:multires-rhythm (:use #:cl #:asdf #:nlisp))
+(defpackage #:multires-rhythm (:use #:cl #:asdf #:nlisp)
+	    (:export :rhythm :skeleton-of-rhythm :tactus-for-rhythm :rhythmic-grid-to-signal))
+
 (in-package :multires-rhythm)
 
 ;; This is required to get around a fucking Package Lock Violation deep within SBCL's CLOS?

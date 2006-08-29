@@ -63,7 +63,7 @@ This is weighted by absolute constraints, look in the 600ms period range."
 	 (tempo-scale-weighting (gaussian-envelope number-of-scales 
 						   :mean (- (/ (* 10.0 salient-scale) number-of-scales) 5.0)
 						   :scaling 1d0)))
-    (format t "preferred tempo scale = ~d~%" salient-Scale)
+    (format t "preferred tempo scale = ~d~%" salient-scale)
 
     (dotimes (time time-in-samples)
       (setf-subarray (val tempo-weighting-over-time) 
