@@ -53,9 +53,9 @@
   (let* ((m2 (- (+ lightness saturation) (* lightness saturation)))
 	 (m1 (- (* 2 lightness) m2)))
     (if (not (= saturation 0))
-	(list (hls-value m1 m2 (+ hue 120))   ; R
-	      (hls-value m1 m2 hue)	      ; G
-	      (hls-value m1 m2 (- hue 120)))  ; B
+	(list (hls-value m1 m2 (+ hue 120))   ; Red
+	      (hls-value m1 m2 hue)	      ; Green
+	      (hls-value m1 m2 (- hue 120)))  ; Blue
 	(list 0 0 0))))
 
 (defun spectral-colormap (map-length &key (alpha 255))
@@ -74,11 +74,140 @@
        (setf (aref color-map map-index) (apply #'imago:make-color rgba))
      finally (return color-map)))
 
+#|
+
+
+
+    data represented by a list of x,y0,y1 mapping correspondences.
+    Each element in this list represents how a value between 0 and 1
+    (inclusive) represented by x is mapped to a corresponding value
+    between 0 and 1 (inclusive). The two values of y are to allow
+    for discontinuous mapping functions (say as might be found in a
+    sawtooth) where y0 represents the value of y for values of x <= to that given, and y1 is the value to be used for x > than
+    that given). The list must start with x=0, end with x=1, and
+    all values of x must be in increasing order. Values between
+    the given mapping points are determined by simple linear interpolation.
+
+    The function returns an array "result" where result[x*(N-1)]
+    gives the closest value for values of x between 0 and 1.
+
+   # begin generation of lookup table
+    x = x * (N-1)
+    lut = zeros((N,), Float)
+    xind = arange(float(N))
+    ind = searchsorted(x, xind)[1:-1]
+
+    lut[1:-1] = (divide(xind[1:-1] - take(x, ind - 1), take(x, ind) - take(x, ind - 1))
+		* (take(y0, ind) - take(y1, ind - 1)) + take(y1, ind - 1))
+
+    lut[0] = y1[0]
+    lut[-1] = y0[-1]
+
+    # ensure that the lut is confined to values between 0 and 1 by clipping it
+    lut = where(lut > 1., 1., lut)
+    lut = where(lut < 0., 0., lut)
+    return lut
+
+|#
+
+;; (defun search-sorted (a x)
+;;   "Returns index of the first element in the array a which exceeds x, and returns the
+;;    length of a (the highest index of the array plus 1) if x is larger than the last element.
+;;    Assumes that the data in the array is sorted in ascending order."
+;;   ;; TODO needs to return an array, this would be ok if list-2-array generated
+;;   ;; n-fixnum-arrays and it wasn't as memory hungry.
+;;   (nlisp::list-2-array 
+;;    (loop 
+;;       for to-find across (val x)
+;;       ;; TODO If a is assumed sorted, we could do a binary search etc across the array?
+;;       collect (position to-find (val a) :test #'<=))))
+
+(defun search-sorted (a x)
+  "Returns index of the first element in the array a which exceeds x, and returns the
+   length of a (the highest index of the array plus 1) if x is larger than the last element.
+   Assumes that the data in the array is sorted in ascending order."
+  (let* ((element-length (.array-total-size x))
+	 (found-indexes (make-array element-length :fill-pointer 0))
+	 (next-position))
+    (dotimes (to-find-index element-length)
+      (setf next-position (position (.aref x to-find-index) (val a) :test #'<=))
+      (vector-push (if next-position next-position (.length a)) found-indexes))
+    (make-instance 'n-fixnum-array :ival (adjust-array found-indexes (fill-pointer found-indexes)))))
+
+#|
+(defun linear-segmented-channel (map-length colour-linear-segments)
+  "Create an 1-d lookup table with map-length elements.
+   colour-linear-segments is a dictionary with a red, green and blue entries. Each entry
+   should be a list of x, y0, y1 tuples."
+  (let* ((x  (nlisp::list-2-array (mapcar #'first colour-linear-segments)))
+	 (y0 (nlisp::list-2-array (mapcar #'second colour-linear-segments)))
+	 (lut-index (.rseq 0.0 1.0 map-length))	; discretise the look up table.
+	 (lut (make-double-array (.array-dimensions lut-index)))
+	 (gradients (./ (diff y0) (diff x))))
+    (format t "x indexes ~a~%" (.* x map-length))
+    (loop 
+       for segment-index from 0 below (1- (length colour-linear-segments))
+       with line
+       with new-y
+       do
+	 (format t "x ~a grad ~a y0 ~a~%" (.aref x segment-index) (.aref gradients
+  segment-index) (.aref y0 segment-index))
+	 (setf line (.* (.- lut-index (.aref x segment-index)) (.aref gradients segment-index)))
+	 (format t "to add ~a~%" (.and (.>= line 0) (.<= line 1.0)))
+	 (setf new-y (.+ line (.aref y0 segment-index)))
+	 (format t "new-y ~a~%" new-y)
+         ;; only values between 0 & 1 are valid
+;;	 (format t "add ~a~%" (.+ lut (.* (.and (.>= line 0) (.<= line 1.0)) new-y)))
+	 (setf lut (.+ lut (.* (.and (.>= line 0) (.<= line 1.0)) new-y)))
+	 (format t "lut ~a~%" lut)
+       finally (return lut))))
+|#
+
+;; Only good for vectors, of course.
+(defun .subseq (a start &optional end)
+  (make-instance (class-of a) :ival (subseq (val a) start end)))
+
+(defun linear-segmented-channel (map-length colour-linear-segments)
+  "Create an 1-d lookup table with map-length elements.
+   colour-linear-segments is a dictionary with a red, green and blue entries. Each entry
+   should be a list of x, y0, y1 tuples."
+  (let* ((x  (.* (nlisp::list-2-array (mapcar #'first colour-linear-segments)) map-length))
+	 (y0 (nlisp::list-2-array (mapcar #'second colour-linear-segments)))
+	 (lut-index (.rseq 0.0 (1- map-length) map-length))	; discretise the look up table.
+	 (segment-bases (.- (.subseq (search-sorted x lut-index) 1) 1))
+	 (line))
+    (setf line (.* (./ (.- (.subseq lut-index 1) (.arefs x segment-bases)) 
+		       (.arefs (diff x) segment-bases)) 
+		   (.arefs (diff y0) segment-bases)))
+    (.+ line (.arefs y0 segment-bases))))
+
+;; (setf red (linear-segmented-channel 256 '((0.0d0 0.0d0 0.0d0) (0.35d0  0.0d0 0.0d0) (0.66d0  1.0d0 1.0d0) (0.89d0 1.0d0 1.0d0) (1.0d0  0.5d0 0.5d0))))
+
+#|
+(defun linear-segmented-colormap (map-length colour-linear-segments)
+  "Create an 1-d lookup table with map-length elements.
+   colour-linear-segments is a dictionary with a red, green and blue entries. Each entry
+   should be a list of x, y0, y1 tuples."
+  (linear-segmented-channel map-length (first colour-linear-segments))
+  (linear-segmented-channel map-length (second colour-linear-segments))
+  (linear-segmented-channel map-length (third colour-linear-segments))
+
+;; (.aref (.find (.>= (.rseq 0 1 30) 0.66)) 0)
+
+;;; all y0 y1 values are the same.
+(defun jet-colormap (map-length)
+  (linear-segmented-colormap map-length
+     '(((0.0d0 0.0d0 0.0d0) (0.35d0  0.0d0 0.0d0) (0.66d0  1.0 1.0) (0.89 1.0 1.0) (1.0  0.5 0.5)))
+      (((0.0d0 0.0d0 0.0d0) (0.125 0.0 0.0) (0.375 1.0 1.0) (0.64 1.0 1.0) (0.91 0.0 0.0) (1.0 0.0 0.0)))
+      (((0.0d0 0.5d0 0.5d0) (0.11  1.0 1.0) (0.34  1.0 1.0) (0.65 0.0 0.0) (1.0  0.0 0.0)))))
+|#
+
 ;;; Functions to create IMAGO image instances from magnitude and phase components of a
 ;;; CWT.
 
 (defun make-colour-mapped-image (matrix-to-plot colour-map)
-  "Creates an Imago image instance from the supplied nlisp matrix and colour-map"
+  "Creates an Imago image instance from the supplied nlisp matrix and colour-map. 
+   The maximum values in the matrix and the length of the colour map must match."
   (let ((image (make-instance 'imago:indexed-image
 			      :width (.array-dimension matrix-to-plot 0)
 			      :height (.array-dimension matrix-to-plot 1)
@@ -199,6 +328,14 @@
 	   :xlabel "Time"
 	   :ylabel "Scaled Intensity/Phase"
 	   :title (format nil "Computed foot-tap ~a of ~a" comment signal-description))))
+
+(defun colour-swatch (&key (swatch-length 256) (swatch-width 30))
+  "Make a nice little vertical bar plotting the color map"
+  (make-colour-mapped-image (.subarray (.iseq2 0 (1- swatch-length)) (list t (list 0 (1- swatch-width))))
+                            (spectral-colormap swatch-length)))
+
+;; (imago:write-pnm (colour-swatch :swatch-width 30) "/tmp/colour-swatch.pnm" :ascii)
+
 
 ;; Alternative plot method if not using nplot.
 ;;  (let ((clap-intensity (make-double-array (.array-dimensions claps) :initial-element 2d0)))
