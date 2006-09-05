@@ -22,6 +22,8 @@
 (in-package :multires-rhythm)
 (use-package :nlisp)
 
+;;;; Declarations
+
 ;;; A rhythm includes a textual description, the sample rate and a general description of
 ;;; a signal. This allows representing a rhythm as a continuum between
 ;;; a signal processing representation (high sample rate) and a symbolic representation
@@ -40,6 +42,12 @@
 
 (defgeneric clap-to-rhythm (rhythm-to-analyse &key tactus-selector)
   (:documentation "Returns a set of sample times to clap to given the supplied rhythm"))
+
+(defgeneric rhythm-complexity (rhythm-to-analyse)
+  (:documentation "Returns a normalised measure of the complexity of the rhythm,
+   where 0 = impossibly simple -> 1 = impossibly hard."))
+
+;;;; Implementation
 
 (defun preferred-tempo (rhythm-scaleogram rhythm-sample-rate 
 			;; Fraisse's "spontaneous tempo" interval in seconds
@@ -356,15 +364,6 @@ then can extract ridges."
   "We clamp any ill-conditioned phase (negligble magnitude) to the value given (defaulting to zero)"
   (clamp-to-bounds phase magnitude :low-bound threshold :clamp-low clamp))
 
-(defun .find (a)
-  "Returns an array of non-zero row major positions"
-  (let* ((element-length (.array-total-size a))
-	 (all-positions (make-array element-length :fill-pointer 0)))
-    (dotimes (next-non-zero-position element-length)
-      (if (not (zerop (.row-major-aref a next-non-zero-position)))
-	  (vector-push next-non-zero-position all-positions)))
-   (make-instance 'n-fixnum-array :ival (adjust-array all-positions (fill-pointer all-positions)))))
-
 ;; TODO Return ((time intensity) (time intensity) ...)
 ;; use constant intensity claps but weight the amplitude for when we mix in Common Music.
 (defun clap-to-tactus-phase (original-rhythm scaleogram tactus 
@@ -409,8 +408,21 @@ then can extract ridges."
 		:signal-description (name original-rhythm))
     clap-at))
 
-(defmethod clap-to-rhythm ((loaded-rhythm rhythm) &key (tactus-selector #'select-longest-lowest-tactus))
+(defmethod clap-to-rhythm ((performed-rhythm rhythm) &key (tactus-selector #'select-longest-lowest-tactus))
   "Returns a set of sample times to clap to given the supplied rhythm"
     (multiple-value-bind (computed-tactus rhythm-scaleogram) 
-	(tactus-for-rhythm loaded-rhythm :tactus-selector tactus-selector)
-      (clap-to-tactus-phase loaded-rhythm rhythm-scaleogram computed-tactus)))
+	(tactus-for-rhythm performed-rhythm :tactus-selector tactus-selector)
+      (clap-to-tactus-phase performed-rhythm rhythm-scaleogram computed-tactus)))
+
+;;; Could use a weighted bitmap of the ridges as a general density measure. This is
+;;; weighted by absolute tempo. It should also be weighted by the number of ridges (a
+;;; dense single ridge is less complex than one which is composed of many small ridges.
+(defmethod rhythm-complexity ((rhythm-to-analyse rhythm))
+  "Returns a normalised measure of the complexity of the rhythm, where 0 = impossibly simple -> 1 = impossibly hard."
+  (let ((skeleton (skeleton-of-rhythm rhythm-to-analyse)))
+    (length skeleton)))
+
+;; Approaches:
+;; 1. Count the number of ridges.
+;; 2. Each ridge is tempo weighted by each of it's scales. Therefore 1 long ridge would be more complex than shorter ridges.
+;; 3. Weight the entire scale peaks or magnitude measure by tempo.
