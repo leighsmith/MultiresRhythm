@@ -74,42 +74,6 @@
        (setf (aref color-map map-index) (apply #'imago:make-color rgba))
      finally (return color-map)))
 
-#|
-
-
-
-    data represented by a list of x,y0,y1 mapping correspondences.
-    Each element in this list represents how a value between 0 and 1
-    (inclusive) represented by x is mapped to a corresponding value
-    between 0 and 1 (inclusive). The two values of y are to allow
-    for discontinuous mapping functions (say as might be found in a
-    sawtooth) where y0 represents the value of y for values of x <= to that given, and y1 is the value to be used for x > than
-    that given). The list must start with x=0, end with x=1, and
-    all values of x must be in increasing order. Values between
-    the given mapping points are determined by simple linear interpolation.
-
-    The function returns an array "result" where result[x*(N-1)]
-    gives the closest value for values of x between 0 and 1.
-
-   # begin generation of lookup table
-    x = x * (N-1)
-    lut = zeros((N,), Float)
-    xind = arange(float(N))
-    ind = searchsorted(x, xind)[1:-1]
-
-    lut[1:-1] = (divide(xind[1:-1] - take(x, ind - 1), take(x, ind) - take(x, ind - 1))
-		* (take(y0, ind) - take(y1, ind - 1)) + take(y1, ind - 1))
-
-    lut[0] = y1[0]
-    lut[-1] = y0[-1]
-
-    # ensure that the lut is confined to values between 0 and 1 by clipping it
-    lut = where(lut > 1., 1., lut)
-    lut = where(lut < 0., 0., lut)
-    return lut
-
-|#
-
 ;; (defun search-sorted (a x)
 ;;   "Returns index of the first element in the array a which exceeds x, and returns the
 ;;    length of a (the highest index of the array plus 1) if x is larger than the last element.
@@ -134,76 +98,63 @@
       (vector-push (if next-position next-position (.length a)) found-indexes))
     (make-instance 'n-fixnum-array :ival (adjust-array found-indexes (fill-pointer found-indexes)))))
 
-#|
-(defun linear-segmented-channel (map-length colour-linear-segments)
-  "Create an 1-d lookup table with map-length elements.
-   colour-linear-segments is a dictionary with a red, green and blue entries. Each entry
-   should be a list of x, y0, y1 tuples."
-  (let* ((x  (nlisp::list-2-array (mapcar #'first colour-linear-segments)))
-	 (y0 (nlisp::list-2-array (mapcar #'second colour-linear-segments)))
-	 (lut-index (.rseq 0.0 1.0 map-length))	; discretise the look up table.
-	 (lut (make-double-array (.array-dimensions lut-index)))
-	 (gradients (./ (diff y0) (diff x))))
-    (format t "x indexes ~a~%" (.* x map-length))
-    (loop 
-       for segment-index from 0 below (1- (length colour-linear-segments))
-       with line
-       with new-y
-       do
-	 (format t "x ~a grad ~a y0 ~a~%" (.aref x segment-index) (.aref gradients
-  segment-index) (.aref y0 segment-index))
-	 (setf line (.* (.- lut-index (.aref x segment-index)) (.aref gradients segment-index)))
-	 (format t "to add ~a~%" (.and (.>= line 0) (.<= line 1.0)))
-	 (setf new-y (.+ line (.aref y0 segment-index)))
-	 (format t "new-y ~a~%" new-y)
-         ;; only values between 0 & 1 are valid
-;;	 (format t "add ~a~%" (.+ lut (.* (.and (.>= line 0) (.<= line 1.0)) new-y)))
-	 (setf lut (.+ lut (.* (.and (.>= line 0) (.<= line 1.0)) new-y)))
-	 (format t "lut ~a~%" lut)
-       finally (return lut))))
-|#
-
 ;; Only good for vectors, of course.
 (defun .subseq (a start &optional end)
   (make-instance (class-of a) :ival (subseq (val a) start end)))
 
-(defun linear-segmented-channel (map-length colour-linear-segments)
+(defun linear-segmented-channel (map-length channel-linear-segments)
   "Create an 1-d lookup table with map-length elements.
-   colour-linear-segments is a dictionary with a red, green and blue entries. Each entry
-   should be a list of x, y0, y1 tuples."
-  (let* ((x  (.* (nlisp::list-2-array (mapcar #'first colour-linear-segments)) map-length))
-	 (y0 (nlisp::list-2-array (mapcar #'second colour-linear-segments)))
-	 (lut-index (.rseq 0.0 (1- map-length) map-length))	; discretise the look up table.
-	 (segment-bases (.- (.subseq (search-sorted x lut-index) 1) 1))
-	 (line))
-    (setf line (.* (./ (.- (.subseq lut-index 1) (.arefs x segment-bases)) 
-		       (.arefs (diff x) segment-bases)) 
-		   (.arefs (diff y0) segment-bases)))
-    (.+ line (.arefs y0 segment-bases))))
+   Each element in channel-linear-segments should be a list of x, y0, y1 tuples."
+  (let* ((x  (.* (nlisp::list-2-array (mapcar #'first channel-linear-segments)) map-length))
+	 (y0 (nlisp::list-2-array (mapcar #'second channel-linear-segments)))
+	 ;; (y1 (nlisp::list-2-array (mapcar #'third channel-linear-segments)))
+	 (lut-index (.rseq 0.0 map-length (1+ map-length)))	; discretise the look up table.
+	 ;; Compute which indexes mark the start of each linear segment.
+	 (segment-bases (.- (.subseq (search-sorted x lut-index) 1) 1)))
+    ;; Compute the linear interpolation y = mx + b.
+    (.+ (.* (./ (.- (.subseq lut-index 1) (.arefs x segment-bases)) 
+		(.arefs (diff x) segment-bases)) 
+	    (.arefs (diff y0) segment-bases))
+	(.arefs y0 segment-bases))))
 
 ;; (setf red (linear-segmented-channel 256 '((0.0d0 0.0d0 0.0d0) (0.35d0  0.0d0 0.0d0) (0.66d0  1.0d0 1.0d0) (0.89d0 1.0d0 1.0d0) (1.0d0  0.5d0 0.5d0))))
 
-#|
-(defun linear-segmented-colormap (map-length colour-linear-segments)
+(defun linear-segmented-colormap (map-length colour-linear-segments &key (max-resolution 255) (alpha max-resolution))
   "Create an 1-d lookup table with map-length elements.
-   colour-linear-segments is a dictionary with a red, green and blue entries. Each entry
-   should be a list of x, y0, y1 tuples."
-  (linear-segmented-channel map-length (first colour-linear-segments))
-  (linear-segmented-channel map-length (second colour-linear-segments))
-  (linear-segmented-channel map-length (third colour-linear-segments))
+   colour-linear-segments is a dictionary with a red, green and blue entries. 
+   Each entry should be a list of x, y0, y1 tuples.
 
-;; (.aref (.find (.>= (.rseq 0 1 30) 0.66)) 0)
+   Each element in this list represents how a value between 0 and 1 (inclusive)
+   represented by x is mapped to a corresponding value between 0 and 1 (inclusive). The
+   two values of y are to allow for discontinuous mapping functions (say as might be found
+   in a sawtooth) where y0 represents the value of y for values of x <= to that given, and
+   y1 is the value to be used for x > than that given). The list must start with x=0, end
+   with x=1, and all values of x must be in increasing order. Values between the given
+   mapping points are determined by simple linear interpolation."
+  (map '(array integer (*))
+       #'imago:make-color 
+       (val (.floor (.* (linear-segmented-channel map-length (first colour-linear-segments)) max-resolution)))
+       (val (.floor (.* (linear-segmented-channel map-length (second colour-linear-segments)) max-resolution)))
+       (val (.floor (.* (linear-segmented-channel map-length (third colour-linear-segments)) max-resolution)))
+       (make-array map-length :initial-element alpha)))
 
 ;;; all y0 y1 values are the same.
 (defun jet-colormap (map-length)
+  "Returns a colour map that transitions from blue, cyan, yellow, orange, red, simulating the colour of a heat jet."
   (linear-segmented-colormap map-length
-     '(((0.0d0 0.0d0 0.0d0) (0.35d0  0.0d0 0.0d0) (0.66d0  1.0 1.0) (0.89 1.0 1.0) (1.0  0.5 0.5)))
-      (((0.0d0 0.0d0 0.0d0) (0.125 0.0 0.0) (0.375 1.0 1.0) (0.64 1.0 1.0) (0.91 0.0 0.0) (1.0 0.0 0.0)))
-      (((0.0d0 0.5d0 0.5d0) (0.11  1.0 1.0) (0.34  1.0 1.0) (0.65 0.0 0.0) (1.0  0.0 0.0)))))
-|#
+	'(((0.0d0 0.5d0 0.5d0) (0.11d0 1.0d0 1.0d0) (0.34d0 1.0d0 1.0d0) (0.65d0 0.0d0 0.0d0) (1.0d0 0.0d0 0.0d0))
+	  ((0.0d0 0.0d0 0.0d0) (0.09d0 0.0d0 0.0d0) (0.36d0 1.0d0 1.0d0) (0.625d0 1.0d0 1.0d0) (0.875d0 0.0d0 0.0d0) (1.0d0 0.0d0 0.0d0))
+	  ((0.0d0 0.0d0 0.0d0) (0.35d0 0.0d0 0.0d0) (0.66d0 1.0d0 1.0d0) (0.89d0 1.0d0 1.0d0) (1.0d0 0.5d0 0.5d0)))))
 
-;;; Functions to create IMAGO image instances from magnitude and phase components of a
-;;; CWT.
+(defun colour-swatch (colormap &key (swatch-width 30))
+  "Make a nice little vertical bar plotting the color map"
+  (make-colour-mapped-image (.subarray (.iseq2 0 (1- (length colormap))) (list t (list 0 (1- swatch-width))))
+                            colormap))
+
+;; (imago:write-pnm (colour-swatch (spectral-colormap 256) :swatch-width 30) "/tmp/colour-swatch2.pnm" :ascii)
+;; (imago:write-pnm (colour-swatch (jet-colormap 256) :swatch-width 30) "/tmp/colour-swatch2.pnm" :ascii)
+
+;;; Functions to create IMAGO image instances from magnitude and phase components of a CWT.
 
 (defun make-colour-mapped-image (matrix-to-plot colour-map)
   "Creates an Imago image instance from the supplied nlisp matrix and colour-map. 
@@ -224,8 +175,7 @@
    magnitude-limit = Can be used to clamp the global extrema at limits to allow
    interpreting the magnitude density plots for local extrema."
   ;; 0 - maximum-colour-value inclusive:
-  (let* ((greyscale (greyscale-colormap (1+ maximum-colour-value))) 
-	 (minmag (.min magnitude))
+  (let* ((minmag (.min magnitude))
 	 ;; A problem can be that the dynamic range of the signal energy can
 	 ;; exceed the grey scales, making most of the interesting local maxima
 	 ;; barely observable due to the "height" of the global maxima.
@@ -242,7 +192,7 @@
     (setf mag-range (- maxmag minmag))
     (setf plotable-mag (.floor (.- maximum-colour-value (.* (./ (.- magnitude minmag) mag-range)
 							    maximum-colour-value))))
-    (make-colour-mapped-image plotable-mag greyscale)))
+    (make-colour-mapped-image plotable-mag (jet-colormap (1+ maximum-colour-value)))))
 
 ;; TODO: would be nice to use saturation to indicate magnitude value on the phase plot.
 (defun phase-image (phase magnitude
@@ -328,14 +278,6 @@
 	   :xlabel "Time"
 	   :ylabel "Scaled Intensity/Phase"
 	   :title (format nil "Computed foot-tap ~a of ~a" comment signal-description))))
-
-(defun colour-swatch (&key (swatch-length 256) (swatch-width 30))
-  "Make a nice little vertical bar plotting the color map"
-  (make-colour-mapped-image (.subarray (.iseq2 0 (1- swatch-length)) (list t (list 0 (1- swatch-width))))
-                            (spectral-colormap swatch-length)))
-
-;; (imago:write-pnm (colour-swatch :swatch-width 30) "/tmp/colour-swatch.pnm" :ascii)
-
 
 ;; Alternative plot method if not using nplot.
 ;;  (let ((clap-intensity (make-double-array (.array-dimensions claps) :initial-element 2d0)))
