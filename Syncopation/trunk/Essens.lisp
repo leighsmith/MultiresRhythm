@@ -59,13 +59,13 @@
 ;; (plot-syncopation-comparisons (sort *essens-table-5* #'< :key #'first) '(3 2 2))
 
 ; the example in table 1 of the paper of Essens (1995) p. 520
-(defconstant *Etab1* '(1 1 0 1 0 1 1 1 0 1 0 0))
+(defparameter *Etab1* '(1 1 0 1 0 1 1 1 0 1 0 0))
 
 ;; example 1 of table 6 of Essens (1995) p. 525
-(defconstant *Etab6.1* '(1 1 1 1 1 0 1 1 1 0 0 0))
+(defparameter *Etab6.1* '(1 1 1 1 1 0 1 1 1 0 0 0))
 
 ;; example 2 of table 6 of Essens (1995) p. 525
-(defconstant *Etab6.2* '(1 0 0 1 1 1 1 0 1 1 0 0))
+(defparameter *Etab6.2* '(1 0 0 1 1 1 1 0 1 1 0 0))
 
 
 ;; C-score: weighted combination of the number of clock ticks that coincide with unaccented 
