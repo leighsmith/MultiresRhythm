@@ -1,6 +1,6 @@
 ;;;; -*- Lisp -*-
 ;;;;
-;;;; $Id: multiresrhythm.asd 80 2006-08-16 14:35:54Z leigh $
+;;;; $Id$
 ;;;;
 ;;;; ASDF definition file for Syncopation and Complexity models.
 ;;;;
@@ -24,10 +24,11 @@
   :description "Syncopation and Rhythm Complexity models"
   :version "1.0"
   :author "Leigh M. Smith and Henkjan Honing"
-  :depends-on (:multiresrhythm)
+;  :depends-on (:multiresrhythm)
+  :serial t
   :components ((:file "rhythm")
 	       (:file "LHL84")
-	       (:file "plotting.lisp")
-	       ;;(:file "playing.lisp")
-	       (:file "Shmulevich.lisp")
-	       (:file "Essens.lisp")))
+	       (:file "plotting")
+	       ;;(:file "playing")
+	       ;(:file "Shmulevich")
+	       (:file "Essens")))
