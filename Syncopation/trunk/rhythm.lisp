@@ -11,10 +11,18 @@
   (let* ((shortest-interval-milliseconds (/ 60000 tempo-in-bpm)))
     (mapcar #'(lambda (x) (truncate (* shortest-interval-milliseconds x))) intervals)))
 
+;;(defun iois-to-onsets (iois &optional (onset 0))
+;;  (if iois
+;;    (cons onset (iois-to-onsets (rest iois) (+ onset (first iois))))
+;;    (list onset)))
+
+;;; Courtesy of H.H.
+;; Return (list onset) for a final ending beat.
 (defun iois-to-onsets (iois &optional (onset 0))
   (if iois
     (cons onset (iois-to-onsets (rest iois) (+ onset (first iois))))
-    (list onset)))
+    nil))
+
 
 ;(iois-to-onsets '(1 3 2)) -> (0 1 4 6)
 
@@ -40,3 +48,8 @@
   (if (null (second onsets))
       nil
       (cons (- (second onsets) (first onsets)) (onsets-to-iois (rest onsets)))))
+
+(defun repeat-rhythm (rhythm repeat)
+  (if (> repeat 0)
+      (append rhythm (repeat-rhythm rhythm (1- repeat)))))
+
