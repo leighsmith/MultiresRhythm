@@ -1,5 +1,8 @@
-;;; $Id: Shmulevich.lisp 4729 2006-03-24 21:28:27Z leigh $
-;;;
+;;;; $Id$
+;;;; 
+;;;; Comparisons of models of complexity with Shmulevich and Povels reported complexity
+;;;; listener judgements.
+;;;;
 
 (use-package :multires-rhythm)
 
@@ -79,7 +82,7 @@
      with complexity
      do
        (setf test-rhythm 
-	     (make-instance 'rhythm 
+	     (make-instance 'multires-rhythm:rhythm 
 			    :name name
 			    :description name ; TODO transliterate '-' for ' '.
 			    :time-signal (rhythmic-grid-to-signal terminated-pattern :sample-rate 200)
@@ -87,6 +90,15 @@
        (setf complexity (rhythm-complexity test-rhythm))
        (format t "ridges of ~a is ~a~%" pattern complexity)
      collect complexity))
+
+#|
+;; Baseline metric analysis on an unsyncopated rhythm
+(rhythm-complexity (make-instance 'multires-rhythm:rhythm 
+				  :name "isochronous"
+				  :description "isochronous rhythm"
+				  :time-signal (rhythmic-grid-to-signal '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1) :sample-rate 200)
+				  :sample-rate 200))
+|#
 
 (defun syncopation-test (rating-and-patterns meter)
   (loop ; over the different metric salience methods.
