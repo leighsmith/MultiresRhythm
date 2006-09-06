@@ -1,5 +1,8 @@
 ;;; $Id: Shmulevich.lisp 4729 2006-03-24 21:28:27Z leigh $
 ;;;
+
+(use-package :multires-rhythm)
+
 ;;; Taken from Shmulevich and Povel 2000, 35 patterns used in
 ;;; judgement of complexity experiment, together with the mean judged
 ;;; complexity measure on a scale between 1 = simple and 5 = complex.
@@ -64,15 +67,26 @@
      collect syncopation-measure-of-pattern into all-syncopation-measures
      finally (return (scale-to-shmulevich-ratings all-syncopation-measures))))
 
-(defun multires-analyse-patterns (patterns)
-  "Create files for MultiresRhythm to analyse"
+;; TODO needs to repeat 4 times?
+(defun multires-pattern-complexity (patterns)
+  "Compute the complexity of the supplied rhythm patterns using MultiresRhythm"
   (loop ; over all Shmulevich patterns
      for pattern in patterns
      for terminated-pattern = (append pattern '(1))
-     for file-number = 0 then (1+ file-number)
-     for filename = (format nil "~/Research/Data/NewAnalysedRhythms/shmulevich-pattern-~a.mat" file-number)
+     for pattern-number = 0 then (1+ pattern-number)
+     for name = (format nil "shmulevich-pattern-~a" pattern-number)
+     with test-rhythm
+     with complexity
      do
-       (save-grid-to-file filename terminated-pattern)))
+       (setf test-rhythm 
+	     (make-instance 'rhythm 
+			    :name name
+			    :description name ; TODO transliterate '-' for ' '.
+			    :time-signal (rhythmic-grid-to-signal terminated-pattern :sample-rate 200)
+			    :sample-rate 200))
+       (setf complexity (rhythm-complexity test-rhythm))
+       (format t "ridges of ~a is ~a~%" pattern complexity)
+     collect complexity))
 
 (defun syncopation-test (rating-and-patterns meter)
   (loop ; over the different metric salience methods.
@@ -131,8 +145,9 @@
 ; (plot-syncopation-comparisons *shmulevich-patterns* '(2 2 2 2))
 ; (plot-syncopation-comparisons (sort *shmulevich-patterns* #'< :key #'first) '(2 2 2 2))
 ; (multiplot-syncopation-comparisons (sort *shmulevich-patterns* #'< :key #'first) '(2 2 2 2))
+
 ;;; "Just the patterns, Ma'am"...
-; (multires-analyse-patterns (mapcar #'second *shmulevich-patterns*))
+; (multires-pattern-complexity (mapcar #'second *shmulevich-patterns*))
 
 ;; (setf res (syncopation-test (sort *shmulevich-patterns* #'< :key #'first) '(2 2 2 2)))
 ;; (rmse (mapcar #'first (sort *shmulevich-patterns* #'< :key #'first)) (first res))
@@ -165,4 +180,14 @@
 ; (play-shmulevich-pattern 6 :repeat 4)
 ; (play-shmulevich-pattern 18 :repeat 4)
 ; (play-shmulevich-pattern 24 :repeat 4)
+
+(defun save-shmulevich-pattern (pattern-number &key (repeat 1))
+  (let* ((sorted-shmulevich-patterns (sort *shmulevich-patterns* #'< :key #'first))
+	 (pattern (second (nth pattern-number sorted-shmulevich-patterns)))
+	 (terminated-pattern (append (repeat-rhythm pattern repeat) (list 1))))
+    (format t "Saving Rhythm: ~a~%" pattern)
+    (save-score (format nil "/Users/leigh/shmulevich_~d.score" pattern-number) 
+		(mapcar (lambda (x) (* x 0.2)) (onsets-to-iois (grid-to-onsets terminated-pattern)))
+		:instrument "Midi"
+		:description (format nil "Shmulevich ~d" pattern-number))))
 
