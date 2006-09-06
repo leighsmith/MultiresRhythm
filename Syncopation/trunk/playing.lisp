@@ -5,7 +5,7 @@
 ;;;
 ;;; Nb: Make sure MidiShare has .ini files installed in ~/Library/Preferences/MidiShare
 
-; #+mcl (load ":Applications:MidiShare:Developer:Lisp:interface:MCL:MidiShare-Interface.lisp")
+; #+mcl (load "Macintosh HD:Applications:MidiShare:Developer:Lisp:interface:MCL:MidiShare-Interface.lisp")
 ; Or use CFFI
 ; #+openmcl (load "/Applications/MidiShare/Developer/Lisp/interface/openmcl/MidiShare-Interface.lisp")
 
@@ -26,17 +26,6 @@
 (midigetversion)
 
 (defparameter *refnum* (midiopen "POCO"))
-
-;;; Courtesy of H.H.
-;; Return (list onset) for a final ending beat.
-(defun iois-to-onsets (iois &optional (onset 0))
-  (if iois
-    (cons onset (iois-to-onsets (rest iois) (+ onset (first iois))))
-    nil))
-
-(defun repeat-rhythm (rhythm repeat)
-  (if (> repeat 0)
-      (append rhythm (repeat-rhythm rhythm (1- repeat)))))
 
 ;;; Shamelessly hacked from the MidiShare tutorial example.
 (defun send-multiple-timed-notes (intervals pitch velocity duration)
