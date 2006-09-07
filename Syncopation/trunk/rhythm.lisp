@@ -1,9 +1,11 @@
-;;;; $Id:$
+;;;; $Id$
 ;;;;
 ;;;; Rhythm utilities
 ;;;;
 ;;;; Leigh Smith <lsmith@science.uva.nl>
 ;;;;
+
+(in-package :syncopation)
 
 (defun intervals-in-ms (intervals &key ((:tempo tempo-in-bpm) 60)
 			(ioi 1.0 interval-supplied-p))
@@ -28,10 +30,10 @@
 
 ;; TODO generate vector as well as list
 (defun onsets-to-grid (onsets)
-  (loop with rhythm = (make-list (1+ (first (last onsets))) :initial-element 0)
+  (loop with rhythm-grid = (make-list (1+ (first (last onsets))) :initial-element 0)
         for onset in onsets
-        do (setf (elt rhythm onset) 1)
-        finally (return rhythm)))
+        do (setf (elt rhythm-grid onset) 1)
+        finally (return rhythm-grid)))
 
 ;(onsets-to-grid '(0 1 4 6)) -> (1 1 0 0 1 0 1)
 
@@ -49,7 +51,7 @@
       nil
       (cons (- (second onsets) (first onsets)) (onsets-to-iois (rest onsets)))))
 
-(defun repeat-rhythm (rhythm repeat)
+(defun repeat-rhythm (rhythm-to-repeat repeat)
   (if (> repeat 0)
-      (append rhythm (repeat-rhythm rhythm (1- repeat)))))
+      (append rhythm-to-repeat (repeat-rhythm rhythm-to-repeat (1- repeat)))))
 

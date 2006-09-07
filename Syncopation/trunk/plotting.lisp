@@ -1,8 +1,10 @@
-;;;; $Id: plotting.lisp 4727 2006-03-23 21:12:53Z leigh $
+;;;; $Id$
 ;;;;
 ;;;; Connects to gnuplot using a pipe to plot supplied lists.
 ;;;;
 ;;;; Leigh Smith <lsmith@science.uva.nl>
+
+(in-package :syncopation)
 
 ;;; TODO needs unwind-protect?
 

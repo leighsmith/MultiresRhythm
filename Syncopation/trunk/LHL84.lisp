@@ -1,6 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; $Id: LHL84.lisp 4690 2006-01-26 18:30:19Z leigh $
+;;; $Id$
 ;;;
 ;;; Longuet-Higgins & Lee 1984 Syncopation Measure 
 ;;; as described in Longuet-Higgins & Lee (1984) Music Perception, pp 424-441.
@@ -10,6 +10,8 @@
 ;;;
 ;;; Adapted to incorporate Palmer & Krumhansl Metrical Hierarchy model
 ;;; by Leigh M. Smith <lsmith@science.uva.nl> 2005 
+
+(in-package :syncopation)
 
 ;;; toplevel function
 

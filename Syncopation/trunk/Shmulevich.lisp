@@ -4,6 +4,8 @@
 ;;;; listener judgements.
 ;;;;
 
+(in-package :syncopation)
+(shadow 'rhythm)
 (use-package :multires-rhythm)
 
 ;;; Taken from Shmulevich and Povel 2000, 35 patterns used in

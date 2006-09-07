@@ -11,14 +11,14 @@
 ;;;; In nlisp (Matlab-alike Common Lisp library www.nlisp.info)
 ;;;;
 
-(defpackage #:syncopation (:use #:cl #:asdf #:nlisp))
+(defpackage #:syncopation (:use #:cl #:asdf #:nlisp #:multires-rhythm))
 
 (in-package :syncopation)
 
 ;; This is required to get around a fucking Package Lock Violation deep within SBCL's CLOS?
 ;;(in-package :cl)
-;;(sb-ext:add-implementation-package :multires-rhythm :cl)
-;;(in-package :multires-rhythm)
+;;(sb-ext:add-implementation-package :syncopation :cl)
+;;(in-package :syncopation)
 
 (defsystem :syncopation
   :description "Syncopation and Rhythm Complexity models"
@@ -30,5 +30,5 @@
 	       (:file "LHL84")
 	       (:file "plotting")
 	       ;;(:file "playing")
-	       ;(:file "Shmulevich")
+	       (:file "Shmulevich")
 	       (:file "Essens")))
