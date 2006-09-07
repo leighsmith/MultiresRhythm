@@ -20,7 +20,11 @@
 ;;;;
 
 (defpackage #:multires-rhythm (:use #:cl #:asdf #:nlisp)
-	    (:export :rhythm :skeleton-of-rhythm :tactus-for-rhythm :rhythmic-grid-to-signal))
+	    (:export :rhythm 
+		     :skeleton-of-rhythm
+		     :tactus-for-rhythm
+		     :rhythmic-grid-to-signal
+		     :rhythm-complexity))
 
 (in-package :multires-rhythm)
 
