@@ -1,4 +1,4 @@
-;;; $Id: playing.lisp 4721 2006-03-23 21:00:53Z leigh $
+;;; $Id$
 ;;; Minimal rhythm playing functions interfacing to midishare.
 ;;;
 ;;; Leigh M. Smith <lsmith@science.uva.nl>

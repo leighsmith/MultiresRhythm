@@ -1,4 +1,4 @@
-;;; $Id: octave_io.lisp 4704 2006-02-09 23:05:28Z leigh $
+;;; $Id$
 ;;; Reads and writes Octave text matrix files in Common Lisp.
 
 ;; write out the file

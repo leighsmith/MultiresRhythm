@@ -16,10 +16,12 @@
 ;;; exotic output formats. The default suits MacOS X.
 (defparameter *plot-terminal-type* "aqua")
 
+;;; Can be replaced with NLISP
 (defun plot-initialise ()
   (setf *gnuplot-process* 
-	(run-program "/sw/bin/gnuplot" () :wait nil :input :stream :output nil)))
+	(sb-ext:run-program "/sw/bin/gnuplot" () :wait nil :input :stream :output nil)))
 
+;;; Can be replaced with NLISP
 (defun plot-close ()
   (format (external-process-input-stream *gnuplot-process*) "quit~%"))
 
@@ -32,10 +34,13 @@
     (format plot-stream "~f~%" (elt data-points data-index)))
   (format plot-stream "e~%"))
 
-(defun plot-command (command-string)
+;;; Can be replaced with NLISP
+(defun myplot-command (command-string)
   (format (external-process-input-stream *gnuplot-process*) "~a~%" command-string))
 
-(defun plot (signals &key (ranges "") labels (title "") (figure-number 0))
+;;; convert to nplot:
+;;; labels => legends, title the same, figure-number => window-number
+(defun myplot (signals &key (ranges "") labels (title "") (figure-number 0))
   "Plots the given data points using the gnustep external process. 
 Data can be a list of numbers, a vector, or a list of lists or vectors
 to plot multiple signals. Key parameters are a string label for each

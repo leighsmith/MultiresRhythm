@@ -6,6 +6,7 @@
 
 (in-package :syncopation)
 (shadow 'rhythm)
+(use-package :nlisp)
 (use-package :multires-rhythm)
 
 ;;; Taken from Shmulevich and Povel 2000, 35 patterns used in
@@ -107,43 +108,48 @@
      for metric-salience in (list #'lh-metric-salience #'pk-metric-salience #'pk-nonmuso-metric-salience)
      do
        (format t "~a: ~%" metric-salience)
-     collect (syncopation-measures rating-and-patterns meter metric-salience)))
+     collect (nlisp::list-2-array (syncopation-measures rating-and-patterns meter metric-salience))))
 
 (defun plot-syncopation-comparisons (listener-rated-patterns meter &optional (figure-number 1))
   ;; Re-sort into increasing rating judgements.
   (let ((syncopation-test-results (syncopation-test listener-rated-patterns meter))
-	(listener-ratings (mapcar #'first listener-rated-patterns)))
-    (plot-initialise)
-    (plot listener-ratings :labels '("Shmulevich Ratings") :figure-number 0)
+	(listener-ratings (nlisp::list-2-array (mapcar #'first listener-rated-patterns))))
+    (window 0)
+    (plot listener-ratings nil :label "Shmulevich Ratings")
     (plot-command "set key left")
-    (plot (cons listener-ratings syncopation-test-results)
-	:labels '("Listener Ratings" "Longuet-Higgins & Lee Measure" "P&K Measure (Musicians)" "P&K (Non-musicians)")
-	:title "Comparison of Psychological and Modelled Syncopation Measures"
-	:figure-number figure-number)))
+    (window figure-number)
+    (nplot (cons listener-ratings syncopation-test-results) nil
+	:legends '("Listener Ratings" "Longuet-Higgins & Lee Measure" "P&K Measure (Musicians)" "P&K (Non-musicians)")
+	:title "Comparison of Psychological and Modelled Syncopation Measures")))
 
 (defun multiplot-syncopation-comparisons (listener-rated-patterns meter &optional (figure-number 1))
+  (declare (ignore figure-number))
   ;; Re-sort into increasing rating judgements.
   (let ((syncopation-test-results (syncopation-test listener-rated-patterns meter))
-	(listener-ratings (mapcar #'first listener-rated-patterns)))
-    (plot-initialise)
+	(listener-ratings (nlisp::list-2-array (mapcar #'first listener-rated-patterns))))
     (plot-command "set style line 2 linetype 5")
     (plot-command "set title font \"Times,24\"")
-    (plot-command "set xlabel \"Pattern number\" font \"Times,24\"")
-    (plot-command "set ylabel \"Complexity\" font \"Times,24\"")
+    (plot-command "set xlabel font \"Times,24\"")
+    (plot-command "set ylabel font \"Times,24\"")
     (plot-command "set key left")
-    (plot syncopation-test-results
-	  :labels '("Longuet-Higgins & Lee Measure" "P&K Measure (Musicians)" "P&K (Non-musicians)")
-	  :title "Comparison of Modelled Syncopation Measures"
-	  :figure-number 0)
-    (plot (list listener-ratings (first syncopation-test-results))
-	  :labels '("Listener Ratings" "Longuet-Higgins & Lee Measure") 
-	  :title "Comparison of Listener Ratings to LH&L Syncopation Measures"
-	  :figure-number 1)
-    (plot (cons listener-ratings (rest syncopation-test-results))
-	  :labels '("Listener Ratings" "P&K Measure (Musicians)" "P&K (Non-musicians)")
-	  :title "Comparison of Listener Ratings to P&K Syncopation Measures"
-	  :figure-number 2)))
-
+    (window 0)
+    (nplot syncopation-test-results nil
+	  :legends '("Longuet-Higgins & Lee Measure" "P&K Measure (Musicians)" "P&K (Non-musicians)")
+	  :xlabel "Pattern number"
+	  :ylabel "Complexity"
+	  :title "Comparison of Modelled Syncopation Measures")
+    (window 1)
+    (nplot (list listener-ratings (first syncopation-test-results)) nil
+	  :legends '("Listener Ratings" "Longuet-Higgins & Lee Measure") 
+	  :xlabel "Pattern number"
+	  :ylabel "Complexity"
+	  :title "Comparison of Listener Ratings to LH&L Syncopation Measures")
+    (window 2)
+    (nplot (cons listener-ratings (rest syncopation-test-results)) nil
+	  :legends '("Listener Ratings" "P&K Measure (Musicians)" "P&K (Non-musicians)")
+	  :xlabel "Pattern number"
+	  :ylabel "Complexity"
+	  :title "Comparison of Listener Ratings to P&K Syncopation Measures")))
 
 (defun rmse (observations model)
   "Produces a Root-Mean-Squared-Error measure between the two data sets"
@@ -200,7 +206,7 @@
 	 (pattern (second (nth pattern-number sorted-shmulevich-patterns)))
 	 (terminated-pattern (append (repeat-rhythm pattern repeat) (list 1))))
     (format t "Saving Rhythm: ~a~%" pattern)
-    (save-score (format nil "/Users/leigh/shmulevich_~d.score" pattern-number) 
+    (save-scorefile (format nil "/Users/leigh/shmulevich_~d.score" pattern-number) 
 		(mapcar (lambda (x) (* x 0.2)) (onsets-to-iois (grid-to-onsets terminated-pattern)))
 		:instrument "Midi"
 		:description (format nil "Shmulevich ~d" pattern-number))))
