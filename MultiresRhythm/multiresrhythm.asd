@@ -24,7 +24,8 @@
 		     :skeleton-of-rhythm
 		     :tactus-for-rhythm
 		     :rhythmic-grid-to-signal
-		     :rhythm-complexity))
+		     :rhythm-complexity
+		     :save-scorefile))
 
 (in-package :multires-rhythm)
 
