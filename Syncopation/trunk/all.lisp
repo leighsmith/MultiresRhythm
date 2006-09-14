@@ -1,7 +1,0 @@
-(load "rhythm.lisp")
-(load "LHL84.lisp")
-(load "plotting.lisp")
-(load "playing.lisp")
-(load "octave_io.lisp")
-(load "Shmulevich.lisp")
-(load "Essens.lisp")
