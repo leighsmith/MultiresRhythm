@@ -58,6 +58,7 @@
 ;; (plot-cwt (cwt (rising-harmonic-test) 8) :title "rising-harmonic")
 
 (defun test-lpc ()
+"Tests local phase congruency"
   (let ((fm-scaleogram (cwt (fm-test) 8)))
     ;; (plot-cwt fm-scaleogram :title "fm")
     (plot-image #'magnitude-image "-lpc" 
@@ -121,7 +122,7 @@
 		     :type "octave"))
 	 (rhythm-signal (.load-octave-file file-path))
 	 ;; Signals can be read in as column or row vectors, so we align them all to a row
-	 ;; vector transposing.
+	 ;; vector by transposing.
 	 (aligned-signal (if (> (.array-dimension rhythm-signal 0) 1)
 				    (.transpose rhythm-signal)
 				    rhythm-signal)))
@@ -144,3 +145,32 @@
 
 ;; (setf desain-at-65 (mapcar (lambda (x) (scale-at-time x 65)) desain-skeleton))
 ;; (loop for y in desain-at-65 when y collect y)
+
+;;; TODO allow specification of IOI as keyword.
+(defun iois-to-rhythm (name iois)
+  "Returns a rhythm instance given a list of inter-onset intervals"
+  (let ((rhythm-array (nlisp::list-2-array 
+		       (butlast 
+			(onsets-to-grid 
+			 (iois-to-onsets 
+			  (intervals-in-samples iois :ioi (/ 120 17))))))))
+    (make-instance 'rhythm 
+		   :name name
+		   :description name ; TODO transliterate '-' for ' '.
+		   :time-signal rhythm-array
+		   :sample-rate 200)))
+
+;;; Needs to have remaining time 
+(defun clap-to-iois (name iois)
+  (clap-to-rhythm (iois-to-rhythm name iois)))
+
+; (onsets-to-grid (iois-to-onsets (intervals-in-samples '(17 17 20.5 13.5) :ioi (/ 600 17))))
+; (onsets-to-grid (iois-to-onsets (intervals-in-samples '(17 17 20.5 13.5 17 17) :ioi 10)))
+; (iois-to-rhythm "test" '(17 17 20.5 13.5 17 17))
+
+;; Gouyon & Dixon's examples of ambiguity of timing/tempo changes.
+;; (clap-to-iois "isochronous" '(17 17 17 17 17 17))
+;; (clap-to-iois "local-timing" '(17 17 20.5 13.5 17 17))
+;; (clap-to-iois "global-timing" '(17 17 20.5 17 17 17))
+;; (clap-to-iois "tempo-change" '(17 17 20.5 20.5 20.5 20.5))
+
