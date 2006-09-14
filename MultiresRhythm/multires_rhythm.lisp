@@ -76,7 +76,7 @@ This is weighted by absolute constraints, look in the 600ms period range."
     (dotimes (time time-in-samples)
       (setf-subarray (val tempo-weighting-over-time) 
 		     (val (.reshape tempo-scale-weighting (list number-of-scales 1))) (list t time)))
-    (plot (.column tempo-weighting-over-time 0) nil :title "Preferred tempo weighting profile")
+    ;; (plot (.column tempo-weighting-over-time 0) nil :title "Preferred tempo weighting profile")
     tempo-weighting-over-time))
 
 #|
