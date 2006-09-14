@@ -5,6 +5,8 @@
 ;;;; Routines to read and write score files for various synthesis systems.
 ;;;;
 
+(in-package :multires-rhythm)
+
 ;;; (concatenate string filename ".handclap.score")
 
 ;;; normally we handclap using a sample

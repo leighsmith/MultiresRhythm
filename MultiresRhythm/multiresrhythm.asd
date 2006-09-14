@@ -37,7 +37,7 @@
 
 (defsystem :multiresrhythm
   :description "A Multiresolution Time-Frequency Analysis and Interpretation of Musical Rhythm"
-  :version "1.0"
+  :version "2.0"
   :author "Leigh M. Smith"
   :depends-on (:nlisp :zlib :imago)
   :components ((:file "ridges")
@@ -45,4 +45,5 @@
 	       (:file "plotting" :depends-on ("ridges"))
 	       (:file "cwt" :depends-on ("plotting"))
 	       (:file "multires_rhythm" :depends-on ("cwt" "plotting"))
-	       (:file "test-examples" :depends-on ("rhythm" "multires_rhythm"))))
+	       (:file "test-examples" :depends-on ("rhythm" "multires_rhythm"))
+	       (:file "file_io")))
