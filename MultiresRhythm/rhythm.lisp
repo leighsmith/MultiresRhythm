@@ -18,17 +18,17 @@
   (let* ((shortest-interval-samples (if interval-supplied-p ioi (/ (* 60 sample-rate) tempo-in-bpm))))
     (mapcar #'(lambda (interval) (truncate (* shortest-interval-samples interval))) intervals)))
 
-;;(defun iois-to-onsets (iois &optional (onset 0))
-;;  (if iois
-;;    (cons onset (iois-to-onsets (rest iois) (+ onset (first iois))))
-;;    (list onset)))
-
-;;; Courtesy of H.H.
-;; Return (list onset) for a final ending beat.
 (defun iois-to-onsets (iois &optional (onset 0))
   (if iois
     (cons onset (iois-to-onsets (rest iois) (+ onset (first iois))))
-    nil))
+    (list onset)))
+
+;;; Courtesy of H.H.
+;; Return (list onset) for a final ending beat.
+;; (defun iois-to-onsets (iois &key (onset 0) (ending-onset nil ending-onset-supplied))
+;;   (if iois
+;;     (cons onset (iois-to-onsets (rest iois) :onset (+ onset (first iois))))
+;;     (if ending-onset-supplied (list onset) nil)))
 
 ;(iois-to-onsets '(1 3 2)) -> (0 1 4 6)
 
