@@ -1,4 +1,6 @@
 MultiresRhythm V1.0 README
+Leigh M. Smith <lsmith@science.uva.nl>
+2006/09/22
 
 This is the Common Lisp implementation of MultiresRhythm, a representation of musical
 rhythm using continuous wavelet transforms.
@@ -28,3 +30,7 @@ package in order to test these:
 CL-USER> (in-package :multires-rhythm)
 MULTIRES-RHYTHM> (clap-to-iois "local-timing" '(17 17 20.5 13.5 17 17))
 
+Distribution:
+
+Copyright (c) 2006 All rights reserved. Leigh M. Smith
+Please contact me before distributing beyond the EmCAP web site.
