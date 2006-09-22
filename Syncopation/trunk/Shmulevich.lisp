@@ -110,33 +110,40 @@
        (format t "~a: ~%" metric-salience)
      collect (nlisp::list-2-array (syncopation-measures rating-and-patterns meter metric-salience))))
 
+(defun ntimes (atom-to-duplicate count)
+  (cond ((> count 1) (cons atom-to-duplicate (myntimes atom-to-duplicate (1- count))))
+	(t (list atom-to-duplicate))))
+
 (defun plot-syncopation-comparisons (listener-rated-patterns meter &optional (figure-number 1))
   ;; Re-sort into increasing rating judgements.
   (let ((syncopation-test-results (syncopation-test listener-rated-patterns meter))
 	(listener-ratings (nlisp::list-2-array (mapcar #'first listener-rated-patterns))))
     (window 0)
-    (plot listener-ratings nil :label "Shmulevich Ratings")
-    (plot-command "set key left")
+    (plot listener-ratings nil :label "Shmulevich Ratings" :style "linespoints linewidth 2")
     (window figure-number)
+    (plot-command "set key left")
     (nplot (cons listener-ratings syncopation-test-results) nil
 	:legends '("Listener Ratings" "Longuet-Higgins & Lee Measure" "P&K Measure (Musicians)" "P&K (Non-musicians)")
+	:styles (ntimes "linespoints linewidth 2" 4)
 	:title "Comparison of Psychological and Modelled Syncopation Measures")))
+
 
 (defun multiplot-syncopation-comparisons (listener-rated-patterns meter &optional (figure-number 1))
   (declare (ignore figure-number))
   ;; Re-sort into increasing rating judgements.
   (let ((syncopation-test-results (syncopation-test listener-rated-patterns meter))
 	(listener-ratings (nlisp::list-2-array (mapcar #'first listener-rated-patterns))))
+    (window 0)
     (plot-command "set style line 2 linetype 5")
     (plot-command "set title font \"Times,24\"")
     (plot-command "set xlabel font \"Times,24\"")
     (plot-command "set ylabel font \"Times,24\"")
     (plot-command "set key left")
-    (window 0)
     (nplot syncopation-test-results nil
 	  :legends '("Longuet-Higgins & Lee Measure" "P&K Measure (Musicians)" "P&K (Non-musicians)")
 	  :xlabel "Pattern number"
 	  :ylabel "Complexity"
+	  ;; :styles (ntimes "linespoints linewidth 2" 4)
 	  :title "Comparison of Modelled Syncopation Measures")
     (window 1)
     (nplot (list listener-ratings (first syncopation-test-results)) nil
@@ -210,4 +217,3 @@
 		(mapcar (lambda (x) (* x 0.2)) (onsets-to-iois (grid-to-onsets terminated-pattern)))
 		:instrument "Midi"
 		:description (format nil "Shmulevich ~d" pattern-number))))
-
