@@ -111,7 +111,7 @@
      collect (nlisp::list-2-array (syncopation-measures rating-and-patterns meter metric-salience))))
 
 (defun ntimes (atom-to-duplicate count)
-  (cond ((> count 1) (cons atom-to-duplicate (myntimes atom-to-duplicate (1- count))))
+  (cond ((> count 1) (cons atom-to-duplicate (ntimes atom-to-duplicate (1- count))))
 	(t (list atom-to-duplicate))))
 
 (defun plot-syncopation-comparisons (listener-rated-patterns meter &optional (figure-number 1))
