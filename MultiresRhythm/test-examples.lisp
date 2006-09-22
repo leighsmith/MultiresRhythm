@@ -147,13 +147,13 @@
 ;; (loop for y in desain-at-65 when y collect y)
 
 ;;; TODO allow specification of IOI as keyword.
-(defun iois-to-rhythm (name iois)
+(defun iois-to-rhythm (name iois &key (shortest-ioi 1.0))
   "Returns a rhythm instance given a list of inter-onset intervals"
   (let ((rhythm-array (nlisp::list-2-array 
 		       (butlast 
 			(onsets-to-grid 
 			 (iois-to-onsets 
-			  (intervals-in-samples iois :ioi (/ 120 17))))))))
+			  (intervals-in-samples iois :ioi shortest-ioi)))))))
     (make-instance 'rhythm 
 		   :name name
 		   :description name ; TODO transliterate '-' for ' '.
@@ -162,11 +162,11 @@
 
 ;;; Needs to have remaining time 
 (defun clap-to-iois (name iois)
-  (clap-to-rhythm (iois-to-rhythm name iois)))
+  (clap-to-rhythm (iois-to-rhythm name iois :shortest-ioi (/ 120 17))))
 
 ; (onsets-to-grid (iois-to-onsets (intervals-in-samples '(17 17 20.5 13.5) :ioi (/ 600 17))))
 ; (onsets-to-grid (iois-to-onsets (intervals-in-samples '(17 17 20.5 13.5 17 17) :ioi 10)))
-; (iois-to-rhythm "test" '(17 17 20.5 13.5 17 17))
+; (iois-to-rhythm "test" '(17 17 20.5 13.5 17 17) :shortest-ioi (/ 120 17))
 
 ;; Gouyon & Dixon's examples of ambiguity of timing/tempo changes.
 ;; (clap-to-iois "isochronous" '(17 17 17 17 17 17))
@@ -174,3 +174,7 @@
 ;; (clap-to-iois "global-timing" '(17 17 20.5 17 17 17))
 ;; (clap-to-iois "tempo-change" '(17 17 20.5 20.5 20.5 20.5))
 
+;;; polyrhythms
+;;; 3 against 4
+;; (iois-to-rhythm "duple" '(10 10 10 10 10 10 10 10) :shortest-ioi (/ 120 10))
+;; (iois-to-rhythm "triple" '(15 15 15 15 15 15 15 15 15 15 15 15) :shortest-ioi (/ 120 15))

@@ -22,6 +22,7 @@
 (in-package :multires-rhythm)
 (use-package :nlisp)
 
+;;; A ridge is a span of time across a time-frequency plane.
 (defclass ridge ()
   ((active :initform nil :initarg :set-active :accessor active)
    ;; Holds a time sequence of scale indices.
