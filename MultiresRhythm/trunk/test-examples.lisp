@@ -69,7 +69,7 @@
 ;; (test-lpc)
 
 (defun test-rhythm ()
-  (let* ((rhythm-signal (rhythmic-grid-to-signal '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0 1)))
+  (let* ((rhythm-signal (rhythmic-grid-to-signal '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0)))
 	 (rhythm-scaleogram (cwt rhythm-signal 8)))
     (plot-cwt rhythm-scaleogram :title "rhythm")))
 
@@ -85,9 +85,9 @@
 			:sample-rate 200)))
     (clap-to-rhythm test-rhythm)))
 
-;; (test-tactus-for-rhythm "shmulevich-rhythm-1" '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0 1))
+;; (test-tactus-for-rhythm "shmulevich-rhythm-1" '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0))
 ;;; Do the analysis on an impulse train.
-;; (test-tactus-for-rhythm "isochronous-rhythm"  '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1))
+;; (test-tactus-for-rhythm "isochronous-rhythm"  '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1))
 
 ;;;
 (defun test-reconstruction (test-signal &key (voices-per-octave 8))
@@ -146,19 +146,17 @@
 ;; (setf desain-at-65 (mapcar (lambda (x) (scale-at-time x 65)) desain-skeleton))
 ;; (loop for y in desain-at-65 when y collect y)
 
-;;; TODO allow specification of IOI as keyword.
 (defun iois-to-rhythm (name iois &key (shortest-ioi 1.0))
   "Returns a rhythm instance given a list of inter-onset intervals"
-  (let ((rhythm-array (nlisp::list-2-array 
-		       (butlast 
-			(onsets-to-grid 
-			 (iois-to-onsets 
-			  (intervals-in-samples iois :ioi shortest-ioi)))))))
     (make-instance 'rhythm 
 		   :name name
 		   :description name ; TODO transliterate '-' for ' '.
-		   :time-signal rhythm-array
-		   :sample-rate 200)))
+		   :time-signal (nlisp::list-2-array 
+				 (butlast 
+				  (onsets-to-grid 
+				   (iois-to-onsets 
+				    (intervals-in-samples iois :ioi shortest-ioi)))))
+		   :sample-rate 200))
 
 ;;; Needs to have remaining time 
 (defun clap-to-iois (name iois)

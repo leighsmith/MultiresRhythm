@@ -57,14 +57,13 @@
 
 (defun rhythmic-grid-to-signal (grid &key (tempo 80) (sample-rate 200))
   "Returns rhythmic grid as a nlisp array."
-  (let* ((rhythmic-signal-list (onsets-to-grid (iois-to-onsets 
-						(intervals-in-samples 
-						 (onsets-to-iois (grid-to-onsets grid))
-						 :tempo tempo :sample-rate sample-rate))))
-	 (rhythm-array (make-array (length rhythmic-signal-list) 
-				   :element-type 'fixnum :initial-contents rhythmic-signal-list)))
-    (make-instance 'n-fixnum-array :ival rhythm-array)))
-
+  (nlisp::list-2-array (butlast 
+			(onsets-to-grid
+			 (iois-to-onsets 
+			  (intervals-in-samples 
+			   ;; Append an impulse to ensure trailing silences are counted.
+			   (onsets-to-iois (grid-to-onsets (append grid '(1))))
+			   :tempo tempo :sample-rate sample-rate))))))
 
 (defun repeat-rhythm (rhythm repeat)
   (if (> repeat 0)
