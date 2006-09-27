@@ -356,6 +356,7 @@ then can extract ridges."
        	 (skeleton (extract-ridges correlated-ridge-scale-peaks))
 	 ;; select out the tactus from all ridge candidates.
 	 (chosen-tactus (funcall tactus-selector skeleton)))
+    (format t "computed skeleton and chosen tactus~%");
     (plot-cwt scaleogram :title (name analysis-rhythm))
     (plot-ridges-and-tactus correlated-ridge-scale-peaks chosen-tactus :title (name analysis-rhythm))
     (values chosen-tactus scaleogram)))
@@ -410,9 +411,9 @@ then can extract ridges."
 
 (defmethod clap-to-rhythm ((performed-rhythm rhythm) &key (tactus-selector #'select-longest-lowest-tactus))
   "Returns a set of sample times to clap to given the supplied rhythm"
-    (multiple-value-bind (computed-tactus rhythm-scaleogram) 
-	(tactus-for-rhythm performed-rhythm :tactus-selector tactus-selector)
-      (clap-to-tactus-phase performed-rhythm rhythm-scaleogram computed-tactus)))
+  (multiple-value-bind (computed-tactus rhythm-scaleogram)
+      (tactus-for-rhythm performed-rhythm :tactus-selector tactus-selector)
+    (clap-to-tactus-phase performed-rhythm rhythm-scaleogram computed-tactus)))
 
 ;;; Could use a weighted bitmap of the ridges as a general density measure. This is
 ;;; weighted by absolute tempo. It should also be weighted by the number of ridges (a
@@ -426,3 +427,16 @@ then can extract ridges."
 ;; 1. Count the number of ridges.
 ;; 2. Each ridge is tempo weighted by each of it's scales. Therefore 1 long ridge would be more complex than shorter ridges.
 ;; 3. Weight the entire scale peaks or magnitude measure by tempo.
+;; 4. Ease of handclapping as a measure of complexity?
+
+(defun iois-to-rhythm (name iois &key (shortest-ioi 1.0))
+  "Returns a rhythm instance given a list of inter-onset intervals"
+    (make-instance 'rhythm 
+		   :name name
+		   :description name ; TODO transliterate '-' for ' '.
+		   :time-signal (nlisp::list-2-array 
+				 (butlast 
+				  (onsets-to-grid 
+				   (iois-to-onsets 
+				    (intervals-in-samples iois :ioi shortest-ioi)))))
+		   :sample-rate 200))

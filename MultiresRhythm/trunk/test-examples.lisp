@@ -88,6 +88,8 @@
 ;; (test-tactus-for-rhythm "shmulevich-rhythm-1" '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0))
 ;;; Do the analysis on an impulse train.
 ;; (test-tactus-for-rhythm "isochronous-rhythm"  '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1))
+;;; A little test that the dyadic number of impulses has no influence.
+;; (test-tactus-for-rhythm "isochronous-rhythm"  '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1))
 
 ;;;
 (defun test-reconstruction (test-signal &key (voices-per-octave 8))
@@ -124,15 +126,19 @@
 	 ;; Signals can be read in as column or row vectors, so we align them all to a row
 	 ;; vector by transposing.
 	 (aligned-signal (if (> (.array-dimension rhythm-signal 0) 1)
-				    (.transpose rhythm-signal)
-				    rhythm-signal)))
+			     (.transpose rhythm-signal)
+			     rhythm-signal)))
     (make-instance 'rhythm 
 		   :name filename
 		   :description description
 		   :time-signal (.row aligned-signal 0)
 		   :sample-rate sample-rate)))
 
-(defun test-octave-file (filename &key (sample-rate 200) (description "") (tactus-selector #'select-longest-lowest-tactus))
+(defun test-octave-file (filename 
+			 &key
+			 (sample-rate 200) 
+			 (description "") 
+			 (tactus-selector #'select-longest-lowest-tactus))
   (let* ((loaded-rhythm (load-rhythm-file filename :description description :sample-rate sample-rate)))
     (clap-to-rhythm loaded-rhythm :tactus-selector tactus-selector)))
 
@@ -146,17 +152,6 @@
 ;; (setf desain-at-65 (mapcar (lambda (x) (scale-at-time x 65)) desain-skeleton))
 ;; (loop for y in desain-at-65 when y collect y)
 
-(defun iois-to-rhythm (name iois &key (shortest-ioi 1.0))
-  "Returns a rhythm instance given a list of inter-onset intervals"
-    (make-instance 'rhythm 
-		   :name name
-		   :description name ; TODO transliterate '-' for ' '.
-		   :time-signal (nlisp::list-2-array 
-				 (butlast 
-				  (onsets-to-grid 
-				   (iois-to-onsets 
-				    (intervals-in-samples iois :ioi shortest-ioi)))))
-		   :sample-rate 200))
 
 ;;; Needs to have remaining time 
 (defun clap-to-iois (name iois)
