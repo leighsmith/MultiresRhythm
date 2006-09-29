@@ -167,10 +167,15 @@
     (setf (slot-value image 'imago::colormap) colour-map)
     image))
 
+;; Define this as a parameter rather than as a keyword parameter since it needs to be set
+;; several calls higher in the hierarchy - cost of functional programming it seems...
+;; (defparameter *magnitude-colour-map* #'jet-colormap)
+(defparameter *magnitude-colour-map* #'greyscale-colormap)
+
 (defun magnitude-image (magnitude 
 			&key (magnitude-limit 0 magnitude-limit-supplied-p)
 			(maximum-colour-value 255))
-  "Creates a plotable image object from the magnitude using a greyscale colour map.
+  "Creates a plotable image object from the magnitude using a colour map.
    Dark values are higher valued, lighter values are lower valued.
    magnitude-limit = Can be used to clamp the global extrema at limits to allow
    interpreting the magnitude density plots for local extrema."
@@ -192,7 +197,7 @@
     (setf mag-range (- maxmag minmag))
     (setf plotable-mag (.floor (.- maximum-colour-value (.* (./ (.- magnitude minmag) mag-range)
 							    maximum-colour-value))))
-    (make-colour-mapped-image plotable-mag (jet-colormap (1+ maximum-colour-value)))))
+    (make-colour-mapped-image plotable-mag (funcall *magnitude-colour-map* (1+ maximum-colour-value)))))
 
 ;; TODO: would be nice to use saturation to indicate magnitude value on the phase plot.
 (defun phase-image (phase magnitude

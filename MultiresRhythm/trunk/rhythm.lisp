@@ -55,6 +55,7 @@
       nil
       (cons (- (second onsets) (first onsets)) (onsets-to-iois (rest onsets)))))
 
+;; TODO add an IOI parameter
 (defun rhythmic-grid-to-signal (grid &key (tempo 80) (sample-rate 200))
   "Returns rhythmic grid as a nlisp array."
   (nlisp::list-2-array (butlast 

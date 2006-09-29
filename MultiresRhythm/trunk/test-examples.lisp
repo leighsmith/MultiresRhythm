@@ -91,22 +91,20 @@
 ;;; A little test that the dyadic number of impulses has no influence.
 ;; (test-tactus-for-rhythm "isochronous-rhythm"  '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1))
 
-;;;
 (defun test-reconstruction (test-signal &key (voices-per-octave 8))
   "Verifies the invertability of the CWT and therefore it's accuracy."
   (let* ((test-scaleogram (cwt test-signal voices-per-octave)) ; (/ (.array-dimension test-signal 0) 4)
 	 (reconstructed-signal (icwt (scaleogram-magnitude test-scaleogram)
 				     (scaleogram-phase test-scaleogram) voices-per-octave)))
-
+    ;;
     ;; The real component of the reconstructed signal is the original
     ;; signal, not the magnitude, since it's a Hilbert transform.
     ;; The phase is derived from the the real and imaginary components.
     ;; reconstructed-phase (.phase reconstructed-signal)
-  
+    ;;
     (nplot (list test-signal (.realpart reconstructed-signal)) nil 
 	   :legends (list "test-signal" "reconstructed signal")
 	   :title "Reconstruction comparison")
-
     (format t "maximum difference between test-signal and reconstruction ~f~%"
 	    (.max (.- test-signal (.realpart reconstructed-signal))))
     reconstructed-signal))
@@ -116,6 +114,8 @@
 ;; (test-reconstruction (rising-harmonic-test))
 ;; Test non-dyadic reconstruction:
 ;; (test-reconstruction (fm-test :signal-length 2200))
+;; Test reconstruction of a dirac function defined rhythmic signal.
+;; (test-reconstruction (rhythmic-grid-to-signal '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0) :sample-rate 200))
 
 (defun load-rhythm-file (filename &key (sample-rate 200) (description ""))
   (let* ((file-path (make-pathname 
