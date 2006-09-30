@@ -4,7 +4,7 @@
 ;;; Leigh M. Smith <lsmith@science.uva.nl>
 ;;;
 
-(use-package :pm)
+(in-package :syncopation)
 
 (defparameter *output-device-id* nil)
 
@@ -24,6 +24,7 @@
 	 (event-times (iois-to-onsets intervals (pm:time)))
 	 (event-count (* (length event-times) 2)) ; double for note-on/off pairs.
 	 (event-buffer (pm:EventBufferNew event-count)))
+    (if (null *output-device-id*) (enable-playing))
     (loop				; assign the buffer's note on and off events.
        for next-time in event-times
        for event-index = 0 then (+ event-index 2)
