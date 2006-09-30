@@ -1,55 +1,60 @@
 ;;; $Id$
-;;; Minimal rhythm playing functions interfacing to midishare.
+;;; Minimal rhythm playing functions interfacing to portmidi.
 ;;;
 ;;; Leigh M. Smith <lsmith@science.uva.nl>
 ;;;
-;;; Nb: Make sure MidiShare has .ini files installed in ~/Library/Preferences/MidiShare
 
-; #+mcl (load "Macintosh HD:Applications:MidiShare:Developer:Lisp:interface:MCL:MidiShare-Interface.lisp")
-; Or use CFFI
-; #+openmcl (load "/Applications/MidiShare/Developer/Lisp/interface/openmcl/MidiShare-Interface.lisp")
+(use-package :pm)
 
-(require 'asdf)
-(require 'asdf-install)
-; #+sbcl (require :cffi) 
-(asdf:operate 'asdf:load-op :cffi)
+(defparameter *output-device-id* nil)
 
-;; For midishare
-(push "/Users/leigh/SysDev/midishare_cffi/" asdf:*central-registry*)
-(asdf:operate 'asdf:load-op :midishare)
+;; initialize portmidi lib
+(defun enable-playing ()
+  (pm:portmidi)
+  (setf *output-device-id* (pm:GetDefaultOutputDeviceID))
+  (pm:GetDeviceInfo *output-device-id*))
 
+;; to get available playing devices
+;; (pm:CountDevices)
+;; (pm:GetDeviceInfo))
 
-(use-package :ms)
-;; Must check returns t if installed.
-(midishare)
-
-(midigetversion)
-
-(defparameter *refnum* (midiopen "POCO"))
-
-;;; Shamelessly hacked from the MidiShare tutorial example.
-(defun send-multiple-timed-notes (intervals pitch velocity duration)
+(defun send-multiple-timed-notes (intervals pitch velocity duration &key (channel 0))
   "Sends the same pitch and duration at multiple times in milliseconds"
-  (MidiConnect *refnum* 0 -1)
-  (let ((date (MidiGetTime)))		; remember the current time
-    (dolist (next-time (iois-to-onsets intervals date))
-      (let ((event (MidiNewEv typeNote)))	; ask for a new note event
-	;; if the allocation was succesful
-	(unless #+mcl (ccl:%null-ptr-p event)	
-		#+sbcl (cffi:null-pointer-p event)
-	  (chan event 0)	       	; set the midi channel to 0 (means channel 1)
-	  (midishare:port event 0)	       	; set the destination port to 0
-	  (midishare:field event 0 pitch)		; set the pitch field
-	  (midishare:field event 1 velocity)     	; set the velocity field
-	  (midishare:field event 2 duration)      ; set the duration field
-	  (MidiSendAt *refnum* 		; send the note event in the future.
-                    event	 
-                    next-time)
-	  ;; (format t "play at ~d ~%" next-time)
-	  ;; we need not dispose the original note since it has already been freed.
-	  ;; (MidiFreeEv event) 
-	  ))))
-  (MidiConnect 0 *refnum* 0))            ; break the connection from MidiShare to Lisp 	
+  (let* ((output-device (pm:OpenOutput *output-device-id* 100 1000))
+	 (event-times (iois-to-onsets intervals (pm:time)))
+	 ;; double for note-on/off pairs.
+	 (event-count (* (length event-times) 2))
+	 (event-buffer (pm:EventBufferNew event-count)))
+    (format t "event times ~a ~a~%" event-times (iois-to-onsets intervals 0))
+    (loop   ;; assign the buffer's note on and off events.
+       for next-time in event-times
+       for event-index = 0 then (+ event-index 2)
+       for note-on-event = (pm:EventBufferElt event-buffer event-index)
+       for note-off-event = (pm:EventBufferElt event-buffer (1+ event-index))
+       do
+         (format t "play at ~d event-index ~d ~%" next-time event-index)
+	 (pm:Event.message note-on-event (pm:message (+ #b10010000 channel) pitch velocity))
+	 (pm:Event.timestamp note-on-event next-time)
+	 (pm:Event.message note-off-event (pm:message (+ #b10000000 channel) pitch 0))
+	 (pm:Event.timestamp note-off-event (+ next-time duration)))
+    
+    (format t "notes ~a~%" 
+	    (loop
+	       for event-index below event-count
+	       for event = (pm:EventBufferElt event-buffer event-index) 
+	       ;; check buffer contents
+	       collect (list (pm:Event.timestamp event)
+			     (pm:Message.status (pm:Event.message event))
+			     (pm:Message.data1 (pm:Event.message event))
+			     (pm:Message.data2 (pm:Event.message event)))))
+    (pm:Write output-device event-buffer event-count)
+    (pm:EventBufferFree event-buffer)
+    ;; TODO check error returned from pm:Write
+    ;; (if (not (= error pmNoError) 
+    ;;	     (format t "MKMDSendData error: ~s~%" (Pm:GetErrorText error))))
+    (pm:Close output-device)))
+
+;; (send-multiple-timed-notes '(250 250 250 250 250 250) 60 127 120)
 
 
 ;;; If a tempo parameter is not specified, a
