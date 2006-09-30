@@ -22,40 +22,23 @@
   "Sends the same pitch and duration at multiple times in milliseconds"
   (let* ((output-device (pm:OpenOutput *output-device-id* 100 1000))
 	 (event-times (iois-to-onsets intervals (pm:time)))
-	 ;; double for note-on/off pairs.
-	 (event-count (* (length event-times) 2))
+	 (event-count (* (length event-times) 2)) ; double for note-on/off pairs.
 	 (event-buffer (pm:EventBufferNew event-count)))
-    (format t "event times ~a ~a~%" event-times (iois-to-onsets intervals 0))
-    (loop   ;; assign the buffer's note on and off events.
+    (loop				; assign the buffer's note on and off events.
        for next-time in event-times
        for event-index = 0 then (+ event-index 2)
        for note-on-event = (pm:EventBufferElt event-buffer event-index)
        for note-off-event = (pm:EventBufferElt event-buffer (1+ event-index))
        do
-         (format t "play at ~d event-index ~d ~%" next-time event-index)
 	 (pm:Event.message note-on-event (pm:message (+ #b10010000 channel) pitch velocity))
 	 (pm:Event.timestamp note-on-event next-time)
 	 (pm:Event.message note-off-event (pm:message (+ #b10000000 channel) pitch 0))
 	 (pm:Event.timestamp note-off-event (+ next-time duration)))
-    
-    (format t "notes ~a~%" 
-	    (loop
-	       for event-index below event-count
-	       for event = (pm:EventBufferElt event-buffer event-index) 
-	       ;; check buffer contents
-	       collect (list (pm:Event.timestamp event)
-			     (pm:Message.status (pm:Event.message event))
-			     (pm:Message.data1 (pm:Event.message event))
-			     (pm:Message.data2 (pm:Event.message event)))))
     (pm:Write output-device event-buffer event-count)
     (pm:EventBufferFree event-buffer)
-    ;; TODO check error returned from pm:Write
-    ;; (if (not (= error pmNoError) 
-    ;;	     (format t "MKMDSendData error: ~s~%" (Pm:GetErrorText error))))
     (pm:Close output-device)))
 
 ;; (send-multiple-timed-notes '(250 250 250 250 250 250) 60 127 120)
-
 
 ;;; If a tempo parameter is not specified, a
 ;;; default of 60BPM is used, assuming a beat is an interval of 1.
