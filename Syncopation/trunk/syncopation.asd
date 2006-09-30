@@ -19,12 +19,13 @@
   :description "Syncopation and Rhythm Complexity models"
   :version "1.0"
   :author "Leigh M. Smith and Henkjan Honing"
-;  :depends-on (:multiresrhythm)
+  :depends-on (:multiresrhythm :portmidi)
   :serial t
   :components ((:file "rhythm")
 	       (:file "LHL84")
 	       ;;(:file "plotting")
-	       ;;(:file "playing")
+	       (:file "playing")
 	       (:file "Shmulevich")
+	       (:file "Handel")
 	       ;;(:file "Essens")
 	       ))
