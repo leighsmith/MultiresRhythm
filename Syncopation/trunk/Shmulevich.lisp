@@ -74,13 +74,12 @@
      finally (return (scale-to-shmulevich-ratings all-syncopation-measures))))
 
 ;; TODO needs to repeat 4 times?
-(defun multires-pattern-complexity (patterns)
+(defun multires-pattern-complexity (pattern-name patterns &key (sample-rate 200))
   "Compute the complexity of the supplied rhythm patterns using MultiresRhythm"
   (loop ; over all Shmulevich patterns
      for pattern in patterns
-     for terminated-pattern = (append pattern '(1))
      for pattern-number = 0 then (1+ pattern-number)
-     for name = (format nil "shmulevich-pattern-~a" pattern-number)
+     for name = (format nil "~a-pattern-~a" pattern-name pattern-number)
      with test-rhythm
      with complexity
      do
@@ -88,8 +87,8 @@
 	     (make-instance 'multires-rhythm:rhythm 
 			    :name name
 			    :description name ; TODO transliterate '-' for ' '.
-			    :time-signal (rhythmic-grid-to-signal terminated-pattern :sample-rate 200)
-			    :sample-rate 200))
+			    :time-signal (rhythmic-grid-to-signal pattern :sample-rate sample-rate)
+			    :sample-rate sample-rate))
        (setf complexity (rhythm-complexity test-rhythm))
        (format t "ridges of ~a is ~a~%" pattern complexity)
      collect complexity))
@@ -143,19 +142,21 @@
 	  :legends '("Longuet-Higgins & Lee Measure" "P&K Measure (Musicians)" "P&K (Non-musicians)")
 	  :xlabel "Pattern number"
 	  :ylabel "Complexity"
-	  ;; :styles (ntimes "linespoints linewidth 2" 4)
+	  :styles (ntimes "linespoints linewidth 2" 4)
 	  :title "Comparison of Modelled Syncopation Measures")
     (window 1)
     (nplot (list listener-ratings (first syncopation-test-results)) nil
 	  :legends '("Listener Ratings" "Longuet-Higgins & Lee Measure") 
 	  :xlabel "Pattern number"
 	  :ylabel "Complexity"
+	  :styles (ntimes "linespoints linewidth 2" 4)
 	  :title "Comparison of Listener Ratings to LH&L Syncopation Measures")
     (window 2)
     (nplot (cons listener-ratings (rest syncopation-test-results)) nil
 	  :legends '("Listener Ratings" "P&K Measure (Musicians)" "P&K (Non-musicians)")
 	  :xlabel "Pattern number"
 	  :ylabel "Complexity"
+	  :styles (ntimes "linespoints linewidth 2" 4)
 	  :title "Comparison of Listener Ratings to P&K Syncopation Measures")))
 
 (defun rmse (observations model)
@@ -174,7 +175,7 @@
 ; (multiplot-syncopation-comparisons (sort *shmulevich-patterns* #'< :key #'first) '(2 2 2 2))
 
 ;;; "Just the patterns, Ma'am"...
-; (multires-pattern-complexity (mapcar #'second *shmulevich-patterns*))
+; (multires-pattern-complexity "shmulevich" (mapcar #'second *shmulevich-patterns*))
 
 ;; (setf res (syncopation-test (sort *shmulevich-patterns* #'< :key #'first) '(2 2 2 2)))
 ;; (rmse (mapcar #'first (sort *shmulevich-patterns* #'< :key #'first)) (first res))
