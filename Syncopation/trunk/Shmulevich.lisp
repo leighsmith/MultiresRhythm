@@ -199,9 +199,11 @@
     (play-rhythm (onsets-to-iois (grid-to-onsets terminated-pattern))
 		 :ioi 200)))
 
-; (display-best-c-scores (sort *shmulevich-patterns* #'< :key #'first) 4.0)
+;; (play-shmulevich-pattern 2 :repeat 4)
+ 
+;; (display-best-c-scores (sort *shmulevich-patterns* #'< :key #'first) 4.0)
 
-; (plot-c-score-comparisons (sort *shmulevich-patterns* #'< :key #'first) 4.0)
+;; (plot-c-score-comparisons (sort *shmulevich-patterns* #'< :key #'first) 4.0)
 
 ;; The interesting rhythms
 ; (play-shmulevich-pattern 5 :repeat 4)
