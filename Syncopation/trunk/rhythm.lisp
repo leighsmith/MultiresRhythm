@@ -13,21 +13,6 @@
   (let* ((shortest-interval-milliseconds (/ 60000 tempo-in-bpm)))
     (mapcar #'(lambda (x) (truncate (* shortest-interval-milliseconds x))) intervals)))
 
-;;(defun iois-to-onsets (iois &optional (onset 0))
-;;  (if iois
-;;    (cons onset (iois-to-onsets (rest iois) (+ onset (first iois))))
-;;    (list onset)))
-
-;;; Courtesy of H.H.
-;; Return (list onset) for a final ending beat.
-(defun iois-to-onsets (iois &optional (onset 0))
-  (if iois
-    (cons onset (iois-to-onsets (rest iois) (+ onset (first iois))))
-    nil))
-
-
-;(iois-to-onsets '(1 3 2)) -> (0 1 4 6)
-
 ;; TODO generate vector as well as list
 (defun onsets-to-grid (onsets)
   (loop with rhythm-grid = (make-list (1+ (first (last onsets))) :initial-element 0)
