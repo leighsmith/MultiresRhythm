@@ -13,15 +13,6 @@
   (let* ((shortest-interval-milliseconds (/ 60000 tempo-in-bpm)))
     (mapcar #'(lambda (x) (truncate (* shortest-interval-milliseconds x))) intervals)))
 
-;; TODO generate vector as well as list
-(defun onsets-to-grid (onsets)
-  (loop with rhythm-grid = (make-list (1+ (first (last onsets))) :initial-element 0)
-        for onset in onsets
-        do (setf (elt rhythm-grid onset) 1)
-        finally (return rhythm-grid)))
-
-;(onsets-to-grid '(0 1 4 6)) -> (1 1 0 0 1 0 1)
-
 (defun grid-to-onsets (grid)
   "From a binary grid returns onset locations of non-zero values"
   (loop
