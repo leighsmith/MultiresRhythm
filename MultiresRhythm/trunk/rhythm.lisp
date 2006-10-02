@@ -23,21 +23,14 @@
     (cons onset (iois-to-onsets (rest iois) (+ onset (first iois))))
     (list onset)))
 
-;;; Courtesy of H.H.
-;; Return (list onset) for a final ending beat.
-;; (defun iois-to-onsets (iois &key (onset 0) (ending-onset nil ending-onset-supplied))
-;;   (if iois
-;;     (cons onset (iois-to-onsets (rest iois) :onset (+ onset (first iois))))
-;;     (if ending-onset-supplied (list onset) nil)))
-
 ;(iois-to-onsets '(1 3 2)) -> (0 1 4 6)
 
 ;; TODO generate vector as well as list
 (defun onsets-to-grid (onsets)
-  (loop with rhythm = (make-list (1+ (first (last onsets))) :initial-element 0)
+  (loop with rhythm-grid = (make-list (1+ (first (last onsets))) :initial-element 0)
         for onset in onsets
-        do (setf (elt rhythm onset) 1)
-        finally (return rhythm)))
+        do (setf (elt rhythm-grid onset) 1)
+        finally (return rhythm-grid)))
 
 ;(onsets-to-grid '(0 1 4 6)) -> (1 1 0 0 1 0 1)
 
