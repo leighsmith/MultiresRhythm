@@ -98,11 +98,6 @@ This is weighted by absolute constraints, look in the 600ms period range."
   )
 |#
 
-;; if normalise-by-scale distorts the topography?
-(defun normalise (magnitude)
-  "Normalise magnitude over the entire signal. This may not be realistic"
-  (./ magnitude (.max magnitude)))
-
 (defun normalise-by-scale (magnitude)
   "Normalise a magnitude finding the maximum scale at each time point.
  We assume values are positive values only"
@@ -114,10 +109,10 @@ This is weighted by absolute constraints, look in the 600ms period range."
     (dotimes (i time-in-samples)
       (let* ((scales-per-time (.column magnitude i))
 	     ;; Determine the maximum scale at each time.
-	     (maxScalePerTime (.max (.abs scales-per-time)))
+	     (max-scale-per-time (.max (.abs scales-per-time)))
 	     ;; Normalise each time-slice.
 	     ;; If a maximum scale value is 0, then make it 1 to keep the division healthy.
-	     (normalised-time-slice (./ scales-per-time (if (zerop maxScalePerTime) 1 maxScalePerTime))))
+	     (normalised-time-slice (./ scales-per-time (if (zerop max-scale-per-time) 1 max-scale-per-time))))
 	;; scales-per-time will be returned as a vector, we need to reshape it in order to
 	;; store it.
 	(setf-subarray (val normalised-values) 
@@ -263,7 +258,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
     ;; The local phase congruency measure should be maximal at points of minimal
     ;; difference between scales, so we normalise it, then subtract from 1.
     ;; (setf maximal-local-pc (.- 1d0 (normalise-by-scale congruency)))
-    (setf maximal-local-pc (.- 1d0 (normalise congruency)))
+    (setf maximal-local-pc (.- 1d0 (.normalise congruency)))
 
     ;; There must be some magnitude at the half-plane points of local phase congruency for
     ;; the ridge to be valid.  
@@ -283,7 +278,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 ;; TODO alternatively return normalised-magnitude, stationary-phase or
 ;; local-phase-congruency individually.
 ;; Should use a functional approach, passing the functions applicable as a list:
-;; (&key analyzers '(#'stationary-phase #'local-phase-congruency #'normalise))
+;; (&key analyzers '(#'stationary-phase #'local-phase-congruency #'.normalise))
 (defun correlate-ridges (magnitude phase voices-per-octave)
   "Computes independent surfaces analysing the magnitude and phase
 which are then combined to form an analytic surface from which we
@@ -291,7 +286,7 @@ then can extract ridges."
   ;; ahh, parallel machine anyone??
   (let ((stat-phase (stationary-phase magnitude phase voices-per-octave))
 	(local-pc (local-phase-congruency magnitude phase))
-	;; (normalised-magnitude (normalise magnitude))
+	;; (normalised-magnitude (.normalise magnitude))
 	(normalised-magnitude (normalise-by-scale magnitude)))
     ;; correlate (by averaging) the energy modulus, stationary phase and
     ;; local phase congruency. Since stationary phase and local phase congruency are both
@@ -344,9 +339,20 @@ then can extract ridges."
 	 (correlated-ridge-scale-peaks (scale-peaks-of-scaleogram scaleogram (sample-rate analysis-rhythm)))
        	 (skeleton (extract-ridges correlated-ridge-scale-peaks)))
     (plot-cwt scaleogram :title (name analysis-rhythm))
-    ;; (plot-ridges-and-tactus correlated-ridge-scale-peaks nil :title (name analysis-rhythm))
-    (values skeleton scaleogram)))
+    (values skeleton scaleogram correlated-ridge-scale-peaks)))
 
+(defmethod tactus-for-rhythm ((analysis-rhythm rhythm) 
+			      &key (voices-per-octave 16)
+			      (tactus-selector #'select-longest-lowest-tactus))
+  "Returns the selected tactus given the rhythm."
+  (multiple-value-bind (skeleton scaleogram correlated-ridge-scale-peaks)
+      (skeleton-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave)
+    (let ((chosen-tactus (funcall tactus-selector skeleton)))   ; select out the tactus from all ridge candidates.
+      (format t "computed skeleton and chosen tactus~%");
+      (plot-ridges-and-tactus correlated-ridge-scale-peaks chosen-tactus :title (name analysis-rhythm))
+      (values chosen-tactus scaleogram))))
+
+#|
 (defmethod tactus-for-rhythm ((analysis-rhythm rhythm) 
 			      &key (voices-per-octave 16)
 			      (tactus-selector #'select-longest-lowest-tactus))
@@ -360,6 +366,7 @@ then can extract ridges."
     (plot-cwt scaleogram :title (name analysis-rhythm))
     (plot-ridges-and-tactus correlated-ridge-scale-peaks chosen-tactus :title (name analysis-rhythm))
     (values chosen-tactus scaleogram)))
+|#
 
 (defun clean-phase (magnitude phase &key (threshold 0.001) (clamp 0.0))
   "We clamp any ill-conditioned phase (negligble magnitude) to the value given (defaulting to zero)"
