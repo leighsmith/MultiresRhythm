@@ -19,6 +19,8 @@
 ;;;;   annote =  {\url{http://www.leighsmith.com/Research/Papers/MultiresRhythm.pdf}}
 ;;;;
 
+(require 'nlisp)
+
 (defpackage #:multires-rhythm (:use #:cl #:asdf #:nlisp)
 	    (:export :rhythm 
 		     :skeleton-of-rhythm
@@ -44,6 +46,6 @@
 	       (:file "rhythm")
 	       (:file "plotting" :depends-on ("ridges"))
 	       (:file "cwt" :depends-on ("plotting"))
-	       (:file "multires_rhythm" :depends-on ("cwt" "plotting"))
+	       (:file "multires_rhythm" :depends-on ("cwt" "plotting" "rhythm"))
 	       (:file "test-examples" :depends-on ("rhythm" "multires_rhythm"))
 	       (:file "file_io")))
