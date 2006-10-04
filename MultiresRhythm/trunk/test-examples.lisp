@@ -4,7 +4,7 @@
 ;;;;
 ;;;; Functions for testing using various signals.
 ;;;;
-;;;; In nlisp (Matlab-alike Common Lisp library www.nlisp.info)
+;;;; In nlisp (Matlab-like Common Lisp library www.nlisp.info)
 ;;;;
 ;;;; By Leigh M. Smith <lsmith@science.uva.nl> 
 ;;;;
@@ -68,12 +68,13 @@
   
 ;; (test-lpc)
 
-(defun test-rhythm ()
-  (let* ((rhythm-signal (rhythmic-grid-to-signal '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0)))
+(defun test-rhythm (rhythm-grid)
+  (let* ((rhythm-signal (rhythmic-grid-to-signal rhythm-grid))
 	 (rhythm-scaleogram (cwt rhythm-signal 8)))
     (plot-cwt rhythm-scaleogram :title "rhythm")))
 
-;; (test-rhythm)
+;; (test-rhythm '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0))
+;; (test-rhythm '(1 1 1 1 1 1 1 1 1 1))
 ;; (setf b (rhythmic-grid-to-signal '(1 1 1 1) :tempo 60))
 
 (defun test-tactus-for-rhythm (name rhythm-grid)
