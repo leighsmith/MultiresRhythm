@@ -241,6 +241,13 @@
   "Returns the ridge containing the given scale and time element."
   (find-if (lambda (ridge) (contains-scale-and-time ridge scale time-sample)) skeleton))
 
+(defun ridges-at-time (skeleton time)
+  "Returns a list of ridges which have energy in a scale at the given time"
+  (loop
+     for ridge-candidate in skeleton
+     when (scale-at-time ridge-candidate time)
+     collect ridge-candidate))
+
 (defmethod scales-as-array ((the-ridge ridge))
   "Returns the scales list as an nlisp array"
   (make-instance 'n-fixnum-array :ival (make-array (duration the-ridge) :initial-contents
@@ -270,6 +277,9 @@
 	 (lambda (row-major-index) (setf (row-major-aref (val time-frequency-plane) row-major-index) constant-value)) 
 	 (val row-major-indices))
     time-frequency-plane))
+
+
+;;; Test routines.
 
 (defun test-ridges (filename)
   (let* ((data-directory "/Users/leigh/Research/Data/NewAnalysedRhythms/")
