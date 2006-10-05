@@ -30,7 +30,10 @@
 ;;vs. 
 ;; (multires-rhythm::test-tactus-for-rhythm "handel-nonmetrical-2" '(1 0 1 0 0 1 0 0 0 1 0 1 0 0 0 0))
 
-;; (multires-rhythm::test-tactus-for-rhythm "handel-pattern-1" (repeat-rhythm (nth 0 *handel-patterns*) 2))
+;; 
+(defun tactus-for-handel-pattern (pattern-number)
+  (multires-rhythm::test-tactus-for-rhythm (format nil "handel-pattern-~d" pattern-number)
+					   (repeat-rhythm (nth pattern-number *handel-patterns*) 2)))
 
 ;; Must do two repetitions.
-; (multires-pattern-complexity "shmulevich" *handel-patterns*)
+; (multires-pattern-complexity "handel-pattern" *handel-patterns*)
