@@ -58,6 +58,9 @@
 (defgeneric insert-ridge (ridge time-frequency-plane &key constant-value)
   (:documentation "Insert the given ridge into the time-frequency plane, overwriting existing values with constant-value"))
 
+(defgeneric copy-object (object)
+  (:documentation "Creates a deep copy of the object")) 
+
 ;;; Methods
 (defmethod most-recent-scale ((the-ridge ridge))
   "Returns the most recent scale of the given ridge."
@@ -278,6 +281,13 @@
 	 (val row-major-indices))
     time-frequency-plane))
 
+;;; Why oh why doesn't CLOS have a instance copying function as standard? sheesh.
+(defmethod copy-object ((ridge-to-copy ridge))
+  "Deep copy the given object"
+  (make-instance (class-of ridge-to-copy) ; handles subclasses
+		 :set-active (active ridge-to-copy)
+		 :scales (copy-list (scales ridge-to-copy))
+		 :start-sample (start-sample ridge-to-copy)))
 
 ;;; Test routines.
 

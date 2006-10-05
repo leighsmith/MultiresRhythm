@@ -216,6 +216,19 @@
 					     (1- maximum-colour-value)) 1.0)))))
     (make-colour-mapped-image plotable-phase phase-colormap)))
 
+#|
+(defun tactus-on-phase-image (tactus phase magnitude &key (maximum-colour-value 255))
+  "Plot the phase with the computed tactus in black."
+  (let* ((tactus-colour (imago:make-color 0 0 0)) ; black is for the ridge.
+	 ;; Create a color map that is a spectral distribution for all values except the
+	 ;; lowest which is white, the topmost which is black for minimal
+	 (ridge-colormap (concatenate 'vector (vector white) (spectral-colormap (1- maximum-colour-value)) (vector tactus-colour)))
+	 (max-ridge-colours (1- maximum-colour-value))
+	 (plotable-phase-with-ridge (invert-and-scale (.normalise phase) max-ridge-colours)))
+    (insert-ridge tactus plotable-phase-with-ridge :constant-value maximum-colour-value)
+    (make-colour-mapped-image plotable-phase-with-ridge ridge-colormap)))
+|#
+
 (defmethod tactus-image ((tactus ridge) ridges &key (maximum-colour-value 255))
   "Plot the ridges in greyscale and the computed tactus in red, expected tactus in blue."
   (let* ((tactus-colour (imago:make-color maximum-colour-value 0 0)) ; red is for the ridge.
@@ -225,18 +238,6 @@
 	 (plotable-ridges (invert-and-scale (.normalise ridges) max-ridge-colours)))
     (insert-ridge tactus plotable-ridges :constant-value maximum-colour-value)
     (make-colour-mapped-image plotable-ridges ridge-colormap)))
-
-#|
-(defun tactus-on-phase-image (tactus phase &key (maximum-colour-value 255))
-  "Plot the phase with the computed tactus in red."
-  (let* ((tactus-colour (imago:make-color maximum-colour-value 0 0)) ; red is for the ridge.
-	 ;; Create a color map that is a greyscale for all values except the topmost which is red.
-	 (ridge-colormap (concatenate 'vector (greyscale-colormap maximum-colour-value) (vector tactus-colour)))
-	 (max-ridge-colours (1- maximum-colour-value))
-	 (plotable-mag-with-ridge (invert-and-scale (.normalise phase) max-ridge-colours)))
-    (insert-ridge tactus plotable-mag-with-ridge :constant-value maximum-colour-value)
-    (make-colour-mapped-image plotable-mag-with-ridge ridge-colormap)))
-|#
 
 (defun plot-image (image-generator file-extension data-to-plot
 		   &key (title "unnamed")
@@ -273,7 +274,9 @@
 			       (image-extension "-tactus")
 			       (time-axis-decimation 4))
   "Plot the ridges in greyscale and the computed tactus in red."
-  (plot-image #'tactus-image image-extension (list computed-tactus ridges)
+  ;; We make a copy of the tactus since decimate modifies the object (it is, after all, an
+  ;; instance method)
+  (plot-image #'tactus-image image-extension (list (copy-object computed-tactus) ridges)
 	      :title title
 	      :time-axis-decimation time-axis-decimation))
 

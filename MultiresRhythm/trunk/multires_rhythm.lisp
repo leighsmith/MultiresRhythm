@@ -349,6 +349,7 @@ then can extract ridges."
       (skeleton-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave)
     (let ((chosen-tactus (funcall tactus-selector skeleton)))   ; select out the tactus from all ridge candidates.
       (format t "computed skeleton and chosen tactus~%");
+      (plot-magnitude-and-tactus (scaleogram-magnitude scaleogram) chosen-tactus :title (name analysis-rhythm))
       (plot-ridges-and-tactus correlated-ridge-scale-peaks chosen-tactus :title (name analysis-rhythm))
       (values chosen-tactus scaleogram))))
 
