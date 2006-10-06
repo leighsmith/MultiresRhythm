@@ -25,7 +25,7 @@
 ;; Holds dyadic and unpadded versions of the magnitude and phase output of the CWT.
 (defclass scaleogram ()
   ((voices-per-octave 
-    :documentation "Frerquency resolution as number of scales for a doubling of frequency"
+    :documentation "Frequency resolution as number of scales for a doubling of frequency"
     :initarg :voices-per-octave 
     :accessor voices-per-octave 
     :initform 16)
@@ -52,6 +52,9 @@
 
 (defgeneric plot-cwt (scaleogram &key title time-axis-decimation)
   (:documentation "Function to plot the magnitude and phase components of the result of a continuous wavelet transform on a signal."))
+
+(defgeneric plot-cwt+tactus (scaleogram computed-tactus &key title time-axis-decimation)
+  (:documentation "Plot the magnitude in greyscale overlaid with the computed tactus in red, the phase overlaid with the tactus in black."))
 
 (defun gaussian-envelope (width &key 
 			    (mean 0.0) 
@@ -223,11 +226,25 @@
 ;;; Creates standard image files of the supplied magnitude and phase components of a continuous
 ;;; wavelet transform.
 (defmethod plot-cwt ((scaleogram-to-plot scaleogram) &key (title "unnamed") (time-axis-decimation 4))
-  "Function to plot the magnitude and phase components of the result of
+  "Method to plot the magnitude and phase components of the result of
    a continuous wavelet transform on a signal."
   (plot-images (list (list #'magnitude-image "-magnitude" (list (scaleogram-magnitude scaleogram-to-plot)))
 		     (list #'phase-image "-phase" (list (scaleogram-phase scaleogram-to-plot)
 							(scaleogram-magnitude scaleogram-to-plot))))
+	       :title title
+	       :time-axis-decimation time-axis-decimation))
+
+(defmethod plot-cwt+tactus ((scaleogram-to-plot scaleogram) (computed-tactus ridge)
+			     &key (title "unnamed") (time-axis-decimation 4))
+  "Plot the magnitude in greyscale overlaid with the computed tactus in red, the phase
+   overlaid with the tactus in black."
+  ;; We make a copy of the tactus since decimate modifies the object (it is, after all, an
+  ;; instance method)
+  (plot-images (list (list #'tactus-image "-mag+tactus" (list (copy-object computed-tactus)
+							      (scaleogram-magnitude scaleogram-to-plot)))
+		     (list #'tactus-on-phase-image "-phase+tactus" (list (copy-object computed-tactus)
+									 (scaleogram-phase scaleogram-to-plot)
+									 (scaleogram-magnitude scaleogram-to-plot))))
 	       :title title
 	       :time-axis-decimation time-axis-decimation))
 

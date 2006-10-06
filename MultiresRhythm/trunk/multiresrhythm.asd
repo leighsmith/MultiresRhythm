@@ -45,7 +45,7 @@
   :components ((:file "ridges")
 	       (:file "rhythm")
 	       (:file "plotting" :depends-on ("ridges"))
-	       (:file "cwt" :depends-on ("plotting"))
+	       (:file "cwt" :depends-on ("plotting" "ridges"))
 	       (:file "multires_rhythm" :depends-on ("cwt" "plotting" "rhythm"))
 	       (:file "test-examples" :depends-on ("rhythm" "multires_rhythm"))
 	       (:file "file_io")))

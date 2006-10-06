@@ -196,38 +196,24 @@
   (let* ((plotable-mag (invert-and-scale (.normalise magnitude) maximum-colour-value)))
     (make-colour-mapped-image plotable-mag (funcall *magnitude-colour-map* (1+ maximum-colour-value)))))
 
+(defun plotable-phase (phase magnitude maximum-colour-value &key (magnitude-minimum-for-phase-plot 0.001))
+  "Phase assumed [-pi -> pi], map it to [1 -> maximum-colour-value].
+   When magnitude < magnitude-minimum, set the phase to 0."
+  (.floor (.* (.> magnitude magnitude-minimum-for-phase-plot) 
+	      (.+ (.* (.+ (./ phase (* 2 pi)) 0.5) 
+		      (1- maximum-colour-value)) 1.0))))
+
 ;; TODO: would be nice to use saturation to indicate magnitude value on the phase plot.
-(defun phase-image (phase magnitude
-		    &key (maximum-colour-value 255)
-		    (magnitude-minimum-for-phase-plot 0.001))
+(defun phase-image (phase magnitude &key (maximum-colour-value 255))
   "Assumes the magnitude value is positive, phase is -pi -> pi.
    Ill-conditioned phase measures due to low magnitude are displayed as white."
   ;; use a colormap which has the lowest value white, for ill-conditioned phase values,
   ;; the rest a spectral distribution from red -> violet.
   (let* ((white (imago:make-color maximum-colour-value maximum-colour-value maximum-colour-value))
 	 ;; use maximum-colour-value rather than the number of colours for 1 less.
-	 (phase-colormap (concatenate 'vector (vector white) (spectral-colormap maximum-colour-value)))
-
-	 ;; Phase assumed [-pi -> pi], map it to [1 -> maximum-colour-value].
-	 ;; When magnitude < magnitude-minimum, set the phase to 0, 
-	 ;; the first colormap index (0) is set to be white.
-	 (plotable-phase (.floor (.* (.> magnitude magnitude-minimum-for-phase-plot) 
-				     (.+ (.* (.+ (./ phase (* 2 pi)) 0.5) 
-					     (1- maximum-colour-value)) 1.0)))))
-    (make-colour-mapped-image plotable-phase phase-colormap)))
-
-#|
-(defun tactus-on-phase-image (tactus phase magnitude &key (maximum-colour-value 255))
-  "Plot the phase with the computed tactus in black."
-  (let* ((tactus-colour (imago:make-color 0 0 0)) ; black is for the ridge.
-	 ;; Create a color map that is a spectral distribution for all values except the
-	 ;; lowest which is white, the topmost which is black for minimal
-	 (ridge-colormap (concatenate 'vector (vector white) (spectral-colormap (1- maximum-colour-value)) (vector tactus-colour)))
-	 (max-ridge-colours (1- maximum-colour-value))
-	 (plotable-phase-with-ridge (invert-and-scale (.normalise phase) max-ridge-colours)))
-    (insert-ridge tactus plotable-phase-with-ridge :constant-value maximum-colour-value)
-    (make-colour-mapped-image plotable-phase-with-ridge ridge-colormap)))
-|#
+	 (phase-colormap (concatenate 'vector (vector white) (spectral-colormap maximum-colour-value))))
+    ;; the first colormap index (0) is set to be white.
+    (make-colour-mapped-image (plotable-phase phase magnitude maximum-colour-value) phase-colormap)))
 
 (defmethod tactus-image ((tactus ridge) ridges &key (maximum-colour-value 255))
   "Plot the ridges in greyscale and the computed tactus in red, expected tactus in blue."
@@ -238,6 +224,21 @@
 	 (plotable-ridges (invert-and-scale (.normalise ridges) max-ridge-colours)))
     (insert-ridge tactus plotable-ridges :constant-value maximum-colour-value)
     (make-colour-mapped-image plotable-ridges ridge-colormap)))
+
+(defun tactus-on-phase-image (tactus phase magnitude &key (maximum-colour-value 255))
+  "Plot the phase with the computed tactus in black."
+  (let* ((tactus-colour (imago:make-color 0 0 0)) ; black is for the ridge.
+	 (white (imago:make-color maximum-colour-value maximum-colour-value maximum-colour-value))
+	 ;; Create a color map that is a spectral distribution for all values except the
+	 ;; lowest which is white, the topmost which is black for minimal
+	 (ridge+phase-colormap (concatenate 'vector 
+					    (vector white) 
+					    (spectral-colormap (1- maximum-colour-value))
+					    (vector tactus-colour)))
+	 (max-ridge-colours (1- maximum-colour-value))
+	 (plotable-phase-with-ridge (plotable-phase phase magnitude max-ridge-colours)))
+    (insert-ridge tactus plotable-phase-with-ridge :constant-value maximum-colour-value)
+    (make-colour-mapped-image plotable-phase-with-ridge ridge+phase-colormap)))
 
 (defun plot-image (image-generator file-extension data-to-plot
 		   &key (title "unnamed")
@@ -269,7 +270,7 @@
    (lambda (x) (apply #'plot-image (append x (list :title title :time-axis-decimation time-axis-decimation))))
    image-list))
 
-(defun plot-ridges-and-tactus (ridges computed-tactus &key 
+(defun plot-ridges+tactus (ridges computed-tactus &key 
 			       (title "unnamed")
 			       (image-extension "-tactus")
 			       (time-axis-decimation 4))
@@ -279,16 +280,6 @@
   (plot-image #'tactus-image image-extension (list (copy-object computed-tactus) ridges)
 	      :title title
 	      :time-axis-decimation time-axis-decimation))
-
-;;; Yep, it's all a charade, we just reuse the ridge and tactus plotter.
-(defun plot-magnitude-and-tactus (magnitude computed-tactus &key 
-			       (title "unnamed")
-			       (time-axis-decimation 4))
-  "Plot the magnitude in greyscale and the computed tactus in red."
-  (plot-ridges-and-tactus magnitude computed-tactus 
-			  :image-extension "-mag+tactus" 
-			  :title title
-			  :time-axis-decimation time-axis-decimation))
 
 (defun plot-claps (rhythm-signal claps &key foot-tap-AM (max-computed-scale 2d0)
 		   (comment "") 
