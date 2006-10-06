@@ -79,25 +79,6 @@ This is weighted by absolute constraints, look in the 600ms period range."
     ;; (plot (.column tempo-weighting-over-time 0) nil :title "Preferred tempo weighting profile")
     tempo-weighting-over-time))
 
-#|
-
-  ;; We set any ill-conditioned phase (negligible magnitude) to zero here
-  ;; after we take the phase derivative (in ridgesStatPhase) as it would
-  ;; create false changes.
-  phase = cleanPhase(mag, phase);
-
-  (format t "Stationary Phase~%")
-  (format t "Local Phase Congruency~%")
-  ;; redundant
-  ;;fprintf(promptStream, "Stationary Phase Ridges\n");
-  ;;ridgeStatPhase = ridgesStatPhase(magnitude, phase, voices-per-octave);
-  fprintf(promptStream, "Finding ridge (by scale)\n");
-
-  ;; show what we got as an intensity plot
-  plot-CWT("correlation", correlation)
-  )
-|#
-
 (defun normalise-by-scale (magnitude)
   "Normalise a magnitude finding the maximum scale at each time point.
  We assume values are positive values only"
@@ -275,10 +256,10 @@ Anything clipped will be set to the clamp-low, clamp-high values"
     (.* local-pc-for-mag no-outliers)))
 |#
 
-;; TODO alternatively return normalised-magnitude, stationary-phase or
-;; local-phase-congruency individually.
-;; Should use a functional approach, passing the functions applicable as a list:
-;; (&key analyzers '(#'stationary-phase #'local-phase-congruency #'.normalise))
+;;; TODO alternatively return normalised-magnitude, stationary-phase or
+;;; local-phase-congruency individually.
+;;; Should use a functional approach, passing the functions applicable as a list:
+;;; (&key analyzers '(#'stationary-phase #'local-phase-congruency #'.normalise))
 (defun correlate-ridges (magnitude phase voices-per-octave)
   "Computes independent surfaces analysing the magnitude and phase
 which are then combined to form an analytic surface from which we
@@ -330,7 +311,9 @@ then can extract ridges."
 	 ;; Weight by the absolute tempo preference.
 	 (tempo-weighted-ridges (.* correlated-ridges 
 				    (tempo-salience-weighting salient-scale (.array-dimensions magnitude)))))
-	 ;; TODO substitute tempo-weighted-ridges for correlated-ridges to enable tempo selectivity.
+    ;; show what we got as an intensity plot
+    ;; (plot-image #'magnitude-image "-correlation" correlated-ridges :title (name analysis-rhythm))
+    ;; TODO substitute tempo-weighted-ridges for correlated-ridges to enable tempo selectivity.
     (determine-scale-peaks correlated-ridges)))
 
 (defmethod skeleton-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
@@ -338,7 +321,7 @@ then can extract ridges."
   (let* ((scaleogram (cwt (time-signal analysis-rhythm) voices-per-octave))
 	 (correlated-ridge-scale-peaks (scale-peaks-of-scaleogram scaleogram (sample-rate analysis-rhythm)))
        	 (skeleton (extract-ridges correlated-ridge-scale-peaks)))
-    (plot-cwt scaleogram :title (name analysis-rhythm))
+    ;; (plot-cwt scaleogram :title (name analysis-rhythm))
     (values skeleton scaleogram correlated-ridge-scale-peaks)))
 
 (defmethod tactus-for-rhythm ((analysis-rhythm rhythm) 
@@ -348,27 +331,15 @@ then can extract ridges."
   (multiple-value-bind (skeleton scaleogram correlated-ridge-scale-peaks)
       (skeleton-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave)
     (let ((chosen-tactus (funcall tactus-selector skeleton)))   ; select out the tactus from all ridge candidates.
-      (format t "computed skeleton and chosen tactus~%");
+      (format t "Computed skeleton and chosen tactus~%")
       (plot-cwt+tactus scaleogram chosen-tactus :title (name analysis-rhythm))
       (plot-ridges+tactus correlated-ridge-scale-peaks chosen-tactus :title (name analysis-rhythm))
+      (format t "Finished plotting scalograms~%")
       (values chosen-tactus scaleogram))))
 
-#|
-(defmethod tactus-for-rhythm ((analysis-rhythm rhythm) 
-			      &key (voices-per-octave 16)
-			      (tactus-selector #'select-longest-lowest-tactus))
-  "Returns the selected tactus given the rhythm."
-  (let* ((scaleogram (cwt (time-signal analysis-rhythm) voices-per-octave))
-	 (correlated-ridge-scale-peaks (scale-peaks-of-scaleogram scaleogram (sample-rate analysis-rhythm)))
-       	 (skeleton (extract-ridges correlated-ridge-scale-peaks))
-	 ;; select out the tactus from all ridge candidates.
-	 (chosen-tactus (funcall tactus-selector skeleton)))
-    (format t "computed skeleton and chosen tactus~%");
-    (plot-cwt scaleogram :title (name analysis-rhythm))
-    (plot-ridges-and-tactus correlated-ridge-scale-peaks chosen-tactus :title (name analysis-rhythm))
-    (values chosen-tactus scaleogram)))
-|#
-
+;;; TODO We could set any ill-conditioned phase (negligible magnitude) to zero here
+;;; after we take the phase derivative (in stationary-phase) as it would
+;;; create false changes.
 (defun clean-phase (magnitude phase &key (threshold 0.001) (clamp 0.0))
   "We clamp any ill-conditioned phase (negligble magnitude) to the value given (defaulting to zero)"
   (clamp-to-bounds phase magnitude :low-bound threshold :clamp-low clamp))
