@@ -22,24 +22,25 @@
 
   ;;rhythms(length(times)) = 1.0;
 
-  (loop
-     ;; final rhythm is immaterial, so long as it's long enough for the sample
-     for time = 0.0 then (+ time interval)
-     for interval in (append intervals (list 1.0))
-     for note-tag = 0 then (1+ note-tag)
-     do
-       (format f "// IOI = ~,3f~%" interval)
-       (format f "t ~,3f;~%" time)
-       (format f "handclap (~f ~d) " duration note-tag)
-     ;;if(strcmp(instrument, "Sampler"))
-     ;;  (format f "filename: \"~a\" ", "~/Library/Sounds/hihat_closed.aiff")
-     ;;elseif(strcmp(instrument, "Midi"))
-       ;; (format f "note: g3k, ")
-       (format f "keyNum: 64, ")
+    (loop
+       ;; final rhythm is immaterial, so long as it's long enough for the sample
+       for time = 0.0 then (+ time interval)
+       for interval in (append intervals (list 1.0))
+       for note-tag = 0 then (1+ note-tag)
+       do
+	 (format f "// IOI = ~,3f~%" interval)
+	 (format f "t ~,3f;~%" time)
+	 (format f "handclap (~f ~d) " duration note-tag)
+         ;;(cond 
+         ;; ((eql instrument "Sampler")
+         ;;  (format f "filename: \"~a\" " "~/Library/Sounds/hihat_closed.aiff"))
+         ;; ((eql instrument "Midi")
+         ;;  (format f "note: g3k, ")))
+         (format f "keyNum: 64, ")
 
-     ;;(format f "amplitude: ~f;~%" velocities(timeIndex))
-       (format f "amplitude: ~f;~%" 1.0)
-     finally (format f "t ~,3f;~%END;~%" time))))
+         ;;(format f "amplitude: ~f;~%" velocities(timeIndex))
+         (format f "amplitude: ~f;~%" 1.0)
+       finally (format f "t ~,3f;~%END;~%" time))))
 
 
 
