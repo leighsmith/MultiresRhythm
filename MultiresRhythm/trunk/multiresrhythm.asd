@@ -39,7 +39,7 @@
 
 (defsystem :multiresrhythm
   :description "A Multiresolution Time-Frequency Analysis and Interpretation of Musical Rhythm"
-  :version "2.0"
+  :version "2.1"
   :author "Leigh M. Smith"
   :depends-on (:nlisp :zlib :imago)
   :components ((:file "ridges")

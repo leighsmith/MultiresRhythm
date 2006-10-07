@@ -155,8 +155,8 @@
 
 
 ;;; Needs to have remaining time 
-(defun clap-to-iois (name iois)
-  (clap-to-rhythm (iois-to-rhythm name iois :shortest-ioi (/ 120 17))))
+(defun clap-to-iois (name iois &key (shortest-ioi (/ 120 17)))
+  (clap-to-rhythm (iois-to-rhythm name iois :shortest-ioi shortest-ioi)))
 
 ; (onsets-to-grid (iois-to-onsets (intervals-in-samples '(17 17 20.5 13.5) :ioi (/ 600 17))))
 ; (onsets-to-grid (iois-to-onsets (intervals-in-samples '(17 17 20.5 13.5 17 17) :ioi 10)))
@@ -172,3 +172,8 @@
 ;;; 3 against 4
 ;; (iois-to-rhythm "duple" '(10 10 10 10 10 10 10 10) :shortest-ioi (/ 120 10))
 ;; (iois-to-rhythm "triple" '(15 15 15 15 15 15 15 15 15 15 15 15) :shortest-ioi (/ 120 15))
+
+;;; From Desain & Honing 1999
+;;; (clap-to-iois "desain99" '(3 1 6 2 3 1 6 2 3 1) :shortest-ioi 50)
+;;; (clap-to-rhythm (iois-to-rhythm "desain99" '(3 1 6 2 3 1 6 2 3 1) :shortest-ioi 50)
+;;;                 :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time 91 0 skeleton)))

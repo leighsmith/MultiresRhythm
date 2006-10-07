@@ -62,6 +62,13 @@
   (:documentation "Creates a deep copy of the object")) 
 
 ;;; Methods
+
+(defmethod print-object ((ridge-to-print ridge) stream)
+  (let ((the-start-sample (start-sample ridge-to-print)))
+	(format stream "RIDGE from scale ~d @ ~d to scale ~d @ ~d" 
+		(first (scales ridge-to-print)) the-start-sample
+		(last (scales ridge-to-print)) (+ the-start-sample (duration ridge-to-print)))))
+
 (defmethod most-recent-scale ((the-ridge ridge))
   "Returns the most recent scale of the given ridge."
   (first (scales the-ridge)))
@@ -78,7 +85,7 @@
 (defmethod scale-at-time ((the-ridge ridge) time)
   "Returns the scale at the given time"
   (let ((scales-index (- time (start-sample the-ridge))))
-    (if (and (plusp scales-index)
+    (if (and (>= scales-index 0)
 	     (< scales-index (duration the-ridge)))
 	(elt (scales the-ridge) scales-index)
 	nil)))
