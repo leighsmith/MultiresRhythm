@@ -69,12 +69,14 @@
 ;; (test-lpc)
 
 (defun test-rhythm (rhythm-grid)
-  (let* ((rhythm-signal (rhythmic-grid-to-signal rhythm-grid))
+  (let* ((rhythm-signal (rhythmic-grid-to-signal rhythm-grid)) ;  :ioi 256
 	 (rhythm-scaleogram (cwt rhythm-signal 8)))
-    (plot-cwt rhythm-scaleogram :title "rhythm")))
+    (plot-cwt rhythm-scaleogram :title "rhythm")
+    rhythm-scaleogram))
 
 ;; (test-rhythm '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0))
 ;; (test-rhythm '(1 1 1 1 1 1 1 1 1 1))
+;; (plot-scale-energy-at-time (test-rhythm '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)) 650)
 ;; (setf b (rhythmic-grid-to-signal '(1 1 1 1) :tempo 60))
 
 (defun test-tactus-for-rhythm (name rhythm-grid)
@@ -149,6 +151,7 @@
 ;; (test-octave-file "desain-unquantized" :sample-rate 200)
 ;; (test-octave-file "desain-unquantized" :sample-rate 200 :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time 58 62 skeleton)))
 ;; (test-octave-file "desain-unquantized" :sample-rate 200 :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time 73 65 skeleton)))
+;; (test-octave-file "desain-quantized" :sample-rate 200)
 
 ;; (setf desain-at-65 (mapcar (lambda (x) (scale-at-time x 65)) desain-skeleton))
 ;; (loop for y in desain-at-65 when y collect y)
