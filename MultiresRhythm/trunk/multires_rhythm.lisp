@@ -221,8 +221,8 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 	 (local-phase-diff (.+ (.* (.not which-wrapped) abs-ds-phase) (.* which-wrapped phase-wrap)))
 	 (congruency (make-double-array time-frequency-dimensions))
 	 (maximal-local-pc)
-	 (local-pc-for-mag)
-	 (no-outliers))
+	 ;; (no-outliers)
+	 (local-pc-for-mag))
     ;; Since we produce the derivative from the difference, local-phase-diff is one
     ;; element less.
     (setf-subarray (val congruency) (val (.transpose local-phase-diff)) (list (list 1 (1- number-of-scales)) t))
