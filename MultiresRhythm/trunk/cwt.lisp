@@ -48,13 +48,36 @@
     :accessor dyadic-padded-phase)
    (time-trim
     :documentation "Parameter to .subarray to trim the padded back to unpadded versions"
-    :accessor time-trim)))
+    :accessor time-trim)
+   (skip-highest-octaves  ;; TODO perhaps this should be a range of octaves analysed instead?
+    :documentation "Number of octaves of the highest frequencies that have not been analysed for efficiency"
+    :initarg :skip-highest-octaves
+    :initform 0
+    :accessor skip-highest-octaves)))
 
 (defgeneric plot-cwt (scaleogram &key title time-axis-decimation)
   (:documentation "Function to plot the magnitude and phase components of the result of a continuous wavelet transform on a signal."))
 
 (defgeneric plot-cwt+tactus (scaleogram computed-tactus &key title time-axis-decimation)
   (:documentation "Plot the magnitude in greyscale overlaid with the computed tactus in red, the phase overlaid with the tactus in black."))
+
+(defgeneric plot-scale-energy-at-time (scaleogram time)
+  (:documentation "Plot a cross-section of the magnitude at a given time point so we can spot the highest activated scales."))
+
+(defgeneric number-of-scales (scaleogram)
+  (:documentation "Returns the number of scales that the scaleogram is dilated by."))
+
+(defgeneric number-of-octaves (scaleogram)
+  (:documentation "Returns the number of octaves that the scaleogram spans in its dilation."))
+
+
+;;; Methods
+(defmethod number-of-scales ((scaleogram-to-analyse scaleogram))
+  (.row-count (scaleogram-magnitude scaleogram-to-analyse)))
+
+(defmethod number-of-octaves ((scaleogram-to-analyse scaleogram))
+  (+ (/ (number-of-scales scaleogram-to-analyse) (voices-per-octave scaleogram-to-analyse))
+     (skip-highest-octaves scaleogram-to-analyse)))
 
 (defun gaussian-envelope (width &key 
 			    (mean 0.0) 
@@ -249,6 +272,80 @@
 	       :title title
 	       :time-axis-decimation time-axis-decimation))
 
+
+(defmethod plot-scale-energy-at-time ((scaleogram-to-plot scaleogram) time)
+  "Plot a cross-section of the magnitude at a given time point so we can spot the highest activated scales."
+  ;; (let* (
+  ;; (voicesPerOctave (voices-per-octave scaleogram-to-plot))
+  ;;  labels(1:2:2 .* (numOctaves+1)) = num2str(2 .^ ((numOctaves:-1:0) + 2))
+  ;;  labels(2:2:2 .* (numOctaves+1)) = 1:voicesPerOctave:numScales+1
+  ;;  labels
+  ;;  axis([0 1 2 (number-of-octaves scaleogram-to-plot)])
+  ;;  labels(2:2:2 .* (numOctaves+1)) = 
+  ;; (octave-to-ioi (.iseq 0 num-octaves) max-period)
+  ;; (.* (.iseq 0 num-octaves) voices-per-octave)
+  (plot-command "set title font \"Times,20\"")
+  (plot-command "set xlabel font \"Times,20\"")
+  (plot-command "set ylabel font \"Times,20\"")
+  (plot-command "set key off")
+  (plot-command "set xtics (\"abc\" 1, \"def\" 20, \"ggg\" 30)")
+  (plot (.reverse (.column (scaleogram-magnitude scaleogram-to-plot) time)) nil 
+	:title (format nil "Energy profile at sample number ~d" time)
+	:xlabel "Scale as IOI Range in Samples"
+	:ylabel "Magnitude Energy"
+	:reset nil
+        :aspect-ratio 0.2))
+
+;;; Original Mathematica plotting code
+
+(defun octave-to-ioi (octave max-period)
+  "Function to give us an IOI, (in samples) given an scale octave number (which can be a float)."
+  (/ max-period (expt 2 octave)))
+
+;;; Given a sampling rate sampRate in Hz, the IOI can be determined in seconds.
+(defun voice-to-ioi (voice max-period voices-per-octave) 
+  "Function to give us an IOI, (in samples) given a voice number."
+  (octave-to-ioi (/ voice voices-per-octave) max-period))
+
+(defun ioi-to-voice (ioi max-period voices-per-octave)
+  "Translate an interval in samples into a voice number."
+   (* voices-per-octave (log 2 (/ max-period ioi))))
+
+;; Options(PeakRhythmPlot) = 
+;; 	Join({DataReduction -> 4,  (* Number of values cwt throws away *)
+;; 	CrochetTempo -> None,
+;; 	Scalelabel -> {(*`Private`*) ioiManyTicksLabel, "Scale as IOI Range in Samples"}},
+;; 	Options(RhythmImpulsePlot));
+
+;; ioiManyTicksLabel(ymin_, ymax_) :=
+;; Module({f},
+;;     Transpose({f = Range(0, Floor(ymax), 1) + 1, 
+;; 	Map(Function(x, 
+;; 	    If(Mod(x, `Private`voicesPerOctave) == 1, voiceToIOI(x), "")),
+;; 	      f)}));
+
+;; (* function to plot the magnitude at a time point in cross-section *)
+;; PeakRhythmPlot(time_, opts___) :=
+;; Module({atTimePoint,label},
+;; 	{label,`Private`reduction,`Private`tempo} =
+;; 	    {Scalelabel,CrochetTempo} /.
+;; 	     {opts} /. Options(PeakRhythmPlot);
+
+;; 	If(`Private`tempo =!= None,
+;; 	    label = {RhythmBeatLabel,"Tempo/Beats"});
+
+;; 	atTimePoint = Flatten(RhythmTimeRegion(`Private`mag, time, time));
+
+;; 	ListPlot(-atTimePoint,
+;; 		 Frame->True,
+;; 		 FrameTicks->{label((1)), Automatic},
+;; 		 FrameLabel->{label((2)), "Energy"},
+;; 	         PlotJoined->True, AspectRatio->0.2,
+;; 		 PlotRange->All));
+
+
+
+
 ;;; For inverse CWT.
 ;;; To achieve conservation of energy between domains, c_g is chosen according to the wavelet.
 (defun dyadic-icwt (magnitude phase wavelets-per-octave
@@ -304,4 +401,3 @@
       ;; Returns the signal and it's Hilbert transform.
       (.subarray (apply #'dyadic-icwt padded-magnitude padded-phase wavelets-per-octave parameters)
 		 (list 0 (second time-trim))))))
-
