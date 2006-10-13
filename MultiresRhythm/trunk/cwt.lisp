@@ -70,6 +70,8 @@
 (defgeneric number-of-octaves (scaleogram)
   (:documentation "Returns the number of octaves that the scaleogram spans in its dilation."))
 
+(defgeneric label-scale-as-time-support (scaleogram)
+  (:documentation "Returns a list of plotting labels giving the time support for each scale"))
 
 ;;; Methods
 (defmethod number-of-scales ((scaleogram-to-analyse scaleogram))
@@ -79,9 +81,7 @@
   (+ (/ (number-of-scales scaleogram-to-analyse) (voices-per-octave scaleogram-to-analyse))
      (skip-highest-octaves scaleogram-to-analyse)))
 
-(defun gaussian-envelope (width &key 
-			    (mean 0.0) 
-			    (stddev 1.0) 
+(defun gaussian-envelope (width &key (mean 0.0) (stddev 1.0) 
 			    (scaling (/ 1d0 (* (sqrt (* 2d0 pi)) stddev))))
   "Compute a gaussian envelope.
    width is the sampling range of an envelope over +/-5 standard deviations.
@@ -128,6 +128,7 @@
   ;; (.* voices-per-octave (.- (.floor (.log time-periods 2)) skip-initial-octaves)))
   (.* voices-per-octave (.- (.log time-periods 2) skip-initial-octaves)))
 
+;;; Given a sampling rate sampRate in Hz, the IOI can be determined in seconds.
 (defun time-support (scales wavelets-per-octave &key (skip-initial-octaves 2))
   "Function to return a vector of periods of time support (in samples) from scale numbers.
    The highest two octaves (time domain extent 0-1,1-2) don't tell us much, so we save
@@ -175,7 +176,7 @@
 		;; Produce Magnitude/Phase components from Real/Imaginary values.
 		
 		;; TODO this is currently incorrectly scaled.
-		;; magnitude-at-scale = (./ (.abs voice-response) (.aref voice-scaling scale-index))
+		;; (magnitude-at-scale (./ (.abs voice-response) (.aref voice-scaling scale-index)))
 		;; magnitude-at-scale = abs((voice-response .^ 2) ./ (.aref period scale-index)); 
 		(magnitude-at-scale (.abs voice-response))
 
@@ -233,7 +234,7 @@
    using dyadic-cwt, trimming off the returned result to match the original signal length.
    Returns a scaleogram instance containing magnitude and phase."
   ;; The wavelet transform operates on 1 x N vector
-  (format t "Input signal length ~d~%" (.array-dimension time-signal 0))
+  (format t "Input signal length ~d samples~%" (.array-dimension time-signal 0))
   (multiple-value-bind (pad-signal time-trim) (dyadic-pad time-signal)
     (multiple-value-bind (padded-magnitude padded-phase)
 	(dyadic-cwt pad-signal voices-per-octave max-wavelet-period)
@@ -272,50 +273,34 @@
 	       :title title
 	       :time-axis-decimation time-axis-decimation))
 
+;; We reverse the labels so we plot in more intuitive lowest scale on the left orientation.
+(defmethod label-scale-as-time-support ((scaleogram-to-plot scaleogram))
+  "Generates a set of labels of the scales as time support interval"
+  (let* ((vpo (voices-per-octave scaleogram-to-plot))
+	 (scale-number-per-octave (.* (.iseq 0 (number-of-octaves scaleogram-to-plot)) vpo))
+	 (time-support-per-octave (.floor (time-support scale-number-per-octave vpo))))
+    (loop 
+       for label across (val (.reverse time-support-per-octave))
+       for value across (val scale-number-per-octave)
+       collect (list label value)))) ; Should return label as a string.
 
 (defmethod plot-scale-energy-at-time ((scaleogram-to-plot scaleogram) time)
   "Plot a cross-section of the magnitude at a given time point so we can spot the highest activated scales."
-  ;; (let* (
-  ;; (voicesPerOctave (voices-per-octave scaleogram-to-plot))
-  ;;  labels(1:2:2 .* (numOctaves+1)) = num2str(2 .^ ((numOctaves:-1:0) + 2))
-  ;;  labels(2:2:2 .* (numOctaves+1)) = 1:voicesPerOctave:numScales+1
-  ;;  labels
-  ;;  axis([0 1 2 (number-of-octaves scaleogram-to-plot)])
-  ;;  labels(2:2:2 .* (numOctaves+1)) = 
-  ;; (octave-to-ioi (.iseq 0 num-octaves) max-period)
-  ;; (.* (.iseq 0 num-octaves) voices-per-octave)
   (plot-command "set title font \"Times,20\"")
   (plot-command "set xlabel font \"Times,20\"")
   (plot-command "set ylabel font \"Times,20\"")
   (plot-command "set key off")
-  (plot-command "set xtics (\"abc\" 1, \"def\" 20, \"ggg\" 30)")
+  ;; (plot-command "set xtics (\"abc\" 1, \"def\" 20, \"ggg\" 30)")
+  (plot-command (format nil "set xtics (~{~{\"~a\" ~d~}~^, ~})~%" (label-scale-as-time-support scaleogram-to-plot)))
+  ;; We reverse the column so we plot in more intuitive lowest scale on the left orientation.
   (plot (.reverse (.column (scaleogram-magnitude scaleogram-to-plot) time)) nil 
 	:title (format nil "Energy profile at sample number ~d" time)
 	:xlabel "Scale as IOI Range in Samples"
 	:ylabel "Magnitude Energy"
 	:reset nil
-        :aspect-ratio 0.2))
+	:aspect-ratio 0.2))
 
 ;;; Original Mathematica plotting code
-
-(defun octave-to-ioi (octave max-period)
-  "Function to give us an IOI, (in samples) given an scale octave number (which can be a float)."
-  (/ max-period (expt 2 octave)))
-
-;;; Given a sampling rate sampRate in Hz, the IOI can be determined in seconds.
-(defun voice-to-ioi (voice max-period voices-per-octave) 
-  "Function to give us an IOI, (in samples) given a voice number."
-  (octave-to-ioi (/ voice voices-per-octave) max-period))
-
-(defun ioi-to-voice (ioi max-period voices-per-octave)
-  "Translate an interval in samples into a voice number."
-   (* voices-per-octave (log 2 (/ max-period ioi))))
-
-;; Options(PeakRhythmPlot) = 
-;; 	Join({DataReduction -> 4,  (* Number of values cwt throws away *)
-;; 	CrochetTempo -> None,
-;; 	Scalelabel -> {(*`Private`*) ioiManyTicksLabel, "Scale as IOI Range in Samples"}},
-;; 	Options(RhythmImpulsePlot));
 
 ;; ioiManyTicksLabel(ymin_, ymax_) :=
 ;; Module({f},
@@ -323,27 +308,6 @@
 ;; 	Map(Function(x, 
 ;; 	    If(Mod(x, `Private`voicesPerOctave) == 1, voiceToIOI(x), "")),
 ;; 	      f)}));
-
-;; (* function to plot the magnitude at a time point in cross-section *)
-;; PeakRhythmPlot(time_, opts___) :=
-;; Module({atTimePoint,label},
-;; 	{label,`Private`reduction,`Private`tempo} =
-;; 	    {Scalelabel,CrochetTempo} /.
-;; 	     {opts} /. Options(PeakRhythmPlot);
-
-;; 	If(`Private`tempo =!= None,
-;; 	    label = {RhythmBeatLabel,"Tempo/Beats"});
-
-;; 	atTimePoint = Flatten(RhythmTimeRegion(`Private`mag, time, time));
-
-;; 	ListPlot(-atTimePoint,
-;; 		 Frame->True,
-;; 		 FrameTicks->{label((1)), Automatic},
-;; 		 FrameLabel->{label((2)), "Energy"},
-;; 	         PlotJoined->True, AspectRatio->0.2,
-;; 		 PlotRange->All));
-
-
 
 
 ;;; For inverse CWT.
