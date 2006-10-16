@@ -73,7 +73,8 @@
 (defgeneric label-scale-as-time-support (scaleogram)
   (:documentation "Returns a list of plotting labels giving the time support for each scale"))
 
-;;; Methods
+;;;; Methods
+
 (defmethod number-of-scales ((scaleogram-to-analyse scaleogram))
   (.row-count (scaleogram-magnitude scaleogram-to-analyse)))
 
@@ -248,68 +249,6 @@
 	(setf (scaleogram-phase scaleogram-result) (.subarray padded-phase trim))
 	scaleogram-result))))
 
-;;; Creates standard image files of the supplied magnitude and phase components of a continuous
-;;; wavelet transform.
-(defmethod plot-cwt ((scaleogram-to-plot scaleogram) &key (title "unnamed") (time-axis-decimation 4))
-  "Method to plot the magnitude and phase components of the result of
-   a continuous wavelet transform on a signal."
-  (plot-images (list (list #'magnitude-image "-magnitude" (list (scaleogram-magnitude scaleogram-to-plot)))
-		     (list #'phase-image "-phase" (list (scaleogram-phase scaleogram-to-plot)
-							(scaleogram-magnitude scaleogram-to-plot))))
-	       :title title
-	       :time-axis-decimation time-axis-decimation))
-
-(defmethod plot-cwt+tactus ((scaleogram-to-plot scaleogram) (computed-tactus ridge)
-			     &key (title "unnamed") (time-axis-decimation 4))
-  "Plot the magnitude in greyscale overlaid with the computed tactus in red, the phase
-   overlaid with the tactus in black."
-  ;; We make a copy of the tactus since decimate modifies the object (it is, after all, an
-  ;; instance method)
-  (plot-images (list (list #'tactus-image "-mag+tactus" (list (copy-object computed-tactus)
-							      (scaleogram-magnitude scaleogram-to-plot)))
-		     (list #'tactus-on-phase-image "-phase+tactus" (list (copy-object computed-tactus)
-									 (scaleogram-phase scaleogram-to-plot)
-									 (scaleogram-magnitude scaleogram-to-plot))))
-	       :title title
-	       :time-axis-decimation time-axis-decimation))
-
-;; We reverse the labels so we plot in more intuitive lowest scale on the left orientation.
-(defmethod label-scale-as-time-support ((scaleogram-to-plot scaleogram))
-  "Generates a set of labels of the scales as time support interval"
-  (let* ((vpo (voices-per-octave scaleogram-to-plot))
-	 (scale-number-per-octave (.* (.iseq 0 (number-of-octaves scaleogram-to-plot)) vpo))
-	 (time-support-per-octave (.floor (time-support scale-number-per-octave vpo))))
-    (loop 
-       for label across (val (.reverse time-support-per-octave))
-       for value across (val scale-number-per-octave)
-       collect (list label value)))) ; Should return label as a string.
-
-(defmethod plot-scale-energy-at-time ((scaleogram-to-plot scaleogram) time)
-  "Plot a cross-section of the magnitude at a given time point so we can spot the highest activated scales."
-  (plot-command "set title font \"Times,20\"")
-  (plot-command "set xlabel font \"Times,20\"")
-  (plot-command "set ylabel font \"Times,20\"")
-  (plot-command "set key off")
-  ;; (plot-command "set xtics (\"abc\" 1, \"def\" 20, \"ggg\" 30)")
-  (plot-command (format nil "set xtics (~{~{\"~a\" ~d~}~^, ~})~%" (label-scale-as-time-support scaleogram-to-plot)))
-  ;; We reverse the column so we plot in more intuitive lowest scale on the left orientation.
-  (plot (.reverse (.column (scaleogram-magnitude scaleogram-to-plot) time)) nil 
-	:title (format nil "Energy profile at sample number ~d" time)
-	:xlabel "Scale as IOI Range in Samples"
-	:ylabel "Magnitude Energy"
-	:reset nil
-	:aspect-ratio 0.2))
-
-;;; Original Mathematica plotting code
-
-;; ioiManyTicksLabel(ymin_, ymax_) :=
-;; Module({f},
-;;     Transpose({f = Range(0, Floor(ymax), 1) + 1, 
-;; 	Map(Function(x, 
-;; 	    If(Mod(x, `Private`voicesPerOctave) == 1, voiceToIOI(x), "")),
-;; 	      f)}));
-
-
 ;;; For inverse CWT.
 ;;; To achieve conservation of energy between domains, c_g is chosen according to the wavelet.
 (defun dyadic-icwt (magnitude phase wavelets-per-octave
@@ -365,3 +304,57 @@
       ;; Returns the signal and it's Hilbert transform.
       (.subarray (apply #'dyadic-icwt padded-magnitude padded-phase wavelets-per-octave parameters)
 		 (list 0 (second time-trim))))))
+
+;;;; Plotting methods
+
+;;; Creates standard image files of the supplied magnitude and phase components of a continuous
+;;; wavelet transform.
+(defmethod plot-cwt ((scaleogram-to-plot scaleogram) &key (title "unnamed") (time-axis-decimation 4))
+  "Method to plot the magnitude and phase components of the result of
+   a continuous wavelet transform on a signal."
+  (plot-images (list (list #'magnitude-image "-magnitude" (list (scaleogram-magnitude scaleogram-to-plot)))
+		     (list #'phase-image "-phase" (list (scaleogram-phase scaleogram-to-plot)
+							(scaleogram-magnitude scaleogram-to-plot))))
+	       :title title
+	       :time-axis-decimation time-axis-decimation))
+
+(defmethod plot-cwt+tactus ((scaleogram-to-plot scaleogram) (computed-tactus ridge)
+			     &key (title "unnamed") (time-axis-decimation 4))
+  "Plot the magnitude in greyscale overlaid with the computed tactus in red, the phase
+   overlaid with the tactus in black."
+  ;; We make a copy of the tactus since decimate modifies the object (it is, after all, an
+  ;; instance method)
+  (plot-images (list (list #'tactus-image "-mag+tactus" (list (copy-object computed-tactus)
+							      (scaleogram-magnitude scaleogram-to-plot)))
+		     (list #'tactus-on-phase-image "-phase+tactus" (list (copy-object computed-tactus)
+									 (scaleogram-phase scaleogram-to-plot)
+									 (scaleogram-magnitude scaleogram-to-plot))))
+	       :title title
+	       :time-axis-decimation time-axis-decimation))
+
+;; We reverse the labels so we plot in more intuitive lowest scale on the left orientation.
+(defmethod label-scale-as-time-support ((scaleogram-to-plot scaleogram))
+  "Generates a set of labels of the scales as time support interval"
+  (let* ((vpo (voices-per-octave scaleogram-to-plot))
+	 (scale-number-per-octave (.* (.iseq 0 (number-of-octaves scaleogram-to-plot)) vpo))
+	 (time-support-per-octave (.floor (time-support scale-number-per-octave vpo))))
+    (loop 
+       for label across (val (.reverse time-support-per-octave))
+       for value across (val scale-number-per-octave)
+       collect (list label value)))) ; Should return label as a string.
+
+(defmethod plot-scale-energy-at-time ((scaleogram-to-plot scaleogram) time)
+  "Plot a cross-section of the magnitude at a given time point so we can spot the highest activated scales."
+  (plot-command "set title font \"Times,20\"")
+  (plot-command "set xlabel font \"Times,20\"")
+  (plot-command "set ylabel font \"Times,20\"")
+  (plot-command "set key off")
+  ;; (plot-command "set xtics (\"abc\" 1, \"def\" 20, \"ggg\" 30)")
+  (plot-command (format nil "set xtics (~{~{\"~a\" ~d~}~^, ~})~%" (label-scale-as-time-support scaleogram-to-plot)))
+  ;; We reverse the column so we plot in more intuitive lowest scale on the left orientation.
+  (plot (.reverse (.column (scaleogram-magnitude scaleogram-to-plot) time)) nil 
+	:title (format nil "Energy profile at sample number ~d" time)
+	:xlabel "Scale as IOI Range in Samples"
+	:ylabel "Magnitude Energy"
+	:reset nil
+	:aspect-ratio 0.2))

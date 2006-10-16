@@ -299,14 +299,15 @@
 ;;  (let ((clap-intensity (make-double-array (.array-dimensions claps) :initial-element 2d0)))
 ;;  (plot clap-intensity claps :style "impulses"))
 
-#|
-;; How to plot using nlisp (unfortunately the data transferred between gnuplot and nlisp is too much.
+;;; How to plot using nlisp now the image function is fixed.
+(defun nlisp-image (magnitude &key (title "magnitude") (time-axis-decimation 4))
+  (nlisp::palette-defined '((0 "#FF0000")
+		     (2 "#00FFFF")
+		     (6 "#0000FF")))
+  ;; Need to label the plot of the scale axis with cwt label-scale-as-time-support
+  (image (decimate magnitude (list 1 time-axis-decimation)) nil nil
+	 :title title
+	 :xlabel "time" :ylabel "dilation scale"
+	 :square nil))
 
-    (palette-defined '((0 "#FF0000")
-		       (2 "#00FFFF")
-		       (6 "#0000FF")))
-
-    (image plotable-mag nil nil
-	   :title title
-	   :xlabel "time" :ylabel "dilation scale")))
-|#
+ 
