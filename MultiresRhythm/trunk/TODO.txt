@@ -1,4 +1,5 @@
 * local-phase-congruency able to recompute using trig to catch boundary conditions?
 * ridge extraction using energy measure, not just single continuity.
-* Tempo selectivity
+* Tempo selection of ridges or weighting.
 * sound file reading/writing code. - Surely the MusicKit or at least, libsndfile with CFFI.
+* MIDI file import & export
