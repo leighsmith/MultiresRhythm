@@ -124,7 +124,8 @@
     (nplot (cons listener-ratings syncopation-test-results) nil
 	:legends '("Listener Ratings" "Longuet-Higgins & Lee Measure" "P&K Measure (Musicians)" "P&K (Non-musicians)")
 	:styles (ntimes "linespoints linewidth 2" 4)
-	:title "Comparison of Psychological and Modelled Syncopation Measures")))
+	:title "Comparison of Psychological and Modelled Syncopation Measures"
+	:reset nil)))
 
 
 (defun multiplot-syncopation-comparisons (listener-rated-patterns meter &optional (figure-number 1))
@@ -143,21 +144,24 @@
 	  :xlabel "Pattern number"
 	  :ylabel "Complexity"
 	  :styles (ntimes "linespoints linewidth 2" 4)
-	  :title "Comparison of Modelled Syncopation Measures")
+	  :title "Comparison of Modelled Syncopation Measures"
+	  :reset nil)
     (window 1)
     (nplot (list listener-ratings (first syncopation-test-results)) nil
 	  :legends '("Listener Ratings" "Longuet-Higgins & Lee Measure") 
 	  :xlabel "Pattern number"
 	  :ylabel "Complexity"
 	  :styles (ntimes "linespoints linewidth 2" 4)
-	  :title "Comparison of Listener Ratings to LH&L Syncopation Measures")
+	  :title "Comparison of Listener Ratings to LH&L Syncopation Measures"
+	  :reset nil)
     (window 2)
     (nplot (cons listener-ratings (rest syncopation-test-results)) nil
 	  :legends '("Listener Ratings" "P&K Measure (Musicians)" "P&K (Non-musicians)")
 	  :xlabel "Pattern number"
 	  :ylabel "Complexity"
 	  :styles (ntimes "linespoints linewidth 2" 4)
-	  :title "Comparison of Listener Ratings to P&K Syncopation Measures")))
+	  :title "Comparison of Listener Ratings to P&K Syncopation Measures"
+	  :reset nil)))
 
 (defun rmse (observations model)
   "Produces a Root-Mean-Squared-Error measure between the two data sets"
