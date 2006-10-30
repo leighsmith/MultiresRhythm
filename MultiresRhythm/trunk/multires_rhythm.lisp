@@ -60,7 +60,7 @@ This is weighted by absolute constraints, look in the 600ms period range."
     ;; is index 0, lowest frequency (longest time support) is number-of-scales.
     (floor (scale-from-period salient-IOI (voices-per-octave rhythm-scaleogram)))))
 
-;; Scale index 1 is the highest frequency (smallest dilation) scale.
+;; Scale index 0 is the highest frequency (smallest dilation) scale.
 (defun tempo-salience-weighting (salient-scale time-frequency-dimensions)
   "Produce a weighting matching the analysis window using tempo preference."
   (let* ((number-of-scales (first time-frequency-dimensions))
@@ -202,7 +202,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
     congruency-threshold maximum deviation 
   Outputs
     matrix indicating presence of congruency."
-
+  (declare (ignore congruency-threshold))
   (let* ((time-frequency-dimensions (.array-dimensions phase))
 	 (number-of-scales (first time-frequency-dimensions))
 
@@ -312,9 +312,13 @@ then can extract ridges."
 	 (tempo-weighted-ridges (.* correlated-ridges 
 				    (tempo-salience-weighting salient-scale (.array-dimensions magnitude)))))
     ;; show what we got as an intensity plot
-    ;; (plot-image #'magnitude-image "-correlation" correlated-ridges :title (name analysis-rhythm))
-    ;; TODO substitute tempo-weighted-ridges for correlated-ridges to enable tempo selectivity.
-    (determine-scale-peaks correlated-ridges)))
+    ;; :title (name analysis-rhythm))
+    ;; (setf *magnitude-colour-map* #'jet-colormap)
+    ;; This tends to flatten everything out...
+    (plot-image #'magnitude-image "-correlation" (list correlated-ridges) :title "ridges") 
+    (plot-image #'magnitude-image "-correlation" (list tempo-weighted-ridges) :title "tempo-ridges")
+    ;; substituted tempo-weighted-ridges for correlated-ridges to enable tempo selectivity.
+    (determine-scale-peaks tempo-weighted-ridges)))
 
 (defmethod skeleton-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
   "Returns the skeleton given the rhythm."
@@ -332,6 +336,7 @@ then can extract ridges."
       (skeleton-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave)
     (let ((chosen-tactus (funcall tactus-selector skeleton)))   ; select out the tactus from all ridge candidates.
       (format t "Computed skeleton and chosen tactus~%")
+      (plot-cwt scaleogram :title (name analysis-rhythm))
       (plot-cwt+tactus scaleogram chosen-tactus :title (name analysis-rhythm))
       (plot-ridges+tactus correlated-ridge-scale-peaks chosen-tactus :title (name analysis-rhythm))
       (format t "Finished plotting scalograms~%")
