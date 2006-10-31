@@ -64,10 +64,11 @@
 ;;; Methods
 
 (defmethod print-object ((ridge-to-print ridge) stream)
+  (call-next-method ridge-to-print stream) ;; to print the superclass.
   (let ((the-start-sample (start-sample ridge-to-print)))
-	(format stream "RIDGE from scale ~d @ ~d to scale ~d @ ~d" 
-		(first (scales ridge-to-print)) the-start-sample
-		(last (scales ridge-to-print)) (+ the-start-sample (duration ridge-to-print)))))
+    (format stream " from scale ~d @ ~d to scale ~d @ ~d" 
+	    (first (scales ridge-to-print)) the-start-sample
+	    (last (scales ridge-to-print)) (+ the-start-sample (duration ridge-to-print)))))
 
 (defmethod most-recent-scale ((the-ridge ridge))
   "Returns the most recent scale of the given ridge."
@@ -98,7 +99,7 @@
   "Returns the mean average of the scale numbers"
   (floor (.sum (scales-as-array the-ridge)) (duration the-ridge)))
 
-(defmethod decimate ((the-ridge ridge) reduce-list &key (start-indices '(0 0)))
+(defmethod .decimate ((the-ridge ridge) reduce-list &key (start-indices '(0 0)))
   "Returns the ridge instance with it's data decimated using the decimation-parameter-list"
   (declare (ignore start-indices))
   (let* ((reduce-by (second reduce-list))

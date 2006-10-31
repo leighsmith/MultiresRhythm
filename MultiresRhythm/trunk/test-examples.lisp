@@ -69,12 +69,12 @@
 ;; (test-lpc)
 
 (defun test-rhythm (rhythm-grid)
-  (let* ((rhythm-signal (rhythmic-grid-to-signal rhythm-grid)) ;  :ioi 256
-	 (rhythm-scaleogram (cwt rhythm-signal 8)))
+  (let* ((rhythm-signal (rhythmic-grid-to-signal rhythm-grid :shortest-ioi 256))
+	 (rhythm-scaleogram (cwt rhythm-signal 12)))
     (plot-cwt rhythm-scaleogram :title "rhythm")
     rhythm-scaleogram))
 
-;; (test-rhythm '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0))
+;; (setf rhythm-scaleogram (test-rhythm '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0)))
 ;; (test-rhythm '(1 1 1 1 1 1 1 1 1 1))
 ;; (plot-scale-energy-at-time (test-rhythm '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)) 650)
 ;; (setf b (rhythmic-grid-to-signal '(1 1 1 1) :tempo 60))
@@ -156,6 +156,9 @@
 ;; (setf desain-at-65 (mapcar (lambda (x) (scale-at-time x 65)) desain-skeleton))
 ;; (loop for y in desain-at-65 when y collect y)
 
+
+;; (setf cliche-rhythm (load-rhythm-file "longuet_cliche"))
+;; (setf cliche-scaleogram (tactus-for-rhythm cliche-rhythm))
 
 ;;; Needs to have remaining time 
 (defun clap-to-iois (name iois &key (shortest-ioi (/ 120 17)))

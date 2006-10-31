@@ -117,8 +117,8 @@
 	 (segment-bases (.- (.subseq (search-sorted x lut-index) 1) 1)))
     ;; Compute the linear interpolation y = mx + b.
     (.+ (.* (./ (.- (.subseq lut-index 1) (.arefs x segment-bases)) 
-		(.arefs (diff x) segment-bases)) 
-	    (.arefs (diff y0) segment-bases))
+		(.arefs (.diff x) segment-bases)) 
+	    (.arefs (.diff y0) segment-bases))
 	(.arefs y0 segment-bases))))
 
 ;; (setf red (linear-segmented-channel 256 '((0.0d0 0.0d0 0.0d0) (0.35d0  0.0d0 0.0d0) (0.66d0  1.0d0 1.0d0) (0.89d0 1.0d0 1.0d0) (1.0d0  0.5d0 0.5d0))))
@@ -253,7 +253,7 @@
 				  :name (concatenate 'string title file-extension)
 				  :type image-file-type))
 	 ;; Downsample the data 
-	 (down-sampled-data (mapcar (lambda (x) (decimate x (list 1 time-axis-decimation))) data-to-plot))
+	 (down-sampled-data (mapcar (lambda (x) (.decimate x (list 1 time-axis-decimation))) data-to-plot))
 	 (plotable-image (apply image-generator down-sampled-data)))
     ;; (imago:write-png plotable-image pathname)
     (imago:write-pnm plotable-image pathname :ascii)
@@ -305,7 +305,7 @@
 		     (2 "#00FFFF")
 		     (6 "#0000FF")))
   ;; Need to label the plot of the scale axis with cwt label-scale-as-time-support
-  (image (decimate magnitude (list 1 time-axis-decimation)) nil nil
+  (image (.decimate magnitude (list 1 time-axis-decimation)) nil nil
 	 :title title
 	 :xlabel "time" :ylabel "dilation scale"
 	 :square nil))

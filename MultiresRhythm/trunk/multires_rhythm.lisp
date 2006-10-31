@@ -140,7 +140,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 
 	 ;; Compute a discrete approximation to the partial derivative of the
 	 ;; phase with respect to translation (time) t.
-	 (dt-phase (diff phase))
+	 (dt-phase (.diff phase))
 
 	 ;; Phase is -pi -> pi.
 	 ;; We need to add back 2 pi to compensate for the phase wraparound
@@ -152,7 +152,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 	 ;; The acceleration of phase difference should be non-zero (Tchamitchian and
 	 ;; Torresani Eq. III-7 pp128) phase-diff-acceleration will therefore be two time
 	 ;; sample points less than the original phase time extent.
-	 ;; phase-diff-acceleration = (diff wrapped-dt-phase)
+	 ;; phase-diff-acceleration = (.diff wrapped-dt-phase)
 	 ;;
 	 ;; Doing this will still produce NaN since the division already
 	 ;; creates Inf and the clamping uses multiplication.
@@ -208,7 +208,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 
 	 ;; Find derivative with respect to scale s. Transposes phase so that diffence is
 	 ;; across rows (i.e scales).
-	 (abs-ds-phase (.abs (diff (.transpose phase))))
+	 (abs-ds-phase (.abs (.diff (.transpose phase))))
 
 	 ;; Compensate for phase wrap-around with derivatives with respect to scale (ds) such that
 	 ;; the maximum angular difference between vectors is <= pi radians.
