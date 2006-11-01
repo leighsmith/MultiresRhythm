@@ -49,7 +49,8 @@
    (time-trim
     :documentation "Parameter to .subarray to trim the padded back to unpadded versions"
     :accessor time-trim)
-   (skip-highest-octaves  ;; TODO perhaps this should be a range of octaves analysed instead?
+   ;; TODO should be octaves-analysed-range from skip-initial-octaves to maximum-time-support
+   (skip-highest-octaves
     :documentation "Number of octaves of the highest frequencies that have not been analysed for efficiency"
     :initarg :skip-highest-octaves
     :initform 0
@@ -141,7 +142,7 @@
 		   &key (fourier-domain-wavelet #'morlet-wavelet-fourier))
   "Continuous wavelet transform computed in the Fourier domain.
    Returns multiple items (magnitude phase).
-   Uses the morlet-wavelet-fourier function to give us a scaled version of the wavelet.
+   Uses the fourier-domain-wavelet function to give us a scaled version of the wavelet.
    Length of the input-data is assumed to be a power of 2 (dyadic).
    Does the convolution by multiplying in the Fourier domain.
    The maximum-time-period can really only be about 1/4 the input-data to
@@ -199,15 +200,18 @@
   "Returns the length of the signal if padded to a dyadic (power of two) length."
   (expt 2 (ceiling (log signal-length 2))))
 
-(defun dyadic-pad (signal)
+(defun dyadic-pad (signal &key (silence-pad nil))
   "The latest in signal processing hygene, the soft, comfortable dyadic-pad!
    Protects signals from unsightly window edge conditions! ...sorry couldn't resist :^)
 
    Instead we actually pad either side of the signal with mirrored portions
    of the signal to a dyadic length to enable efficient FFTs.
+   Handles matrices as well as signal vectors, in the former case, assuming the columns
+   are to be padded to a dyadic length.
 
    Returns multiple values pad-signal, trim-dyadic (on time-axis)."
-  (let* ((matrix-or-vector (if (equalp (array-rank (val signal)) 1) 0 t)) 
+  (let* ((signal-rows (.row-count signal))
+	 (matrix-or-vector (if (equalp signal-rows 1) 0 t)) 
 	 (signal-length (.length signal))
 	 (padded-length (dyadic-length signal-length))
 	 (to-pad (- padded-length signal-length)))
@@ -216,17 +220,22 @@
 	  ;; Redundant case
 	  (values signal (list matrix-or-vector (list 0 (1- signal-length))))
 	  (values
-	   ;; Create the padded signal. Padding with the signal ensures a periodicity of the window.
-	   ;; TODO alternatively pad with zeros:
-	   ;; pad-signal = [zeros(half-pad + off-by-one, 1); signal; zeros(half-pad, 1)];
-	   (let* ((last-region (list (- signal-length (+ half-pad off-by-one)) (1- signal-length)))
-		  (lastbit (.subarray signal (list matrix-or-vector last-region)))
-		  (firstbit (.subarray signal (list matrix-or-vector (list 0 (1- half-pad))))))
-	     (.concatenate lastbit signal firstbit))
+	   ;; Create the padded signal.
+	   (if silence-pad
+	       ;; To pad with zeros:
+	       (.concatenate (make-double-array (list signal-rows half-pad))
+			     signal 
+			     (make-double-array (list signal-rows (+ half-pad off-by-one))))
+	       ;; Padding with the signal ensures a periodicity of the window.
+	       (let* ((last-region (list (- signal-length (+ half-pad off-by-one)) (1- signal-length)))
+		      (lastbit (.subarray signal (list matrix-or-vector last-region)))
+		      (firstbit (.subarray signal (list matrix-or-vector (list 0 (1- half-pad))))))
+		 (.concatenate lastbit signal firstbit)))
 	   ;; Create the .subarray trim description.
 	   (list matrix-or-vector (list (+ half-pad off-by-one) (- padded-length half-pad 1))))))))
 
 ;; (dyadic-pad (.rseq 0 9 10))
+;; (dyadic-pad (.rseq2 1 10 10) :silence-pad t)
 
 ;;; The public interface to the continuous wavelet transform for non-dyadic signals
 (defun cwt (time-signal voices-per-octave 
