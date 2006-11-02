@@ -305,7 +305,7 @@
 		     (2 "#00FFFF")
 		     (6 "#0000FF")))
   ;; Need to label the plot of the scale axis with cwt label-scale-as-time-support
-  (image (.decimate magnitude (list 1 time-axis-decimation)) nil nil
+  (image (.flip (.decimate magnitude (list 1 time-axis-decimation))) nil nil
 	 :title title
 	 :xlabel "time" :ylabel "dilation scale"
 	 :square nil))

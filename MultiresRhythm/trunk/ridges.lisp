@@ -37,7 +37,7 @@
 (defgeneric reverse-time (ridge)
   (:documentation "Returns the ridge, with it's scales list reversed in time."))
 
-(defgeneric duration (ridge)
+(defgeneric duration-in-samples (ridge)
   (:documentation "Returns the duration in samples of the ridge."))
 
 (defgeneric scale-at-time (ridge time)
@@ -68,7 +68,7 @@
   (let ((the-start-sample (start-sample ridge-to-print)))
     (format stream " from scale ~d @ ~d to scale ~d @ ~d" 
 	    (first (scales ridge-to-print)) the-start-sample
-	    (last (scales ridge-to-print)) (+ the-start-sample (duration ridge-to-print)))))
+	    (last (scales ridge-to-print)) (+ the-start-sample (duration-in-samples ridge-to-print)))))
 
 (defmethod most-recent-scale ((the-ridge ridge))
   "Returns the most recent scale of the given ridge."
@@ -79,7 +79,7 @@
   (setf (scales the-ridge) (nreverse (scales the-ridge)))
   the-ridge)
 
-(defmethod duration ((the-ridge ridge))
+(defmethod duration-in-samples ((the-ridge ridge))
   "Returns the duration in samples of the ridge."
   (length (scales the-ridge)))
 
@@ -87,7 +87,7 @@
   "Returns the scale at the given time"
   (let ((scales-index (- time (start-sample the-ridge))))
     (if (and (>= scales-index 0)
-	     (< scales-index (duration the-ridge)))
+	     (< scales-index (duration-in-samples the-ridge)))
 	(elt (scales the-ridge) scales-index)
 	nil)))
 
@@ -97,7 +97,7 @@
 
 (defmethod average-scale ((the-ridge ridge))
   "Returns the mean average of the scale numbers"
-  (floor (.sum (scales-as-array the-ridge)) (duration the-ridge)))
+  (floor (.sum (scales-as-array the-ridge)) (duration-in-samples the-ridge)))
 
 (defmethod .decimate ((the-ridge ridge) reduce-list &key (start-indices '(0 0)))
   "Returns the ridge instance with it's data decimated using the decimation-parameter-list"
@@ -234,16 +234,16 @@
 (defun select-longest-tactus (skeleton)
   "Returns a time sequence of scales."
   (let ((searchable-skeleton skeleton))
-    (first (sort searchable-skeleton #'>= :key #'duration))))
+    (first (sort searchable-skeleton #'>= :key #'duration-in-samples))))
 |#
 
 (defun select-longest-lowest-tactus (skeleton)
   "Returns the longest duration and lowest scale ridge."
   (let ((max-ridge (make-instance 'ridge)))
     (dolist (ridge skeleton)
-      (if (or (> (duration ridge) (duration max-ridge))
+      (if (or (> (duration-in-samples ridge) (duration-in-samples max-ridge))
 	      ;; average-scale returns scale numbers indexed from the highest scales, so 
-	      (and (eql (duration ridge) (duration max-ridge))
+	      (and (eql (duration-in-samples ridge) (duration-in-samples max-ridge))
 		   (> (average-scale ridge) (average-scale max-ridge))))
 	  (setf max-ridge ridge)))
     max-ridge))
@@ -261,7 +261,7 @@
 
 (defmethod scales-as-array ((the-ridge ridge))
   "Returns the scales list as an nlisp array"
-  (make-instance 'n-fixnum-array :ival (make-array (duration the-ridge) :initial-contents
+  (make-instance 'n-fixnum-array :ival (make-array (duration-in-samples the-ridge) :initial-contents
 					     (scales the-ridge))))
 
 #|
@@ -274,7 +274,7 @@
 
   ;; Octave uses column major indices.
   column-major-indices (.+ (.* (.iseq (start-sample ridge-to-insert) 
-			     (1- (duration ridge-to-insert))) number-of-scales)
+			     (1- (duration-in-samples ridge-to-insert))) number-of-scales)
 		      (scales-as-array ridge-to-insert))
 |#
 
@@ -283,7 +283,7 @@
   (let* ((time-in-samples (.array-dimension time-frequency-plane 1))
 	 (row-major-indices (.+ (.* (scales-as-array ridge-to-insert) time-in-samples) 
 				(.iseq (start-sample ridge-to-insert) 
-				       (+ (start-sample ridge-to-insert) (duration ridge-to-insert) -1)))))
+				       (+ (start-sample ridge-to-insert) (duration-in-samples ridge-to-insert) -1)))))
     (map nil 
 	 (lambda (row-major-index) (setf (row-major-aref (val time-frequency-plane) row-major-index) constant-value)) 
 	 (val row-major-indices))

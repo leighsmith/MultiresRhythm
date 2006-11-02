@@ -47,6 +47,12 @@
   (:documentation "Returns a normalised measure of the complexity of the rhythm,
    where 0 = impossibly simple -> 1 = impossibly hard."))
 
+(defgeneric duration (rhythm-to-analyse)
+  (:documentation "Returns the length of the rhythm in seconds."))
+
+(defgeneric sample-length (rhythm-to-analyse)
+  (:documentation "Returns the length of the rhythm in samples."))
+
 ;;;; Implementation
 
 (defun preferred-tempo (rhythm-scaleogram rhythm-sample-rate 
@@ -318,7 +324,8 @@ then can extract ridges."
     (plot-image #'magnitude-image "-correlation" (list correlated-ridges) :title "ridges") 
     (plot-image #'magnitude-image "-correlation" (list tempo-weighted-ridges) :title "tempo-ridges")
     ;; substituted tempo-weighted-ridges for correlated-ridges to enable tempo selectivity.
-    (determine-scale-peaks tempo-weighted-ridges)))
+    ;; (determine-scale-peaks tempo-weighted-ridges)))
+    (determine-scale-peaks correlated-ridges)))
 
 (defmethod skeleton-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
   "Returns the skeleton given the rhythm."
@@ -424,3 +431,10 @@ then can extract ridges."
 				   (iois-to-onsets 
 				    (intervals-in-samples iois :ioi shortest-ioi)))))
 		   :sample-rate 200))
+
+(defmethod sample-length (rhythm-to-analyse)
+  (.length (time-signal rhythm-to-analyse)))
+
+(defmethod duration (rhythm-to-analyse)
+  (/ (sample-length rhythm-to-analyse) (.* 1.0 (sample-rate rhythm-to-analyse))))
+

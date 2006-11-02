@@ -145,6 +145,7 @@
   (let* ((loaded-rhythm (load-rhythm-file filename :description description :sample-rate sample-rate)))
     (clap-to-rhythm loaded-rhythm :tactus-selector tactus-selector)))
 
+;; TODO decimate the greensleeves data down to 200Hz.
 ;; (test-octave-file "greensleeves-perform-medium" :sample-rate 400 :description "Greensleeves performed")
 ;; (test-octave-file "longuet_cliche" :sample-rate 200)
 ;; (test-octave-file "intensity34_to_44" :sample-rate 200)
@@ -158,7 +159,9 @@
 
 
 ;; (setf cliche-rhythm (load-rhythm-file "longuet_cliche"))
-;; (setf cliche-scaleogram (tactus-for-rhythm cliche-rhythm))
+;; (multiple-value-setq (cliche-tactus cliche-scaleogram) (tactus-for-rhythm cliche-rhythm))
+;; (multiple-value-setq (cliche-skeleton cliche-scaleogram) (skeleton-of-rhythm cliche-rhythm))
+;; (nlisp-image (scaleogram-magnitude cliche-scaleogram))
 
 ;;; Needs to have remaining time 
 (defun clap-to-iois (name iois &key (shortest-ioi (/ 120 17)))
