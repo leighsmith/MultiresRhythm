@@ -53,6 +53,8 @@
     (2.88 (1 1 0 1 0 0 1 1 1 1 1 0 1 0 0 0))
     (3.08 (1 0 1 0 0 1 1 1 0 1 1 1 1 0 0 0))))
 
+(defparameter *sorted-shmulevich-patterns* (sort *shmulevich-patterns* #'< :key #'first))
+
 (defun scale-to-shmulevich-ratings (list)
   "Scale down to 1-5 matching the users ratings in Shmulevich's data."
   (let ((max-value (apply #'max list)))
@@ -72,6 +74,18 @@
        (format t "(~{~,2f~^ ~}) ~,2f~%" syncopation-list syncopation-measure-of-pattern)
      collect syncopation-measure-of-pattern into all-syncopation-measures
      finally (return (scale-to-shmulevich-ratings all-syncopation-measures))))
+
+(defun multires-analyse-pattern (pattern-name pattern &key (sample-rate 200))
+  (let* ((test-rhythm (make-instance 'multires-rhythm:rhythm 
+				     :name pattern-name
+				     :description pattern-name ; TODO transliterate '-' for ' '.
+				     :time-signal (rhythmic-grid-to-signal pattern :sample-rate sample-rate)
+				     :sample-rate sample-rate)))
+    ;; TODO repeat rhythm
+    ;; (setf complexity (rhythm-complexity test-rhythm))
+    (multires-rhythm:clap-to-rhythm test-rhythm)))
+
+;; (multires-analyse-pattern "shmulevich-18" (second (nth 18 *sorted-shmulevich-patterns*)))
 
 ;; TODO needs to repeat 4 times?
 (defun multires-pattern-complexity (pattern-name patterns &key (sample-rate 200))
@@ -175,18 +189,18 @@
 
 
 ; (plot-syncopation-comparisons *shmulevich-patterns* '(2 2 2 2))
-; (plot-syncopation-comparisons (sort *shmulevich-patterns* #'< :key #'first) '(2 2 2 2))
-; (multiplot-syncopation-comparisons (sort *shmulevich-patterns* #'< :key #'first) '(2 2 2 2))
+; (plot-syncopation-comparisons *sorted-shmulevich-patterns* '(2 2 2 2))
+; (multiplot-syncopation-comparisons *sorted-shmulevich-patterns* '(2 2 2 2))
 
 ;;; "Just the patterns, Ma'am"...
 ; (multires-pattern-complexity "shmulevich" (mapcar #'second *shmulevich-patterns*))
 
-;; (setf res (syncopation-test (sort *shmulevich-patterns* #'< :key #'first) '(2 2 2 2)))
-;; (rmse (mapcar #'first (sort *shmulevich-patterns* #'< :key #'first)) (first res))
+;; (setf res (syncopation-test *sorted-shmulevich-patterns* '(2 2 2 2)))
+;; (rmse (mapcar #'first *sorted-shmulevich-patterns*) (first res))
 ;; 0.7488189
-;; (rmse (mapcar #'first (sort *shmulevich-patterns* #'< :key #'first)) (second res))   
+;; (rmse (mapcar #'first *sorted-shmulevich-patterns*) (second res))   
 ;; 0.76126724
-;; (rmse (mapcar #'first (sort *shmulevich-patterns* #'< :key #'first)) (third res))
+;; (rmse (mapcar #'first *sorted-shmulevich-patterns*) (third res))
 ;; 1.0032296
 
 
@@ -196,8 +210,7 @@
 
 ;;; To listen:
 (defun play-shmulevich-pattern (pattern-number &key (repeat 1))
-  (let* ((sorted-shmulevich-patterns (sort *shmulevich-patterns* #'< :key #'first))
-	 (pattern (second (nth pattern-number sorted-shmulevich-patterns)))
+  (let* ((pattern (second (nth pattern-number *sorted-shmulevich-patterns*)))
 	 (terminated-pattern (append (repeat-rhythm pattern repeat) '(1))))
     (format t "Playing Rhythm: ~a~%" pattern)
     (play-rhythm (onsets-to-iois (grid-to-onsets terminated-pattern))
@@ -205,9 +218,9 @@
 
 ;; (play-shmulevich-pattern 2 :repeat 4)
  
-;; (display-best-c-scores (sort *shmulevich-patterns* #'< :key #'first) 4.0)
+;; (display-best-c-scores *sorted-shmulevich-patterns* 4.0)
 
-;; (plot-c-score-comparisons (sort *shmulevich-patterns* #'< :key #'first) 4.0)
+;; (plot-c-score-comparisons *sorted-shmulevich-patterns* 4.0)
 
 ;; The interesting rhythms
 ; (play-shmulevich-pattern 5 :repeat 4)
@@ -216,11 +229,19 @@
 ; (play-shmulevich-pattern 24 :repeat 4)
 
 (defun save-shmulevich-pattern (pattern-number &key (repeat 1))
-  (let* ((sorted-shmulevich-patterns (sort *shmulevich-patterns* #'< :key #'first))
-	 (pattern (second (nth pattern-number sorted-shmulevich-patterns)))
+  (let* ((pattern (second (nth pattern-number *sorted-shmulevich-patterns*)))
 	 (terminated-pattern (append (repeat-rhythm pattern repeat) (list 1))))
     (format t "Saving Rhythm: ~a~%" pattern)
     (save-scorefile (format nil "/Users/leigh/shmulevich_~d.score" pattern-number) 
 		(mapcar (lambda (x) (* x 0.2)) (onsets-to-iois (grid-to-onsets terminated-pattern)))
 		:instrument "Midi"
+		:midi-channel 10
 		:description (format nil "Shmulevich ~d" pattern-number))))
+
+; (save-shmulevich-pattern 4 :repeat 4)
+; (save-shmulevich-pattern 5 :repeat 4)
+; (save-shmulevich-pattern 6 :repeat 4)
+; (save-shmulevich-pattern 18 :repeat 4)
+; (save-shmulevich-pattern 24 :repeat 4)
+; (save-shmulevich-pattern 33 :repeat 4)
+
