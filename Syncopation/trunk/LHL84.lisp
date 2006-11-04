@@ -79,13 +79,39 @@
                  do (unless (elt salience pos) (setf (elt salience pos) level)))
         finally (return salience)))
   
-;;; now:
-; 3/4 (lh-metric-salience '(3 2)) -> (0 -2 -1 -2 -1 -2)
-; 4/4 (lh-metric-salience '(2 2 2)) -> (0 -3 -2 -3 -1 -3 -2 -3)
-; 6/8 (lh-metric-salience '(2 3)) -> (0 -2 -2 -1 -2 -2)
-; 9/8 (lh-metric-salience '(3 3)) -> (0 -2 -2 -1 -2 -2 -1 -2 -2)
-;12/8 (lh-metric-salience '(2 2 3)) -> (0 -3 -3 -2 -3 -3 -1 -3 -3 -2 -3 -3)
-; 3/2 (lh-metric-salience '(3 2 2)) -> (0 -3 -2 -3 -1 -3 -2 -3 -1 -3 -2 -3)
+;;;; now:
+;;;  3/4 (lh-metric-salience '(3 2)) -> (0 -2 -1 -2 -1 -2)
+;;;  4/4 (lh-metric-salience '(2 2 2)) -> (0 -3 -2 -3 -1 -3 -2 -3)
+;;;  6/8 (lh-metric-salience '(2 3)) -> (0 -2 -2 -1 -2 -2)
+;;;  9/8 (lh-metric-salience '(3 3)) -> (0 -2 -2 -1 -2 -2 -1 -2 -2)
+;;; 12/8 (lh-metric-salience '(2 2 3)) -> (0 -3 -3 -2 -3 -3 -1 -3 -3 -2 -3 -3)
+;;;  3/2 (lh-metric-salience '(3 2 2)) -> (0 -3 -2 -3 -1 -3 -2 -3 -1 -3 -2 -3)
+
+;;; Plot the hierarchies:
+(defun plot-hierarchy (meter meter-name)
+  (plot-command "set title font \"Times,24\"")
+  (plot-command "set xlabel font \"Times,24\"")
+  (plot-command "set ylabel font \"Times,24\"")
+  (plot-command "set boxwidth 0.9 relative")
+  (plot-command "set linetype 6")
+  (plot-command "set yrange [-4:0]")
+  (plot-command "set style fill solid 1.0 border -1")
+  (plot-command "set xtics 1,1") ;; TODO kludged, not general!
+  (plot (.+ 4 (nlisp::list-2-array (lh-metric-salience meter)))
+	(.iseq 1 16) ; nil 
+	:xlabel "Metrical location" 
+	:ylabel "Salience"
+	:label "Metrical Strength"
+	:style "boxes"
+	:title (format nil "LH&L Metrical Hierarchy for ~a" meter-name) :reset nil :aspect-ratio 0.7))
+
+;; (plot-hierarchy '(2 2 2 2) "4/4")
+
+;; (plot (nlisp::list-2-array (lh-metric-salience '(2 2 3))) nil 
+;;       :xlabel "Metrical location" 
+;;       :ylabel "Salience"
+;;       :label "Metrical Strength"
+;;       :title "LH&L Metrical Hierarchy for 12/8")
 
 ;;; Associate Palmer & Krumhansl's perceptual hierarchical data to
 ;;; Longuet-Higgins & Lee's representation of meters.
