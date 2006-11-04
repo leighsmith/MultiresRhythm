@@ -94,15 +94,14 @@
   (plot-command "set ylabel font \"Times,24\"")
   (plot-command "set boxwidth 0.9 relative")
   (plot-command "set linetype 6")
-  (plot-command "set yrange [-4:0]")
   (plot-command "set style fill solid 1.0 border -1")
   (plot-command "set xtics 1,1") ;; TODO kludged, not general!
-  (plot (.+ 4 (nlisp::list-2-array (lh-metric-salience meter)))
-	(.iseq 1 16) ; nil 
+  (plot (nlisp::list-2-array (lh-metric-salience meter))
+	(.iseq 1 16) ; nil
 	:xlabel "Metrical location" 
 	:ylabel "Salience"
 	:label "Metrical Strength"
-	:style "boxes"
+	:style "linespoints linewidth 3 linetype 3 pointtype 4"
 	:title (format nil "LH&L Metrical Hierarchy for ~a" meter-name) :reset nil :aspect-ratio 0.7))
 
 ;; (plot-hierarchy '(2 2 2 2) "4/4")
