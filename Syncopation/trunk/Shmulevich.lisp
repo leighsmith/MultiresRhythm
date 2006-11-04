@@ -141,41 +141,40 @@
 	:title "Comparison of Psychological and Modelled Syncopation Measures"
 	:reset nil)))
 
-
-(defun multiplot-syncopation-comparisons (listener-rated-patterns meter &optional (figure-number 1))
-  (declare (ignore figure-number))
-  ;; Re-sort into increasing rating judgements.
-  (let ((syncopation-test-results (syncopation-test listener-rated-patterns meter))
-	(listener-ratings (nlisp::list-2-array (mapcar #'first listener-rated-patterns))))
-    (window 0)
-    (plot-command "set style line 2 linetype 5")
+(defun plot-test-results (the-window test-results legends title)
+    (window the-window)
+    (plot-command "set style line 1 linetype 5")
     (plot-command "set title font \"Times,24\"")
     (plot-command "set xlabel font \"Times,24\"")
     (plot-command "set ylabel font \"Times,24\"")
     (plot-command "set key left")
-    (nplot syncopation-test-results nil
-	  :legends '("Longuet-Higgins & Lee Measure" "P&K Measure (Musicians)" "P&K (Non-musicians)")
+    (nplot test-results (.iseq 0 (1- (.array-total-size (car test-results))))
+	  :legends legends
 	  :xlabel "Pattern number"
 	  :ylabel "Complexity"
-	  :styles (ntimes "linespoints linewidth 2" 4)
-	  :title "Comparison of Modelled Syncopation Measures"
-	  :reset nil)
-    (window 1)
-    (nplot (list listener-ratings (first syncopation-test-results)) nil
-	  :legends '("Listener Ratings" "Longuet-Higgins & Lee Measure") 
-	  :xlabel "Pattern number"
-	  :ylabel "Complexity"
-	  :styles (ntimes "linespoints linewidth 2" 4)
-	  :title "Comparison of Listener Ratings to LH&L Syncopation Measures"
-	  :reset nil)
-    (window 2)
-    (nplot (cons listener-ratings (rest syncopation-test-results)) nil
-	  :legends '("Listener Ratings" "P&K Measure (Musicians)" "P&K (Non-musicians)")
-	  :xlabel "Pattern number"
-	  :ylabel "Complexity"
-	  :styles (ntimes "linespoints linewidth 2" 4)
-	  :title "Comparison of Listener Ratings to P&K Syncopation Measures"
-	  :reset nil)))
+	  :styles '("linespoints linewidth 2 pointsize 1.3"
+		    "linespoints linetype 9 linewidth 2 pointsize 1.3"
+		    "linespoints linewidth 2 pointsize 1.3"
+		    "linespoints linewidth 2 pointsize 1.3")
+	  :title title
+	  :aspect-ratio 0.66
+	  :reset nil))
+
+;; (ntimes "linespoints linewidth 2" 4)
+
+(defun multiplot-syncopation-comparisons (listener-rated-patterns meter)
+  ;; Re-sort into increasing rating judgements.
+  (let ((syncopation-test-results (syncopation-test listener-rated-patterns meter))
+	(listener-ratings (nlisp::list-2-array (mapcar #'first listener-rated-patterns))))
+    (plot-test-results 0 syncopation-test-results 
+		       '("Longuet-Higgins & Lee Measure" "P&K Measure (Musicians)" "P&K (Non-musicians)")
+		       "Comparison of Modelled Syncopation Measures")
+    (plot-test-results 1 (list listener-ratings (first syncopation-test-results))
+	  '("Listener Ratings" "Longuet-Higgins & Lee Measure")
+	  "Comparison of Listener Ratings to LH&L Syncopation Measures")
+    (plot-test-results 2 (cons listener-ratings (rest syncopation-test-results))
+	  '("Listener Ratings" "P&K Measure (Musicians)" "P&K (Non-musicians)")
+	  "Comparison of Listener Ratings to P&K Syncopation Measures")))
 
 (defun rmse (observations model)
   "Produces a Root-Mean-Squared-Error measure between the two data sets"
@@ -185,7 +184,7 @@
 	      sum (expt (- model-value data-value) 2)) (length observations))))
 
 ;; Doing it in nlisp: 
-;; (sqrt (/ (.sum (.expt (.- (.iseq 1 10) (.iseq 4 14)) 2)) 10))
+;; (sqrt (/ (.sum (.expt (.- (.iseq 1 10) (.iseq 4 14)) 2)) (length observations)))
 
 
 ; (plot-syncopation-comparisons *shmulevich-patterns* '(2 2 2 2))
