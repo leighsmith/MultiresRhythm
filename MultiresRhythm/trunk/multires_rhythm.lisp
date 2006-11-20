@@ -324,8 +324,8 @@ then can extract ridges."
     (plot-image #'magnitude-image "-correlation" (list correlated-ridges) :title "ridges") 
     (plot-image #'magnitude-image "-correlation" (list tempo-weighted-ridges) :title "tempo-ridges")
     ;; substituted tempo-weighted-ridges for correlated-ridges to enable tempo selectivity.
-    ;; (determine-scale-peaks tempo-weighted-ridges)))
-    (determine-scale-peaks correlated-ridges)))
+    (determine-scale-peaks tempo-weighted-ridges)))
+    ;; (determine-scale-peaks correlated-ridges)))
 
 (defmethod skeleton-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
   "Returns the skeleton given the rhythm."

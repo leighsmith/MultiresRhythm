@@ -121,32 +121,75 @@
 ;;; TODO Alternatively concatenate the two lists and sort them then remove all elements with a
 ;;; first order difference less than the tolerance. Problem is distinguishing between the
 ;;; two ridges.
+;;; We should assert the ridges are sorted to simplify the search.
+#|
 (defun matching-ridges (ridge-scales-1 ridge-scales-2 &key (tolerance 1))
   "Compute the difference in scale number and height between scales of the two ridges.
   Return the list of ridges from ridge-scales-1 that match within a tolerance. 
-  Second value returned is the list of ridges from ridge-scales-2 that does not match."
+  Second value returned is the list of ridges from ridge-scales-2 that matches."
   (let (ridge-1-matches	ridge-2-matches)
     (dolist (current-ridge ridge-scales-1)
       (dolist (comparison-ridge ridge-scales-2)
 	(if (<= (abs (- current-ridge comparison-ridge)) tolerance)
-	    (progn (setf ridge-1-matches (append ridge-1-matches (list current-ridge)))
-		   (setf ridge-2-matches (append ridge-2-matches (list comparison-ridge)))))))
+	    ;; TODO do set addition, so there are no duplicates?
+	    (progn (setf ridge-1-matches (cons current-ridge ridge-1-matches))
+		   (setf ridge-2-matches (cons comparison-ridge ridge-2-matches))
     (values ridge-1-matches ridge-2-matches)))
 
-;; ;; Perhaps do it with loop and collect into ridge-1-matches
-;; (defun matching-ridges (ridge-scales-1 ridge-scales-2 &key (tolerance 1))
-;;   "Compute the difference in scale number and height between scales of the two ridges.
-;;   Return the list of ridges from ridge-scales-1 that match within a tolerance. 
-;;   Second value returned is the list of ridges from ridge-scales-2 that does not match."
-;;   (loop
-;;      with ridge-1-matches 
-;;      and ridge-2-matches
-;;      for current-ridge in ridge-scales-1
-;;       (dolist (comparison-ridge ridge-scales-2)
-;; 	(if (<= (abs (- current-ridge comparison-ridge)) tolerance)
-;; 	    (progn (setf ridge-1-matches (append ridge-1-matches (list current-ridge)))
-;; 		   (setf ridge-2-matches (append ridge-2-matches (list comparison-ridge)))))))
-;;    (values ridge-1-matches (set-difference ridge-scales-2 ridge-2-matches))))
+(defun matching-ridges (ridge-scales-1 ridge-scales-2 &key (tolerance 1))
+  "Compute the difference in scale number and height between scales of the two ridges.
+  Return the list of ridges from ridge-scales-1 that match within a tolerance. 
+  Second value returned is the list of ridges from ridge-scales-2 that matches."
+  (let (ridge-1-matches	
+	ridge-2-matches
+	(next-unmatched-ridge 0))
+    (dolist (current-ridge ridge-scales-1)
+      ;; limit the loop by tolerance
+      (loop
+	 for comparison-ridge in ridge-scales-2
+	 while (<= (nth next-unmatched-ridge ridge-scales-2) (+ current-ridge tolerance))
+	 do (if (<= (abs (- current-ridge comparison-ridge)) tolerance)
+		(progn (setf ridge-1-matches (cons current-ridge ridge-1-matches))
+		       (setf ridge-2-matches (cons comparison-ridge ridge-2-matches))
+		       (setf next-unmatched-ridge (1+ next-unmatched-ridge))
+		       (loop-finish)))))
+    ;; need to increment next-unmatched-ridge 
+    ;; if (>= (nth next-unmatched-ridge ridge-scales-2) (- current-ridge tolerance))
+    ;; true.
+    (setf ridge-scales-2 (rest ridge-scales-2))
+    (values (reverse ridge-1-matches) (reverse ridge-2-matches))))
+|#
+
+(defun matching-ridges (ridge-scales-1 ridge-scales-2 &key (tolerance 1))
+  "Compute the difference in scale number and height between scales of the two ridges.
+  Return the list of ridges from ridge-scales-1 that match within a tolerance. 
+  Second value returned is the list of ridges from ridge-scales-2 that matches."
+  (let (ridge-1-matches	
+	ridge-2-matches
+	(next-unmatched-ridge 0))
+    (dolist (current-ridge ridge-scales-1)
+      ;; find where the current ridge is located in the ridge-scales-2, remove all earlier
+      ;; items from future tests.
+      (loop 
+	 for comparison-index from next-unmatched-ridge below (length ridge-scales-2)
+	 for comparison-ridge = (nth comparison-index ridge-scales-2)
+	 while (<= comparison-ridge (+ current-ridge tolerance))
+	 do (if (<= (abs (- current-ridge comparison-ridge)) tolerance)
+		(progn (setf ridge-1-matches (cons current-ridge ridge-1-matches))
+		       (setf ridge-2-matches (cons comparison-ridge ridge-2-matches))
+		       (setf comparison-index (1+ comparison-index))
+		       (loop-finish)))
+	 finally (setf next-unmatched-ridge comparison-index)))
+    (values (reverse ridge-1-matches) (reverse ridge-2-matches))))
+
+;;; (matching-ridges '(4 5 6 7 8) '(3 4 5 7 10))
+;;; (4 5 6 7) (3 4 5 7)
+;;; (matching-ridges '(4 7 9 15) '(3 8 16 23)) ;; diverging into two ridges
+;;; (4 7 15) (3 8 16)
+;;; (matching-ridges '(4 7 9 15) '(3 8 14 16)) ;; merging into single ridge
+;;; (4 7 15) (3 8 14)
+;;; (matching-ridges '(9 15) '(3 4 5 8 10 16))
+;;; (9 15) (8 16)
 
 (defun deactivate-ridges (all-ridges ridge-identifiers)
   "Sets all nominated ridges to inactive."
@@ -196,6 +239,7 @@
        with time-span = (.array-dimension scale-peaks 1)
        for current-time-index from 0 below time-span
        with current-ridge-scales
+       with new-ridges
        with all-ridges = '()
        for prev-ridge-scales = '() then current-ridge-scales
        do
@@ -203,12 +247,13 @@
 	 ;; (format t "~a~%" current-ridge-scales)
 	 
          ;; Compute the difference in scale number and height between current-ridge-scales and n previous
-         ;; scales in time. At the moment, n is hardwired as 1.
+         ;; scales in time. At the moment, n is hardwired as 1. Returns those matched and
+         ;; those matching the previous ridge.
 	 (multiple-value-bind (scales-of-matching-ridges prev-matching-ridges)
 	     (matching-ridges current-ridge-scales prev-ridge-scales)
 
-	   ;; (format t "scales-of-matching-ridges ~a~%prev-matching-ridges ~a~%"
-		;;   scales-of-matching-ridges prev-matching-ridges)
+	   ;;(format t "scales-of-matching-ridges ~a~%prev-ridge-scales ~a~%prev-matching-ridges ~a~%" 
+	   ;; scales-of-matching-ridges prev-ridge-scales prev-matching-ridges)
 	   
 	   ;; Any ridges no longer matching are deemed inactive and are retired from the all-ridges.
 	   ;; TODO (append inactive-ridges (deactivate-ridges active-ridges (set-difference  prev-ridge-scales prev-matching-ridges))
@@ -218,10 +263,11 @@
 	   ;; active ridge. Update the history of those ridges.
 	   (update-ridges (remove-if-not #'active all-ridges) prev-matching-ridges scales-of-matching-ridges)
 	   
-	   ;; Those ridges not in scales-of-matching-ridges are new ridges. Add them to the ridge list.
-	   (setf all-ridges (append (add-new-ridges 
-				     (set-difference current-ridge-scales scales-of-matching-ridges)
-				     current-time-index) all-ridges)))
+	   ;; Those ridges not in scales-of-matching-ridges are new ridges. Add them to
+	   ;; the ridge list.
+	   (setf new-ridges (add-new-ridges (set-difference current-ridge-scales scales-of-matching-ridges) current-time-index))
+	   ;; (format t "Created new ridges ~a~%" new-ridges)
+	   (setf all-ridges (append new-ridges all-ridges)))
        ;; update-ridges will build the scale lists in reverse time order, so we reverse
        ;; them before returning them.
        finally (return (mapcar #'reverse-time all-ridges))))
