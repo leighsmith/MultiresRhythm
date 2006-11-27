@@ -35,12 +35,12 @@
   (format plot-stream "e~%"))
 
 ;;; Can be replaced with NLISP
-(defun myplot-command (command-string)
+(defun plot-command (command-string)
   (format (external-process-input-stream *gnuplot-process*) "~a~%" command-string))
 
 ;;; convert to nplot:
 ;;; labels => legends, title the same, figure-number => window-number
-(defun myplot (signals &key (ranges "") labels (title "") (figure-number 0))
+(defun plot (signals &key (ranges "") labels (title "") (figure-number 0))
   "Plots the given data points using the gnustep external process. 
 Data can be a list of numbers, a vector, or a list of lists or vectors
 to plot multiple signals. Key parameters are a string label for each
