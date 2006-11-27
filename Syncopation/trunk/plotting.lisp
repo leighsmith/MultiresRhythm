@@ -4,7 +4,7 @@
 ;;;;
 ;;;; Leigh Smith <lsmith@science.uva.nl>
 
-(in-package :syncopation)
+;; (in-package :syncopation)
 
 ;;; TODO needs unwind-protect?
 
@@ -19,7 +19,8 @@
 ;;; Can be replaced with NLISP
 (defun plot-initialise ()
   (setf *gnuplot-process-stream* 
-	#+sbcl (external-process-input-stream (sb-ext:run-program "/sw/bin/gnuplot" () :wait nil :input :stream :output nil))
+	#+sbcl (process-input (sb-ext:run-program "/sw/bin/gnuplot" () :wait nil :input :stream :output nil))
+	#+openmcl (ccl:external-process-input-stream (ccl:run-program "/sw/bin/gnuplot" () :wait nil :input :stream :output nil))
 	#+lispworks (system:run-shell-command '("/sw/bin/gnuplot") :wait nil :input :stream :output nil)))
 
 ;;; Can be replaced with NLISP
