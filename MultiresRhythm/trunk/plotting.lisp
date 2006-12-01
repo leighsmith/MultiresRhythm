@@ -82,9 +82,9 @@
 ;;   "Returns index of the first element in the array a which exceeds x, and returns the
 ;;    length of a (the highest index of the array plus 1) if x is larger than the last element.
 ;;    Assumes that the data in the array is sorted in ascending order."
-;;   ;; TODO needs to return an array, this would be ok if list-2-array generated
+;;   ;; TODO needs to return an array, this would be ok if list-to-array generated
 ;;   ;; n-fixnum-arrays and it wasn't as memory hungry.
-;;   (nlisp::list-2-array 
+;;   (nlisp::list-to-array 
 ;;    (loop 
 ;;       for to-find across (val x)
 ;;       ;; TODO If a is assumed sorted, we could do a binary search etc across the array?
@@ -109,9 +109,9 @@
 (defun linear-segmented-channel (map-length channel-linear-segments)
   "Create an 1-d lookup table with map-length elements.
    Each element in channel-linear-segments should be a list of x, y0, y1 tuples."
-  (let* ((x  (.* (nlisp::list-2-array (mapcar #'first channel-linear-segments)) map-length))
-	 (y0 (nlisp::list-2-array (mapcar #'second channel-linear-segments)))
-	 ;; (y1 (nlisp::list-2-array (mapcar #'third channel-linear-segments)))
+  (let* ((x  (.* (nlisp::list-to-array (mapcar #'first channel-linear-segments)) map-length))
+	 (y0 (nlisp::list-to-array (mapcar #'second channel-linear-segments)))
+	 ;; (y1 (nlisp::list-to-array (mapcar #'third channel-linear-segments)))
 	 (lut-index (.rseq 0.0 map-length (1+ map-length)))	; discretise the look up table.
 	 ;; Compute which indexes mark the start of each linear segment.
 	 (segment-bases (.- (.subseq (search-sorted x lut-index) 1) 1)))
@@ -293,7 +293,8 @@
 	   :styles '("impulses linetype 6 linewidth 3" "impulses linetype 4" "dots 3")
 	   :xlabel "Time"
 	   :ylabel "Scaled Intensity/Phase"
-	   :title (format nil "Computed foot-tap ~a of ~a" comment signal-description))))
+	   :title (format nil "Computed foot-tap ~a of ~a" comment signal-description)
+	   :aspect-ratio 0.66)))
 
 ;; Alternative plot method if not using nplot.
 ;;  (let ((clap-intensity (make-double-array (.array-dimensions claps) :initial-element 2d0)))

@@ -154,6 +154,9 @@
 ;; (test-octave-file "desain-unquantized" :sample-rate 200 :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time 73 65 skeleton)))
 ;; (test-octave-file "desain-quantized" :sample-rate 200)
 
+;; (require :sb-sprof)
+;; (sb-sprof:with-profiling (:max-samples 1500 :report :flat) (test-octave-file "longuet_cliche" :sample-rate 200))
+
 ;; (setf desain-at-65 (mapcar (lambda (x) (scale-at-time x 65)) desain-skeleton))
 ;; (loop for y in desain-at-65 when y collect y)
 
@@ -188,3 +191,14 @@
 ;;;                 :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time 91 0 skeleton)))
 
 ;;; TODO need to generate claps as scorefile from clap-to-rhythm
+
+;;; National Anthem data-base
+(load "/Volumes/iDisk/Research/Data/DesainHoning/national anthems.lisp")
+
+(defun anthem-rhythm (anthem-number &key (shortest-ioi 50))
+  (let ((anthem-name (symbol-name (first (first (nth anthem-number *national-anthems*)))))
+	(anthem-iois (second (nth anthem-number *national-anthems*))))
+    (iois-to-rhythm anthem-name anthem-iois :shortest-ioi shortest-ioi)))
+
+(defun clap-to-anthem (anthem-number)
+    (clap-to-rhythm (anthem-rhythm anthem-number :shortest-ioi 50)))

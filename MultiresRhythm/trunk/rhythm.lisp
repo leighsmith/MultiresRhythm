@@ -51,7 +51,7 @@
 ;; TODO add an IOI parameter
 (defun rhythmic-grid-to-signal (grid &key (tempo 80) (shortest-ioi 1.0 ioi-supplied-p) (sample-rate 200))
   "Returns rhythmic grid as a nlisp array."
-  (nlisp::list-2-array (butlast 
+  (nlisp::list-to-array (butlast 
 			(onsets-to-grid
 			 (iois-to-onsets 
 			  (intervals-in-samples 

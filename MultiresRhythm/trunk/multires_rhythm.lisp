@@ -34,6 +34,18 @@
    (time-signal :initarg :time-signal :accessor time-signal :initform (make-double-array '(1)))
    (sample-rate :initarg :sample-rate :accessor sample-rate :initform 200)))
 
+(defgeneric duration (rhythm-to-analyse)
+  (:documentation "Returns the length of the rhythm in seconds."))
+
+(defgeneric sample-length (rhythm-to-analyse)
+  (:documentation "Returns the length of the rhythm in samples."))
+
+(defgeneric rhythm-iois (rhythm-to-analyse)
+  (:documentation "Given a rhythm, returns IOIs specified in seconds."))
+
+(defgeneric save-rhythm (rhythm-to-save)
+  (:documentation "Writes the rhythm to a MusicKit scorefile."))
+
 (defgeneric tactus-for-rhythm (rhythm-to-analyse &key voices-per-octave tactus-selector)
   (:documentation "Returns the selected tactus for the rhythm."))
 
@@ -47,13 +59,60 @@
   (:documentation "Returns a normalised measure of the complexity of the rhythm,
    where 0 = impossibly simple -> 1 = impossibly hard."))
 
-(defgeneric duration (rhythm-to-analyse)
-  (:documentation "Returns the length of the rhythm in seconds."))
-
-(defgeneric sample-length (rhythm-to-analyse)
-  (:documentation "Returns the length of the rhythm in samples."))
-
 ;;;; Implementation
+
+(defun time-of-beat (rhythm beat-number)
+  "Returns the sample number of the beat-number'th beat in the given rhythm"
+  (let* ((beat-positions (.find (time-signal rhythm))))
+    (.aref beat-positions beat-number)))
+
+(defun iois-to-rhythm (name iois &key (shortest-ioi 1.0))
+  "Returns a rhythm instance given a list of inter-onset intervals"
+    (make-instance 'rhythm 
+		   :name name
+		   :description name ; TODO transliterate '-' for ' '.
+		   :time-signal (nlisp::list-to-array 
+				 (butlast 
+				  (onsets-to-grid 
+				   (iois-to-onsets 
+				    (intervals-in-samples iois :ioi shortest-ioi)))))
+		   :sample-rate 200))
+
+(defun rhythm-of-onsets (name onsets)
+  "Given an narray of onsets, creates a rhythm instance"
+  (iois-to-rhythm name (nlisp::array-to-list (.diff onsets))))
+
+;  (clap-signal (make-double-array (.array-dimensions rhythm-signal) :initial-element 0d0))
+;  (map nil (lambda (index) (setf (.aref clap-signal index) max-computed-scale)) (val onsets))
+
+(defmethod sample-length ((rhythm-to-analyse rhythm))
+  (.length (time-signal rhythm-to-analyse)))
+
+(defmethod duration ((rhythm-to-analyse rhythm))
+  (/ (sample-length rhythm-to-analyse) (.* 1.0 (sample-rate rhythm-to-analyse))))
+
+(defmethod rhythm-iois ((rhythm-to-analyse rhythm))
+  (./ (.* 1d0 (.diff (.find (time-signal rhythm-to-analyse))))
+      (sample-rate rhythm-to-analyse)))
+
+(defmethod plot-rhythm ((rhythm-to-plot rhythm))
+  "Plot locations of original beats, computed claps, the foot tap
+   amplitude modulation/phase and reference expected clap points."
+  (plot (time-signal rhythm-to-plot) nil
+	 :legend "Rhythm onsets"
+	 :style "impulses linetype 6 linewidth 3"
+	 :xlabel "Time"
+	 :ylabel "Scaled Intensity"
+	 :title (format nil "Rhythm of ~a, ~a" (name rhythm-to-plot) (description rhythm-to-plot))
+	 :aspect-ratio 0.66))
+
+(defmethod save-rhythm ((rhythm-to-save rhythm))
+  (save-scorefile (format nil "/Users/leigh/~a.score" (name rhythm-to-save)) 
+		  ;; Convert to seconds.
+		(nlisp::array-to-list (rhythm-iois rhythm-to-save))
+		:instrument "midi"
+		:midi-channel 10
+		:description (description rhythm-to-save)))
 
 (defun preferred-tempo (rhythm-scaleogram rhythm-sample-rate 
 			;; Fraisse's "spontaneous tempo" interval in seconds
@@ -349,7 +408,7 @@ then can extract ridges."
       (format t "Finished plotting scalograms~%")
       (values chosen-tactus scaleogram))))
 
-;;; TODO We could set any ill-conditioned phase (negligible magnitude) to zero here
+;;; TODO We could set any ill-conditioned phase (negligible magnitude) to zero using this function
 ;;; after we take the phase derivative (in stationary-phase) as it would
 ;;; create false changes.
 (defun clean-phase (magnitude phase &key (threshold 0.001) (clamp 0.0))
@@ -358,30 +417,33 @@ then can extract ridges."
 
 ;; TODO Return ((time intensity) (time intensity) ...)
 ;; use constant intensity claps but weight the amplitude for when we mix in Common Music.
-(defun clap-to-tactus-phase (original-rhythm scaleogram tactus 
+(defun clap-to-tactus-phase (original-rhythm rhythm-scaleogram tactus 
 			     &key (start-from-beat 0))
   "Function to compute times to clap and how hard from the extracted tactus.
    Returns a matrix where row 1 is the time to tap at, row 2 is the intensity."
-  (let* ((time-frequency-dimensions (.array-dimensions (scaleogram-magnitude scaleogram)))
+  (let* ((time-frequency-dimensions (.array-dimensions (scaleogram-magnitude rhythm-scaleogram)))
 	 (time-in-samples (second time-frequency-dimensions))
 
 	 ;; The right way to do this is with a tight (well, two octave)
 	 ;; Gaussian envelope over it.
-	 ;; tactus-mag (gauss-centered tactusPeak voices-per-octave)
+	 ;; tactus-mag (gauss-centered tactus voices-per-octave)
 	 ;; But just a single voice alone produces the correct oscillation, with lower amplitude:
 	 (tactus-mag (insert-ridge tactus (make-double-array time-frequency-dimensions) :constant-value 1d0))
   
 	 ;; TODO To be completely correct the original padded output from dyadic-cwt should be used
 	 ;; for input to the dyadic-icwt.
+	 ;; TODO create a scalogram
+	 ;; (clamped-magnitude-scaleogram (copy-instance rhythm-scaleogram))
+	 ;; (setf (scaleogram-magnitude clamped-magnitude-scalogram) tactus-mag)
+	 ;; (icwt clamped-magnitude-scaleogram)
 	 ;; Use the modified magnitude and original phase to compute a sinusoid and it's
 	 ;; Hilbert transform, from that, determine the phase of the sinusoid.
 	 (foot-tap-phase (.phase (icwt tactus-mag
-				       (scaleogram-phase scaleogram)
-				       (voices-per-octave scaleogram))))
+				       (scaleogram-phase rhythm-scaleogram)
+				       (voices-per-octave rhythm-scaleogram))))
 
 	 ;; Note the phase of the oscillating sinusoid at the beat to start tapping from.
-	 (beat-positions (.find (time-signal original-rhythm)))
-	 (down-beat-sample (.aref beat-positions start-from-beat))
+	 (down-beat-sample (time-of-beat original-rhythm start-from-beat))
 	 (clap-on-phase-datum (.aref foot-tap-phase down-beat-sample))
 
 	 ;; check clap-on-phase-datum >= current and < next phase measure.
@@ -391,7 +453,9 @@ then can extract ridges."
 				     (.subarray foot-tap-phase (list 0 (list 0 (- time-in-samples 2))))) 
 				(.< clap-on-phase-datum 
 				    (.subarray foot-tap-phase (list 0 (list 1 (1- time-in-samples)))))))
-	 (clap-at (.find phase-reoccured)))
+	 (clap-at (.find phase-reoccured))
+	 ;; Create a clapping rhythm
+	 (clap-rhythm (rhythm-of-onsets (name original-rhythm) clap-at)))
 
     (format t "Handclapping from beat ~d of original rhythm, sample ~d~%" start-from-beat down-beat-sample)
     (plot-claps (time-signal original-rhythm) 
@@ -406,6 +470,12 @@ then can extract ridges."
       (tactus-for-rhythm performed-rhythm :tactus-selector tactus-selector)
     (clap-to-tactus-phase performed-rhythm rhythm-scaleogram computed-tactus)))
 
+;; Approaches:
+;; 1. Count the number of ridges.
+;; 2. Each ridge is tempo weighted by each of it's scales. Therefore 1 long ridge would be more complex than shorter ridges.
+;; 3. Weight the entire scale peaks or magnitude measure by tempo.
+;; 4. Ease of handclapping as a measure of complexity?
+
 ;;; Could use a weighted bitmap of the ridges as a general density measure. This is
 ;;; weighted by absolute tempo. It should also be weighted by the number of ridges (a
 ;;; dense single ridge is less complex than one which is composed of many small ridges.
@@ -413,28 +483,3 @@ then can extract ridges."
   "Returns a normalised measure of the complexity of the rhythm, where 0 = impossibly simple -> 1 = impossibly hard."
   (let ((skeleton (skeleton-of-rhythm rhythm-to-analyse)))
     (length skeleton)))
-
-;; Approaches:
-;; 1. Count the number of ridges.
-;; 2. Each ridge is tempo weighted by each of it's scales. Therefore 1 long ridge would be more complex than shorter ridges.
-;; 3. Weight the entire scale peaks or magnitude measure by tempo.
-;; 4. Ease of handclapping as a measure of complexity?
-
-(defun iois-to-rhythm (name iois &key (shortest-ioi 1.0))
-  "Returns a rhythm instance given a list of inter-onset intervals"
-    (make-instance 'rhythm 
-		   :name name
-		   :description name ; TODO transliterate '-' for ' '.
-		   :time-signal (nlisp::list-2-array 
-				 (butlast 
-				  (onsets-to-grid 
-				   (iois-to-onsets 
-				    (intervals-in-samples iois :ioi shortest-ioi)))))
-		   :sample-rate 200))
-
-(defmethod sample-length (rhythm-to-analyse)
-  (.length (time-signal rhythm-to-analyse)))
-
-(defmethod duration (rhythm-to-analyse)
-  (/ (sample-length rhythm-to-analyse) (.* 1.0 (sample-rate rhythm-to-analyse))))
-
