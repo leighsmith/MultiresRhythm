@@ -223,9 +223,9 @@
 	   ;; Create the padded signal.
 	   (if silence-pad
 	       ;; To pad with zeros:
-	       (.concatenate (make-double-array (list signal-rows half-pad))
-			     signal 
-			     (make-double-array (list signal-rows (+ half-pad off-by-one))))
+	       (let* ((first-region (if (eq matrix-or-vector t) (list signal-rows half-pad) half-pad))
+		      (last-region (if (eq matrix-or-vector t) (list signal-rows (+ half-pad off-by-one)) (+ half-pad off-by-one))))
+		 (.concatenate (make-double-array first-region) signal (make-double-array last-region)))
 	       ;; Padding with the signal ensures a periodicity of the window.
 	       (let* ((last-region (list (- signal-length (+ half-pad off-by-one)) (1- signal-length)))
 		      (lastbit (.subarray signal (list matrix-or-vector last-region)))
@@ -236,6 +236,7 @@
 
 ;; (dyadic-pad (.rseq 0 9 10))
 ;; (dyadic-pad (.rseq2 1 10 10) :silence-pad t)
+;; (dyadic-pad (.rseq 1 10 10) :silence-pad t)
 
 ;;; The public interface to the continuous wavelet transform for non-dyadic signals
 (defun cwt (time-signal voices-per-octave 

@@ -157,6 +157,11 @@
 ;; (require :sb-sprof)
 ;; (sb-sprof:with-profiling (:max-samples 1500 :report :flat) (test-octave-file "longuet_cliche" :sample-rate 200))
 
+(setf loaded-rhythm (load-rhythm-file "longuet_cliche" :description "longuet" :sample-rate 200))
+(setf (time-signal loaded-rhythm) (dyadic-pad (time-signal loaded-rhythm) :silence-pad t))
+(clap-to-rhythm loaded-rhythm :tactus-selector #'select-longest-lowest-tactus)
+
+
 ;; (setf desain-at-65 (mapcar (lambda (x) (scale-at-time x 65)) desain-skeleton))
 ;; (loop for y in desain-at-65 when y collect y)
 

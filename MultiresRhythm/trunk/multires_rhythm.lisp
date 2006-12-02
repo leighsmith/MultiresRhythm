@@ -46,6 +46,9 @@
 (defgeneric save-rhythm (rhythm-to-save)
   (:documentation "Writes the rhythm to a MusicKit scorefile."))
 
+(defgeneric plot-rhythm (rhythm-to-plot)
+  (:documentation "Plot locations of beats of the given rhythm."))
+
 (defgeneric tactus-for-rhythm (rhythm-to-analyse &key voices-per-octave tactus-selector)
   (:documentation "Returns the selected tactus for the rhythm."))
 
@@ -96,14 +99,12 @@
       (sample-rate rhythm-to-analyse)))
 
 (defmethod plot-rhythm ((rhythm-to-plot rhythm))
-  "Plot locations of original beats, computed claps, the foot tap
-   amplitude modulation/phase and reference expected clap points."
   (plot (time-signal rhythm-to-plot) nil
-	 :legend "Rhythm onsets"
-	 :style "impulses linetype 6 linewidth 3"
+	 :label (format nil "Rhythm onsets of ~a" (description rhythm-to-plot))
+	 :style "impulses linetype 6"
 	 :xlabel "Time"
 	 :ylabel "Scaled Intensity"
-	 :title (format nil "Rhythm of ~a, ~a" (name rhythm-to-plot) (description rhythm-to-plot))
+	 :title (format nil "Rhythm of ~a" (name rhythm-to-plot))
 	 :aspect-ratio 0.66))
 
 (defmethod save-rhythm ((rhythm-to-save rhythm))
