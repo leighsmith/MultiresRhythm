@@ -196,6 +196,39 @@
 ;; TODO test with:
 ;; (dyadic-cwt :fourier-domain-wavelet #'sombrero-wavelet-fourier)
 
+(defun pad-signal (signal padded-length &key (silence-pad nil))
+  "Pad either side of the signal with mirrored portions of the signal to a given length.
+   Handles matrices as well as signal vectors, in the former case, assuming the columns
+   are to be padded to the given length.
+
+   Returns multiple values of the padded signal, trim-dyadic (on time-axis)."
+  (let* ((signal-rows (.row-count signal))
+	 (matrix-or-vector (if (equalp signal-rows 1) 0 t)) 
+	 (signal-length (.length signal))
+	 (to-pad (- padded-length signal-length)))
+    (multiple-value-bind (half-pad off-by-one) (floor to-pad 2)
+      (if (zerop to-pad)
+	  ;; Redundant case
+	  (values signal (list matrix-or-vector (list 0 (1- signal-length))))
+	  (values
+	   ;; Create the padded signal.
+	   (if silence-pad
+	       ;; To pad with zeros:
+	       (let* ((first-region (if (eq matrix-or-vector t) (list signal-rows half-pad) half-pad))
+		      (last-region (if (eq matrix-or-vector t)
+				       (list signal-rows (+ half-pad off-by-one))
+				       (+ half-pad off-by-one))))
+		 (.concatenate (make-double-array first-region) signal (make-double-array last-region)))
+	       ;; Padding with the signal ensures a periodicity of the window.
+	       (let* ((last-region (list (- signal-length (+ half-pad off-by-one)) (1- signal-length)))
+		      (lastbit (.subarray signal (list matrix-or-vector last-region)))
+		      (firstbit (.subarray signal (list matrix-or-vector (list 0 (1- half-pad))))))
+		 (.concatenate lastbit signal firstbit)))
+	   ;; Create the .subarray trim description.
+	   (list matrix-or-vector (list (+ half-pad off-by-one) (- padded-length half-pad 1))))))))
+
+;; (pad-signal (.rseq 1 10 10) 20)
+
 (defun dyadic-length (signal-length)
   "Returns the length of the signal if padded to a dyadic (power of two) length."
   (expt 2 (ceiling (log signal-length 2))))
@@ -210,29 +243,7 @@
    are to be padded to a dyadic length.
 
    Returns multiple values pad-signal, trim-dyadic (on time-axis)."
-  (let* ((signal-rows (.row-count signal))
-	 (matrix-or-vector (if (equalp signal-rows 1) 0 t)) 
-	 (signal-length (.length signal))
-	 (padded-length (dyadic-length signal-length))
-	 (to-pad (- padded-length signal-length)))
-    (multiple-value-bind (half-pad off-by-one) (floor to-pad 2)
-      (if (zerop to-pad)
-	  ;; Redundant case
-	  (values signal (list matrix-or-vector (list 0 (1- signal-length))))
-	  (values
-	   ;; Create the padded signal.
-	   (if silence-pad
-	       ;; To pad with zeros:
-	       (let* ((first-region (if (eq matrix-or-vector t) (list signal-rows half-pad) half-pad))
-		      (last-region (if (eq matrix-or-vector t) (list signal-rows (+ half-pad off-by-one)) (+ half-pad off-by-one))))
-		 (.concatenate (make-double-array first-region) signal (make-double-array last-region)))
-	       ;; Padding with the signal ensures a periodicity of the window.
-	       (let* ((last-region (list (- signal-length (+ half-pad off-by-one)) (1- signal-length)))
-		      (lastbit (.subarray signal (list matrix-or-vector last-region)))
-		      (firstbit (.subarray signal (list matrix-or-vector (list 0 (1- half-pad))))))
-		 (.concatenate lastbit signal firstbit)))
-	   ;; Create the .subarray trim description.
-	   (list matrix-or-vector (list (+ half-pad off-by-one) (- padded-length half-pad 1))))))))
+  (pad-signal signal (dyadic-length (.length signal)) :silence-pad silence-pad))
 
 ;; (dyadic-pad (.rseq 0 9 10))
 ;; (dyadic-pad (.rseq2 1 10 10) :silence-pad t)
