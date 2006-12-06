@@ -60,20 +60,74 @@
   (let ((max-value (apply #'max list)))
     (mapcar (lambda (x) (1+ (* (/ x max-value) 4.0))) list)))
 
-(defun syncopation-measures (rating-and-patterns meter metric-salience)
+(defun syncopation-of-pattern (pattern meter metric-salience)
+  "Assumes metrical alignment of the pattern against the meter"
+  (let ((syncopation-list (calculate-syncopations-on-grid pattern meter metric-salience)))
+    (format t "Syncopations (~{~,2f~^ ~})~%" syncopation-list)
+    (apply #'+ syncopation-list)))
+
+;;; Perhaps the model should be the first local minima of the shifted meter, i.e the first
+;;; minimal syncopation that presents itself. But this doesn't explain rhythms whose
+;;; syncopation measure falls below human judgement of complexity. If syncopation is
+;;; contributing to that complexity, then listeners must not be completely minimising the syncopation.
+(defun first-minimum-syncopation (pattern meter metric-salience)
+  "Calculates the syncopation of the pattern when rotated across each tatum (minimum metrical unit) left."
+  (loop ; over all pattern rotations
+     for shifted from 0 below (length pattern)
+     for syncopations-of-pattern = (calculate-syncopations-on-grid pattern meter metric-salience)
+     for syncopation-measure-of-pattern = (apply #'+ syncopations-of-pattern)
+     with minimum-syncopation = 99 ; should be syncopation-measure-of-pattern
+     while (< syncopation-measure-of-pattern minimum-syncopation)
+     do
+       (format t "Rotated Rhythm ~A Syncopation Measures: " pattern)
+       (format t "~,2f (~{~,2f~^ ~})~%" syncopation-measure-of-pattern syncopations-of-pattern)
+       (setf pattern (append (rest pattern) (list (first pattern)))) ; rotate the pattern
+       (setf minimum-syncopation syncopation-measure-of-pattern)
+     finally (return minimum-syncopation)))
+
+(defun minimised-syncopation-by-event-shifting (pattern meter metric-salience)
+  "Calculates the syncopation of the pattern when rotated across each tatum (minimum metrical unit) left."
+  (loop ; over all pattern rotations
+     for shifted from 0 below (length pattern)
+     with syncopations-of-pattern
+     with syncopation-measure-of-pattern
+     do
+       (setf syncopations-of-pattern (calculate-syncopations-on-grid pattern meter metric-salience))
+       (setf syncopation-measure-of-pattern (apply #'+ syncopations-of-pattern))
+       (format t "Rotated Rhythm ~A Syncopation Measures: " pattern)
+       (format t "~,2f (~{~,2f~^ ~})~%" syncopation-measure-of-pattern syncopations-of-pattern)
+       (setf pattern (append (rest pattern) (list (first pattern)))) ; rotate the pattern
+     minimizing syncopation-measure-of-pattern))
+
+(defun averaged-syncopation-of-event-shifting (pattern meter metric-salience)
+  "Calculates the syncopation of the pattern when rotated across each tatum (minimum metrical unit) left."
+  (loop ; over all pattern rotations
+     for shifted from 0 below (length pattern)
+     with syncopations-of-pattern
+     with syncopation-measure-of-pattern
+     do
+       (setf syncopations-of-pattern (calculate-syncopations-on-grid pattern meter metric-salience))
+       (setf syncopation-measure-of-pattern (apply #'+ syncopations-of-pattern))
+       (format t "Rotated Rhythm ~A Syncopation Measures: " pattern)
+       (format t "~,2f (~{~,2f~^ ~})~%" syncopation-measure-of-pattern syncopations-of-pattern)
+       (setf pattern (append (rest pattern) (list (first pattern)))) ; rotate the pattern
+     summing syncopation-measure-of-pattern into total-syncopation
+     finally (return (/ total-syncopation (length pattern)))))
+
+(defun syncopation-measures (rating-and-patterns meter metric-salience &key (sync-func #'syncopation-of-pattern))
   "Calculate and display syncopation measures"
   (loop ; over all Shmulevich patterns
      for (rating pattern) in rating-and-patterns
-     for terminated-pattern = (append pattern '(1))
-     with syncopation-list
-     with syncopation-measure-of-pattern
-     do
-       (setf syncopation-list (calculate-syncopations-on-grid terminated-pattern meter metric-salience))
-       (setf syncopation-measure-of-pattern (apply #'+ syncopation-list))
-       (format t "Rhythm ~A Rated ~,2f Syncopation Measures: " terminated-pattern rating)
-       (format t "(~{~,2f~^ ~}) ~,2f~%" syncopation-list syncopation-measure-of-pattern)
+     for syncopation-measure-of-pattern = (funcall sync-func pattern meter metric-salience)
+     do (format t "Rhythm ~A Rated ~,2f Syncopation Measure: ~,2f~%" pattern rating syncopation-measure-of-pattern)
      collect syncopation-measure-of-pattern into all-syncopation-measures
      finally (return (scale-to-shmulevich-ratings all-syncopation-measures))))
+
+;;; (syncopation-measures *sorted-shmulevich-patterns* '(2 2 2 2) #'lh-metric-salience)
+;;; (syncopation-measures *sorted-shmulevich-patterns* '(2 2 2 2) #'lh-metric-salience
+;;; :sync-func #'minimised-syncopation-by-event-shifting)
+;;; (syncopation-measures *sorted-shmulevich-patterns* '(2 2 2 2) #'lh-metric-salience :sync-func #'averaged-syncopation-of-event-shifting)
+;;; (syncopation-measures *sorted-shmulevich-patterns* '(2 2 2 2) #'lh-metric-salience :sync-func #'first-minimum-syncopation)
 
 (defun multires-analyse-pattern (pattern-name pattern &key (sample-rate 200))
   (let* ((test-rhythm (make-instance 'multires-rhythm:rhythm 
@@ -121,7 +175,9 @@
      for metric-salience in (list #'lh-metric-salience #'pk-metric-salience #'pk-nonmuso-metric-salience)
      do
        (format t "~a: ~%" metric-salience)
-     collect (nlisp::list-2-array (syncopation-measures rating-and-patterns meter metric-salience))))
+     collect (nlisp::list-2-array (syncopation-measures rating-and-patterns meter metric-salience
+;							:sync-func  #'first-minimum-syncopation
+))))
 
 (defun ntimes (atom-to-duplicate count)
   (cond ((> count 1) (cons atom-to-duplicate (ntimes atom-to-duplicate (1- count))))
@@ -233,7 +289,7 @@
     (format t "Saving Rhythm: ~a~%" pattern)
     (save-scorefile (format nil "/Users/leigh/shmulevich_~d.score" pattern-number) 
 		(mapcar (lambda (x) (* x 0.2)) (onsets-to-iois (grid-to-onsets terminated-pattern)))
-		:instrument "Midi"
+		:instrument "midi"
 		:midi-channel 10
 		:description (format nil "Shmulevich ~d" pattern-number))))
 
@@ -244,3 +300,7 @@
 ; (save-shmulevich-pattern 24 :repeat 4)
 ; (save-shmulevich-pattern 33 :repeat 4)
 
+;;; (setf test-pattern (second (nth 18 *sorted-shmulevich-patterns*)))
+;;; (calculate-syncopations-on-grid test-pattern '(2 2 2 2) #'lh-metric-salience) -> (3 2 4 0)
+;;; (minimised-syncopation-by-event-shifting (second (nth 18 *sorted-shmulevich-patterns*)) '(2 2 2 2) #'lh-metric-salience)
+;;; (first-minimum-syncopation (second (nth 5 *sorted-shmulevich-patterns*)) '(2 2 2 2) #'lh-metric-salience)
