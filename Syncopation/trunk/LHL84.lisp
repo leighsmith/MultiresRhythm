@@ -53,6 +53,7 @@
 
 (defun calculate-syncopations-on-grid (rhythm meter &optional (metric-salience 'lh-metric-salience))
   "Return list of syncopation strengths"
+  (setf rhythm (append rhythm '(1)))
   (loop with salience = (funcall metric-salience meter)
      for position from 0 below (length salience)
      when (and (note? (elt rhythm position))             ; note,
@@ -263,9 +264,10 @@ hierarchy data. Experiment 2. We default to  using the musician data"
 ;(metric-salience-rest 1 '(1 1 0 0 0 1) '(0 -2 -1 -2 -1 -2)) -> -1
 
 (defun next-note-position (rhythm position)
-  (loop for pos from (1+ position) below (length rhythm)
-        when (note? (elt rhythm pos))
-        do (return pos)))
+  (let ((next-pos (loop for pos from (1+ position) below (length rhythm)
+		     when (note? (elt rhythm pos))
+		     do (return pos))))
+    (if next-pos next-pos (1- (length rhythm)))))
 
 ;(next-note-position '(1 1 0 0 1) 1) -> 4
         
