@@ -37,3 +37,10 @@
 
 ;; Must do two repetitions.
 ; (multires-pattern-complexity "handel-pattern" *handel-patterns*)
+
+;;;; From Handel '98
+;;;; Rhythms which were hard to discriminate when presented with a metrical co-occuring pulse:
+;Metronome '(1 0 0 0 1 0 0 0 1 0 0 0 1 0 0 0)
+;First     '(1 0 1 0 0 0 1 0 0 1 0 0 1 0 0 0)
+;Second    '(1 0 1 0 0 0 1 0 0 0 1 0 1 0 0 0)
+
