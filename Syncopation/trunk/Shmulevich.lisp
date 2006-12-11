@@ -99,6 +99,10 @@
        (setf pattern (append (rest pattern) (list (first pattern)))) ; rotate the pattern
      minimizing syncopation-measure-of-pattern))
 
+;;; Very curious! A summation of syncopation measures across all rotations always adds to
+;;; 90 when using the meter (2 2 2 2)?! This is probably because the meter establishes the
+;;; maximum syncopation value and then the rotation guarantees the syncopation will be
+;;; found together with all other possible values.
 (defun averaged-syncopation-of-event-shifting (pattern meter metric-salience)
   "Calculates the syncopation of the pattern when rotated across each tatum (minimum metrical unit) left."
   (loop ; over all pattern rotations
@@ -124,8 +128,7 @@
      finally (return (scale-to-shmulevich-ratings all-syncopation-measures))))
 
 ;;; (syncopation-measures *sorted-shmulevich-patterns* '(2 2 2 2) #'lh-metric-salience)
-;;; (syncopation-measures *sorted-shmulevich-patterns* '(2 2 2 2) #'lh-metric-salience
-;;; :sync-func #'minimised-syncopation-by-event-shifting)
+;;; (syncopation-measures *sorted-shmulevich-patterns* '(2 2 2 2) #'lh-metric-salience :sync-func #'minimised-syncopation-by-event-shifting)
 ;;; (syncopation-measures *sorted-shmulevich-patterns* '(2 2 2 2) #'lh-metric-salience :sync-func #'averaged-syncopation-of-event-shifting)
 ;;; (syncopation-measures *sorted-shmulevich-patterns* '(2 2 2 2) #'lh-metric-salience :sync-func #'first-minimum-syncopation)
 
@@ -175,7 +178,7 @@
      for metric-salience in (list #'lh-metric-salience #'pk-metric-salience #'pk-nonmuso-metric-salience)
      do
        (format t "~a: ~%" metric-salience)
-     collect (nlisp::list-2-array (syncopation-measures rating-and-patterns meter metric-salience
+     collect (nlisp::list-to-array (syncopation-measures rating-and-patterns meter metric-salience
 ;							:sync-func  #'first-minimum-syncopation
 ))))
 
@@ -186,7 +189,7 @@
 (defun plot-syncopation-comparisons (listener-rated-patterns meter &optional (figure-number 1))
   ;; Re-sort into increasing rating judgements.
   (let ((syncopation-test-results (syncopation-test listener-rated-patterns meter))
-	(listener-ratings (nlisp::list-2-array (mapcar #'first listener-rated-patterns))))
+	(listener-ratings (nlisp::list-to-array (mapcar #'first listener-rated-patterns))))
     (window 0)
     (plot listener-ratings nil :label "Shmulevich Ratings" :style "linespoints linewidth 2")
     (window figure-number)
@@ -221,7 +224,7 @@
 (defun multiplot-syncopation-comparisons (listener-rated-patterns meter)
   ;; Re-sort into increasing rating judgements.
   (let ((syncopation-test-results (syncopation-test listener-rated-patterns meter))
-	(listener-ratings (nlisp::list-2-array (mapcar #'first listener-rated-patterns))))
+	(listener-ratings (nlisp::list-to-array (mapcar #'first listener-rated-patterns))))
     (plot-test-results 0 syncopation-test-results 
 		       '("Longuet-Higgins & Lee Measure" "P&K Measure (Musicians)" "P&K (Non-musicians)")
 		       "Comparison of Modelled Syncopation Measures")
@@ -303,4 +306,5 @@
 ;;; (setf test-pattern (second (nth 18 *sorted-shmulevich-patterns*)))
 ;;; (calculate-syncopations-on-grid test-pattern '(2 2 2 2) #'lh-metric-salience) -> (3 2 4 0)
 ;;; (minimised-syncopation-by-event-shifting (second (nth 18 *sorted-shmulevich-patterns*)) '(2 2 2 2) #'lh-metric-salience)
-;;; (first-minimum-syncopation (second (nth 5 *sorted-shmulevich-patterns*)) '(2 2 2 2) #'lh-metric-salience)
+;;; (first-minimum-syncopation (second (nth 18 *sorted-shmulevich-patterns*)) '(2 2 2 2) #'lh-metric-salience)
+;;; (averaged-syncopation-of-event-shifting (second (nth 33 *sorted-shmulevich-patterns*)) '(2 2 2 2) #'lh-metric-salience)

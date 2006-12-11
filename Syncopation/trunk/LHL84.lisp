@@ -97,7 +97,7 @@
   (plot-command "set linetype 6")
   (plot-command "set style fill solid 1.0 border -1")
   (plot-command "set xtics 1,1") ;; TODO kludged, not general!
-  (plot (nlisp::list-2-array (lh-metric-salience meter))
+  (plot (nlisp::list-to-array (lh-metric-salience meter))
 	(.iseq 1 16) ; nil
 	:xlabel "Metrical location" 
 	:ylabel "Salience"
@@ -107,7 +107,7 @@
 
 ;; (plot-hierarchy '(2 2 2 2) "4/4")
 
-;; (plot (nlisp::list-2-array (lh-metric-salience '(2 2 3))) nil 
+;; (plot (nlisp::list-to-array (lh-metric-salience '(2 2 3))) nil 
 ;;       :xlabel "Metrical location" 
 ;;       :ylabel "Salience"
 ;;       :label "Metrical Strength"
