@@ -83,15 +83,19 @@
   (+ (/ (number-of-scales scaleogram-to-analyse) (voices-per-octave scaleogram-to-analyse))
      (skip-highest-octaves scaleogram-to-analyse)))
 
-(defun gaussian-envelope (width &key (mean 0.0) (stddev 1.0) 
+(defun gaussian-envelope (width &key (mean 0d0) (stddev 1d0) 
 			    (scaling (/ 1d0 (* (sqrt (* 2d0 pi)) stddev))))
   "Compute a gaussian envelope.
    width is the sampling range of an envelope over +/-5 standard deviations.
    mean determines the position of the envelope within the width number of samples.
-   stddev determines the standard deviation and therefore the variance of the distribution."
+   stddev determines the standard deviation and therefore the variance of the distribution.
+   scaling determines the amplitude peak of the envelope, defaulting to an area of 1.0"
   (let ((x (.rseq -5.0 +5.0 width)))
     (.* scaling
 	(.exp (.- (./ (.expt (.- x mean) 2.0) (.* 2d0 stddev stddev)))))))
+
+;; (plot (gaussian-envelope 150 :stddev 2d0) nil)
+;; (plot (gaussian-envelope 150 :mean -1d0) nil)
 
 (defun morlet-wavelet-fourier (signal-time-period wavelet-scale &key (omega0 6.2))
   "Construct a Morlet wavelet filter in the Fourier domain within the length of the signal (so we can multiply).

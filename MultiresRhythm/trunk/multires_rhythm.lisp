@@ -136,14 +136,14 @@ This is weighted by absolute constraints, look in the 600ms period range."
 	 ;; Match the mean to a span across -5 < mean < 5 standard deviations.
 	 (tempo-scale-weighting (gaussian-envelope number-of-scales 
 						   :mean (- (/ (* 10.0 salient-scale) number-of-scales) 5.0)
+						   :stddev 2.0d0 ; keeps the weighting broad
 						   :scaling 1d0)))
-    (format t "preferred tempo scale = ~d~%" salient-scale)
-
     (dotimes (time time-in-samples)
       (setf-subarray (val tempo-weighting-over-time) 
 		     (val (.reshape tempo-scale-weighting (list number-of-scales 1))) (list t time)))
-    ;; (plot (.column tempo-weighting-over-time 0) nil :title "Preferred tempo weighting profile")
     tempo-weighting-over-time))
+
+;; (plot (.column (tempo-salience-weighting 78 '(144 1)) 0) nil :title "Preferred tempo weighting profile")
 
 (defun normalise-by-scale (magnitude)
   "Normalise a magnitude finding the maximum scale at each time point.
@@ -374,18 +374,20 @@ then can extract ridges."
 	 (correlated-ridges (correlate-ridges magnitude phase (voices-per-octave scaleogram)))
 	 ;; Scale index 1 is the highest frequency (smallest dilation) scale.
 	 (salient-scale (preferred-tempo scaleogram sample-rate))
+	 (tempo-weighting (tempo-salience-weighting salient-scale (.array-dimensions magnitude)))
 	 ;; Weight by the absolute tempo preference.
-	 (tempo-weighted-ridges (.* correlated-ridges 
-				    (tempo-salience-weighting salient-scale (.array-dimensions magnitude)))))
+	 (tempo-weighted-ridges (.* correlated-ridges tempo-weighting)))
+    (format t "Preferred tempo scale = ~d of ~d hierarchy~%" salient-scale (.array-dimension magnitude 0))
+    ;; (plot (.column tempo-weighting 0) nil :title "Preferred tempo weighting profile")
     ;; show what we got as an intensity plot
-    ;; :title (name analysis-rhythm))
     ;; (setf *magnitude-colour-map* #'jet-colormap)
     ;; This tends to flatten everything out...
     (plot-image #'magnitude-image "-correlation" (list correlated-ridges) :title "ridges") 
     (plot-image #'magnitude-image "-correlation" (list tempo-weighted-ridges) :title "tempo-ridges")
+    ;; :title (name analysis-rhythm))
     ;; substituted tempo-weighted-ridges for correlated-ridges to enable tempo selectivity.
     (determine-scale-peaks tempo-weighted-ridges)))
-    ;; (determine-scale-peaks correlated-ridges)))
+    ;; (determine-scale-peaks correlated-ridges) ; for no tempo weighting
 
 (defmethod skeleton-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
   "Returns the skeleton given the rhythm."
@@ -427,7 +429,7 @@ then can extract ridges."
 
 	 ;; The right way to do this is with a tight (well, two octave)
 	 ;; Gaussian envelope over it.
-	 ;; tactus-mag (gauss-centered tactus voices-per-octave)
+	 ;; tactus-mag (gaussian-envelope tactus voices-per-octave)
 	 ;; But just a single voice alone produces the correct oscillation, with lower amplitude:
 	 (tactus-mag (insert-ridge tactus (make-double-array time-frequency-dimensions) :constant-value 1d0))
   

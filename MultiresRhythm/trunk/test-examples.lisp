@@ -137,7 +137,7 @@
 		   :time-signal (.row aligned-signal 0)
 		   :sample-rate sample-rate)))
 
-(defun test-octave-file (filename 
+(defun clap-to-octave-file (filename 
 			 &key
 			 (sample-rate 200) 
 			 (description "") 
@@ -146,16 +146,17 @@
     (clap-to-rhythm loaded-rhythm :tactus-selector tactus-selector)))
 
 ;; TODO decimate the greensleeves data down to 200Hz.
-;; (test-octave-file "greensleeves-perform-medium" :sample-rate 400 :description "Greensleeves performed")
-;; (test-octave-file "longuet_cliche" :sample-rate 200)
-;; (test-octave-file "intensity34_to_44" :sample-rate 200)
-;; (test-octave-file "desain-unquantized" :sample-rate 200)
-;; (test-octave-file "desain-unquantized" :sample-rate 200 :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time 58 62 skeleton)))
-;; (test-octave-file "desain-unquantized" :sample-rate 200 :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time 73 65 skeleton)))
-;; (test-octave-file "desain-quantized" :sample-rate 200)
+;; (clap-to-octave-file "greensleeves-perform-medium" :sample-rate 400 :description "Greensleeves performed")
+;; (clap-to-octave-file "longuet_cliche" :sample-rate 200)
+;; (clap-to-octave-file "intensity34_to_44" :sample-rate 200)
+;; (clap-to-octave-file "desain-unquantized" :sample-rate 200)
+;; (clap-to-octave-file "desain-unquantized" :sample-rate 200 :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time 58 62 skeleton)))
+;; (clap-to-octave-file "desain-unquantized" :sample-rate 200 :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time 73 65 skeleton)))
+;; (clap-to-octave-file "desain-quantized" :sample-rate 200)
+;; (clap-to-octave-file "lengthen_corr" :sample-rate 200)
 
 ;; (require :sb-sprof)
-;; (sb-sprof:with-profiling (:max-samples 1500 :report :flat) (test-octave-file "longuet_cliche" :sample-rate 200))
+;; (sb-sprof:with-profiling (:max-samples 1500 :report :flat) (clap-to-octave-file "longuet_cliche" :sample-rate 200))
 
 ;;(setf loaded-rhythm (load-rhythm-file "longuet_cliche" :description "longuet" :sample-rate 200))
 ;;(setf (time-signal loaded-rhythm) (dyadic-pad (time-signal loaded-rhythm) :silence-pad t :padded-length 2048))
@@ -207,3 +208,15 @@
 
 (defun clap-to-anthem (anthem-number)
     (clap-to-rhythm (anthem-rhythm anthem-number :shortest-ioi 50)))
+
+;; Seconds
+;(0.305d0 0.375d0 0.375d0 0.445d0 )
+;(0.305d0 0.375d0 0.445d0)
+;; Ratios
+;(0.813 1.0d0 1.0d0 1.186)
+;(0.813 1.0d0 1.186)
+
+;; Agogic phrasing.
+;; (clap-to-rhythm (iois-to-rhythm "4-beat-lengthen-corr" (repeat-rhythm '(61 75 75 89) 12)))
+;; (clap-to-rhythm (iois-to-rhythm "3-beat-lengthen-corr" (repeat-rhythm '(61 75 89) 16)))
+;; (clap-to-octave-file "lengthen_corr" :sample-rate 200)
