@@ -81,15 +81,15 @@
 ;; (plot-scale-energy-at-time (scaleogram-of-grid '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)) 650)
 ;; (setf b (rhythm-of-grid '(1 1 1 1) :tempo 60))
 
-(defun tactus-for-rhythm-grid (name rhythm-grid)
-  (let ((test-rhythm (rhythm-of-grid name rhythm-grid :sample-rate 200)))
+(defun tactus-for-rhythm-grid (name rhythm-grid &key (tempo 80))
+  (let ((test-rhythm (rhythm-of-grid name rhythm-grid :sample-rate 200 :shortest-ioi (* 200 (/ 60 tempo)))))
     (clap-to-rhythm test-rhythm)))
 
 ;; (tactus-for-rhythm-grid "shmulevich-rhythm-1" '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0))
 ;;; Do the analysis on an impulse train.
 ;; (tactus-for-rhythm-grid "isochronous-rhythm"  '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1))
 ;;; A little test that the dyadic number of impulses has no influence.
-;; (tactus-for-rhythm-grid "isochronous-rhythm"  '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1))
+;; (tactus-for-rhythm-grid "isochronous-rhythm-longer"  '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1))
 
 (defun test-reconstruction (test-signal &key (voices-per-octave 8))
   "Verifies the invertability of the CWT and therefore it's accuracy."
