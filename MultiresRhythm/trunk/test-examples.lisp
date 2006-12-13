@@ -81,8 +81,8 @@
 ;; (plot-scale-energy-at-time (scaleogram-of-grid '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)) 650)
 ;; (setf b (rhythm-of-grid '(1 1 1 1) :tempo 60))
 
-(defun tactus-for-rhythm-grid (name rhythm-grid &key (tempo 80))
-  (let ((test-rhythm (rhythm-of-grid name rhythm-grid :sample-rate 200 :shortest-ioi (* 200 (/ 60 tempo)))))
+(defun tactus-for-rhythm-grid (name rhythm-grid)
+  (let ((test-rhythm (rhythm-of-grid name rhythm-grid :sample-rate 200 :tempo 80)))
     (clap-to-rhythm test-rhythm)))
 
 ;; (tactus-for-rhythm-grid "shmulevich-rhythm-1" '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0))

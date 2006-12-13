@@ -32,7 +32,7 @@
 
 (in-package :multires-rhythm)
 
-;; This is required to get around a fucking Package Lock Violation deep within SBCL's CLOS?
+;; This is required to get around a Package Lock Violation deep within SBCL's CLOS?
 ;;(in-package :cl)
 (sb-ext:add-implementation-package :multires-rhythm :cl)
 ;;(in-package :multires-rhythm)
@@ -44,9 +44,9 @@
   :author "Leigh M. Smith"
   :depends-on (:nlisp :zlib :imago)
   :components ((:file "ridges")
-	       (:file "rhythm")
+	       (:file "file_io")
+	       (:file "rhythm" :depends-on ("file_io"))
 	       (:file "plotting" :depends-on ("ridges"))
 	       (:file "cwt" :depends-on ("plotting" "ridges"))
-	       (:file "file_io")
-	       (:file "multires_rhythm" :depends-on ("cwt" "plotting" "rhythm" "file_io"))
+	       (:file "multires_rhythm" :depends-on ("cwt" "plotting" "rhythm"))
 	       (:file "test-examples" :depends-on ("rhythm" "multires_rhythm"))))
