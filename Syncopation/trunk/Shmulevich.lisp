@@ -133,11 +133,7 @@
 ;;; (syncopation-measures *sorted-shmulevich-patterns* '(2 2 2 2) #'lh-metric-salience :sync-func #'first-minimum-syncopation)
 
 (defun multires-analyse-pattern (pattern-name pattern &key (sample-rate 200))
-  (let* ((test-rhythm (make-instance 'multires-rhythm:rhythm 
-				     :name pattern-name
-				     :description pattern-name ; TODO transliterate '-' for ' '.
-				     :time-signal (rhythmic-grid-to-signal pattern :sample-rate sample-rate)
-				     :sample-rate sample-rate)))
+  (let* ((test-rhythm (multires-rhythm:rhythm-of-grid pattern-name pattern :sample-rate sample-rate)))
     ;; TODO repeat rhythm
     ;; (setf complexity (rhythm-complexity test-rhythm))
     (multires-rhythm:clap-to-rhythm test-rhythm)))
@@ -154,24 +150,13 @@
      with test-rhythm
      with complexity
      do
-       (setf test-rhythm 
-	     (make-instance 'multires-rhythm:rhythm 
-			    :name name
-			    :description name ; TODO transliterate '-' for ' '.
-			    :time-signal (rhythmic-grid-to-signal pattern :sample-rate sample-rate)
-			    :sample-rate sample-rate))
+       (setf test-rhythm (multires-rhythm:rhythm-of-grid name pattern :sample-rate sample-rate))
        (setf complexity (rhythm-complexity test-rhythm))
        (format t "ridges of ~a is ~a~%" pattern complexity)
      collect complexity))
 
-#|
 ;; Baseline metric analysis on an unsyncopated rhythm
-(rhythm-complexity (make-instance 'multires-rhythm:rhythm 
-				  :name "isochronous"
-				  :description "isochronous rhythm"
-				  :time-signal (rhythmic-grid-to-signal '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1) :sample-rate 200)
-				  :sample-rate 200))
-|#
+;; (rhythm-complexity (multires-rhythm:rhythm-of-grid "isochronous" '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1) :sample-rate 200))
 
 (defun syncopation-test (rating-and-patterns meter)
   (loop ; over the different metric salience methods.
