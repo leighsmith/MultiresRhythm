@@ -49,14 +49,17 @@
 (defgeneric plot-rhythm (rhythm-to-plot)
   (:documentation "Plot locations of beats of the given rhythm."))
 
+(defgeneric clap-to-rhythm (rhythm-to-analyse &key tactus-selector)
+  (:documentation "Returns a set of sample times to clap to given the supplied rhythm"))
+
 (defgeneric tactus-for-rhythm (rhythm-to-analyse &key voices-per-octave tactus-selector)
   (:documentation "Returns the selected tactus for the rhythm."))
 
+(defgeneric scaleogram-of-rhythm (rhythm-to-analyse &key voices-per-octave)
+  (:documentation "Returns the scaleogram for the rhythm."))
+
 (defgeneric skeleton-of-rhythm (rhythm-to-analyse &key voices-per-octave)
   (:documentation "Returns a list of ridges (a skeleton) for the given rhythm."))
-
-(defgeneric clap-to-rhythm (rhythm-to-analyse &key tactus-selector)
-  (:documentation "Returns a set of sample times to clap to given the supplied rhythm"))
 
 (defgeneric rhythm-complexity (rhythm-to-analyse)
   (:documentation "Returns a normalised measure of the complexity of the rhythm,
@@ -69,7 +72,7 @@
   (let* ((beat-positions (.find (time-signal rhythm))))
     (.aref beat-positions beat-number)))
 
-(defun iois-to-rhythm (name iois &key (shortest-ioi 1.0))
+(defun iois-to-rhythm (name iois &key (shortest-ioi 1.0) (sample-rate 200))
   "Returns a rhythm instance given a list of inter-onset intervals"
     (make-instance 'rhythm 
 		   :name name
@@ -79,11 +82,22 @@
 				  (onsets-to-grid 
 				   (iois-to-onsets 
 				    (intervals-in-samples iois :ioi shortest-ioi)))))
-		   :sample-rate 200))
+		   :sample-rate sample-rate))
 
-(defun rhythm-of-onsets (name onsets)
+(defun rhythm-of-onsets (name onsets &key (sample-rate 200))
   "Given an narray of onsets, creates a rhythm instance"
-  (iois-to-rhythm name (nlisp::array-to-list (.diff onsets))))
+  (iois-to-rhythm name (nlisp::array-to-list (.diff onsets)) :sample-rate sample-rate))
+
+(defun rhythm-of-grid (name grid &key (tempo 80 tempo-supplied-p)
+				(shortest-ioi 1.0 ioi-supplied-p)
+				(sample-rate 200))
+  "Given a rhythmic grid list, returns a rhythm instance"
+  ;; Append an impulse to ensure trailing silences are counted.
+  (iois-to-rhythm name 
+		  (onsets-to-iois (grid-to-onsets (append grid '(1))))
+		  :shortest-ioi shortest-ioi
+		  ; (if tempo-supplied-p :tempo tempo)
+		  :sample-rate sample-rate))
 
 ;  (clap-signal (make-double-array (.array-dimensions rhythm-signal) :initial-element 0d0))
 ;  (map nil (lambda (index) (setf (.aref clap-signal index) max-computed-scale)) (val onsets))
@@ -389,9 +403,12 @@ then can extract ridges."
     (determine-scale-peaks tempo-weighted-ridges)))
     ;; (determine-scale-peaks correlated-ridges) ; for no tempo weighting
 
+(defmethod scaleogram-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
+  (cwt (time-signal analysis-rhythm) voices-per-octave))
+
 (defmethod skeleton-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
   "Returns the skeleton given the rhythm."
-  (let* ((scaleogram (cwt (time-signal analysis-rhythm) voices-per-octave))
+  (let* ((scaleogram (scaleogram-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave))
 	 (correlated-ridge-scale-peaks (scale-peaks-of-scaleogram scaleogram (sample-rate analysis-rhythm)))
        	 (skeleton (extract-ridges correlated-ridge-scale-peaks)))
     ;; (plot-cwt scaleogram :title (name analysis-rhythm))

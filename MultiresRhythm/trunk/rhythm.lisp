@@ -48,18 +48,6 @@
       nil
       (cons (- (second onsets) (first onsets)) (onsets-to-iois (rest onsets)))))
 
-;; TODO add an IOI parameter
-(defun rhythmic-grid-to-signal (grid &key (tempo 80) (shortest-ioi 1.0 ioi-supplied-p) (sample-rate 200))
-  "Returns rhythmic grid as a nlisp array."
-  (nlisp::list-to-array (butlast 
-			(onsets-to-grid
-			 (iois-to-onsets 
-			  (intervals-in-samples 
-			   ;; Append an impulse to ensure trailing silences are counted.
-			   (onsets-to-iois (grid-to-onsets (append grid '(1))))
-			   :tempo tempo 
-			   :sample-rate sample-rate))))))
-
 (defun repeat-rhythm (rhythm repeat)
   (if (> repeat 0)
       (append rhythm (repeat-rhythm rhythm (1- repeat)))))

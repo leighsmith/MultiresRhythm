@@ -1,6 +1,6 @@
 ;;; -*- Lisp -*-
 ;;;
-;;; $Id:$
+;;; $Id$
 ;;;
 ;;; Psych test data from the musical rhythm psychology
 ;;; literature coded as Stella/Common Music programs to act as a set

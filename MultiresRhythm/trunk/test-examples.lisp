@@ -68,31 +68,28 @@
   
 ;; (test-lpc)
 
-(defun test-rhythm (rhythm-grid)
-  (let* ((rhythm-signal (rhythmic-grid-to-signal rhythm-grid :shortest-ioi 256))
-	 (rhythm-scaleogram (cwt rhythm-signal 12)))
-    (plot-cwt rhythm-scaleogram :title "rhythm")
+(defun scaleogram-of-grid (rhythm-grid)
+  (let* ((rhythm-scaleogram (scaleogram-of-rhythm 
+			     (rhythm-of-grid "test-rhythm" rhythm-grid :shortest-ioi 256)
+			     :voices-per-octave 12)))
+    (plot-cwt rhythm-scaleogram :title "test-rhythm")
     rhythm-scaleogram))
 
-;; (setf rhythm-scaleogram (test-rhythm '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0)))
-;; (test-rhythm '(1 1 1 1 1 1 1 1 1 1))
-;; (plot-scale-energy-at-time (test-rhythm '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)) 650)
-;; (setf b (rhythmic-grid-to-signal '(1 1 1 1) :tempo 60))
+;; (setf rhythm-scaleogram (scaleogram-of-grid '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0)))
+;; (scaleogram-of-grid '(1 1 1 1 1 1 1 1 1 1))
+;; (scaleogram-of-grid '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1))
+;; (plot-scale-energy-at-time (scaleogram-of-grid '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)) 650)
+;; (setf b (rhythm-of-grid '(1 1 1 1) :tempo 60))
 
-(defun test-tactus-for-rhythm (name rhythm-grid)
-  (let ((test-rhythm 
-	 (make-instance 'rhythm 
-			:name name
-			:description name ; TODO transliterate '-' for ' '.
-			:time-signal (rhythmic-grid-to-signal rhythm-grid :sample-rate 200)
-			:sample-rate 200)))
+(defun tactus-for-rhythm-grid (name rhythm-grid)
+  (let ((test-rhythm (rhythm-of-grid name rhythm-grid :sample-rate 200)))
     (clap-to-rhythm test-rhythm)))
 
-;; (test-tactus-for-rhythm "shmulevich-rhythm-1" '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0))
+;; (tactus-for-rhythm-grid "shmulevich-rhythm-1" '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0))
 ;;; Do the analysis on an impulse train.
-;; (test-tactus-for-rhythm "isochronous-rhythm"  '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1))
+;; (tactus-for-rhythm-grid "isochronous-rhythm"  '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1))
 ;;; A little test that the dyadic number of impulses has no influence.
-;; (test-tactus-for-rhythm "isochronous-rhythm"  '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1))
+;; (tactus-for-rhythm-grid "isochronous-rhythm"  '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1))
 
 (defun test-reconstruction (test-signal &key (voices-per-octave 8))
   "Verifies the invertability of the CWT and therefore it's accuracy."
@@ -118,7 +115,7 @@
 ;; Test non-dyadic reconstruction:
 ;; (test-reconstruction (fm-test :signal-length 2200))
 ;; Test reconstruction of a dirac function defined rhythmic signal.
-;; (test-reconstruction (rhythmic-grid-to-signal '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0) :sample-rate 200))
+;; (test-reconstruction (time-signal (rhythm-of-grid "test" '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0))))
 
 (defun load-rhythm-file (filename &key (sample-rate 200) (description ""))
   (let* ((file-path (make-pathname 
