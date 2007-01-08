@@ -110,22 +110,37 @@
 	 (xi (.concatenate 
 	      (.rseq 0 pi half-signal 'n-complex-double-array)
 	      (.rseq (- pi) 0 half-signal 'n-complex-double-array)))
-
+	 ;;
 	 ;; From Grossmann, Kronland-Martinet and Morlet, we multiply the wavelet-scale
 	 ;; by the discretised omega value when scaling in the Fourier domain.
-	 (omega  (.* xi wavelet-scale))) ; (plot omega)
+	 (omega (.* xi wavelet-scale))) ; (plot omega)
+    ;;
+    ;; See mallat:tour p76
+    ;; According to Holschneider sqrt(2 .* pi) .* 
+    ;; check with Daubechies pi ^ (-1/4)
+    (.- (.exp (.- (./ (.expt (.- omega omega0) 2) 2)))
+	(.exp (.- (./ (.+ (.expt omega 2) (.expt omega0 2)) 2))))))
 
-  ;; See mallat:tour p76
-  ;; According to Holschneider sqrt(2 .* pi) .* 
-  ;; check with Daubechies pi ^ (-1/4)
-  ;;
-  (.- (.exp (.- (./ (.expt (.- omega omega0) 2) 2)))
-      (.exp (.- (./ (.+ (.expt omega 2) (.expt omega0 2)) 2))))))
-
-;;; Debugging
+;;; Plot the gaussian envelope in the Fourier domain
 ;;; (plot (.realpart (morlet-wavelet-fourier 1024 12)) nil)
-;;; (setf time-wavelet (ifft (morlet-wavelet-fourier 1024 128)))
-;;; (nplot (list (.realpart time-wavelet) (.imagpart time-wavelet)) nil :legends (list "Real Part" "Imaginary Part"))
+;;; (plot (.realpart (morlet-wavelet-fourier 1024 128)) nil)
+
+(defun plot-time-domain-kernel (signal-time-period wavelet-scale &key (omega0 6.2))
+ (let* ((time-wavelet (ifft (morlet-wavelet-fourier signal-time-period wavelet-scale :omega0 omega0)))
+	(zero-frequency (/ (.length time-wavelet) 2))
+	;; Swap for visualisation around Nyquist frequency
+	(swapped-time-wavelet (.concatenate 
+			       (.subseq time-wavelet (1+ zero-frequency) (1- signal-time-period))
+			       (.subseq time-wavelet 0 zero-frequency))))
+   (nplot (list (.realpart swapped-time-wavelet) (.imagpart swapped-time-wavelet)) nil 
+	  :legends (list "Real Part" "Imaginary Part"))))
+
+;;; (plot-time-domain-kernel 1024 128 :omega0 6.2)
+;;; (plot-time-domain-kernel 1024 128 :omega0 6)
+;;; (plot-time-domain-kernel 1024 128 :omega0 5.3364)
+;;; (plot-time-domain-kernel 1024 128 :omega0 5)
+;;; (plot-time-domain-kernel 1024 128 :omega0 4)
+;;; (plot-time-domain-kernel 1024 12)
 
 (defun scale-from-period (time-periods voices-per-octave &key (skip-initial-octaves 2))
   "Function to return a vector of scale numbers from periods of time support (in samples).
