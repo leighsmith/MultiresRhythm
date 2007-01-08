@@ -131,7 +131,7 @@
   (plot (time-signal rhythm-to-plot) nil
 	 :label (format nil "Rhythm onsets of ~a" (description rhythm-to-plot))
 	 :style "impulses linetype 6"
-	 :xlabel "Time"
+	 :xlabel (format nil "Time in samples (~dHz sample rate)" (sample-rate rhythm-to-plot))
 	 :ylabel "Scaled Intensity"
 	 :title (format nil "Rhythm of ~a" (name rhythm-to-plot))
 	 :aspect-ratio 0.66))
