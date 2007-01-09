@@ -26,13 +26,13 @@
 ;;; 4 beats but then re-instate the terminating beat, leaving 13 beats.
 
 ;; Handel's non-metrical example on p372
-;; (multires-rhythm::test-tactus-for-rhythm "handel-nonmetrical-1" '(1 0 1 0 0 0 1 0 0 1 0 1 0 0 0 0))
+;; (multires-rhythm::tactus-for-rhythm-grid "handel-nonmetrical-1" '(1 0 1 0 0 0 1 0 0 1 0 1 0 0 0 0))
 ;;vs. 
-;; (multires-rhythm::test-tactus-for-rhythm "handel-nonmetrical-2" '(1 0 1 0 0 1 0 0 0 1 0 1 0 0 0 0))
+;; (multires-rhythm::tactus-for-rhythm-grid "handel-nonmetrical-2" '(1 0 1 0 0 1 0 0 0 1 0 1 0 0 0 0))
 
 ;; 
 (defun tactus-for-handel-pattern (pattern-number)
-  (multires-rhythm::test-tactus-for-rhythm (format nil "handel-pattern-~d" pattern-number)
+  (multires-rhythm::tactus-for-rhythm-grid (format nil "handel-pattern-~d" pattern-number)
 					   (repeat-rhythm (nth pattern-number *handel-patterns*) 2)))
 
 ;; Must do two repetitions.
