@@ -27,6 +27,7 @@
 		     :tactus-for-rhythm
 		     :rhythmic-grid-to-signal
 		     :rhythm-complexity
+		     :rhythm-of-grid
 		     :clap-to-rhythm
 		     :save-scorefile))
 
