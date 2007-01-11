@@ -358,6 +358,19 @@
 	       :title title
 	       :time-axis-decimation time-axis-decimation))
 
+;;; How to plot using nlisp now the image function is fixed.
+(defmethod plot-cwt-nlisp ((scaleogram-to-plot scaleogram) &key (title "unnamed") (time-axis-decimation 4))
+  "Method to plot the magnitude and phase components of the result of
+   a continuous wavelet transform on a signal."
+  (nlisp::palette-defined '((0 "#FF0000")
+		     (2 "#00FFFF")
+		     (6 "#0000FF")))
+  (image (.flip (.decimate (scaleogram-magnitude scaleogram-to-plot) (list 1 time-axis-decimation))) nil nil
+	 :title title
+	 :xlabel "time" 
+	 :ylabel "dilation scale" ;; Need to label the plot of the scale axis with cwt label-scale-as-time-support
+	 :square nil))
+
 (defmethod plot-cwt+tactus ((scaleogram-to-plot scaleogram) (computed-tactus ridge)
 			     &key (title "unnamed") (time-axis-decimation 4))
   "Plot the magnitude in greyscale overlaid with the computed tactus in red, the phase
