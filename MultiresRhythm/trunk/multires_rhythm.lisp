@@ -313,8 +313,8 @@ then can extract ridges."
     (plot-image #'magnitude-image "-correlation" (list tempo-weighted-ridges) :title "tempo-ridges")
     ;; :title (name analysis-rhythm))
     ;; substituted tempo-weighted-ridges for correlated-ridges to enable tempo selectivity.
-    (determine-scale-peaks tempo-weighted-ridges)))
-    ;; (determine-scale-peaks correlated-ridges) ; for no tempo weighting
+    ;; (determine-scale-peaks tempo-weighted-ridges)))
+    (determine-scale-peaks correlated-ridges))) ; for no tempo weighting
 
 (defmethod scaleogram-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
   (cwt (time-signal analysis-rhythm) voices-per-octave))
@@ -391,10 +391,7 @@ then can extract ridges."
 	 (clap-rhythm (rhythm-of-onsets (name original-rhythm) clap-at)))
 
     (format t "Handclapping from beat ~d of original rhythm, sample ~d~%" start-from-beat down-beat-sample)
-    (plot-claps (time-signal original-rhythm) 
-		clap-at 
-		:foot-tap-AM foot-tap-phase 
-		:signal-description (name original-rhythm))
+    (plot-claps original-rhythm clap-at :foot-tap-AM foot-tap-phase)
     clap-at))
 
 (defmethod clap-to-rhythm ((performed-rhythm rhythm) &key (tactus-selector #'select-longest-lowest-tactus))
