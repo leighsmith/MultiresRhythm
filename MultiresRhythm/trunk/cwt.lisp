@@ -74,6 +74,9 @@
 (defgeneric label-scale-as-time-support (scaleogram)
   (:documentation "Returns a list of plotting labels giving the time support for each scale"))
 
+(defgeneric label-scale-as-time-support-seconds (scaleogram sample-rate)
+  (:documentation "Generates a set of labels of the scales as time support intervals in seconds"))
+
 ;;;; Methods
 
 (defmethod number-of-scales ((scaleogram-to-analyse scaleogram))
@@ -82,6 +85,9 @@
 (defmethod number-of-octaves ((scaleogram-to-analyse scaleogram))
   (+ (/ (number-of-scales scaleogram-to-analyse) (voices-per-octave scaleogram-to-analyse))
      (skip-highest-octaves scaleogram-to-analyse)))
+
+(defmethod duration-in-samples ((scaleogram-to-analyse scaleogram))
+  (.array-dimension (scaleogram-magnitude scaleogram-to-analyse) 0))
 
 (defun gaussian-envelope (width &key (mean 0d0) (stddev 1d0) 
 			    (scaling (/ 1d0 (* (sqrt (* 2d0 pi)) stddev))))
@@ -347,6 +353,23 @@
 
 ;;;; Plotting methods
 
+;; We reverse the labels so we plot in more intuitive lowest scale on the left orientation.
+(defmethod label-scale-as-time-support ((scaleogram-to-plot scaleogram))
+  "Generates a set of labels of the scales as time support interval"
+  (let* ((vpo (voices-per-octave scaleogram-to-plot))
+	 (scale-number-per-octave (.* (.iseq 0 (number-of-octaves scaleogram-to-plot)) vpo))
+	 (time-support-per-octave (.floor (time-support scale-number-per-octave vpo))))
+    (loop 
+       for label across (val (.reverse time-support-per-octave))
+       for position across (val scale-number-per-octave)
+       collect (list label position)))) ; Should return label as a string.
+
+(defmethod label-scale-as-time-support-seconds ((scaleogram-to-plot scaleogram) sample-rate)
+  "Generates a set of labels of the scales as time support intervals in seconds"
+  (mapcar (lambda (label-and-index) 
+	    (cons (/ (car label-and-index) sample-rate) (rest label-and-index)))
+	  (label-scale-as-time-support scaleogram-to-plot)))
+
 ;;; Creates standard image files of the supplied magnitude and phase components of a continuous
 ;;; wavelet transform.
 (defmethod plot-cwt ((scaleogram-to-plot scaleogram) &key (title "unnamed") (time-axis-decimation 4))
@@ -359,17 +382,25 @@
 	       :time-axis-decimation time-axis-decimation))
 
 ;;; How to plot using nlisp now the image function is fixed.
-(defmethod plot-cwt-nlisp ((scaleogram-to-plot scaleogram) &key (title "unnamed") (time-axis-decimation 4))
+(defmethod plot-cwt-labelled ((scaleogram-to-plot scaleogram) &key (title "unnamed") (time-axis-decimation 4))
   "Method to plot the magnitude and phase components of the result of
    a continuous wavelet transform on a signal."
-  (nlisp::palette-defined '((0 "#FF0000")
-		     (2 "#00FFFF")
-		     (6 "#0000FF")))
-  (image (.flip (.decimate (scaleogram-magnitude scaleogram-to-plot) (list 1 time-axis-decimation))) nil nil
-	 :title title
-	 :xlabel "time" 
-	 :ylabel "dilation scale" ;; Need to label the plot of the scale axis with cwt label-scale-as-time-support
-	 :square nil))
+  (let ((downsampled-magnitude (.decimate (scaleogram-magnitude scaleogram-to-plot) (list 1 time-axis-decimation)))
+	(downsampled-phase (.decimate (scaleogram-phase scaleogram-to-plot) (list 1 time-axis-decimation))))
+    (plot-command (format nil "set ytics (~{~{\"~a\" ~d~}~^, ~})~%" 
+			  (label-scale-as-time-support-seconds scaleogram-to-plot 200.0))) ; TODO (sample-rate scaleogram-to-plot)
+    (plot-command (format nil "set xtics (~{~{\"~5,3f\" ~5d~}~^, ~})~%" 
+			  (label-samples-as-seconds (.array-dimension downsampled-magnitude 1)
+						    200.0 ; TODO (sample-rate scaleogram-to-plot)
+						    :time-axis-decimation time-axis-decimation)))
+    (nlisp:palette-defined '((0 "#FFFFFF")
+			     (1 "#000000")))
+    (image (.flip downsampled-magnitude) nil nil
+	   :title (format nil "Magnitude of ~a" title)
+	   :xlabel "Time in Seconds" 
+	   :ylabel "Scale as IOI Range in Seconds"
+	   :reset nil
+	   :aspect-ratio 0.2)))
 
 (defmethod plot-cwt+tactus ((scaleogram-to-plot scaleogram) (computed-tactus ridge)
 			     &key (title "unnamed") (time-axis-decimation 4))
@@ -384,17 +415,6 @@
 									 (scaleogram-magnitude scaleogram-to-plot))))
 	       :title title
 	       :time-axis-decimation time-axis-decimation))
-
-;; We reverse the labels so we plot in more intuitive lowest scale on the left orientation.
-(defmethod label-scale-as-time-support ((scaleogram-to-plot scaleogram))
-  "Generates a set of labels of the scales as time support interval"
-  (let* ((vpo (voices-per-octave scaleogram-to-plot))
-	 (scale-number-per-octave (.* (.iseq 0 (number-of-octaves scaleogram-to-plot)) vpo))
-	 (time-support-per-octave (.floor (time-support scale-number-per-octave vpo))))
-    (loop 
-       for label across (val (.reverse time-support-per-octave))
-       for value across (val scale-number-per-octave)
-       collect (list label value)))) ; Should return label as a string.
 
 (defmethod plot-scale-energy-at-time ((scaleogram-to-plot scaleogram) time)
   "Plot a cross-section of the magnitude at a given time point so we can spot the highest activated scales."

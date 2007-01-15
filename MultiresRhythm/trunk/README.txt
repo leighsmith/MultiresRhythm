@@ -8,7 +8,7 @@ rhythm using continuous wavelet transforms.
 Requirements:
 
 1. SBCL (http://www.sbcl.org) - A Common Lisp implementation that has been tested and is recommended.
-2. ASDF - Another System Definition Facility.
+2. ASDF - Another System Definition Facility (included in SBCL).
 3. CFFI - C foreign function library.
 4. GSL - Gnu Scientific Library, used by NLISP.
 5. NLISP - (http://www.nlisp.info) Numerical modelling and plotting library.

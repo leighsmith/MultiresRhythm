@@ -26,6 +26,16 @@
   "Scales a matrix of values ranging (0 to 1) to integers ranging (maximum-value to 0)"
   (.floor (.- maximum-value (.* matrix maximum-value))))
 
+(defun label-samples-as-seconds (maximum-sample sample-rate &key (start 0)
+				 (maximum-indices 9) (time-axis-decimation 1))
+  "Generates a set of labels of the samples as time in seconds"
+  (let* ((sample-index (.rseq start (1- maximum-sample) maximum-indices))
+	 (time-index (./ (.* sample-index time-axis-decimation) sample-rate)))
+    (loop 
+       for label across (val time-index)
+       for position across (val sample-index)
+       collect (list label (floor position)))))
+
 ;;; Colour map generating functions
 
 (defun greyscale-colormap (map-length &key (alpha 255))
@@ -289,12 +299,15 @@
   (let* ((rhythm-signal (time-signal original-rhythm))
 	 (clap-signal (make-double-array (.array-dimensions rhythm-signal) :initial-element 0d0)))
     (map nil (lambda (index) (setf (.aref clap-signal index) max-computed-scale)) (val claps))
+    (plot-command (format nil "set xtics (~{~{\"~5,3f\" ~5,0f~}~^, ~})~%" 
+			  (label-samples-as-seconds (duration-in-samples original-rhythm) (sample-rate original-rhythm))))
     (nplot (list rhythm-signal clap-signal foot-tap-AM) nil
-	   :legends '("Original Rhythm" "Computed Claps" "Foot-tap AM")
+	   :legends '("Original Rhythm" "Computed foot-taps" "Foot-tap AM")
 	   :styles '("impulses linetype 6 linewidth 3" "impulses linetype 4" "dots 3")
-	   :xlabel (format nil "Time in samples (~dHz sample rate)" (sample-rate original-rhythm))
+	   :xlabel "Time in Seconds"
 	   :ylabel "Scaled Intensity/Phase"
 	   :title (format nil "Computed foot-tap ~a of ~a" comment signal-description)
+	   :reset nil
 	   :aspect-ratio 0.66)))
 
 ;; Alternative plot method if not using nplot.

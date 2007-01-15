@@ -38,8 +38,10 @@
 ;; (setf x (dyadic-cwt (fm-test :signal-length 256) 8 256)) ; magnitude only.
 ;; Test any length signals:
 ;; (setf fm-scaleogram (cwt (fm-test) 8))
+;; (setf fm-scaleogram (cwt (fm-test) 16))
 ;; Test plotting of both magnitude and phase:
 ;; (plot-cwt (cwt (fm-test) 16) :title "fm")
+;; (plot-cwt-labelled (cwt (fm-test) 16) :title "fm")
 
 ;;; 
 (defun rising-harmonic-test (&key (signal-length 2048))
@@ -56,6 +58,7 @@
     rising-harmonic-signal))
 
 ;; (plot-cwt (cwt (rising-harmonic-test) 8) :title "rising-harmonic")
+;; (plot-cwt-labelled (cwt (rising-harmonic-test) 8) :title "rising-harmonic")
 
 (defun test-lpc ()
 "Tests local phase congruency"
@@ -82,8 +85,7 @@
 ;; (setf b (rhythm-of-grid '(1 1 1 1) :tempo 60))
 
 (defun tactus-for-rhythm-grid (name rhythm-grid)
-  (let ((test-rhythm (rhythm-of-grid name rhythm-grid :sample-rate 200 :tempo 80)))
-    (clap-to-rhythm test-rhythm)))
+  (clap-to-rhythm (rhythm-of-grid name rhythm-grid :sample-rate 200 :tempo 80)))
 
 ;; (tactus-for-rhythm-grid "shmulevich-rhythm-1" '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0))
 ;;; Do the analysis on an impulse train.
@@ -142,7 +144,11 @@
   (let* ((loaded-rhythm (load-rhythm-file filename :description description :sample-rate sample-rate)))
     (clap-to-rhythm loaded-rhythm :tactus-selector tactus-selector)))
 
-;; TODO decimate the greensleeves data down to 200Hz.
+;; For decimating greensleeves to 200Hz.
+;;(setf x (load-rhythm-file "greensleeves-perform-medium" :sample-rate 400))
+;;(floor (.length (time-signal x)) 2)
+;;(.floor (.find (time-signal x)) 2.0)
+
 ;; (clap-to-octave-file "greensleeves-perform-medium" :sample-rate 400 :description "Greensleeves performed")
 ;; (clap-to-octave-file "longuet_cliche" :sample-rate 200)
 ;; (clap-to-octave-file "intensity34_to_44" :sample-rate 200)
@@ -167,7 +173,7 @@
 ;; (setf cliche-rhythm (load-rhythm-file "longuet_cliche"))
 ;; (multiple-value-setq (cliche-tactus cliche-scaleogram) (tactus-for-rhythm cliche-rhythm))
 ;; (multiple-value-setq (cliche-skeleton cliche-scaleogram) (skeleton-of-rhythm cliche-rhythm))
-;; (nlisp-image (scaleogram-magnitude cliche-scaleogram))
+;; (plot-cwt-labelled cliche-scaleogram)
 
 ;;; Needs to have remaining time 
 (defun clap-to-iois (name iois &key (shortest-ioi (/ 120 17)))
@@ -183,16 +189,22 @@
 ;; (clap-to-iois "global-timing" '(17 17 20.5 17 17 17))
 ;; (clap-to-iois "tempo-change" '(17 17 20.5 20.5 20.5 20.5))
 
-;;; polyrhythms
-;;; 3 against 4
-;; (iois-to-rhythm "duple" '(10 10 10 10 10 10 10 10) :shortest-ioi (/ 120 10))
-;; (iois-to-rhythm "triple" '(15 15 15 15 15 15 15 15 15 15 15 15) :shortest-ioi (/ 120 15))
+;;;  3 against 2 polyrhythm example from Sethares & Staley 2001
+;;; (clap-to-rhythm (add-rhythm (iois-to-rhythm "duple" (repeat-rhythm '(100 100 100 100) 4) :sample-rate 200)
+;;;	                        (iois-to-rhythm "triple" (repeat-rhythm '(67 67 66 67 67 66) 4) :sample-rate 200)))
+;;;
+;;; (multiple-value-bind (tactus rhythm-scaleogram) (tactus-for-rhythm polyrhythm)
+;;;		   (plot-scale-energy-at-time rhythm-scaleogram 236))
+;;;
+;;; TODO need to increase tempo by 5% every eight beats. Should result in an increase in
+;;; tempo of more than 25% over 15 seconds.
+
 
 ;;; From Desain & Honing 1999
 ;;; (clap-to-iois "desain99" '(3 1 6 2 3 1 6 2 3 1) :shortest-ioi 50)
 ;;; (clap-to-rhythm (iois-to-rhythm "desain99" '(3 1 6 2 3 1 6 2 3 1) :shortest-ioi 50)
 ;;;                 :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time 91 0 skeleton)))
-
+;;;
 ;;; TODO need to generate claps as scorefile from clap-to-rhythm
 
 ;;; National Anthem data-base

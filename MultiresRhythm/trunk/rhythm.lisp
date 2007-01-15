@@ -25,8 +25,8 @@
 (defgeneric duration (rhythm-to-analyse)
   (:documentation "Returns the length of the rhythm in seconds."))
 
-(defgeneric sample-length (rhythm-to-analyse)
-  (:documentation "Returns the length of the rhythm in samples."))
+;; (defgeneric duration-in-samples (rhythm-to-analyse)
+;;   (:documentation "Returns the length of the rhythm in samples."))
 
 (defgeneric rhythm-iois (rhythm-to-analyse)
   (:documentation "Given a rhythm, returns IOIs specified in seconds."))
@@ -117,11 +117,11 @@
 ;; (clap-signal (make-double-array (.array-dimensions rhythm-signal) :initial-element 0d0))
 ;; (map nil (lambda (index) (setf (.aref clap-signal index) max-computed-scale)) (val onsets))
 
-(defmethod sample-length ((rhythm-to-analyse rhythm))
+(defmethod duration-in-samples ((rhythm-to-analyse rhythm))
   (.length (time-signal rhythm-to-analyse)))
 
 (defmethod duration ((rhythm-to-analyse rhythm))
-  (/ (sample-length rhythm-to-analyse) (.* 1.0 (sample-rate rhythm-to-analyse))))
+  (/ (duration-in-samples rhythm-to-analyse) (.* 1.0 (sample-rate rhythm-to-analyse))))
 
 (defmethod rhythm-iois ((rhythm-to-analyse rhythm))
   (./ (.* 1d0 (.diff (.find (time-signal rhythm-to-analyse))))
@@ -144,3 +144,12 @@
 		:midi-channel 10
 		:description (description rhythm-to-save)))
 
+(defun add-rhythm (&rest rhythms-to-add)
+  "Adds multiple rhythms together. Returns the shortest? longest? rhythm."
+  (make-instance 'rhythm 
+		 :name "polyrhythm" 
+		 :description "polyrhythm"
+		 :time-signal (.> (apply #'.+ (mapcar #'time-signal rhythms-to-add)) 0d0)
+		 :sample-rate 200))
+
+;; (.> (.+ (time-signal duple-rhythm) (time-signal triple-rhythm)) 0d0)
