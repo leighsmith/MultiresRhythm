@@ -62,7 +62,7 @@
 (defgeneric plot-cwt-labelled (scaleogram &key title time-axis-decimation)
   (:documentation "Function to plot the magnitude and phase components of the result of a continuous wavelet transform on a signal using gnuplot with labelling."))
 
-(defgeneric plot-cwt+tactus-labelled (scaleogram computed-tactus &key title
+(defgeneric plot-cwt+tactus-labelled (scaleogram computed-tactus rhythm &key title
 						 time-axis-decimation colorbox-divisions maximum-colour-value)
   (:documentation "Plot the magnitude in greyscale overlaid with the computed tactus in red, the phase overlaid with the tactus in black."))
 
@@ -405,12 +405,14 @@
   (- (.max matrix) (.min matrix)))
 
 ;;; TODO see if we can modularise this!!!
-;;; How to plot using nlisp now the image function is fixed.
-(defmethod plot-cwt+tactus-labelled ((scaleogram-to-plot scaleogram) (computed-tactus ridge) &key 
-			      (title "unnamed")
-			      (time-axis-decimation 4)
-			      (colorbox-divisions 4.0)
-			      (maximum-colour-value 255))
+;;; Now the image function is fixed, this is how to plot using nlisp with axes labelling.
+(defmethod plot-cwt+tactus-labelled ((scaleogram-to-plot scaleogram)
+				     (computed-tactus ridge)
+				     (analysis-rhythm rhythm) &key 
+				     (title "unnamed")
+				     (time-axis-decimation 4)
+				     (colorbox-divisions 4.0)
+				     (maximum-colour-value 255))
   "Method to plot the magnitude and phase components of the result of
    a continuous wavelet transform on a signal. Plot the phase with the computed tactus in black."
   (let* ((downsampled-magnitude (.decimate (scaleogram-magnitude scaleogram-to-plot) (list 1 time-axis-decimation)))
@@ -418,7 +420,6 @@
 	 (downsampled-tactus (.decimate	(copy-object computed-tactus) (list 1 time-axis-decimation)))
 	 (scaleogram-dim-ratio (/ (.array-dimension downsampled-magnitude 0) (.array-dimension downsampled-magnitude 1)))
 	 (aspect-ratio (if (< scaleogram-dim-ratio 0.15) 0.15 scaleogram-dim-ratio))
-
 	 (plotable-phase-with-ridge (plotable-phase downsampled-phase downsampled-magnitude maximum-colour-value))
     	 (rescaled-phase (.* (insert-ridge downsampled-tactus plotable-phase-with-ridge :constant-value maximum-colour-value) 1d0)))
     (window)				; put this on a separate window.
@@ -426,49 +427,62 @@
     ;; "set size 0.7,0.7"
     ;; "set origin 0.1,0.1"
     (plot-command "set multiplot")	; Put the magnitude plot above the phase on the same window.
-    (plot-command "set size 1.0,0.6")
-    (plot-command "set origin 0.0,0.5")
-    ;; Label both magnitude & phase plots in seconds.
-    (plot-command (format nil "set xtics (~{~{\"~5,3f\" ~5d~}~^, ~})~%" 
-			  (label-samples-as-seconds (.array-dimension downsampled-magnitude 1)
-						    200.0 ; TODO (sample-rate scaleogram-to-plot)
-						    :time-axis-decimation time-axis-decimation)))
-    (plot-command (format nil "set ytics (~{~{\"~a\" ~d~}~^, ~})~%" 
-			  (label-scale-as-time-support-seconds scaleogram-to-plot 200.0))) ; TODO (sample-rate scaleogram-to-plot)
     (plot-command "set xtics font \"Times,10\"")
     (plot-command "set ytics font \"Times,10\"")
+    (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
+			  (label-samples-as-seconds (duration-in-samples analysis-rhythm)
+						    (sample-rate analysis-rhythm))))
+    (plot-command "set size 0.84,0.35")
+    (plot-command "set origin 0.045,0.75")
+    (plot (time-signal analysis-rhythm) nil
+	 ; :label (format nil "Rhythm onsets of ~a" (description analysis-rhythm))
+	 :style "impulses linetype 6"
+	 :xlabel "Time (Seconds)"
+	 :ylabel "Normalised Intensity"
+	 :title (format nil "Rhythm of ~a" (name analysis-rhythm))
+	 :aspect-ratio 0.1
+	 :reset nil)
+    (plot-command "set size 1.0,0.5")
+    (plot-command "set origin 0.0,0.35")
+    ;; Label both magnitude & phase plots in seconds.
+    (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
+			  (label-samples-as-seconds (.array-dimension downsampled-magnitude 1)
+						    (sample-rate analysis-rhythm)
+						    :time-axis-decimation time-axis-decimation)))
+    (plot-command (format nil "set ytics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
+			  (label-scale-as-time-support-seconds scaleogram-to-plot (sample-rate analysis-rhythm))))
     ;; Expand the colorbox and only display the given number of tics.
-    (plot-command "set colorbox user origin 0.88,0.65 size 0.03,0.2")
+    (plot-command "set colorbox user origin 0.88,0.50 size 0.03,0.2")
     (plot-command (format nil "set cbtics ~f" (/ (range downsampled-magnitude) colorbox-divisions)))
     ;; White thru grey to black for magnitude plots
     (nlisp:palette-defined '((0 "#FFFFFF") (1 "#000000")))
     (image (.flip downsampled-magnitude) nil nil
 	   :title (format nil "Magnitude of ~a" title)
-	   :xlabel "Time in Seconds" 
-	   :ylabel "Scale as IOI Range in Seconds"
+	   :xlabel "Time (Seconds)" 
+	   :ylabel "Scale as IOI Range (Seconds)"
 	   :reset nil
 	   :aspect-ratio aspect-ratio)
     ;; Phase plot
-    (plot-command "set size 1.0,0.6")
-    (plot-command "set origin 0.0,0.05")
+    (plot-command "set size 1.0,0.5")
+    (plot-command "set origin 0.0,0.0")
     ;; (nlisp::palette "model HSV maxcolors 256")
-    ;;(nlisp::palette (format nil "defined ( 0 0 0 1, 1 0 1 1, ~d 1 1 1, ~d 0 0 1)"
+    ;; (nlisp::palette (format nil "defined ( 0 0 0 1, 1 0 1 1, ~d 1 1 1, ~d 0 0 1)"
     ;;			    (1- maximum-colour-value) maximum-colour-value))
     ;; (nlisp::palette (format nil "defined ( 0 0 0 1, 1 0 0 1, 1 0 1 1, ~d 1 1 1 )" maximum-colour-value))
     ;; (nlisp::palette (format nil "defined ( 0 0 0 1, 0 0 1 1, 1 0 1 1, ~d 1 1 1 )" 255))
     ;; -1 0 1 0
     ;; (nlisp:palette-defined '((0 "#FFFFFF") (0.5 "#000000") (1 "#FFFFFF")))
-    (nlisp:palette-defined '((0 "#FFFFFF") (1 "#000000")))
     ;; (nlisp:palette-defined '((0 "#FFFFFF") (0.25 "#000000") (0.5 "#FFFFFF") (0.75 "#000000") (1.0 "#FFFFFF")))
+    (nlisp:palette-defined '((0 "#FFFFFF") (1 "#000000")))
     (plot-command (format nil "set cbtics (~{~{\"~a\" ~d~}~^, ~})~%" 
 			  (label-phase-in-radians (range rescaled-phase) colorbox-divisions)))
-    (plot-command "set colorbox user origin 0.88,0.20 size 0.03,0.2")
+    (plot-command "set colorbox user origin 0.88,0.15 size 0.03,0.2")
     ;;(format t "maximum of rescaled-phase ~f minimum ~f range ~f~%" 
 	;;    (.max rescaled-phase) (.min rescaled-phase) (range rescaled-phase))
     (image (.flip rescaled-phase) nil nil
 	   :title (format nil "Phase of ~a" title)
-	   :xlabel "Time in Seconds" 
-	   :ylabel "Scale as IOI Range in Seconds"
+	   :xlabel "Time (Seconds)" 
+	   :ylabel "Scale as IOI Range (Seconds)"
 	   :reset nil
 	   :aspect-ratio aspect-ratio)
     (plot-command "unset multiplot")
