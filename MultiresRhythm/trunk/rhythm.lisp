@@ -34,7 +34,7 @@
 (defgeneric save-rhythm (rhythm-to-save)
   (:documentation "Writes the rhythm to a MusicKit scorefile."))
 
-(defgeneric plot-rhythm (rhythm-to-plot)
+(defgeneric plot-rhythm (rhythm-to-plot &key reset)
   (:documentation "Plot locations of beats of the given rhythm."))
 
 ;;;; Implementation
@@ -127,14 +127,15 @@
   (./ (.* 1d0 (.diff (.find (time-signal rhythm-to-analyse))))
       (sample-rate rhythm-to-analyse)))
 
-(defmethod plot-rhythm ((rhythm-to-plot rhythm))
+(defmethod plot-rhythm ((rhythm-to-plot rhythm) &key (reset t))
   (plot (time-signal rhythm-to-plot) nil
 	 :label (format nil "Rhythm onsets of ~a" (description rhythm-to-plot))
 	 :style "impulses linetype 6"
 	 :xlabel (format nil "Time in samples (~dHz sample rate)" (sample-rate rhythm-to-plot))
 	 :ylabel "Scaled Intensity"
 	 :title (format nil "Rhythm of ~a" (name rhythm-to-plot))
-	 :aspect-ratio 0.66))
+	 :aspect-ratio 0.66
+	 :reset reset))
 
 (defmethod save-rhythm ((rhythm-to-save rhythm))
   (save-scorefile (format nil "/Users/leigh/~a.score" (name rhythm-to-save)) 
