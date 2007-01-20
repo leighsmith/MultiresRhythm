@@ -48,6 +48,6 @@
 	       (:file "file_io")
 	       (:file "rhythm" :depends-on ("file_io"))
 	       (:file "plotting" :depends-on ("ridges"))
-	       (:file "cwt" :depends-on ("plotting" "ridges"))
+	       (:file "cwt" :depends-on ("plotting" "ridges" "rhythm"))
 	       (:file "multires_rhythm" :depends-on ("cwt" "plotting" "rhythm"))
 	       (:file "test-examples" :depends-on ("rhythm" "multires_rhythm"))))
