@@ -418,8 +418,9 @@
   (let* ((downsampled-magnitude (.decimate (scaleogram-magnitude scaleogram-to-plot) (list 1 time-axis-decimation)))
 	 (downsampled-phase (.decimate (scaleogram-phase scaleogram-to-plot) (list 1 time-axis-decimation)))
 	 (downsampled-tactus (.decimate	(copy-object computed-tactus) (list 1 time-axis-decimation)))
-	 (scaleogram-dim-ratio (/ (.array-dimension downsampled-magnitude 0) (.array-dimension downsampled-magnitude 1)))
-	 (aspect-ratio (if (< scaleogram-dim-ratio 0.15) 0.15 scaleogram-dim-ratio))
+	 ;; (scaleogram-dim-ratio (/ (.array-dimension downsampled-magnitude 0) (.array-dimension downsampled-magnitude 1)))
+	 ;; (aspect-ratio (if (< scaleogram-dim-ratio 0.3) 0.15 scaleogram-dim-ratio))
+	 (aspect-ratio 0.15)
 	 (plotable-phase-with-ridge (plotable-phase downsampled-phase downsampled-magnitude maximum-colour-value))
     	 (rescaled-phase (.* (insert-ridge downsampled-tactus plotable-phase-with-ridge :constant-value maximum-colour-value) 1d0)))
     (window)				; put this on a separate window.
@@ -431,19 +432,20 @@
     (plot-command "set ytics font \"Times,10\"")
     (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
 			  (label-samples-as-seconds (duration-in-samples analysis-rhythm)
-						    (sample-rate analysis-rhythm))))
+ 						    (sample-rate analysis-rhythm))))
+    (plot-command "set ytics 0.2")
     (plot-command "set size 0.84,0.35")
-    (plot-command "set origin 0.045,0.75")
+    (plot-command "set origin 0.045,0.65")
+    (plot-command "unset key")
     (plot (time-signal analysis-rhythm) nil
-	 ; :label (format nil "Rhythm onsets of ~a" (description analysis-rhythm))
-	 :style "impulses linetype 6"
-	 :xlabel "Time (Seconds)"
-	 :ylabel "Normalised Intensity"
-	 :title (format nil "Rhythm of ~a" (name analysis-rhythm))
-	 :aspect-ratio 0.1
-	 :reset nil)
+	  ;; :label (format nil "Rhythm onsets of ~a" (description analysis-rhythm))
+	  :style "impulses linetype 6"
+	  :ylabel "Normalised Intensity"
+	  :title (format nil "Rhythm of ~a" (name analysis-rhythm))
+	  :aspect-ratio 0.1
+	  :reset nil)
     (plot-command "set size 1.0,0.5")
-    (plot-command "set origin 0.0,0.35")
+    (plot-command "set origin 0.0,0.3")
     ;; Label both magnitude & phase plots in seconds.
     (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
 			  (label-samples-as-seconds (.array-dimension downsampled-magnitude 1)
@@ -452,16 +454,17 @@
     (plot-command (format nil "set ytics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
 			  (label-scale-as-time-support-seconds scaleogram-to-plot (sample-rate analysis-rhythm))))
     ;; Expand the colorbox and only display the given number of tics.
-    (plot-command "set colorbox user origin 0.88,0.50 size 0.03,0.2")
-    (plot-command (format nil "set cbtics ~f" (/ (range downsampled-magnitude) colorbox-divisions)))
+    (plot-command "set colorbox user origin 0.88,0.45 size 0.03,0.2")
+    (plot-command (format nil "set cbtics ~5,2f" (/ (range downsampled-magnitude) colorbox-divisions)))
+    ;; (plot-command "set title -35") ; moves the titles leftwards but it doesn't help our shrinking the size.
     ;; White thru grey to black for magnitude plots
     (nlisp:palette-defined '((0 "#FFFFFF") (1 "#000000")))
     (image (.flip downsampled-magnitude) nil nil
-	   :title (format nil "Magnitude of ~a" title)
-	   :xlabel "Time (Seconds)" 
-	   :ylabel "Scale as IOI Range (Seconds)"
-	   :reset nil
-	   :aspect-ratio aspect-ratio)
+ 	   :title (format nil "Magnitude of ~a" title)
+	   :xlabel nil
+ 	   :ylabel "Scale as IOI Range\\n(Seconds)"
+ 	   :reset nil
+ 	   :aspect-ratio aspect-ratio)
     ;; Phase plot
     (plot-command "set size 1.0,0.5")
     (plot-command "set origin 0.0,0.0")
@@ -475,14 +478,13 @@
     ;; (nlisp:palette-defined '((0 "#FFFFFF") (0.25 "#000000") (0.5 "#FFFFFF") (0.75 "#000000") (1.0 "#FFFFFF")))
     (nlisp:palette-defined '((0 "#FFFFFF") (1 "#000000")))
     (plot-command (format nil "set cbtics (~{~{\"~a\" ~d~}~^, ~})~%" 
-			  (label-phase-in-radians (range rescaled-phase) colorbox-divisions)))
+ 			  (label-phase-in-radians (range rescaled-phase) colorbox-divisions)))
     (plot-command "set colorbox user origin 0.88,0.15 size 0.03,0.2")
-    ;;(format t "maximum of rescaled-phase ~f minimum ~f range ~f~%" 
-	;;    (.max rescaled-phase) (.min rescaled-phase) (range rescaled-phase))
+    ;;(format t "maximum of rescaled-phase ~f minimum ~f range ~f~%" (.max rescaled-phase) (.min rescaled-phase) (range rescaled-phase))
     (image (.flip rescaled-phase) nil nil
 	   :title (format nil "Phase of ~a" title)
 	   :xlabel "Time (Seconds)" 
-	   :ylabel "Scale as IOI Range (Seconds)"
+	   :ylabel "Scale as IOI Range\\n(Seconds)"
 	   :reset nil
 	   :aspect-ratio aspect-ratio)
     (plot-command "unset multiplot")
