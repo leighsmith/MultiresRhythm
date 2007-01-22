@@ -300,7 +300,7 @@
 	 (clap-signal (make-double-array (.array-dimensions rhythm-signal) :initial-element 0d0)))
     (map nil (lambda (index) (setf (.aref clap-signal index) max-computed-scale)) (val claps))
     (window)
-    (plot-command (format nil "set xtics (~{~{\"~5,3f\" ~5d~}~^, ~})~%" 
+    (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
 			  (label-samples-as-seconds (duration-in-samples original-rhythm) (sample-rate original-rhythm))))
     (nplot (list rhythm-signal clap-signal foot-tap-AM) nil
 	   :legends '("Original Rhythm" "Computed foot-taps" "Foot-tap AM")
