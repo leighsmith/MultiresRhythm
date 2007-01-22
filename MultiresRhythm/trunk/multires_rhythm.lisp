@@ -313,10 +313,11 @@ then can extract ridges."
     (plot-image #'magnitude-image "-correlation" (list tempo-weighted-ridges) :title "tempo-ridges")
     ;; :title (name analysis-rhythm))
     ;; substituted tempo-weighted-ridges for correlated-ridges to enable tempo selectivity.
-    ;; (determine-scale-peaks tempo-weighted-ridges)))
+    ;; (determine-scale-peaks tempo-weighted-ridges))) ; for tempo weighting
     (determine-scale-peaks correlated-ridges))) ; for no tempo weighting
 
 (defmethod scaleogram-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
+  (format t "Length of Rhythm ~f seconds~%" (duration analysis-rhythm))
   (cwt (time-signal analysis-rhythm) voices-per-octave))
 
 (defmethod skeleton-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
@@ -336,7 +337,9 @@ then can extract ridges."
     (let ((chosen-tactus (funcall tactus-selector skeleton)))   ; select out the tactus from all ridge candidates.
       (format t "Computed skeleton and chosen tactus~%")
       (plot-cwt scaleogram :title (name analysis-rhythm))
-      (plot-cwt+tactus scaleogram chosen-tactus :title (name analysis-rhythm))
+;;      (plot-cwt-labelled scaleogram :title (name analysis-rhythm))
+      (plot-cwt+tactus-labelled scaleogram chosen-tactus analysis-rhythm :title (name analysis-rhythm))
+;;       (plot-cwt+tactus scaleogram chosen-tactus :title (name analysis-rhythm))
       (plot-ridges+tactus correlated-ridge-scale-peaks chosen-tactus :title (name analysis-rhythm))
       (format t "Finished plotting scalograms~%")
       (values chosen-tactus scaleogram))))
