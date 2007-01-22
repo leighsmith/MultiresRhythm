@@ -28,6 +28,9 @@
 ;; (defgeneric duration-in-samples (rhythm-to-analyse)
 ;;   (:documentation "Returns the length of the rhythm in samples."))
 
+(defgeneric onsets-in-seconds (rhythm-to-analyse)
+  (:documentation "Returns the location of each onset in seconds."))
+
 (defgeneric rhythm-iois (rhythm-to-analyse)
   (:documentation "Given a rhythm, returns IOIs specified in seconds."))
 
@@ -123,9 +126,11 @@
 (defmethod duration ((rhythm-to-analyse rhythm))
   (/ (duration-in-samples rhythm-to-analyse) (.* 1.0 (sample-rate rhythm-to-analyse))))
 
+(defmethod onsets-in-seconds ((rhythm-to-analyse rhythm))
+  (./ (.find (time-signal rhythm-to-analyse)) (* (sample-rate rhythm-to-analyse) 1d0)))
+
 (defmethod rhythm-iois ((rhythm-to-analyse rhythm))
-  (./ (.* 1d0 (.diff (.find (time-signal rhythm-to-analyse))))
-      (sample-rate rhythm-to-analyse)))
+  (.diff (onsets-in-seconds rhythm-to-analyse)))
 
 (defmethod plot-rhythm ((rhythm-to-plot rhythm) &key (reset t))
   (plot (time-signal rhythm-to-plot) nil
