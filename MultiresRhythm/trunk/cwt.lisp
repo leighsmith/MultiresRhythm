@@ -62,8 +62,9 @@
 (defgeneric plot-cwt-labelled (scaleogram &key title time-axis-decimation)
   (:documentation "Function to plot the magnitude and phase components of the result of a continuous wavelet transform on a signal using gnuplot with labelling."))
 
-(defgeneric plot-cwt+tactus-labelled (scaleogram computed-tactus rhythm &key title
-						 time-axis-decimation colorbox-divisions maximum-colour-value)
+(defgeneric plot-cwt+tactus-labelled (scaleogram computed-tactus rhythm &key 
+						 title time-axis-decimation
+						 colorbox-divisions maximum-colour-value phase-palette)
   (:documentation "Plot the magnitude in greyscale overlaid with the computed tactus in red, the phase overlaid with the tactus in black."))
 
 (defgeneric plot-cwt+tactus (scaleogram computed-tactus &key title time-axis-decimation)
@@ -379,6 +380,7 @@
 
 (defun label-phase-in-radians (phaseogram-range divisions)
   (declare (ignore phaseogram-range divisions))
+  ;; '(("-\\316" 0) ("-pi/2" 64) ("0" 128) ("pi/2" 192) ("pi" 254)))
   '(("-pi" 0) ("-pi/2" 64) ("0" 128) ("pi/2" 192) ("pi" 254)))
 
 (defun label-phase-in-radians-2 (phaseogram-range divisions)
@@ -412,7 +414,8 @@
 				     (title "unnamed")
 				     (time-axis-decimation 4)
 				     (colorbox-divisions 4.0)
-				     (maximum-colour-value 255))
+				     (maximum-colour-value 255)
+				     (phase-palette :spectral))
   "Method to plot the magnitude and phase components of the result of
    a continuous wavelet transform on a signal. Plot the phase with the computed tactus in black."
   (let* ((downsampled-magnitude (.decimate (scaleogram-magnitude scaleogram-to-plot) (list 1 time-axis-decimation)))
@@ -468,15 +471,16 @@
     ;; Phase plot
     (plot-command "set size 1.0,0.5")
     (plot-command "set origin 0.0,0.0")
-    ;; (nlisp::palette "model HSV maxcolors 256")
-    ;; (nlisp::palette (format nil "defined ( 0 0 0 1, 1 0 1 1, ~d 1 1 1, ~d 0 0 1)"
-    ;;			    (1- maximum-colour-value) maximum-colour-value))
+    (cond ((eq phase-palette :spectral)
+	   (nlisp::palette "model HSV maxcolors 256")
+	   (nlisp::palette (format nil "defined ( 0 0 0 1, 1 0 1 1, ~d 1 1 1, ~d 0 0 1)"
+				   (1- maximum-colour-value) maximum-colour-value)))
+	  ((eq phase-palette :grey-smooth)
+	   (nlisp:palette-defined '((0 "#FFFFFF") (0.5 "#000000") (1 "#FFFFFF"))))
+	  (t (nlisp:palette-defined '((0 "#FFFFFF") (1 "#000000")))))
     ;; (nlisp::palette (format nil "defined ( 0 0 0 1, 1 0 0 1, 1 0 1 1, ~d 1 1 1 )" maximum-colour-value))
     ;; (nlisp::palette (format nil "defined ( 0 0 0 1, 0 0 1 1, 1 0 1 1, ~d 1 1 1 )" 255))
     ;; -1 0 1 0
-    ;; (nlisp:palette-defined '((0 "#FFFFFF") (0.5 "#000000") (1 "#FFFFFF")))
-    ;; (nlisp:palette-defined '((0 "#FFFFFF") (0.25 "#000000") (0.5 "#FFFFFF") (0.75 "#000000") (1.0 "#FFFFFF")))
-    (nlisp:palette-defined '((0 "#FFFFFF") (1 "#000000")))
     (plot-command (format nil "set cbtics (~{~{\"~a\" ~d~}~^, ~})~%" 
  			  (label-phase-in-radians (range rescaled-phase) colorbox-divisions)))
     (plot-command "set colorbox user origin 0.88,0.15 size 0.03,0.2")

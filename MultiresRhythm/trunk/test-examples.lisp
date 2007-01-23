@@ -75,7 +75,7 @@
   (let* ((rhythm-scaleogram (scaleogram-of-rhythm 
 			     (rhythm-of-grid "test-rhythm" rhythm-grid :shortest-ioi 256)
 			     :voices-per-octave 12)))
-    (plot-cwt rhythm-scaleogram :title "test-rhythm")
+    (plot-cwt-labelled rhythm-scaleogram :title "test-rhythm")
     rhythm-scaleogram))
 
 ;; (setf rhythm-scaleogram (scaleogram-of-grid '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0)))
@@ -93,7 +93,7 @@
 ;;; A little test that the dyadic number of impulses has no influence.
 ;; (tactus-for-rhythm-grid "isochronous-rhythm-longer"  '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1))
 
-(defun test-reconstruction (test-signal &key (voices-per-octave 8))
+(defun test-cwt-reconstruction (test-signal &key (voices-per-octave 8))
   "Verifies the invertability of the CWT and therefore it's accuracy."
   (let* ((test-scaleogram (cwt test-signal voices-per-octave)) ; (/ (.array-dimension test-signal 0) 4)
 	 (reconstructed-signal (icwt (scaleogram-magnitude test-scaleogram)
@@ -112,12 +112,12 @@
     reconstructed-signal))
 
 ;; Must be dyadic (base 2). Otherwise we must pad the signals.
-;; (test-reconstruction (.cos (.rseq 0.0 (* 2 pi 16) 2048)))
-;; (test-reconstruction (rising-harmonic-test))
+;; (test-cwt-reconstruction (.cos (.rseq 0.0 (* 2 pi 16) 2048)))
+;; (test-cwt-reconstruction (rising-harmonic-test))
 ;; Test non-dyadic reconstruction:
-;; (test-reconstruction (fm-test :signal-length 2200))
+;; (test-cwt-reconstruction (fm-test :signal-length 2200))
 ;; Test reconstruction of a dirac function defined rhythmic signal.
-;; (test-reconstruction (time-signal (rhythm-of-grid "test" '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0))))
+;; (test-cwt-reconstruction (time-signal (rhythm-of-grid "test" '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0))))
 
 (defun load-rhythm-file (filename &key (sample-rate 200) (description ""))
   (let* ((file-path (make-pathname 
@@ -149,9 +149,10 @@
 ;;(floor (.length (time-signal x)) 2)
 ;;(.floor (.find (time-signal x)) 2.0)
 
-;; (clap-to-octave-file "greensleeves-perform-medium" :sample-rate 400 :description "Greensleeves performed")
 ;; (clap-to-octave-file "longuet_cliche" :sample-rate 200)
 ;; (clap-to-octave-file "intensity34_to_44" :sample-rate 200)
+;; (clap-to-octave-file "greensleeves-perform-medium" :sample-rate 400 :description "Greensleeves performed")
+
 ;; (clap-to-octave-file "desain-unquantized" :sample-rate 200)
 ;; (clap-to-octave-file "desain-unquantized" :sample-rate 200 :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time 58 62 skeleton)))
 ;; (clap-to-octave-file "desain-unquantized" :sample-rate 200 :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time 73 65 skeleton)))
@@ -229,3 +230,9 @@
 ;; (clap-to-rhythm (iois-to-rhythm "4-beat-lengthen-corr" (repeat-rhythm '(61 75 75 89) 12)))
 ;; (clap-to-rhythm (iois-to-rhythm "3-beat-lengthen-corr" (repeat-rhythm '(61 75 89) 16)))
 ;; (clap-to-octave-file "lengthen_corr" :sample-rate 200)
+
+;;; For testing plotting
+;; (setf plot-test-rhythm (load-rhythm-file "intensity34_to_44" :description "intensity" :sample-rate 200))
+;; (multiple-value-setq (plot-test-tactus plot-test-scaleogram) (tactus-for-rhythm plot-test-rhythm))
+;; (plot-cwt+tactus-labelled plot-test-scaleogram plot-test-tactus plot-test-rhythm :phase-palette :grey-smooth)
+
