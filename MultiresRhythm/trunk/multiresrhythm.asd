@@ -6,9 +6,11 @@
 ;;;;
 ;;;; By Leigh M. Smith <lsmith@science.uva.nl> 
 ;;;;
-;;;; Copyright (c) 2006
+;;;; Copyright (c) 2006, 2007 All Rights Reserved.
 ;;;;
 ;;;; In nlisp (Matlab-alike Common Lisp library www.nlisp.info)
+;;;;
+;;;; Known to work on SBCL 0.9.18
 ;;;;
 ;;;; See for background:
 ;;;;   author =  {Leigh M. Smith},
@@ -33,11 +35,6 @@
 
 (in-package :multires-rhythm)
 
-;; This is required to get around a Package Lock Violation deep within SBCL's CLOS?
-;;(in-package :cl)
-(sb-ext:add-implementation-package :multires-rhythm :cl)
-;;(in-package :multires-rhythm)
-
 
 (defsystem :multiresrhythm
   :description "A Multiresolution Time-Frequency Analysis and Interpretation of Musical Rhythm"
@@ -46,8 +43,8 @@
   :depends-on (:nlisp :zlib :imago)
   :components ((:file "ridges")
 	       (:file "file_io")
-	       (:file "rhythm" :depends-on ("file_io"))
 	       (:file "plotting" :depends-on ("ridges"))
+	       (:file "rhythm" :depends-on ("file_io" "plotting"))
 	       (:file "cwt" :depends-on ("plotting" "ridges" "rhythm"))
 	       (:file "multires_rhythm" :depends-on ("cwt" "plotting" "rhythm"))
 	       (:file "test-examples" :depends-on ("rhythm" "multires_rhythm"))))
