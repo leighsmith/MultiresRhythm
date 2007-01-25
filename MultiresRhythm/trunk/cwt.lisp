@@ -63,8 +63,8 @@
   (:documentation "Function to plot the magnitude and phase components of the result of a continuous wavelet transform on a signal using gnuplot with labelling."))
 
 (defgeneric plot-cwt+tactus-labelled (scaleogram computed-tactus rhythm &key 
-						 title time-axis-decimation
-						 colorbox-divisions maximum-colour-value phase-palette)
+						 title time-axis-decimation colorbox-divisions
+						 maximum-colour-value phase-palette aspect-ratio)
   (:documentation "Plot the magnitude in greyscale overlaid with the computed tactus in red, the phase overlaid with the tactus in black."))
 
 (defgeneric plot-cwt+tactus (scaleogram computed-tactus &key title time-axis-decimation)
@@ -380,7 +380,7 @@
 
 (defun label-phase-in-radians (phaseogram-range divisions)
   (declare (ignore phaseogram-range divisions))
-  ;; '(("-\\316" 0) ("-pi/2" 64) ("0" 128) ("pi/2" 192) ("pi" 254)))
+  ;; '(("-{/Symbol p}" 0) ("-pi/2" 64) ("0" 128) ("pi/2" 192) ("pi" 254)))
   '(("-pi" 0) ("-pi/2" 64) ("0" 128) ("pi/2" 192) ("pi" 254)))
 
 (defun label-phase-in-radians-2 (phaseogram-range divisions)
@@ -415,7 +415,8 @@
 				     (time-axis-decimation 4)
 				     (colorbox-divisions 4.0)
 				     (maximum-colour-value 255)
-				     (phase-palette :spectral))
+				     (phase-palette :spectral)
+				     (aspect-ratio 0.15))
   "Method to plot the magnitude and phase components of the result of
    a continuous wavelet transform on a signal. Plot the phase with the computed tactus in black."
   (let* ((downsampled-magnitude (.decimate (scaleogram-magnitude scaleogram-to-plot) (list 1 time-axis-decimation)))
@@ -423,7 +424,6 @@
 	 (downsampled-tactus (.decimate	(copy-object computed-tactus) (list 1 time-axis-decimation)))
 	 ;; (scaleogram-dim-ratio (/ (.array-dimension downsampled-magnitude 0) (.array-dimension downsampled-magnitude 1)))
 	 ;; (aspect-ratio (if (< scaleogram-dim-ratio 0.3) 0.15 scaleogram-dim-ratio))
-	 (aspect-ratio 0.15)
 	 (plotable-phase-with-ridge (plotable-phase downsampled-phase downsampled-magnitude maximum-colour-value))
     	 (rescaled-phase (.* (insert-ridge downsampled-tactus plotable-phase-with-ridge :constant-value maximum-colour-value) 1d0)))
     (window)				; put this on a separate window.
@@ -481,6 +481,7 @@
     ;; (nlisp::palette (format nil "defined ( 0 0 0 1, 1 0 0 1, 1 0 1 1, ~d 1 1 1 )" maximum-colour-value))
     ;; (nlisp::palette (format nil "defined ( 0 0 0 1, 0 0 1 1, 1 0 1 1, ~d 1 1 1 )" 255))
     ;; -1 0 1 0
+    ;; (plot-command "set cbtics font \"Symbol,12\"") ; Doesn't work on Aquaterm yet.
     (plot-command (format nil "set cbtics (~{~{\"~a\" ~d~}~^, ~})~%" 
  			  (label-phase-in-radians (range rescaled-phase) colorbox-divisions)))
     (plot-command "set colorbox user origin 0.88,0.15 size 0.03,0.2")
@@ -566,7 +567,6 @@
   (plot-command "set xlabel font \"Times,20\"")
   (plot-command "set ylabel font \"Times,20\"")
   (plot-command "set key off")
-  ;; (plot-command "set xtics (\"abc\" 1, \"def\" 20, \"ggg\" 30)")
   (plot-command (format nil "set xtics (~{~{\"~a\" ~d~}~^, ~})~%" (label-scale-as-time-support scaleogram-to-plot)))
   ;; We reverse the column so we plot in more intuitive lowest scale on the left orientation.
   (plot (.reverse (.column (scaleogram-magnitude scaleogram-to-plot) time)) nil 

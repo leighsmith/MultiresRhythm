@@ -158,6 +158,7 @@
 ;; (clap-to-octave-file "desain-unquantized" :sample-rate 200 :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time 73 65 skeleton)))
 ;; (clap-to-octave-file "desain-quantized" :sample-rate 200)
 ;; (clap-to-octave-file "lengthen_corr" :sample-rate 200)
+;; (clap-to-octave-file "anapest-with-rubato" :sample-rate 200)
 
 ;; (require :sb-sprof)
 ;; (sb-sprof:with-profiling (:max-samples 1500 :report :flat) (clap-to-octave-file "longuet_cliche" :sample-rate 200))
@@ -184,13 +185,34 @@
 ; (onsets-to-grid (iois-to-onsets (intervals-in-samples '(17 17 20.5 13.5 17 17) :ioi 10)))
 ; (iois-to-rhythm "test" '(17 17 20.5 13.5 17 17) :shortest-ioi (/ 120 17))
 
-;; Gouyon & Dixon's examples of ambiguity of timing/tempo changes.
-;; (clap-to-iois "isochronous" '(17 17 17 17 17 17))
-;; (clap-to-iois "local-timing" '(17 17 20.5 13.5 17 17))
-;; (clap-to-iois "global-timing" '(17 17 20.5 17 17 17))
-;; (clap-to-iois "tempo-change" '(17 17 20.5 20.5 20.5 20.5))
+;;; Gouyon & Dixon's examples of ambiguity of timing/tempo changes.
+;; (clap-to-iois "gouyon-isochronous" '(17 17 17 17 17 17) :shortest-ioi (/ 120 17))
+;; (clap-to-iois "gouyon-local-timing" '(17 17 20.5 13.5 17 17) :shortest-ioi (/ 120 17))
+;; (clap-to-iois "goyoun-global-timing" '(17 17 20.5 17 17 17) :shortest-ioi (/ 120 17))
+;; (clap-to-iois "gouyon-tempo-change" '(17 17 20.5 20.5 20.5 20.5) :shortest-ioi (/ 120 17))
 
-;;;  3 against 2 polyrhythm example from Sethares & Staley 2001
+;;; Large & Jones's rhythms with temporal fluctuations from Figure 3.
+;; (clap-to-iois "large-one-phase-perturbation" '(1.0 1.0 1.0 1.0 1.15 1.0 1.0 1.0 1.0) :shortest-ioi 200)
+;; (clap-to-iois "large-rate-change" '(1.0 1.0 1.0 1.0 1.15 1.15 1.15 1.15 1.15) :shortest-ioi 200)
+;;
+;; X 59 = 1 second. ;; '(7 62 62 63 59 62 54 59 65 55)
+;; Y relative IOIs, 34 = 0.2 relative IOI: 12 12 12 6 10 -13 5 19 -12
+;; (clap-to-iois "large-many-phase-perturbations" '(0.119 1.051 1.051 1.068 1.0 1.051 0.915 1.0 1.102 0.932) :shortest-ioi 200)
+;; 
+
+;; 34 pixels = 1.2 relative IOI
+;; 25 pixels = ?
+
+;;; (clap-to-iois "large-two-periodicities" 
+;;; 116 = 1.0 seconds
+;; (66 103 128 105 124) 0.5 intensity
+;; (116 116 116 116 116) 1.0 intensity
+
+;;; Large & Jones Figure 6 & 8 use longer time periods.
+;; (clap-to-iois "one-phase-perturbation" '(1.0 1.0 1.0 1.0 1.15 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0) :shortest-ioi 200)
+
+;;; Polyrhythms
+;;; Sethares & Staley 2001 3 against 2 polyrhythm example.
 ;;; (clap-to-rhythm (add-rhythm (iois-to-rhythm "duple" (repeat-rhythm '(100 100 100 100) 4) :sample-rate 200)
 ;;;	                        (iois-to-rhythm "triple" (repeat-rhythm '(67 67 66 67 67 66) 4) :sample-rate 200)))
 ;;;
@@ -209,6 +231,7 @@
 ;;; TODO need to generate claps as scorefile from clap-to-rhythm
 
 ;;; National Anthem data-base
+;;; TODO need to induct the *national-anthems* symbol into :multires-rhythm package.
 (load "/Volumes/iDisk/Research/Data/DesainHoning/national anthems.lisp")
 
 (defun anthem-rhythm (anthem-number &key (shortest-ioi 50))
@@ -219,14 +242,14 @@
 (defun clap-to-anthem (anthem-number)
     (clap-to-rhythm (anthem-rhythm anthem-number :shortest-ioi 50)))
 
-;; Seconds
-;(0.305d0 0.375d0 0.375d0 0.445d0 )
-;(0.305d0 0.375d0 0.445d0)
-;; Ratios
-;(0.813 1.0d0 1.0d0 1.186)
-;(0.813 1.0d0 1.186)
-
-;; Agogic phrasing.
+;;; Agogic phrasing tests.
+;;; Seconds
+;;(0.305d0 0.375d0 0.375d0 0.445d0 )
+;;(0.305d0 0.375d0 0.445d0)
+;;; Ratios
+;;(0.813 1.0d0 1.0d0 1.186)
+;;(0.813 1.0d0 1.186)
+;;
 ;; (clap-to-rhythm (iois-to-rhythm "4-beat-lengthen-corr" (repeat-rhythm '(61 75 75 89) 12)))
 ;; (clap-to-rhythm (iois-to-rhythm "3-beat-lengthen-corr" (repeat-rhythm '(61 75 89) 16)))
 ;; (clap-to-octave-file "lengthen_corr" :sample-rate 200)

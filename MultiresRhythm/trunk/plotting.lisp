@@ -302,8 +302,8 @@
     (window)
     (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
 			  (label-samples-as-seconds (duration-in-samples original-rhythm) (sample-rate original-rhythm))))
-    (nplot (list rhythm-signal clap-signal foot-tap-AM) nil
-	   :legends '("Original Rhythm" "Computed foot-taps" "Foot-tap AM")
+    (nplot (list rhythm-signal clap-signal (.+ (./ foot-tap-AM pi) 1)) nil
+	   :legends '("Original Rhythm" "Computed foot-taps" "Normalised Foot-tap AM")
 	   :styles '("impulses linetype 6 linewidth 3" "impulses linetype 4" "dots 3")
 	   :xlabel "Time in Seconds"
 	   :ylabel "Scaled Intensity/Phase"
@@ -315,3 +315,13 @@
 ;;  (let ((clap-intensity (make-double-array (.array-dimensions claps) :initial-element 2d0)))
 ;;  (plot clap-intensity claps :style "impulses"))
 
+(defun voice-behaviour (original-rhythm scaleogram-to-plot voices)
+  "Plots the magnitude response of several single wavelet voices (dilation scale) to a rhythm."
+  (let ((scaleogram-mag (scaleogram-magnitude scaleogram-to-plot)))
+    (nplot (append (mapcar (lambda (voice) (.row scaleogram-mag voice)) voices)
+		   (list (.* (.max scaleogram-mag) (time-signal original-rhythm))))
+	   nil
+	   :legends (append (mapcar (lambda (voice) (format nil "Voice ~a" voice)) voices) 
+			    (list (name original-rhythm)))
+	   :title "Select wavelet voice behaviours to non-isochronous rhythms"
+	   :aspect-ratio 0.15)))

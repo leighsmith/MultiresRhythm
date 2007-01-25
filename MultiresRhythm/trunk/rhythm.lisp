@@ -132,15 +132,23 @@
 (defmethod rhythm-iois ((rhythm-to-analyse rhythm))
   (.diff (onsets-in-seconds rhythm-to-analyse)))
 
-(defmethod plot-rhythm ((rhythm-to-plot rhythm) &key (reset t))
+(defmethod plot-rhythm ((rhythm-to-plot rhythm) &key (reset t) (time-in-seconds nil))
+  (if reset (reset-plot))
+  (if time-in-seconds
+      (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
+			    (label-samples-as-seconds (duration-in-samples rhythm-to-plot)
+						      (sample-rate rhythm-to-plot)
+						      :maximum-indices 10))))
+  (plot-command "set yrange [0:1.1]")	; Gives some height for the key.
   (plot (time-signal rhythm-to-plot) nil
 	 :label (format nil "Rhythm onsets of ~a" (description rhythm-to-plot))
 	 :style "impulses linetype 6"
-	 :xlabel (format nil "Time in samples (~dHz sample rate)" (sample-rate rhythm-to-plot))
+	 :xlabel (if time-in-seconds "Time in seconds"
+		     (format nil "Time in samples (~dHz sample rate)" (sample-rate rhythm-to-plot)))
 	 :ylabel "Scaled Intensity"
 	 :title (format nil "Rhythm of ~a" (name rhythm-to-plot))
 	 :aspect-ratio 0.66
-	 :reset reset))
+	 :reset nil))
 
 (defmethod save-rhythm ((rhythm-to-save rhythm))
   (save-scorefile (format nil "/Users/leigh/~a.score" (name rhythm-to-save)) 
