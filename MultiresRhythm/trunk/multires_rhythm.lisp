@@ -335,8 +335,8 @@ then can extract ridges."
   (multiple-value-bind (skeleton scaleogram correlated-ridge-scale-peaks)
       (skeleton-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave)
     (let ((chosen-tactus (funcall tactus-selector skeleton)))   ; select out the tactus from all ridge candidates.
-      (format t "Computed skeleton and chosen tactus~%")
-      (plot-cwt scaleogram :title (name analysis-rhythm))
+      (format t "Computed skeleton and chosen tactus ~a~%" chosen-tactus)
+;;      (plot-cwt scaleogram :title (name analysis-rhythm))
 ;;      (plot-cwt-labelled scaleogram :title (name analysis-rhythm))
       (plot-cwt+tactus-labelled scaleogram chosen-tactus analysis-rhythm :title (name analysis-rhythm))
 ;;       (plot-cwt+tactus scaleogram chosen-tactus :title (name analysis-rhythm))
@@ -391,7 +391,8 @@ then can extract ridges."
 				    (.subarray foot-tap-phase (list 0 (list 1 (1- time-in-samples)))))))
 	 (clap-at (.find phase-reoccured))
 	 ;; Create a clapping rhythm
-	 (clap-rhythm (rhythm-of-onsets (name original-rhythm) clap-at)))
+	 ;; (clap-rhythm (rhythm-of-onsets (name original-rhythm) clap-at))
+	 )
 
     (format t "Handclapping from beat ~d of original rhythm, sample ~d~%" start-from-beat down-beat-sample)
     (plot-claps original-rhythm clap-at :foot-tap-AM foot-tap-phase)
