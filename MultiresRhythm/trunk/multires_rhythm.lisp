@@ -6,17 +6,11 @@
 ;;;;
 ;;;; By Leigh M. Smith <lsmith@science.uva.nl> 
 ;;;;
-;;;; Copyright (c) 2006
+;;;; Copyright (c) 2006, 2007 All Rights Reserved.
 ;;;;
 ;;;; In nlisp (Matlab-alike Common Lisp library www.nlisp.info)
 ;;;;
-;;;; See 
-;;;;   author =  {Leigh M. Smith},
-;;;;   title =   {A Multiresolution Time-Frequency Analysis and Interpretation of Musical Rhythm},
-;;;;   school =  {Department of Computer Science, University of Western Australia},
-;;;;   year =    1999,
-;;;;   month =   {June},
-;;;;   annote =  {\url{http://www.leighsmith.com/Research/Papers/MultiresRhythm.pdf}}
+;;;; See multiresrhythm.asd for further info.
 ;;;;
 
 (in-package :multires-rhythm)
@@ -93,24 +87,6 @@ This is weighted by absolute constraints, look in the 600ms period range."
 		       (val (.reshape normalised-time-slice (list number-of-scales 1)))
 		       (list t i))))
     normalised-values))
-
-;;thresholdMag = magnitude > threshold;
-;;newphase = (thresholdMag .* phase) + (!thresholdMag .* clamp);
-(defun clamp-to-bounds (signal test-signal 
-			&key (low-bound 0) (clamp-low 0) (high-bound 0 high-bound-supplied-p) (clamp-high 0))
-  "Clip a signal according to the bounds given, by testing another signal (which can be the same as signal). 
-Anything clipped will be set to the clamp-low, clamp-high values"
-  (let* ((above-low (.> test-signal low-bound))
-	 (below-high (if high-bound-supplied-p
-			 (.< test-signal high-bound)
-			 1d0)))
-    (.+ (.* (.and above-low below-high) signal)
-	(.* (.not above-low) clamp-low) 
-	(.* (.not below-high) clamp-high))))
-
-;; (setf a (.rseq2 0 9 10))
-;; (setf b (.rseq2 9 0 10))
-;; (clamp-to-bounds b a :low-bound 5d0 :clamp-low -1d0)
 
 (defun stationary-phase (magnitude phase voices-per-octave &key (magnitude-minimum 0.01))
   "Compute points of stationary phase. Implementation of Delprat
@@ -267,6 +243,7 @@ then can extract ridges."
     ;; conditioned on a minimal magnitude, we reduce false positives.
     (./ (.+ normalised-magnitude stat-phase local-pc) 3d0)))
 
+;;; TODO Candidate for moving to signalprocessing.lisp
 (defun shift-scales (scales direction)
   "Shifts the rows (rotating) upwards (towards lower indices) if direction = :up, down if direction = :down"
   (let* ((time-frequency-dimensions (.array-dimensions scales))

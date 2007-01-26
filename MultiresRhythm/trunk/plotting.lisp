@@ -112,10 +112,6 @@
       (vector-push (if next-position next-position (.length a)) found-indexes))
     (make-instance 'n-fixnum-array :ival (adjust-array found-indexes (fill-pointer found-indexes)))))
 
-;; Only good for vectors, of course.
-(defun .subseq (a start &optional end)
-  (make-instance (class-of a) :ival (subseq (val a) start end)))
-
 (defun linear-segmented-channel (map-length channel-linear-segments)
   "Create an 1-d lookup table with map-length elements.
    Each element in channel-linear-segments should be a list of x, y0, y1 tuples."
@@ -315,7 +311,7 @@
 ;;  (let ((clap-intensity (make-double-array (.array-dimensions claps) :initial-element 2d0)))
 ;;  (plot clap-intensity claps :style "impulses"))
 
-(defun voice-behaviour (original-rhythm scaleogram-to-plot voices)
+(defun plot-voice-behaviour (original-rhythm scaleogram-to-plot voices)
   "Plots the magnitude response of several single wavelet voices (dilation scale) to a rhythm."
   (let ((scaleogram-mag (scaleogram-magnitude scaleogram-to-plot)))
     (nplot (append (mapcar (lambda (voice) (.row scaleogram-mag voice)) voices)

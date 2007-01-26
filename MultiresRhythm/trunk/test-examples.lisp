@@ -181,9 +181,9 @@
 (defun clap-to-iois (name iois &key (shortest-ioi (/ 120 17)))
   (clap-to-rhythm (iois-to-rhythm name iois :shortest-ioi shortest-ioi)))
 
-; (onsets-to-grid (iois-to-onsets (intervals-in-samples '(17 17 20.5 13.5) :ioi (/ 600 17))))
-; (onsets-to-grid (iois-to-onsets (intervals-in-samples '(17 17 20.5 13.5 17 17) :ioi 10)))
-; (iois-to-rhythm "test" '(17 17 20.5 13.5 17 17) :shortest-ioi (/ 120 17))
+;; (onsets-to-grid (iois-to-onsets (intervals-in-samples '(17 17 20.5 13.5) :ioi (/ 600 17))))
+;; (onsets-to-grid (iois-to-onsets (intervals-in-samples '(17 17 20.5 13.5 17 17) :ioi 10)))
+;; (iois-to-rhythm "test" '(17 17 20.5 13.5 17 17) :shortest-ioi (/ 120 17))
 
 ;;; Gouyon & Dixon's examples of ambiguity of timing/tempo changes.
 ;; (clap-to-iois "gouyon-isochronous" '(17 17 17 17 17 17) :shortest-ioi (/ 120 17))
@@ -194,22 +194,63 @@
 ;;; Large & Jones's rhythms with temporal fluctuations from Figure 3.
 ;; (clap-to-iois "large-one-phase-perturbation" '(1.0 1.0 1.0 1.0 1.15 1.0 1.0 1.0 1.0) :shortest-ioi 200)
 ;; (clap-to-iois "large-rate-change" '(1.0 1.0 1.0 1.0 1.15 1.15 1.15 1.15 1.15) :shortest-ioi 200)
+;; (clap-to-iois "large-many-phase-perturbations" '(0.119 1.051 1.051 1.068 1.0 1.051 0.915 1.0 1.102 0.932) :shortest-ioi 200)
 ;;
 ;; X 59 = 1 second. ;; '(7 62 62 63 59 62 54 59 65 55)
 ;; Y relative IOIs, 34 = 0.2 relative IOI: 12 12 12 6 10 -13 5 19 -12
-;; (clap-to-iois "large-many-phase-perturbations" '(0.119 1.051 1.051 1.068 1.0 1.051 0.915 1.0 1.102 0.932) :shortest-ioi 200)
 ;; 
 
 ;; 34 pixels = 1.2 relative IOI
 ;; 25 pixels = ?
 
-;;; (clap-to-iois "large-two-periodicities" 
+;;; (clap-to-rhythm
+;;  "large-two-periodicities" 
 ;;; 116 = 1.0 seconds
-;; (66 103 128 105 124) 0.5 intensity
+;; (66 103 128 105 124 54) 0.5 intensity, the last interval tricks ioi-to-rhythm to keep the last onset.
 ;; (116 116 116 116 116) 1.0 intensity
+;; All beats: (66 116 168 231 295 346 399 460 522 575)
+;; (setf two-periodicities (iois-to-rhythm "two-periodicities" '(0.57 1.00 1.46 2.00 2.56 3.00 3.46 4.0 4.53 5.0)  :shortest-ioi 200))
+
+;; 575 total length, 57.5 = 0.5
+
+;;; (setf perturbed (iois-to-rhythm "perturbed" '(0.5739130434782609d0 0.8956521739130435d0 1.1130434782608696d0 0.9130434782608695d0 1.0782608695652174d0 0.46956521739130436d0) :shortest-ioi 200))
+;;; (setf iso (iois-to-rhythm "loud" '(1.0 1.0 1.0 1.0 1.0) :shortest-ioi 200))
+;;; (scale-amplitude perturbed 0.5d0) ;; Make the perturbed rhythm softer.
+;;; (setf two-periodicities (add-rhythm iso perturbed))
+;;; (plot-rhythm two-periodicities)
+;;; (clap-to-rhythm two-periodicities)
+;;; TODO swap the perturbed and isochronous beats loudness scales and examine the results.
+
+;;; On the soft-perturb, two periodicities are established, but the soft perturbed beats
+;;; assume a higher frequency dividing the intervals between the isochronous beats. Thus
+;;; this would look very different to a rhythm that was just the perturbed rhythms.
 
 ;;; Large & Jones Figure 6 & 8 use longer time periods.
 ;; (clap-to-iois "one-phase-perturbation" '(1.0 1.0 1.0 1.0 1.15 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0 1.0) :shortest-ioi 200)
+
+;;; From Desain & Honing 1999
+;; (clap-to-iois "desain99" '(3 1 6 2 3 1 6 2 3 1) :shortest-ioi 50)
+;; (clap-to-rhythm (iois-to-rhythm "desain99" '(3 1 6 2 3 1 6 2 3 1) :shortest-ioi 50)
+;;                 :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time 91 0 skeleton)))
+;;
+;;; TODO need to generate claps as scorefile from clap-to-rhythm
+
+;;; Agogic phrasing tests.
+;;; Seconds
+;; (0.305d0 0.375d0 0.375d0 0.445d0 )
+;; (0.305d0 0.375d0 0.445d0)
+;;; Ratios
+;; (0.813 1.0d0 1.0d0 1.186)
+;; (0.813 1.0d0 1.186)
+;;
+;; (clap-to-rhythm (iois-to-rhythm "4-beat-lengthen-corr" (repeat-rhythm '(61 75 75 89) 12)))
+;; (clap-to-rhythm (iois-to-rhythm "3-beat-lengthen-corr" (repeat-rhythm '(61 75 89) 16)))
+;; (clap-to-octave-file "lengthen_corr" :sample-rate 200)
+
+;;; For testing plotting
+;; (setf plot-test-rhythm (load-rhythm-file "intensity34_to_44" :description "intensity" :sample-rate 200))
+;; (multiple-value-setq (plot-test-tactus plot-test-scaleogram) (tactus-for-rhythm plot-test-rhythm))
+;; (plot-cwt+tactus-labelled plot-test-scaleogram plot-test-tactus plot-test-rhythm :phase-palette :grey-smooth)
 
 ;;; Polyrhythms
 ;;; Sethares & Staley 2001 3 against 2 polyrhythm example.
@@ -222,40 +263,4 @@
 ;;; TODO need to increase tempo by 5% every eight beats. Should result in an increase in
 ;;; tempo of more than 25% over 15 seconds.
 
-
-;;; From Desain & Honing 1999
-;;; (clap-to-iois "desain99" '(3 1 6 2 3 1 6 2 3 1) :shortest-ioi 50)
-;;; (clap-to-rhythm (iois-to-rhythm "desain99" '(3 1 6 2 3 1 6 2 3 1) :shortest-ioi 50)
-;;;                 :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time 91 0 skeleton)))
-;;;
-;;; TODO need to generate claps as scorefile from clap-to-rhythm
-
-;;; National Anthem data-base
-;;; TODO need to induct the *national-anthems* symbol into :multires-rhythm package.
-(load "/Volumes/iDisk/Research/Data/DesainHoning/national anthems.lisp")
-
-(defun anthem-rhythm (anthem-number &key (shortest-ioi 50))
-  (let ((anthem-name (symbol-name (first (first (nth anthem-number *national-anthems*)))))
-	(anthem-iois (second (nth anthem-number *national-anthems*))))
-    (iois-to-rhythm anthem-name anthem-iois :shortest-ioi shortest-ioi)))
-
-(defun clap-to-anthem (anthem-number)
-    (clap-to-rhythm (anthem-rhythm anthem-number :shortest-ioi 50)))
-
-;;; Agogic phrasing tests.
-;;; Seconds
-;;(0.305d0 0.375d0 0.375d0 0.445d0 )
-;;(0.305d0 0.375d0 0.445d0)
-;;; Ratios
-;;(0.813 1.0d0 1.0d0 1.186)
-;;(0.813 1.0d0 1.186)
-;;
-;; (clap-to-rhythm (iois-to-rhythm "4-beat-lengthen-corr" (repeat-rhythm '(61 75 75 89) 12)))
-;; (clap-to-rhythm (iois-to-rhythm "3-beat-lengthen-corr" (repeat-rhythm '(61 75 89) 16)))
-;; (clap-to-octave-file "lengthen_corr" :sample-rate 200)
-
-;;; For testing plotting
-;; (setf plot-test-rhythm (load-rhythm-file "intensity34_to_44" :description "intensity" :sample-rate 200))
-;; (multiple-value-setq (plot-test-tactus plot-test-scaleogram) (tactus-for-rhythm plot-test-rhythm))
-;; (plot-cwt+tactus-labelled plot-test-scaleogram plot-test-tactus plot-test-rhythm :phase-palette :grey-smooth)
 

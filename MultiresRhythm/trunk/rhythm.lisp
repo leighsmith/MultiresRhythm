@@ -4,7 +4,13 @@
 ;;;;
 ;;;; Rhythm class and utility methods.
 ;;;;
-;;;; Leigh Smith <lsmith@science.uva.nl>
+;;;; Leigh M. Smith <lsmith@science.uva.nl>
+;;;;
+;;;; Copyright (c) 2006, 2007 All Rights Reserved.
+;;;;
+;;;; In nlisp (Matlab-alike Common Lisp library www.nlisp.info)
+;;;;
+;;;; See multiresrhythm.asd for further info.
 ;;;;
 
 (in-package :multires-rhythm)
@@ -16,6 +22,8 @@
 ;;; a signal. This allows representing a rhythm as a continuum between
 ;;; a signal processing representation (high sample rate) and a symbolic representation
 ;;; (low sample rate).
+;;; TODO Do we need a distinction between a description and a name, if we use the name of
+;;; the variable pointing to the rhythm object anyway?
 (defclass rhythm ()
   ((name        :initarg :name        :accessor name        :initform "unnamed")
    (description :initarg :description :accessor description :initform "")
@@ -40,7 +48,15 @@
 (defgeneric plot-rhythm (rhythm-to-plot &key reset)
   (:documentation "Plot locations of beats of the given rhythm."))
 
+(defgeneric scale-amplitude (rhythm-to-scale scale-factor)
+  (:documentation "Scales the amplitude of each onset by the given scale-factor."))
+
 ;;;; Implementation
+
+(defmethod print-object ((rhythm-to-print rhythm) stream)
+  (call-next-method rhythm-to-print stream) ;; to print the superclass.
+  (format stream " ~a ~a sample-rate ~f" 
+	  (name rhythm-to-print) (description rhythm-to-print) (sample-rate rhythm-to-print)))
 
 (defun intervals-in-samples (intervals &key ((:tempo tempo-in-bpm) 60)
 			     (ioi 1.0 interval-supplied-p)
@@ -160,10 +176,15 @@
 
 (defun add-rhythm (&rest rhythms-to-add)
   "Adds multiple rhythms together. Returns the shortest? longest? rhythm."
-  (make-instance 'rhythm 
-		 :name "polyrhythm" 
-		 :description "polyrhythm"
-		 :time-signal (.> (apply #'.+ (mapcar #'time-signal rhythms-to-add)) 0d0)
-		 :sample-rate 200))
+  (let* ((added-rhythms (apply #'.+ (mapcar #'time-signal rhythms-to-add)))
+	(clamped-rhythms (clamp-to-bounds added-rhythms added-rhythms :high-bound 1.0d0 :clamp-high 1.0d0)))
+    (make-instance 'rhythm 
+		   :name "polyrhythm" 
+		   :description "polyrhythm"
+		   :time-signal clamped-rhythms
+		   :sample-rate 200)))
 
-;; (.> (.+ (time-signal duple-rhythm) (time-signal triple-rhythm)) 0d0)
+(defmethod scale-amplitude ((rhythm-to-scale rhythm) scale-factor)
+  "Scales the amplitude of each onset by the given scale-factor"
+  (setf (time-signal rhythm-to-scale) (.* (time-signal rhythm-to-scale) scale-factor))
+  rhythm-to-scale)
