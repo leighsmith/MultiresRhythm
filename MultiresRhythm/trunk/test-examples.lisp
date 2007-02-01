@@ -263,4 +263,8 @@
 ;;; TODO need to increase tempo by 5% every eight beats. Should result in an increase in
 ;;; tempo of more than 25% over 15 seconds.
 
+;;; Girl from Ipanema opening excerpt, from Chew, Volk & Lee
+;; (setf ipanema-rhythm (iois-to-rhythm "ipanema-rhythm" '(6 2 2 4 8 2) :shortest-ioi 200))
 
+;;; Cemgil's IOIs from Fig 2.
+;; (setf cemgil-performance (iois-to-rhythm "cemgil-performance" '(1.77 0.29 0.34 0.44 0.34 0.99 0.63 0.3 0.28 0.3 0.35 1.19) :shortest-ioi 200))
