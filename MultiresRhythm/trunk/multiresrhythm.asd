@@ -43,7 +43,7 @@
   :components ((:file "signalprocessing")
 	       (:file "ridges")
 	       (:file "file_io")
-	       (:file "plotting" :depends-on ("ridges"))
+	       (:file "plotting" :depends-on ("ridges" "signalprocessing"))
 	       (:file "rhythm" :depends-on ("file_io" "plotting" "signalprocessing"))
 	       (:file "cwt" :depends-on ("plotting" "ridges" "rhythm"))
 	       (:file "multires_rhythm" :depends-on ("cwt" "plotting" "rhythm" "signalprocessing"))
