@@ -424,6 +424,7 @@
   (let* ((downsampled-magnitude (.decimate (scaleogram-magnitude scaleogram-to-plot) (list 1 time-axis-decimation)))
 	 (downsampled-phase (.decimate (scaleogram-phase scaleogram-to-plot) (list 1 time-axis-decimation)))
 	 (downsampled-tactus (.decimate	(copy-object computed-tactus) (list 1 time-axis-decimation)))
+	 (downsampled-magnitude-time (.array-dimension downsampled-magnitude 1))
 	 ;; (scaleogram-dim-ratio (/ (.array-dimension downsampled-magnitude 0) (.array-dimension downsampled-magnitude 1)))
 	 ;; (aspect-ratio (if (< scaleogram-dim-ratio 0.3) 0.15 scaleogram-dim-ratio))
 	 (plotable-phase-with-ridge (plotable-phase downsampled-phase downsampled-magnitude maximum-colour-value))
@@ -458,8 +459,9 @@
     (plot-command "set size 1.0,0.5")
     (plot-command "set origin 0.0,0.3")
     ;; Label both magnitude & phase plots in seconds.
+    (plot-command (format nil "set xrange [0:~d]" downsampled-magnitude-time))	; ensures last label plotted
     (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
-			  (label-samples-as-seconds (.array-dimension downsampled-magnitude 1)
+			  (label-samples-as-seconds downsampled-magnitude-time
 						    (sample-rate analysis-rhythm)
 						    :time-axis-decimation time-axis-decimation)))
     (plot-command (format nil "set ytics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
@@ -513,6 +515,7 @@
 	   :reset nil
 	   :aspect-ratio aspect-ratio)
     (plot-command "unset multiplot")
+    (close-window)
     (reset-plot)))
 
 ;;; How to plot using nlisp now the image function is fixed.

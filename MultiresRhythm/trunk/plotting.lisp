@@ -298,6 +298,7 @@
   "Plot the ridges in greyscale and the computed tactus in red."
   (let* ((max-ridge-colours (1- maximum-colour-value))
 	 (downsampled-ridges (.decimate ridges (list 1 time-axis-decimation)))
+	 (downsampled-ridges-time (.array-dimension downsampled-ridges 1))
 	 ;; We make a copy of the tactus since decimate modifies the object (it is, after all, an instance method)
 	 (downsampled-tactus (.decimate	(copy-object computed-tactus) (list 1 time-axis-decimation)))
 	 (plotable-ridges (invert-and-scale (.normalise downsampled-ridges) max-ridge-colours))
@@ -307,8 +308,9 @@
     ;; White thru grey to black for ridge plots
     (nlisp:palette-defined (list '(0 "#000000") (list max-ridge-colours "#FFFFFF") (list maximum-colour-value "#FF0000")))
     ;; (format t "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" (label-samples-as-seconds (.array-dimension ridges 1) 200))
+    (plot-command (format nil "set xrange [0:~d]" downsampled-ridges-time))	; ensures last label plotted
     (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
-			  (label-samples-as-seconds (.array-dimension downsampled-ridges 1) 
+			  (label-samples-as-seconds downsampled-ridges-time
 						    200
 						    ;; (sample-rate original-rhythm)
 						    :time-axis-decimation time-axis-decimation)))
@@ -323,7 +325,8 @@
 	   :xlabel "Time (Seconds)" 
  	   :ylabel "Scale as IOI Range\\n(Seconds)"
  	   :reset nil
- 	   :aspect-ratio aspect-ratio)))
+ 	   :aspect-ratio aspect-ratio)
+    (close-window)))
 
 (defun plot-claps (original-rhythm claps &key foot-tap-AM (max-computed-scale 1.2d0)
 		   (comment "")
@@ -334,6 +337,7 @@
 	 (clap-signal (make-double-array (.array-dimensions rhythm-signal) :initial-element 0d0)))
     (map nil (lambda (index) (setf (.aref clap-signal index) max-computed-scale)) (val claps))
     (window)
+    (plot-command (format nil "set yrange [0:~f]" (+ max-computed-scale 0.2)))
     (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
 			  (label-samples-as-seconds (duration-in-samples original-rhythm) (sample-rate original-rhythm))))
     (nplot (list rhythm-signal clap-signal (.+ (./ foot-tap-AM pi 2.0d0) 0.5d0)) nil
@@ -343,7 +347,8 @@
 	   :ylabel "Scaled Intensity/Phase"
 	   :title (format nil "Computed foot-tap ~a of ~a" comment signal-description)
 	   :reset nil
-	   :aspect-ratio 0.66)))
+	   :aspect-ratio 0.66)
+    (close-window)))
 
 ;; Alternative plot method if not using nplot.
 ;;  (let ((clap-intensity (make-double-array (.array-dimensions claps) :initial-element 2d0)))
