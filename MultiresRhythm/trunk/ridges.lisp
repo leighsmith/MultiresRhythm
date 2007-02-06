@@ -22,7 +22,7 @@
 (in-package :multires-rhythm)
 (use-package :nlisp)
 
-;;; A ridge is a span of time across a time-frequency plane.
+;;; A ridge is a zero-based span of time across a time-frequency plane.
 (defclass ridge ()
   ((active :initform nil :initarg :set-active :accessor active)
    ;; Holds a time sequence of scale indices.
@@ -68,7 +68,7 @@
   (let ((the-start-sample (start-sample ridge-to-print)))
     (format stream " from scale ~d @ ~d to scale ~d @ ~d" 
 	    (first (scales ridge-to-print)) the-start-sample
-	    (last (scales ridge-to-print)) (+ the-start-sample (duration-in-samples ridge-to-print)))))
+	    (first (last (scales ridge-to-print))) (+ the-start-sample (duration-in-samples ridge-to-print) -1))))
 
 (defmethod most-recent-scale ((the-ridge ridge))
   "Returns the most recent scale of the given ridge."
@@ -191,19 +191,28 @@
 ;;; (matching-ridges '(9 15) '(3 4 5 8 10 16))
 ;;; (9 15) (8 16)
 
+;;; We could integrate prune-ridges into deactivate-ridges, but as a separate function,
+;;; this keeps the code more modular and the extra efficiency gain (not having to do a
+;;; find twice) is pretty small, since we are reducing the list to search over anyway.
+(defun prune-ridges (all-ridges &key (minimum-length 4))
+  "Ridges under minimum-length are removed from all-ridges."
+  (delete-if (lambda (ridge) (and (not (active ridge))
+				  (< (duration-in-samples ridge) minimum-length)))
+	     all-ridges))
+
 (defun deactivate-ridges (all-ridges ridge-identifiers)
-  "Sets all nominated ridges to inactive."
-  (dolist (ridge-to-deactivate ridge-identifiers)
-    (setf (active (find ridge-to-deactivate all-ridges :key #'most-recent-scale)) nil)))
+  "Sets all nominated ridges to inactive. Ridges under minimum-length are removed from all-ridges."
+  (dolist (ridge-id-to-deactivate ridge-identifiers)
+    (setf (active (find ridge-id-to-deactivate all-ridges :key #'most-recent-scale)) nil)))
 
 ;; If we want to reduce the size of the ridges to search over when updating the ridges, we
 ;; should return those deleted and those remaining.
 ;;  (defun deactivate-ridges (currently-active-ridges scale-ids-to-deactivate)
 ;;    "Removes all nominated ridges from the active ridge list"
 ;;     (loop 
-;;        for ridge-to-deactivate in scale-ids-to-deactivate
-;;        collect (find ridge-to-deactivate currently-active-ridges :key #'most-recent-scale) into inactive-ridges
-;;        do (delete ridge-to-deactivate currently-active-ridges :key #'most-recent-scale)
+;;        for ridge-id-to-deactivate in scale-ids-to-deactivate
+;;        collect (find ridge-id-to-deactivate currently-active-ridges :key #'most-recent-scale) into inactive-ridges
+;;        do (delete ridge-id-to-deactivate currently-active-ridges :key #'most-recent-scale)
 ;;        finally (return (values inactive-ridges currently-active-ridges))))
 
 (defun add-new-ridges (new-ridge-scales current-time-index)
@@ -215,8 +224,8 @@
   			    :scales (list new-ridge-scale)
  			    :set-active t)))
 
-;;; TODO can we do it more functionally using substitute? Probably not because what we want
-;;; to substitute is a modification of the data already there.
+;;; TODO can we do it more functionally using substitute? Probably not because what we
+;;; want to substitute is a modification of the data already there.
 (defun add-ridge-scale (prev-matching-scale new-scale active-ridges)
   "Adds new-scale to the ridge in active-ridges that has the most recent scale being prev-matching-scale."
   (dolist (ridge-candidate active-ridges)
@@ -227,10 +236,11 @@
   (mapcar #'(lambda (prev current) (add-ridge-scale prev current active-ridges))
 	  prev-matching-ridges matching-ridges))
 
-;;; TODO Assumes we have determined the peaks, in the final version the correlated time-frequency
-;;; profile should be passed in and the ridges determined within this function.
-;;; TODO Probably keeping the active and inactive ridges in two separate lists will be more
-;;; efficient since it removes the requirement to extract out on each iteration.
+;;; TODO Assumes we have determined the peaks, in the final version the correlated
+;;; time-frequency profile should be passed in and the ridges determined within this
+;;; function.  TODO Probably keeping the active and inactive ridges in two separate lists
+;;; will be more efficient since it removes the requirement to extract out on each
+;;; iteration.
 (defun extract-ridges (scale-peaks)
   "Extract ridges by ``hill trekking''. That is, hike along the tops of the ridges,
   following the peaks. Returns a list of each ridge in time order (actually reversed)."
@@ -258,6 +268,7 @@
 	   ;; Any ridges no longer matching are deemed inactive and are retired from the all-ridges.
 	   ;; TODO (append inactive-ridges (deactivate-ridges active-ridges (set-difference  prev-ridge-scales prev-matching-ridges))
 	   (deactivate-ridges all-ridges (set-difference prev-ridge-scales prev-matching-ridges))
+	   (setf all-ridges (prune-ridges all-ridges)) ; removes tiny ridges.
 	   
 	   ;; All those within the difference threshold become the new state of each
 	   ;; active ridge. Update the history of those ridges.
@@ -309,20 +320,6 @@
   "Returns the scales list as an nlisp array"
   (make-instance 'n-fixnum-array :ival (make-array (duration-in-samples the-ridge) :initial-contents
 					     (scales the-ridge))))
-
-#|
-  (loop
-       for row-index in (scales tactus)
-       and tactus-index = 0 then (1+ tactus-index)
-       with start-column = (start-sample tactus)
-       do
-	 (setf (.aref plotable-ridges row-index (+ start-column tactus-index)) maximum-colour-value))
-
-  ;; Octave uses column major indices.
-  column-major-indices (.+ (.* (.iseq (start-sample ridge-to-insert) 
-			     (1- (duration-in-samples ridge-to-insert))) number-of-scales)
-		      (scales-as-array ridge-to-insert))
-|#
 
 (defmethod insert-ridge ((ridge-to-insert ridge) time-frequency-plane &key constant-value)
   "Insert the given ridge into the time-frequency plane, overwriting existing values with constant-value"
