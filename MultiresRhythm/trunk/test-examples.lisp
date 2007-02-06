@@ -268,3 +268,5 @@
 
 ;;; Cemgil's IOIs from Fig 2.
 ;; (setf cemgil-performance (iois-to-rhythm "cemgil-performance" '(1.77 0.29 0.34 0.44 0.34 0.99 0.63 0.3 0.28 0.3 0.35 1.19) :shortest-ioi 200))
+
+;; (clap-to-rhythm (iois-to-rhythm "decelerating-rhythm" '(0.57 1.00 1.46 2.00 2.56 3.00 3.46 4.0 4.53 5.0)  :shortest-ioi 200))

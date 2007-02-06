@@ -64,7 +64,8 @@
 
 (defgeneric plot-cwt+tactus-labelled (scaleogram computed-tactus rhythm &key 
 						 title time-axis-decimation colorbox-divisions
-						 maximum-colour-value phase-palette aspect-ratio)
+						 maximum-colour-value aspect-ratio
+						 phase-palette magnitude-palette)
   (:documentation "Plot the magnitude in greyscale overlaid with the computed tactus in red, the phase overlaid with the tactus in black."))
 
 (defgeneric plot-cwt+tactus (scaleogram computed-tactus &key title time-axis-decimation)
@@ -375,7 +376,7 @@
 (defmethod label-scale-as-time-support-seconds ((scaleogram-to-plot scaleogram) sample-rate)
   "Generates a set of labels of the scales as time support intervals in seconds"
   (mapcar (lambda (label-and-index) 
-	    (cons (/ (car label-and-index) sample-rate) (rest label-and-index)))
+	    (cons (/ (first label-and-index) sample-rate) (rest label-and-index)))
 	  (label-scale-as-time-support scaleogram-to-plot)))
 
 (defun label-phase-in-radians (phaseogram-range divisions)
@@ -415,6 +416,7 @@
 				     (time-axis-decimation 4)
 				     (colorbox-divisions 4.0)
 				     (maximum-colour-value 255)
+				     (magnitude-palette :greyscale)
 				     (phase-palette :spectral)
 				     (aspect-ratio 0.15))
   "Method to plot the magnitude and phase components of the result of
@@ -436,9 +438,11 @@
     (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
 			  (label-samples-as-seconds (duration-in-samples analysis-rhythm)
  						    (sample-rate analysis-rhythm))))
-    (plot-command "set ytics 0.2")
-    (plot-command "set size 0.84,0.35")
-    (plot-command "set origin 0.045,0.65")
+    (plot-command "set yrange [0:1.2]")	; Gives some height for the key.
+    (plot-command "set format y \"%3.1f\"")
+    (plot-command "set ytics 0.0, 0.20, 1.0")
+    (plot-command "set size 0.83,0.35")
+    (plot-command "set origin 0.055,0.65")
     (plot-command "unset key")
     (plot (time-signal analysis-rhythm) nil
 	  ;; :label (format nil "Rhythm onsets of ~a" (description analysis-rhythm))
@@ -447,6 +451,10 @@
 	  :title (format nil "Rhythm of ~a" (name analysis-rhythm))
 	  :aspect-ratio 0.1
 	  :reset nil)
+    (reset-plot)			; Since we don't reset with image.
+    (plot-command "set xtics font \"Times,10\"")
+    (plot-command "set ytics font \"Times,10\"")
+    (plot-command "set format cb \"%4.2f\"")
     (plot-command "set size 1.0,0.5")
     (plot-command "set origin 0.0,0.3")
     ;; Label both magnitude & phase plots in seconds.
@@ -461,7 +469,18 @@
     (plot-command (format nil "set cbtics ~5,2f" (/ (range downsampled-magnitude) colorbox-divisions)))
     ;; (plot-command "set title -35") ; moves the titles leftwards but it doesn't help our shrinking the size.
     ;; White thru grey to black for magnitude plots
-    (nlisp:palette-defined '((0 "#FFFFFF") (1 "#000000")))
+    (cond ((eq magnitude-palette :greyscale)
+	   (nlisp:palette-defined '((0 "#FFFFFF") (1 "#000000"))))
+	  ((eq magnitude-palette :jet)
+	   (nlisp:palette "model HSV")
+	   ;; (nlisp:palette "defined ( 0 0 1 1, 1 1 1 1 )")
+	   (nlisp:palette-defined '((0.0 "0.666 1.0 1.0") (1.0 "0.0 1.0 1.0")))))
+
+
+;;	'(((0.0 0.5) (0.11 1.0) (0.34 1.0) (0.65 0.0) (1.0 0.0))
+;;	  ((0.0 0.0) (0.09 0.0) (0.36 1.0) (0.625 1.0) (0.875 0.0) (1.0 0.0))
+;;	  ((0.0 0.0) (0.35 0.0) (0.66 1.0) (0.89 1.0) (1.0 0.5)))
+
     (image (.flip downsampled-magnitude) nil nil
  	   :title (format nil "Magnitude of ~a" title)
 	   :xlabel nil
@@ -472,14 +491,15 @@
     (plot-command "set size 1.0,0.5")
     (plot-command "set origin 0.0,0.0")
     (cond ((eq phase-palette :spectral)
-	   (nlisp::palette "model HSV maxcolors 256")
-	   (nlisp::palette (format nil "defined ( 0 0 0 1, 1 0 1 1, ~d 1 1 1, ~d 0 0 1)"
+	   (nlisp:palette "model HSV maxcolors 256")
+	   (nlisp:palette (format nil "defined ( 0 0 0 1, 1 0 1 1, ~d 1 1 1, ~d 0 0 1)"
 				   (1- maximum-colour-value) maximum-colour-value)))
 	  ((eq phase-palette :grey-smooth)
+	   (nlisp:palette "model RGB")
 	   (nlisp:palette-defined '((0 "#FFFFFF") (0.5 "#000000") (1 "#FFFFFF"))))
 	  (t (nlisp:palette-defined '((0 "#FFFFFF") (1 "#000000")))))
-    ;; (nlisp::palette (format nil "defined ( 0 0 0 1, 1 0 0 1, 1 0 1 1, ~d 1 1 1 )" maximum-colour-value))
-    ;; (nlisp::palette (format nil "defined ( 0 0 0 1, 0 0 1 1, 1 0 1 1, ~d 1 1 1 )" 255))
+    ;; (nlisp:palette (format nil "defined ( 0 0 0 1, 1 0 0 1, 1 0 1 1, ~d 1 1 1 )" maximum-colour-value))
+    ;; (nlisp:palette (format nil "defined ( 0 0 0 1, 0 0 1 1, 1 0 1 1, ~d 1 1 1 )" 255))
     ;; -1 0 1 0
     ;; (plot-command "set cbtics font \"Symbol,12\"") ; Doesn't work on Aquaterm yet.
     (plot-command (format nil "set cbtics (~{~{\"~a\" ~d~}~^, ~})~%" 

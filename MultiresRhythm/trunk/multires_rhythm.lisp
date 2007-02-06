@@ -302,7 +302,6 @@ then can extract ridges."
   (let* ((scaleogram (scaleogram-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave))
 	 (correlated-ridge-scale-peaks (scale-peaks-of-scaleogram scaleogram (sample-rate analysis-rhythm)))
        	 (skeleton (extract-ridges correlated-ridge-scale-peaks)))
-    ;; (plot-cwt scaleogram :title (name analysis-rhythm))
     (values skeleton scaleogram correlated-ridge-scale-peaks)))
 
 (defmethod tactus-for-rhythm ((analysis-rhythm rhythm) 
@@ -313,11 +312,11 @@ then can extract ridges."
       (skeleton-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave)
     (let ((chosen-tactus (funcall tactus-selector skeleton)))   ; select out the tactus from all ridge candidates.
       (format t "Computed skeleton and chosen tactus ~a~%" chosen-tactus)
-;;      (plot-cwt scaleogram :title (name analysis-rhythm))
-;;      (plot-cwt-labelled scaleogram :title (name analysis-rhythm))
-      (plot-cwt+tactus-labelled scaleogram chosen-tactus analysis-rhythm :title (name analysis-rhythm))
-;;       (plot-cwt+tactus scaleogram chosen-tactus :title (name analysis-rhythm))
-      (plot-ridges+tactus correlated-ridge-scale-peaks chosen-tactus :title (name analysis-rhythm))
+      (plot-cwt+tactus-labelled scaleogram chosen-tactus analysis-rhythm
+				:title (name analysis-rhythm) 
+				:phase-palette :greyscale)
+      ;; (plot-ridges+tactus correlated-ridge-scale-peaks chosen-tactus :title (name analysis-rhythm))
+      (plot-ridges+tactus-labelled correlated-ridge-scale-peaks chosen-tactus :title (name analysis-rhythm))
       (format t "Finished plotting scalograms~%")
       (values chosen-tactus scaleogram))))
 
@@ -379,7 +378,7 @@ then can extract ridges."
   "Returns a set of sample times to clap to given the supplied rhythm"
   (multiple-value-bind (computed-tactus rhythm-scaleogram)
       (tactus-for-rhythm performed-rhythm :tactus-selector tactus-selector)
-    (clap-to-tactus-phase performed-rhythm rhythm-scaleogram computed-tactus)))
+    (clap-to-tactus-phase performed-rhythm rhythm-scaleogram computed-tactus :start-from-beat 1)))
 
 ;; Approaches:
 ;; 1. Count the number of ridges.

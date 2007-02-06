@@ -26,10 +26,12 @@
   "Scales a matrix of values ranging (0 to 1) to integers ranging (maximum-value to 0)"
   (.floor (.- maximum-value (.* matrix maximum-value))))
 
+;;; We assume maximum-sample is typically the length of a scaleogram, so the last element
+;;; is the sample after the data to be displayed.
 (defun label-samples-as-seconds (maximum-sample sample-rate &key (start 0)
 				 (maximum-indices 9) (time-axis-decimation 1))
   "Generates a set of labels of the samples as time in seconds"
-  (let* ((sample-index (.rseq start (1- maximum-sample) maximum-indices))
+  (let* ((sample-index (.rseq start maximum-sample maximum-indices))
 	 (time-index (./ (.* sample-index time-axis-decimation) sample-rate)))
     (loop 
        for label across (val time-index)
@@ -287,7 +289,43 @@
 	      :title title
 	      :time-axis-decimation time-axis-decimation))
 
-(defun plot-claps (original-rhythm claps &key foot-tap-AM (max-computed-scale 2d0)
+(defmethod plot-ridges+tactus-labelled ((ridges n-double-array) (computed-tactus ridge) &key 
+					(title "unnamed")
+					(time-axis-decimation 4)
+					(aspect-ratio 0.15)
+					(colorbox-divisions 4.0)
+					(maximum-colour-value 255))
+  "Plot the ridges in greyscale and the computed tactus in red."
+  (let* ((max-ridge-colours (1- maximum-colour-value))
+	 (downsampled-ridges (.decimate ridges (list 1 time-axis-decimation)))
+	 ;; We make a copy of the tactus since decimate modifies the object (it is, after all, an instance method)
+	 (downsampled-tactus (.decimate	(copy-object computed-tactus) (list 1 time-axis-decimation)))
+	 (plotable-ridges (invert-and-scale (.normalise downsampled-ridges) max-ridge-colours))
+    	 (rescaled-ridges (.* (insert-ridge downsampled-tactus plotable-ridges :constant-value maximum-colour-value) 1d0)))
+
+    (window)
+    ;; White thru grey to black for ridge plots
+    (nlisp:palette-defined (list '(0 "#000000") (list max-ridge-colours "#FFFFFF") (list maximum-colour-value "#FF0000")))
+    ;; (format t "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" (label-samples-as-seconds (.array-dimension ridges 1) 200))
+    (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
+			  (label-samples-as-seconds (.array-dimension downsampled-ridges 1) 
+						    200
+						    ;; (sample-rate original-rhythm)
+						    :time-axis-decimation time-axis-decimation)))
+;;    (plot-command (format nil "set ytics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
+;;			  (label-scale-as-time-support-seconds scaleogram-to-plot (sample-rate analysis-rhythm))))
+    ;; Expand the colorbox and only display the given number of tics.
+    ;; (plot-command "set colorbox user origin 0.88,0.45 size 0.03,0.2")
+    (plot-command (format nil "set cbtics ~5,2f" (/ (range downsampled-ridges) colorbox-divisions)))
+
+    (image (.flip rescaled-ridges) nil nil
+ 	   :title (format nil "Ridges of ~a" title)
+	   :xlabel "Time (Seconds)" 
+ 	   :ylabel "Scale as IOI Range\\n(Seconds)"
+ 	   :reset nil
+ 	   :aspect-ratio aspect-ratio)))
+
+(defun plot-claps (original-rhythm claps &key foot-tap-AM (max-computed-scale 1.2d0)
 		   (comment "")
 		   (signal-description (name original-rhythm)))
   "Plot locations of original beats, computed claps, the foot tap
@@ -298,7 +336,7 @@
     (window)
     (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
 			  (label-samples-as-seconds (duration-in-samples original-rhythm) (sample-rate original-rhythm))))
-    (nplot (list rhythm-signal clap-signal (.+ (./ foot-tap-AM pi) 1)) nil
+    (nplot (list rhythm-signal clap-signal (.+ (./ foot-tap-AM pi 2.0d0) 0.5d0)) nil
 	   :legends '("Original Rhythm" "Computed foot-taps" "Normalised Foot-tap AM")
 	   :styles '("impulses linetype 6 linewidth 3" "impulses linetype 4" "dots 3")
 	   :xlabel "Time in Seconds"

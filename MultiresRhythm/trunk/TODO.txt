@@ -10,3 +10,5 @@ i.e. agogic grouping.
 * Create a preprocessing audio onset detector:
 Sub-band filter, Rectify, LP smooth, differentiate, half-wave rectify & find the peak of
 the signal region over a moving time limited window (use a DoG?)
+* Merge image writing Lisp code into nlisp to simplify distribution.
+* Generate labelled ridge plots using image.
