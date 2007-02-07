@@ -26,12 +26,12 @@
   "Scales a matrix of values ranging (0 to 1) to integers ranging (maximum-value to 0)"
   (.floor (.- maximum-value (.* matrix maximum-value))))
 
-;;; We assume maximum-sample is typically the length of a scaleogram, so the last element
-;;; is the sample after the data to be displayed.
-(defun label-samples-as-seconds (maximum-sample sample-rate &key (start 0)
+;;; We assume max-undecimated-sample is the length of a scaleogram, *before time axis
+;;; decimation* so the last element is the sample after the data to be displayed.
+(defun label-samples-as-seconds (max-undecimated-sample sample-rate &key (start 0)
 				 (maximum-indices 9) (time-axis-decimation 1))
   "Generates a set of labels of the samples as time in seconds"
-  (let* ((sample-index (.rseq start maximum-sample maximum-indices))
+  (let* ((sample-index (.rseq start (/ max-undecimated-sample time-axis-decimation) maximum-indices))
 	 (time-index (./ (.* sample-index time-axis-decimation) sample-rate)))
     (loop 
        for label across (val time-index)
@@ -310,7 +310,7 @@
     ;; (format t "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" (label-samples-as-seconds (.array-dimension ridges 1) 200))
     (plot-command (format nil "set xrange [0:~d]" downsampled-ridges-time))	; ensures last label plotted
     (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
-			  (label-samples-as-seconds downsampled-ridges-time
+			  (label-samples-as-seconds (.array-dimension ridges 1)
 						    200
 						    ;; (sample-rate original-rhythm)
 						    :time-axis-decimation time-axis-decimation)))
