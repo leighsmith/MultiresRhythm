@@ -407,31 +407,6 @@
 (defun range (matrix)
   (- (.max matrix) (.min matrix)))
 
-(defmethod plot-rhythm-labelled ((analysis-rhythm rhythm))
-    (reset-plot)			; Since we don't reset with image.
-    ;; "set size 0.7,0.7"
-    ;; "set origin 0.1,0.1"
-    (plot-command "set multiplot")	; Put the magnitude plot above the phase on the same window.
-    (plot-command "set xtics font \"Times,10\"")
-    (plot-command "set ytics font \"Times,10\"")
-    (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
-			  (label-samples-as-seconds (duration-in-samples analysis-rhythm)
- 						    (sample-rate analysis-rhythm))))
-    (plot-command (format nil "set xrange [0:~d]" (duration-in-samples analysis-rhythm))) ; ensures last label plotted
-    (plot-command "set yrange [0:1.2]")	; Gives some height for the key.
-    (plot-command "set format y \"%3.1f\"")
-    (plot-command "set ytics 0.0, 0.20, 1.0")
-    (plot-command "set size 0.83,0.35")
-    (plot-command "set origin 0.055,0.65")
-    (plot-command "unset key")
-    (plot (time-signal analysis-rhythm) nil
-	  ;; :label (format nil "Rhythm onsets of ~a" (description analysis-rhythm))
-	  :style "impulses linetype 6"
-	  :ylabel "Normalised Intensity"
-	  :title (format nil "Rhythm of ~a" (name analysis-rhythm))
-	  :aspect-ratio 0.1
-	  :reset nil))
-
 ;;; TODO see if we can modularise this!!!
 ;;; Now the image function is fixed, this is how to plot using nlisp with axes labelling.
 (defmethod plot-cwt+tactus-labelled ((scaleogram-to-plot scaleogram)
@@ -456,6 +431,7 @@
     	 (rescaled-phase (.* (insert-ridge downsampled-tactus plotable-phase-with-ridge :constant-value maximum-colour-value) 1d0)))
     (window)				; put this on a separate window.
     (plot-rhythm-labelled analysis-rhythm)
+    ;; Can we move this into plot-cwt-labelled?
     (reset-plot)			; Since we don't reset with image.
     (plot-command "set xtics font \"Times,10\"")
     (plot-command "set ytics font \"Times,10\"")
