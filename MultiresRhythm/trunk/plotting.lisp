@@ -22,6 +22,13 @@
 (in-package :multires-rhythm)
 (use-package :nlisp)
 
+;;; Declaration of interface
+
+(defgeneric plot-ridges+tactus-labelled (ridges computed-tactus &key title time-axis-decimation aspect-ratio)
+  (:documentation "Plot the ridges in greyscale and the computed tactus in red."))
+
+;;; Implementation
+
 (defun invert-and-scale (matrix maximum-value)
   "Scales a matrix of values ranging (0 to 1) to integers ranging (maximum-value to 0)"
   (.floor (.- maximum-value (.* matrix maximum-value))))
