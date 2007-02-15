@@ -1,6 +1,6 @@
 ;;;; -*- Lisp -*-
 ;;;;
-;;;; $Id: rhythm.lisp 211 2007-01-25 13:04:29Z leigh $
+;;;; $Id$
 ;;;;
 ;;;; Miscellaneous signal processing routines. 
 ;;;; They aren't strictly musical, but they aren't general enough to put into NLISP itself.

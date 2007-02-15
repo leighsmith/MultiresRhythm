@@ -1,6 +1,6 @@
 ;;;; -*- Lisp -*-
 ;;;;
-;;;; $Id: test-examples.lisp 198 2007-01-15 16:27:08Z leigh $
+;;;; $Id$
 ;;;;
 ;;;; Diagrams for journal paper
 ;;;;

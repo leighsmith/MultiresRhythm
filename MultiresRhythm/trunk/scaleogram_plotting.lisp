@@ -1,6 +1,6 @@
 ;;;; -*- Lisp -*-
 ;;;;
-;;;; $Id: cwt.lisp 220 2007-02-09 17:04:39Z leigh $
+;;;; $Id$
 ;;;;
 ;;;; Plotting methods for scaleograms.
 ;;;;
