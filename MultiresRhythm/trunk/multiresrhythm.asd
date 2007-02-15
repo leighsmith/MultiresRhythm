@@ -46,5 +46,6 @@
 	       (:file "plotting" :depends-on ("ridges" "signalprocessing"))
 	       (:file "rhythm" :depends-on ("file_io" "plotting" "signalprocessing"))
 	       (:file "cwt" :depends-on ("plotting" "ridges" "rhythm"))
+	       (:file "scaleogram_plotting" :depends-on ("cwt"))
 	       (:file "multires_rhythm" :depends-on ("cwt" "plotting" "rhythm" "signalprocessing"))
 	       (:file "test-examples" :depends-on ("rhythm" "multires_rhythm"))))
