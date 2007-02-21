@@ -72,7 +72,7 @@
      (skip-highest-octaves scaleogram-to-analyse)))
 
 (defmethod duration-in-samples ((scaleogram-to-analyse scaleogram))
-  (.array-dimension (scaleogram-magnitude scaleogram-to-analyse) 0))
+  (.array-dimension (scaleogram-magnitude scaleogram-to-analyse) 1))
 
 (defun gaussian-envelope (width &key (mean 0d0) (stddev 1d0) 
 			    (scaling (/ 1d0 (* (sqrt (* 2d0 pi)) stddev))))
@@ -200,7 +200,8 @@
 	   ;; atan2 used by arg will return -pi to pi.
 	   (setf-subarray (val phase) (val (.phase voice-response)) scale-row)))
 	   ;; (format t "scale-index ~d~%" scale-index)
-    (format t "Finished CWT, last time period = ~d~%" (.aref period (1- number-of-scales)))
+    (format t "Finished CWT, ~d scales, last time period = ~d samples~%" number-of-scales
+	   (floor (.aref period (1- number-of-scales))))
     (values magnitude phase)))
 
 ;; TODO test with:
