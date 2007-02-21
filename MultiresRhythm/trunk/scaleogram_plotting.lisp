@@ -136,6 +136,88 @@
     (plot-command "set colorbox user origin 0.88,0.45 size 0.03,0.2")
     (plot-command (format nil "set cbtics ~5,2f" (/ (range downsampled-magnitude) colorbox-divisions)))
     ;; (plot-command "set title -35") ; moves the titles leftwards but it doesn't help our shrinking the size.
+    (cond ((eq magnitude-palette :greyscale) ; White thru grey to black for magnitude plots
+	   (nlisp:palette-defined '((0 "#FFFFFF") (1 "#000000"))))
+	  ((eq magnitude-palette :jet)
+	   (nlisp:palette-defined (colour-palette (jet-colormap 100)))))
+	  (t 				; Otherwise assume it's a colourmap function
+	   (nlisp:palette-defined (colour-palette (funcall magnitude-palette 100)))))
+    (image (.flip downsampled-magnitude) nil nil
+ 	   :title (format nil "Magnitude of ~a" title)
+	   :xlabel nil
+ 	   :ylabel "Scale as IOI Range\\n(Seconds)"
+ 	   :reset nil
+ 	   :aspect-ratio aspect-ratio)
+    ;; Phase plot
+    (plot-command "set size 1.0,0.5")
+    (plot-command "set origin 0.0,0.0")
+    (cond ((eq phase-palette :spectral)
+	   (nlisp:palette "model HSV maxcolors 256")
+	   (nlisp:palette (format nil "defined ( 0 0 0 1, 1 0 1 1, ~d 1 1 1, ~d 0 0 1)"
+				   (1- maximum-colour-value) maximum-colour-value)))
+	  ((eq phase-palette :grey-smooth)
+	   (nlisp:palette "model RGB")
+	   (nlisp:palette-defined '((0 "#FFFFFF") (0.5 "#000000") (1 "#FFFFFF"))))
+	  (t (nlisp:palette-defined '((0 "#FFFFFF") (1 "#000000")))))
+    ;; (nlisp:palette (format nil "defined ( 0 0 0 1, 1 0 0 1, 1 0 1 1, ~d 1 1 1 )" maximum-colour-value))
+    ;; (nlisp:palette (format nil "defined ( 0 0 0 1, 0 0 1 1, 1 0 1 1, ~d 1 1 1 )" 255))
+    ;; -1 0 1 0
+    ;; (plot-command "set cbtics font \"Symbol,12\"") ; Doesn't work on Aquaterm yet.
+    (plot-command (format nil "set cbtics (~{~{\"~a\" ~d~}~^, ~})~%" 
+ 			  (label-phase-in-radians (range rescaled-phase) colorbox-divisions)))
+    (plot-command "set colorbox user origin 0.88,0.15 size 0.03,0.2")
+    ;;(format t "maximum of rescaled-phase ~f minimum ~f range ~f~%" (.max rescaled-phase) (.min rescaled-phase) (range rescaled-phase))
+    (image (.flip rescaled-phase) nil nil
+	   :title (format nil "Phase of ~a" title)
+	   :xlabel "Time (Seconds)" 
+	   :ylabel "Scale as IOI Range\\n(Seconds)"
+	   :reset nil
+	   :aspect-ratio aspect-ratio)
+    (plot-command "unset multiplot")
+    (close-window)
+    (reset-plot)))
+
+;;; How to plot using nlisp now the image function is fixed.
+(defmethod plot-cwt-labelled ((scaleogram-to-plot scaleogram) &key 
+			      (title "unnamed")
+			      (time-axis-decimation 4)
+			      (colorbox-divisions 4.0)
+			      (maximum-colour-value 255)
+			      (sample-rate 200)
+			      (magnitude-palette :greyscale)
+			      (phase-palette :spectral)
+			      (aspect-ratio 0.15))
+  "Method to plot the magnitude and phase components of the result of
+   a continuous wavelet transform on a signal."
+  (let* ((downsampled-magnitude (.decimate (scaleogram-magnitude scaleogram-to-plot) (list 1 time-axis-decimation)))
+	 (downsampled-phase (.decimate (scaleogram-phase scaleogram-to-plot) (list 1 time-axis-decimation)))
+	 (downsampled-magnitude-time (.array-dimension downsampled-magnitude 1))
+	 ;; (scaleogram-dim-ratio (/ (.array-dimension downsampled-magnitude 0) (.array-dimension downsampled-magnitude 1)))
+	 ;; (aspect-ratio (if (< scaleogram-dim-ratio 0.3) 0.15 scaleogram-dim-ratio))
+	 (rescaled-phase (.* (plotable-phase downsampled-phase downsampled-magnitude maximum-colour-value) 1d0))
+	 ;; (downsampled-tactus (.decimate	(copy-object computed-tactus) (list 1 time-axis-decimation)))
+	 ;; (rescaled-phase-with-ridge (insert-ridge (.* downsampled-tactus 1d0) rescaled-phase :constant-value maximum-colour-value))
+	 )
+    (reset-plot)			; Since we don't reset with image.
+    (plot-command "set multiplot")	; Put the magnitude plot above the phase on the same window.
+    (plot-command "set xtics font \"Times,10\"")
+    (plot-command "set ytics font \"Times,10\"")
+    (plot-command "set format cb \"%4.2f\"")
+    (plot-command "set size 1.0,0.5")
+    (plot-command "set origin 0.0,0.3")
+    ;; Label both magnitude & phase plots in seconds.
+    (plot-command (format nil "set xrange [0:~d]" downsampled-magnitude-time))	; ensures last label plotted
+    (format t "duration in samples ~a~%" (duration-in-samples scaleogram-to-plot))
+    (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
+			  (label-samples-as-seconds (duration-in-samples scaleogram-to-plot)
+						    sample-rate
+						    :time-axis-decimation time-axis-decimation)))
+    (plot-command (format nil "set ytics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
+			  (label-scale-as-time-support-seconds scaleogram-to-plot sample-rate)))
+    ;; Expand the colorbox and only display the given number of tics.
+    (plot-command "set colorbox user origin 0.88,0.45 size 0.03,0.2")
+    (plot-command (format nil "set cbtics ~5,2f" (/ (range downsampled-magnitude) colorbox-divisions)))
+    ;; (plot-command "set title -35") ; moves the titles leftwards but it doesn't help our shrinking the size.
     ;; White thru grey to black for magnitude plots
     (cond ((eq magnitude-palette :greyscale)
 	   (nlisp:palette-defined '((0 "#FFFFFF") (1 "#000000"))))
@@ -181,25 +263,13 @@
 	   :reset nil
 	   :aspect-ratio aspect-ratio)
     (plot-command "unset multiplot")
-    (close-window)
     (reset-plot)))
 
-;;; How to plot using nlisp now the image function is fixed.
-(defmethod plot-cwt-labelled ((scaleogram-to-plot scaleogram) &key 
-			      (title "unnamed")
-			      (time-axis-decimation 4)
-			      (colorbox-divisions 4.0)
-			      (maximum-colour-value 255))
-  "Method to plot the magnitude and phase components of the result of
-   a continuous wavelet transform on a signal."
-  (let* ((downsampled-magnitude (.decimate (scaleogram-magnitude scaleogram-to-plot) (list 1 time-axis-decimation)))
-	 (downsampled-phase (.decimate (scaleogram-phase scaleogram-to-plot) (list 1 time-axis-decimation)))
-	 (rescaled-phase (.* (plotable-phase downsampled-phase downsampled-magnitude maximum-colour-value) 1d0)))
-    (window)				; put this on a separate window.
-    (reset-plot)			; Since we don't reset with image.
+
+#|
+
     ;; "set size 0.7,0.7"
     ;; "set origin 0.1,0.1"
-    (plot-command "set multiplot")	; Put the magnitude plot above the phase on the same window.
     (plot-command "set size 1.0,0.5")
     (plot-command "set origin 0.0,0.5")
     ;; Label both magnitude & phase plots in seconds.
@@ -235,6 +305,7 @@
 	   :aspect-ratio 0.15)
     (plot-command "unset multiplot")
     (reset-plot)))
+|#
 
 (defmethod plot-cwt+tactus ((scaleogram-to-plot scaleogram) (computed-tactus ridge)
 			     &key (title "unnamed") (time-axis-decimation 4))

@@ -313,8 +313,9 @@ then can extract ridges."
     (let ((chosen-tactus (funcall tactus-selector skeleton)))   ; select out the tactus from all ridge candidates.
       (format t "Computed skeleton and chosen tactus ~a~%" chosen-tactus)
       (plot-cwt+tactus-labelled scaleogram chosen-tactus analysis-rhythm
-				:title (name analysis-rhythm) 
-				:phase-palette :greyscale)
+				;; :phase-palette :greyscale
+				:magnitude-palette :jet
+				:title (name analysis-rhythm))
       (plot-ridges+tactus-labelled correlated-ridge-scale-peaks chosen-tactus :title (name analysis-rhythm))
       (format t "Finished plotting scalograms~%")
       (values chosen-tactus scaleogram))))

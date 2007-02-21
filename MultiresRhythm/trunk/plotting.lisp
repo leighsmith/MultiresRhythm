@@ -161,9 +161,10 @@
 (defun jet-colormap (map-length)
   "Returns a colour map that transitions from blue, cyan, yellow, orange, red, simulating the colour of a heat jet."
   (linear-segmented-colormap map-length
-	'(((0.0d0 0.5d0 0.5d0) (0.11d0 1.0d0 1.0d0) (0.34d0 1.0d0 1.0d0) (0.65d0 0.0d0 0.0d0) (1.0d0 0.0d0 0.0d0))
-	  ((0.0d0 0.0d0 0.0d0) (0.09d0 0.0d0 0.0d0) (0.36d0 1.0d0 1.0d0) (0.625d0 1.0d0 1.0d0) (0.875d0 0.0d0 0.0d0) (1.0d0 0.0d0 0.0d0))
-	  ((0.0d0 0.0d0 0.0d0) (0.35d0 0.0d0 0.0d0) (0.66d0 1.0d0 1.0d0) (0.89d0 1.0d0 1.0d0) (1.0d0 0.5d0 0.5d0)))))
+	'(((0d0 0d0 0d0) (0.35d0 0d0 0d0) (0.66d0 1d0 1d0) (0.89d0 1d0 1d0) (1d0 0.5d0 0.5d0))
+	  ((0d0 0d0 0d0) (0.125d0 0d0 0d0) (0.375d0 1d0 1d0) (0.64d0 1d0 1d0) (0.91d0 0d0 0d0) (1d0 0d0 0d0))
+	  ((0d0 0.5d0 0.5d0) (0.11d0 1d0 1d0) (0.34d0 1d0 1d0) (0.65d0 0d0 0d0) (1d0 0d0 0d0)))
+	:alpha 0))
 
 (defun colour-swatch (colormap &key (swatch-width 30))
   "Make a nice little vertical bar plotting the color map"
@@ -172,6 +173,11 @@
 
 ;; (imago:write-pnm (colour-swatch (spectral-colormap 256) :swatch-width 30) "/tmp/colour-swatch2.pnm" :ascii)
 ;; (imago:write-pnm (colour-swatch (jet-colormap 256) :swatch-width 30) "/tmp/colour-swatch2.pnm" :ascii)
+
+(defun colour-palette (colourmap)
+  (loop 
+     for colour-index from 0 below (length colourmap)
+     collect (list colour-index (format nil "#~6,'0x" (aref colourmap colour-index)))))
 
 ;;; Functions to create IMAGO image instances from magnitude and phase components of a CWT.
 
