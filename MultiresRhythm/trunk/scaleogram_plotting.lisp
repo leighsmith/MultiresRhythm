@@ -139,7 +139,7 @@
     (cond ((eq magnitude-palette :greyscale) ; White thru grey to black for magnitude plots
 	   (nlisp:palette-defined '((0 "#FFFFFF") (1 "#000000"))))
 	  ((eq magnitude-palette :jet)
-	   (nlisp:palette-defined (colour-palette (jet-colormap 100)))))
+	   (nlisp:palette-defined (colour-palette (jet-colormap 100))))
 	  (t 				; Otherwise assume it's a colourmap function
 	   (nlisp:palette-defined (colour-palette (funcall magnitude-palette 100)))))
     (image (.flip downsampled-magnitude) nil nil
