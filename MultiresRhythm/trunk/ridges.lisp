@@ -46,6 +46,9 @@
 (defgeneric contains-scale-and-time (ridge scale time)
   (:documentation "Returns t if the given scale and time are part of this ridge."))
 
+(defgeneric contains-scale-p (ridge scale)
+  (:documentation "Returns t if the given scale is within this ridge."))
+
 (defgeneric average-scale (ridge)
   (:documentation "Returns the average scale number of a ridge"))
 
@@ -94,6 +97,10 @@
 (defmethod contains-scale-and-time ((the-ridge ridge) scale time)
   "Returns t if the given scale and time are part of this ridge."
   (equal scale (scale-at-time the-ridge time)))
+
+(defmethod contains-scale-p ((the-ridge ridge) scale)
+  "Returns t if the given scale is within this ridge"
+  (find scale (scales the-ridge)))
 
 (defmethod average-scale ((the-ridge ridge))
   "Returns the mean average of the scale numbers"
@@ -314,6 +321,13 @@
   (loop
      for ridge-candidate in skeleton
      when (scale-at-time ridge-candidate time)
+     collect ridge-candidate))
+
+(defun ridges-containing-scale (skeleton scale)
+  "Returns a list of ridges which have energy in a scale"
+  (loop
+     for ridge-candidate in skeleton
+     when (contains-scale-p ridge-candidate scale)
      collect ridge-candidate))
 
 (defmethod scales-as-array ((the-ridge ridge))
