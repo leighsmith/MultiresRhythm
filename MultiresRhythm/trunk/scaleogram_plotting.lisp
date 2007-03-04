@@ -28,11 +28,15 @@
 (defgeneric plot-cwt-labelled (scaleogram &key title time-axis-decimation)
   (:documentation "Function to plot the magnitude and phase components of the result of a continuous wavelet transform on a signal using gnuplot with labelling."))
 
-(defgeneric plot-cwt+tactus-labelled (scaleogram computed-tactus rhythm &key 
-						 title time-axis-decimation colorbox-divisions
-						 maximum-colour-value aspect-ratio
-						 phase-palette magnitude-palette)
-  (:documentation "Plot the magnitude in greyscale overlaid with the computed tactus in red, the phase overlaid with the tactus in black."))
+(defgeneric plot-cwt+ridges (scaleogram ridges rhythm &key 
+					title
+					time-axis-decimation
+					colorbox-divisions
+					maximum-colour-value
+					aspect-ratio
+					phase-palette
+					magnitude-palette)
+  (:documentation "Plot the magnitude in greyscale overlaid with the nominated ridges in red, the phase overlaid with the ridges in black."))
 
 (defgeneric plot-cwt+tactus (scaleogram computed-tactus &key title time-axis-decimation)
   (:documentation "Plot the magnitude in greyscale overlaid with the computed tactus in red, the phase overlaid with the tactus in black."))
@@ -95,28 +99,30 @@
 
 ;;; TODO see if we can modularise this!!!
 ;;; Now the image function is fixed, this is how to plot using nlisp with axes labelling.
-(defmethod plot-cwt+tactus-labelled ((scaleogram-to-plot scaleogram)
-				     (computed-tactus ridge)
-				     (analysis-rhythm rhythm) &key 
-				     (title "unnamed")
-				     (time-axis-decimation 4)
-				     (colorbox-divisions 4.0)
-				     (maximum-colour-value 255)
-				     (magnitude-palette :greyscale)
-				     (phase-palette :spectral)
-				     (aspect-ratio 0.15))
+(defmethod plot-cwt+ridges ((scaleogram-to-plot scaleogram)
+			    (ridges list)
+			    (analysis-rhythm rhythm) &key 
+			    (title "unnamed")
+			    (time-axis-decimation 4)
+			    (colorbox-divisions 4.0)
+			    (maximum-colour-value 255d0)
+			    (magnitude-palette :greyscale)
+			    (phase-palette :spectral)
+			    (aspect-ratio 0.15))
   "Method to plot the magnitude and phase components of the result of
    a continuous wavelet transform on a signal. Plot the phase with the computed tactus in black."
   (let* ((downsampled-magnitude (.decimate (scaleogram-magnitude scaleogram-to-plot) (list 1 time-axis-decimation)))
 	 (downsampled-phase (.decimate (scaleogram-phase scaleogram-to-plot) (list 1 time-axis-decimation)))
-	 (downsampled-tactus (.decimate	(copy-object computed-tactus) (list 1 time-axis-decimation)))
 	 (downsampled-magnitude-time (.array-dimension downsampled-magnitude 1))
 	 ;; (scaleogram-dim-ratio (/ (.array-dimension downsampled-magnitude 0) (.array-dimension downsampled-magnitude 1)))
 	 ;; (aspect-ratio (if (< scaleogram-dim-ratio 0.3) 0.15 scaleogram-dim-ratio))
-	 (plotable-phase-with-ridge (plotable-phase downsampled-phase downsampled-magnitude maximum-colour-value))
-    	 (rescaled-phase (.* (insert-ridge downsampled-tactus plotable-phase-with-ridge :constant-value maximum-colour-value) 1d0)))
+	 (plotable-phase-with-ridge (.* (plotable-phase downsampled-phase downsampled-magnitude maximum-colour-value) 1d0))
+	 (downsampled-ridge))
+    (dolist (ridge ridges) 
+      	 (setf downsampled-ridge (.decimate (copy-object ridge) (list 1 time-axis-decimation)))
+	 (setf plotable-phase-with-ridge (insert-ridge downsampled-ridge plotable-phase-with-ridge :constant-value maximum-colour-value)))
     (window)				; put this on a separate window.
-    (plot-rhythm-labelled analysis-rhythm)
+    (if analysis-rhythm (plot-rhythm-labelled analysis-rhythm))
     ;; Can we move this into plot-cwt-labelled?
     (reset-plot)			; Since we don't reset with image.
     (plot-command "set xtics font \"Times,10\"")
@@ -164,10 +170,9 @@
     ;; -1 0 1 0
     ;; (plot-command "set cbtics font \"Symbol,12\"") ; Doesn't work on Aquaterm yet.
     (plot-command (format nil "set cbtics (~{~{\"~a\" ~d~}~^, ~})~%" 
- 			  (label-phase-in-radians (range rescaled-phase) colorbox-divisions)))
+ 			  (label-phase-in-radians (range plotable-phase-with-ridge) colorbox-divisions)))
     (plot-command "set colorbox user origin 0.88,0.15 size 0.03,0.2")
-    ;;(format t "maximum of rescaled-phase ~f minimum ~f range ~f~%" (.max rescaled-phase) (.min rescaled-phase) (range rescaled-phase))
-    (image (.flip rescaled-phase) nil nil
+    (image (.flip plotable-phase-with-ridge) nil nil
 	   :title (format nil "Phase of ~a" title)
 	   :xlabel "Time (Seconds)" 
 	   :ylabel "Scale as IOI Range\\n(Seconds)"
