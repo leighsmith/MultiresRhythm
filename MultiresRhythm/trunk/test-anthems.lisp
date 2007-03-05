@@ -33,6 +33,11 @@
 (defmacro anthem-named (anthem-symbol)
   `(find ,anthem-symbol *national-anthems* :key #'caar :test #'eq))
 
+(defun anthem-duration-in-samples (anthem duration &key (shortest-ioi 50))
+  "Returns the duration in samples, normalized to equal tempo"
+  (let ((min-duration (/ (* shortest-ioi 2.0) (fifth (first anthem)))))
+    (first (intervals-in-samples (list duration) :ioi min-duration))))
+
 (defun anthem-rhythm (anthem &key (shortest-ioi 50))
   (let* ((anthem-descriptor (first anthem))
 	 (anthem-name (symbol-name (first anthem-descriptor)))
@@ -40,29 +45,28 @@
 	 (anthem-iois (second anthem)))
     (iois-to-rhythm anthem-name anthem-iois :shortest-ioi min-duration)))
 
-(defun anthem-bar-duration (anthem)
-  (seventh (first anthem)))
+(defmacro anthem-bar-duration (anthem)
+  `(seventh (first ,anthem)))
 
+;;; :start-at = the anacrusis duration from the start of the bar.
 (defun anthem-start-at (anthem)
   (ninth (first anthem)))
 
-(defun anacrusis (anthem)
+(defun anthem-anacrusis (anthem)
   (- (anthem-bar-duration anthem) (anthem-start-at anthem)))
-
-;;; Need duration-in-samples, should normalize with equal tempo?
-(defun bar-duration-in-samples (duration)
-  (first (intervals-in-samples (list duration) :ioi 50)))
 
 (defun bar-scale (anthem scaleogram)
   "Compute the scale index that the anthem would activate on the scaleogram"
-  (scale-from-period (bar-duration-in-samples (anthem-bar-duration anthem))
+  (scale-from-period (anthem-duration-in-samples anthem (anthem-bar-duration anthem))
 		     (voices-per-octave scaleogram)))
 
 ;;; TODO need to match anacrusis for phase
 (defun bar-ridges-for-skeleton (anthem rhythm-skeleton rhythm-scaleogram)
   "Returns the ridges of the given skeleton matching the bar duration"
   (let* ((bar-scale-index (round (bar-scale anthem rhythm-scaleogram))))
-    (format t "bar scale index ~a~%" bar-scale-index)
+    (format t "bar scale index ~a time-support ~a samples~%" 
+	    bar-scale-index 
+	    (time-support bar-scale-index (voices-per-octave rhythm-scaleogram)))
     (ridges-containing-scale rhythm-skeleton bar-scale-index)))
 
 ;;; Match known bar duration against a ridge & determine how much evidence
@@ -79,7 +83,7 @@
 
 ;; (bar-ridges-for-anthem (anthem-named 'australia))
 ;; (multiple-value-setq (skeleton scaleogram peaks) (skeleton-of-rhythm (anthem-rhythm (anthem# 3))))
-;; (setf matching-ridges (ridges-containing-scale skeleton (round (bar-scale (anthem# 3) scaleogram))))
+;; (setf matching-ridges (bar-ridges-for-skeleton (anthem# 3) skeleton scaleogram))
 ;; (plot-highlighted-ridges peaks matching-ridges)
 
 ;; (defun bar-scale-for-anthem (anthem &key (tactus-selector #'select-longest-lowest-tactus))
@@ -89,12 +93,7 @@
 ;;     (format t "computed tactus ~a~%" computed-tactus)
 ;;     (bar-scale-number (bar-scale anthem rhythm-scaleogram))))
 
-
-
-;; :bar-duration :quarter-note 
-;; :start-at = the anacrusis duration from the start of the bar.
-
 (defmacro clap-to-anthem (anthem)
-    (clap-to-rhythm (anthem-rhythm anthem)))
+  `(clap-to-rhythm (anthem-rhythm ,anthem)))
 
 ;; (time (clap-to-anthem (anthem# 32))
