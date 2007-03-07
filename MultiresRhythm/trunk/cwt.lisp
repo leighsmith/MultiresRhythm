@@ -85,8 +85,9 @@
     (.* scaling
 	(.exp (.- (./ (.expt (.- x mean) 2.0) (.* 2d0 stddev stddev)))))))
 
-;; (plot (gaussian-envelope 150 :stddev 2d0) nil)
-;; (plot (gaussian-envelope 150 :mean -1d0) nil)
+;; (plot (gaussian-envelope 150 :stddev 2d0) (.rseq -5.d0 +5.0 150))
+;; (plot (gaussian-envelope 150 :mean -1d0 :stddev 2.5) (.rseq -5.d0 +5.0 150))
+;; (plot (gaussian-envelope 150) (.rseq -5.d0 +5.0 150))
 
 (defun morlet-wavelet-fourier (signal-time-period wavelet-scale &key (omega0 6.2))
   "Construct a Morlet wavelet filter in the Fourier domain within the length of the signal (so we can multiply).

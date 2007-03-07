@@ -286,8 +286,8 @@ then can extract ridges."
     ;; show what we got as an intensity plot
     ;; (setf *magnitude-colour-map* #'jet-colormap)
     ;; This tends to flatten everything out...
-    (plot-image #'magnitude-image "-correlation" (list correlated-ridges) :title "ridges") 
-    (plot-image #'magnitude-image "-correlation" (list tempo-weighted-ridges) :title "tempo-ridges")
+    ;; (plot-image #'magnitude-image (list correlated-ridges) :title "ridges") 
+    ;; (plot-image #'magnitude-image (list tempo-weighted-ridges) :title "tempo-ridges")
     ;; :title (name analysis-rhythm))
     ;; substituted tempo-weighted-ridges for correlated-ridges to enable tempo selectivity.
     ;; (determine-scale-peaks tempo-weighted-ridges))) ; for tempo weighting
@@ -312,11 +312,11 @@ then can extract ridges."
       (skeleton-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave)
     (let ((chosen-tactus (funcall tactus-selector skeleton)))   ; select out the tactus from all ridge candidates.
       (format t "Computed skeleton and chosen tactus ~a~%" chosen-tactus)
-      (plot-cwt+tactus-labelled scaleogram chosen-tactus analysis-rhythm
-				;; :phase-palette :greyscale
-				:magnitude-palette :jet
-				:title (name analysis-rhythm))
-      (plot-ridges+tactus-labelled correlated-ridge-scale-peaks chosen-tactus :title (name analysis-rhythm))
+      (plot-cwt+ridges scaleogram (list chosen-tactus) analysis-rhythm
+		       ;; :phase-palette :greyscale
+		       :magnitude-palette :jet
+		       :title (name analysis-rhythm))
+      (plot-highlighted-ridges correlated-ridge-scale-peaks (list chosen-tactus) :title (name analysis-rhythm))
       (format t "Finished plotting scalograms~%")
       (values chosen-tactus scaleogram))))
 

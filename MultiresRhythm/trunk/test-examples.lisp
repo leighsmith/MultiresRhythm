@@ -30,11 +30,12 @@
 	 (mod (.* 3.0 (.cos (.* norm-signal 2.0 pi modFreq))))
 	 (fm-signal (.cos (.+ (.* 2 pi carrierFreq norm-signal) mod))))
     ;; (plot mod nil)
-    (plot fm-signal nil)
+    ;; (plot fm-signal nil)
     fm-signal))
 
 ;; Test dyadic signals:
 ;; (multiple-value-setq (fm-mag fm-phase) (dyadic-cwt (fm-test) 8 512))
+;; (time (dyadic-cwt fm-sig 8 512)) ;; many cons!
 ;; (setf x (dyadic-cwt (fm-test :signal-length 256) 8 256)) ; magnitude only.
 ;; Test any length signals:
 ;; (setf fm-scaleogram (cwt (fm-test) 8))
@@ -54,11 +55,12 @@
 	 (rising-harmonic-signal (.+ (.* 0.33 (.cos (.* norm-signal 2.0 pi periodicity)))
 				     (.* 0.33 (.cos (.* norm-signal 2.0 pi periodicity2)))
 				     (.* 0.33 (.cos (.* norm-signal 2.0 pi periodicity3))))))
-    (plot rising-harmonic-signal nil)
+    ;; (plot rising-harmonic-signal nil)
     rising-harmonic-signal))
 
 ;; (plot-cwt (cwt (rising-harmonic-test) 8) :title "rising-harmonic")
 ;; (plot-cwt-labelled (cwt (rising-harmonic-test) 8) :title "rising-harmonic")
+;; (time (cwt (rising-harmonic-test) 16))
 
 (defun test-lpc ()
 "Tests local phase congruency"
@@ -72,10 +74,9 @@
 ;; (test-lpc)
 
 (defun scaleogram-of-grid (rhythm-grid)
-  (let* ((rhythm-scaleogram (scaleogram-of-rhythm 
-			     (rhythm-of-grid "test-rhythm" rhythm-grid :shortest-ioi 256)
-			     :voices-per-octave 12)))
-    (plot-cwt-labelled rhythm-scaleogram :title "test-rhythm")
+  (let* ((rhythm (rhythm-of-grid "test-rhythm" rhythm-grid :shortest-ioi 256))
+	 (rhythm-scaleogram (scaleogram-of-rhythm rhythm :voices-per-octave 12)))
+    (plot-cwt-of-rhythm rhythm-scaleogram rhythm :title "test-rhythm")
     rhythm-scaleogram))
 
 ;; (setf rhythm-scaleogram (scaleogram-of-grid '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0)))
@@ -250,7 +251,7 @@
 ;;; For testing plotting
 ;; (setf plot-test-rhythm (load-rhythm-file "intensity34_to_44" :description "intensity" :sample-rate 200))
 ;; (multiple-value-setq (plot-test-tactus plot-test-scaleogram) (tactus-for-rhythm plot-test-rhythm))
-;; (plot-cwt+tactus-labelled plot-test-scaleogram plot-test-tactus plot-test-rhythm :phase-palette :grey-smooth)
+;; (plot-cwt+tactus-labelled plot-test-scaleogram plot-test-tactus plot-test-rhythm :magnitude-palette #'jet-colormap :phase-palette :greyscale)
 
 ;;; Polyrhythms
 ;;; Sethares & Staley 2001 3 against 2 polyrhythm example.

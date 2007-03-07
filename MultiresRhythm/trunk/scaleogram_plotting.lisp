@@ -23,7 +23,10 @@
 (use-package :nlisp)
 
 (defgeneric plot-cwt (scaleogram &key title time-axis-decimation)
-  (:documentation "Function to plot the magnitude and phase components of the result of a continuous wavelet transform on a signal."))
+  (:documentation "Function to plot the magnitude and phase components of the result of a continuous wavelet transform on a signal using gnuplot with labelling."))
+
+(defgeneric plot-cwt-of-rhythm (scaleogram rhythm &key title time-axis-decimation)
+  (:documentation "Function to plot the magnitude and phase components of the result of a continuous wavelet transform on a rhythm signal."))
 
 (defgeneric plot-cwt-labelled (scaleogram &key title time-axis-decimation)
   (:documentation "Function to plot the magnitude and phase components of the result of a continuous wavelet transform on a signal using gnuplot with labelling."))
@@ -50,6 +53,9 @@
 (defgeneric label-scale-as-time-support-seconds (scaleogram sample-rate)
   (:documentation "Generates a set of labels of the scales as time support intervals in seconds"))
 
+(defgeneric plot-highlighted-ridges (ridges highlighted-ridges scaleogram &key title time-axis-decimation)
+  (:documentation "Plot all ridges in greyscale and the highlighted ridges in red."))
+
 ;;;; Methods
 
 ;; We reverse the labels so we plot in more intuitive lowest scale on the left orientation.
@@ -71,7 +77,7 @@
 
 (defun label-phase-in-radians (phaseogram-range divisions)
   (declare (ignore phaseogram-range divisions))
-  ;; '(("-{/Symbol p}" 0) ("-pi/2" 64) ("0" 128) ("pi/2" 192) ("pi" 254)))
+  ;; '(("-{/Symbol p}" 0) ("-{/Symbol p}/2" 64) ("0" 128) ("{/Symbol p}/2" 192) ("{/Symbol p}" 254)))
   '(("-pi" 0) ("-pi/2" 64) ("0" 128) ("pi/2" 192) ("pi" 254)))
 
 (defun label-phase-in-radians-2 (phaseogram-range divisions)
@@ -83,16 +89,45 @@
      for label = (- (* label-index label-increment) pi)
      collect (list label position)))
 
-;;; Creates standard image files of the supplied magnitude and phase components of a continuous
-;;; wavelet transform.
-(defmethod plot-cwt ((scaleogram-to-plot scaleogram) &key (title "unnamed") (time-axis-decimation 4))
+(defmethod plot-cwt-of-rhythm ((scaleogram-to-plot scaleogram) (analysis-rhythm rhythm) &key 
+			       (title "unnamed")
+			       (time-axis-decimation 4))
   "Method to plot the magnitude and phase components of the result of
-   a continuous wavelet transform on a signal."
-  (plot-images (list (list #'magnitude-image "-magnitude" (list (scaleogram-magnitude scaleogram-to-plot)))
-		     (list #'phase-image "-phase" (list (scaleogram-phase scaleogram-to-plot)
-							(scaleogram-magnitude scaleogram-to-plot))))
-	       :title title
-	       :time-axis-decimation time-axis-decimation))
+   a continuous wavelet transform on a rhythm signal."
+  ;; Setting the X and Y tics and axes ranges. Problem is this is set before (window) and
+  ;; multiplot in plot-images. Either we must pass the function and parameters into
+  ;; plot-images, or we create a delayed promise of invocation, in this case by passing in
+  ;; the commands for later transfer to gnuplot.
+  (let ((axes-labels (axes-labelled-in-seconds scaleogram-to-plot (sample-rate analysis-rhythm) time-axis-decimation)))
+    ;; Put the magnitude plot above the phase on the same window.
+    (plot-images (list (list #'magnitude-image 
+			     (list (scaleogram-magnitude scaleogram-to-plot))
+			     '((1.0 0.5) (0.0 0.3))
+			     axes-labels)
+		       (list #'phase-image 
+			     (list (scaleogram-phase scaleogram-to-plot) (scaleogram-magnitude scaleogram-to-plot))
+			     '((1.0 0.5) (0.0 0.0))
+			     axes-labels))
+		 :title title
+		 :time-axis-decimation time-axis-decimation)))
+
+(defmethod plot-cwt ((scaleogram-to-plot scaleogram) &key 
+		     (title "unnamed") 
+		     (time-axis-decimation 4))
+  "Method to plot the magnitude and phase components of the result of
+   a continuous wavelet transform on an arbitary signal."
+  ;; Setting the X and Y tics and axes ranges.
+  (let ((axes-labels (axes-labelled-in-samples scaleogram-to-plot time-axis-decimation)))
+    (plot-images (list (list #'magnitude-image 
+			     (list (scaleogram-magnitude scaleogram-to-plot))
+			     '((1.0 0.5) (0.0 0.3))
+			     axes-labels)
+		       (list #'phase-image 
+			     (list (scaleogram-phase scaleogram-to-plot) (scaleogram-magnitude scaleogram-to-plot))
+			     '((1.0 0.5) (0.0 0.0))
+			     axes-labels))
+		 :title title
+		 :time-axis-decimation time-axis-decimation)))
 
 (defun range (matrix)
   (- (.max matrix) (.min matrix)))
@@ -122,6 +157,7 @@
       	 (setf downsampled-ridge (.decimate (copy-object ridge) (list 1 time-axis-decimation)))
 	 (setf plotable-phase-with-ridge (insert-ridge downsampled-ridge plotable-phase-with-ridge :constant-value maximum-colour-value)))
     (window)				; put this on a separate window.
+    (plot-command "set multiplot")	; Put the magnitude plot above the phase on the same window.
     (if analysis-rhythm (plot-rhythm-labelled analysis-rhythm))
     ;; Can we move this into plot-cwt-labelled?
     (reset-plot)			; Since we don't reset with image.
@@ -318,13 +354,27 @@
    overlaid with the tactus in black."
   ;; We make a copy of the tactus since decimate modifies the object (it is, after all, an
   ;; instance method)
-  (plot-images (list (list #'tactus-image "-mag+tactus" (list (copy-object computed-tactus)
-							      (scaleogram-magnitude scaleogram-to-plot)))
-		     (list #'tactus-on-phase-image "-phase+tactus" (list (copy-object computed-tactus)
-									 (scaleogram-phase scaleogram-to-plot)
-									 (scaleogram-magnitude scaleogram-to-plot))))
+  (plot-images (list (list #'highlighted-ridges-image (list (copy-object computed-tactus)
+							    (scaleogram-magnitude scaleogram-to-plot)))
+		     (list #'ridges-on-phase-image (list (copy-object computed-tactus)
+							 (scaleogram-phase scaleogram-to-plot)
+							 (scaleogram-magnitude scaleogram-to-plot))))
 	       :title title
 	       :time-axis-decimation time-axis-decimation))
+
+(defmethod plot-highlighted-ridges ((tf-plane n-double-array) 
+				    (highlighted-ridges list)
+				    (scaleogram-to-plot scaleogram) &key 
+				    (title "unnamed")
+				    (time-axis-decimation 4))
+  "Plot the ridges in greyscale and the highlighted ridges in red."
+  ;; We make a copy of the tactus since decimate modifies the object (it is, after all, an instance method)
+  (plot-image #'highlighted-ridges-image 
+	      (list (mapcar #'copy-object highlighted-ridges) tf-plane)
+	      '((1.0 0.5) (0.0 0.0))
+	      (axes-labelled-in-samples scaleogram-to-plot time-axis-decimation) 
+	      :title title
+	      :time-axis-decimation time-axis-decimation))
 
 (defmethod plot-scale-energy-at-time ((scaleogram-to-plot scaleogram) time)
   "Plot a cross-section of the magnitude at a given time point so we can spot the highest activated scales."
@@ -340,3 +390,14 @@
 	:ylabel "Magnitude Energy"
 	:reset nil
 	:aspect-ratio 0.2))
+
+(defun plot-voice-behaviour (original-rhythm scaleogram-to-plot voices)
+  "Plots the magnitude response of several single wavelet voices (dilation scale) to a rhythm."
+  (let ((scaleogram-mag (scaleogram-magnitude scaleogram-to-plot)))
+    (nplot (append (mapcar (lambda (voice) (.row scaleogram-mag voice)) voices)
+		   (list (.* (.max scaleogram-mag) (time-signal original-rhythm))))
+	   nil
+	   :legends (append (mapcar (lambda (voice) (format nil "Voice ~a" voice)) voices) 
+			    (list (name original-rhythm)))
+	   :title "Select wavelet voice behaviours to non-isochronous rhythms"
+	   :aspect-ratio 0.15)))

@@ -24,8 +24,11 @@
 
 ;;; Declaration of interface
 
-(defgeneric plot-ridges+tactus-labelled (ridges computed-tactus &key title time-axis-decimation aspect-ratio)
-  (:documentation "Plot the ridges in greyscale and the computed tactus in red."))
+(defgeneric make-plotable-ridges (tf-plane ridges &key time-axis-decimation maximum-colour-value)
+  (:documentation "Downsamples the time-frequency plane and inserts the list of ridges into the plane"))
+
+(defgeneric image-plotter (tf-plane window-dimensions title axes-labels &key palette aspect-ratio)
+  (:documentation "Plot images TODO"))
 
 ;;; Implementation
 
@@ -45,18 +48,17 @@
        for position across (val sample-index)
        collect (list label (floor position)))))
 
-;;; Colour map generating functions
+(defun label-samples (max-undecimated-sample &key (start 0)
+		      (maximum-indices 9) (time-axis-decimation 1))
+  "Generates a set of labels of the samples as time in samples"
+  (let* ((sample-index (.rseq start (/ max-undecimated-sample time-axis-decimation) maximum-indices))
+	 (time-index (.* sample-index time-axis-decimation)))
+    (loop 
+       for label across (val time-index)
+       for position across (val sample-index)
+       collect (list (floor label) (floor position)))))
 
-(defun greyscale-colormap (map-length &key (alpha 255))
-  (declare (type fixnum map-length))
-  (loop for map-index below map-length
-     with color-map = (make-array map-length)
-     with color-increment = (/ 256 map-length) ; color map colors range from 0 - 255
-     with grey-value
-     do 
-       (setf grey-value (floor (* map-index color-increment)))
-       (setf (aref color-map map-index) (imago:make-color grey-value grey-value grey-value alpha))
-     finally (return color-map)))
+;;; Colour map generating functions
 
 (defun hls-value (n1 n2 hue)
   "Sub-function to convert from hue (0-360 degrees) and positions within the 
@@ -166,14 +168,6 @@
 	  ((0d0 0.5d0 0.5d0) (0.11d0 1d0 1d0) (0.34d0 1d0 1d0) (0.65d0 0d0 0d0) (1d0 0d0 0d0)))
 	:alpha 0))
 
-(defun colour-swatch (colormap &key (swatch-width 30))
-  "Make a nice little vertical bar plotting the color map"
-  (make-colour-mapped-image (.subarray (.iseq2 0 (1- (length colormap))) (list t (list 0 (1- swatch-width))))
-                            colormap))
-
-;; (imago:write-pnm (colour-swatch (spectral-colormap 256) :swatch-width 30) "/tmp/colour-swatch2.pnm" :ascii)
-;; (imago:write-pnm (colour-swatch (jet-colormap 256) :swatch-width 30) "/tmp/colour-swatch2.pnm" :ascii)
-
 (defun colour-palette (colourmap)
   (loop 
      for colour-index from 0 below (length colourmap)
@@ -195,15 +189,13 @@
 ;; Define this as a parameter rather than as a keyword parameter since it needs to be set
 ;; several calls higher in the hierarchy - cost of functional programming it seems...
 ;; (defparameter *magnitude-colour-map* #'jet-colormap)
-(defparameter *magnitude-colour-map* #'greyscale-colormap)
+;; (defparameter *magnitude-colour-map* #'greyscale-colormap)
 
-(defun magnitude-image (magnitude 
-			&key (magnitude-limit 0 magnitude-limit-supplied-p)
-			(maximum-colour-value 255))
-  "Creates a plotable image object from the magnitude using a colour map.
-   Dark values are higher valued, lighter values are lower valued.
-   magnitude-limit = Can be used to clamp the global extrema at limits to allow
-   interpreting the magnitude density plots for local extrema."
+
+#|
+(magnitude-limit 0 magnitude-limit-supplied-p)
+ magnitude-limit = Can be used to clamp the global extrema at limits to allow
+   interpreting the magnitude density plots for local extrema.
   ;; A problem can be that the dynamic range of the signal energy can
   ;; exceed the grey scales, making most of the interesting local maxima
   ;; barely observable due to the "height" of the global maxima.
@@ -213,9 +205,98 @@
       (let ((exceeded (.> magnitude magnitude-limit)))
 	(setf magnitude (.+ (.* (.not exceeded) magnitude) 
 			    (.* exceeded magnitude-limit)))))
-  ;; 0 - maximum-colour-value inclusive:
-  (let* ((plotable-mag (invert-and-scale (.normalise magnitude) maximum-colour-value)))
-    (make-colour-mapped-image plotable-mag (funcall *magnitude-colour-map* (1+ maximum-colour-value)))))
+
+|#
+
+(defun axes-labelled-in-seconds (scaleogram-to-plot sample-rate time-axis-decimation)
+  "Returns the axes commands to gnuplot to label axes in seconds"
+  (let ((axes-commands (make-array 200 :element-type 'character :fill-pointer 0)))
+    ;; ensures last label plotted
+    ;; (format axes-commands "set xrange [0:~d]~%" (duration-in-samples scaleogram-to-plot))
+    ;; Label plots in seconds.
+    (format axes-commands "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
+	    (label-samples-as-seconds (duration-in-samples scaleogram-to-plot)
+				      sample-rate
+				      :time-axis-decimation time-axis-decimation))
+    (format axes-commands "set ytics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
+	    (label-scale-as-time-support-seconds scaleogram-to-plot sample-rate))
+    axes-commands))
+
+(defun axes-labelled-in-samples (scaleogram-to-plot time-axis-decimation)
+  "Returns the axes commands to gnuplot to label axes in samples"
+  (let ((axes-commands (make-array 200 :element-type 'character :fill-pointer 0)))
+    ;; ensures last label plotted
+    ;; (format axes-commands "set xrange [0:~d]" (duration-in-samples scaleogram-to-plot))
+    (format axes-commands "set xtics (~{~{\"~d\" ~5d~}~^, ~})~%" 
+	    (label-samples (duration-in-samples scaleogram-to-plot) :time-axis-decimation time-axis-decimation))
+    (format axes-commands "set ytics (~{~{\"~5,0f\" ~5d~}~^, ~})~%" 
+	    (label-scale-as-time-support scaleogram-to-plot))
+    axes-commands))
+
+(defun set-image-dimensions (image-dimensions)
+  (let ((image-size (first image-dimensions))
+	(image-origin (second image-dimensions)))
+    (plot-command (format nil "set size ~f,~f" (first image-size) (second image-size)))
+    (plot-command (format nil "set origin ~f,~f" (first image-origin) (second image-origin)))))
+
+(defun set-axes-labels (axes-commands)
+  (plot-command "set xtics font \"Times,10\"")
+  (plot-command "set ytics font \"Times,10\"")
+  (plot-command axes-commands))
+
+(defun set-colour-box (data-to-plot window-dimensions &key (colorbox-divisions 4.0))
+  (let ((window-origin (second window-dimensions)))
+    ;; Expand the colorbox and only display the given number of tics.
+    (plot-command "set format cb \"%4.2f\"")
+    (plot-command (format nil "set cbtics ~5,2f" (/ (range data-to-plot) colorbox-divisions)))
+    (plot-command (format nil "set colorbox user origin ~f,~f size 0.03,0.2" (+ (first window-origin) 0.88) (+ (second window-origin) 0.15)))))
+
+(defun phase-colour-box (phase-data window-dimensions  &key (colorbox-divisions 4.0))
+  (let ((window-origin (second window-dimensions)))
+    ;; (plot-command "set cbtics font \"Symbol,12\"") ; Doesn't work on Aquaterm yet.
+    (plot-command (format nil "set cbtics (~{~{\"~a\" ~d~}~^, ~})~%" 
+ 			  (label-phase-in-radians (range phase-data) colorbox-divisions)))
+    (plot-command (format nil "set colorbox user origin ~f,~f size 0.03,0.2" (+ (first window-origin) 0.88) (+ (second window-origin) 0.15)))))
+
+(defun set-plot-palette (palette &key( maximum-colour-value 255))
+  (cond ((eq palette :greyscale) ; White thru grey to black for magnitude plots
+	 (nlisp:palette-defined '((0 "#FFFFFF") (1 "#000000"))))
+	((eq palette :jet)
+	 (nlisp:palette-defined (colour-palette (jet-colormap 100))))
+	((eq palette :spectral)
+	 (nlisp:palette "model HSV maxcolors 256")
+	 (nlisp:palette (format nil "defined ( 0 0 0 1, 1 0 1 1, ~d 1 1 1, ~d 0 0 1)"
+				(1- maximum-colour-value) maximum-colour-value)))
+	((eq palette :grey-smooth)
+	 (nlisp:palette "model RGB")
+	 (nlisp:palette-defined '((0 "#FFFFFF") (0.5 "#000000") (1 "#FFFFFF"))))
+	((eq palette :greyscale-highlight) ; White thru grey to black, with red highlight for ridge plots
+	 (nlisp:palette-defined (list '(0 "#FFFFFF") 
+				      (list (1- maximum-colour-value) "#000000")
+				      (list maximum-colour-value "#FF0000"))))
+	(t 				; Otherwise assume it's a colourmap function
+	 (nlisp:palette-defined (colour-palette (funcall palette 100))))))
+
+;;; TODO should probably become methods of n-double-array. This would allow inheritance of
+;;; plotting behaviour.
+;;; Each plot consists of these subfunctions:
+;;; Setting the location within the window to plot. (passed in including aspect ratio)
+;;; Setting the palette to plot with. (determined by the image-plotter)
+;;; Plotting the image, with titles (determined by image-plotter) 
+;;; Setting the colour box display. (determined by image-plotter and window-position)
+(defun magnitude-image (magnitude window-dimensions title &key
+			(palette :greyscale)
+			(aspect-ratio 0.15))
+  "Creates a plotable image object from the magnitude using a colour map.
+   Dark values are higher valued, lighter values are lower valued."
+  (set-colour-box magnitude window-dimensions)
+  (set-plot-palette palette)
+  (image (.flip magnitude) nil nil
+	 :title (format nil "Magnitude of ~a" title)
+	 :xlabel nil
+	 :ylabel "Scale as IOI Range\\n(Seconds)"
+	 :reset nil
+	 :aspect-ratio aspect-ratio))
 
 (defun plotable-phase (phase magnitude maximum-colour-value &key (magnitude-minimum-for-phase-plot 0.001))
   "Phase assumed [-pi -> pi], map it to [1 -> maximum-colour-value].
@@ -225,102 +306,125 @@
 		      (1- maximum-colour-value)) 1.0))))
 
 ;; TODO: would be nice to use saturation to indicate magnitude value on the phase plot.
-(defun phase-image (phase magnitude &key (maximum-colour-value 255))
+(defun phase-image (phase magnitude window-dimensions title &key
+		    (maximum-colour-value 255d0)
+		    (aspect-ratio 0.15)
+		    (palette :spectral))
   "Assumes the magnitude value is positive, phase is -pi -> pi.
    Ill-conditioned phase measures due to low magnitude are displayed as white."
-  ;; use a colormap which has the lowest value white, for ill-conditioned phase values,
-  ;; the rest a spectral distribution from red -> violet.
-  (let* ((white (imago:make-color maximum-colour-value maximum-colour-value maximum-colour-value))
-	 ;; use maximum-colour-value rather than the number of colours for 1 less.
-	 (phase-colormap (concatenate 'vector (vector white) (spectral-colormap maximum-colour-value))))
-    ;; the first colormap index (0) is set to be white.
-    (make-colour-mapped-image (plotable-phase phase magnitude maximum-colour-value) phase-colormap)))
+  (let ((plotable-phase (.* (plotable-phase phase magnitude maximum-colour-value) 1d0)))
+    (phase-colour-box plotable-phase window-dimensions)
+    (set-plot-palette palette)
+    (image (.flip plotable-phase) nil nil
+	   :title (format nil "Phase of ~a" title)
+	   :xlabel "Time (Seconds)" 
+	   :ylabel "Scale as IOI Range\\n(Seconds)"
+	   :reset nil
+	   :aspect-ratio aspect-ratio)))
 
-(defmethod tactus-image ((tactus ridge) ridges &key (maximum-colour-value 255))
-  "Plot the ridges in greyscale and the computed tactus in red, expected tactus in blue."
-  (let* ((tactus-colour (imago:make-color maximum-colour-value 0 0)) ; red is for the ridge.
-	 ;; Create a color map that is a greyscale for all values except the topmost which is red.
-	 (ridge-colormap (concatenate 'vector (greyscale-colormap maximum-colour-value) (vector tactus-colour)))
-	 (max-ridge-colours (1- maximum-colour-value))
-	 (plotable-ridges (invert-and-scale (.normalise ridges) max-ridge-colours)))
-    (insert-ridge tactus plotable-ridges :constant-value maximum-colour-value)
-    (make-colour-mapped-image plotable-ridges ridge-colormap)))
+(defun highlighted-ridges-image (ridges tf-plane window-dimensions title &key
+				 (maximum-colour-value 255d0)
+				 (aspect-ratio 0.15)
+				 (palette :greyscale-highlight))
+  "Plot the tf-plane in greyscale and the ridges in red. Dark values are higher valued, lighter values are lower valued."
+  (let* ((max-ridge-colours (1- maximum-colour-value))
+	 (plotable-ridges (.* (.normalise tf-plane) max-ridge-colours)))
+    (dolist (ridge ridges) 
+      (setf plotable-ridges (insert-ridge ridge plotable-ridges :constant-value maximum-colour-value)))
+    (set-colour-box plotable-ridges window-dimensions)
+    (set-plot-palette palette)
+    (image (.flip plotable-ridges) nil nil
+	   :title (format nil "Highlighted Ridges of ~a" title)
+	   :xlabel nil
+	   :ylabel "Scale as IOI Range\\n(Seconds)"
+	   :reset nil
+	   :aspect-ratio aspect-ratio)))
 
-(defun tactus-on-phase-image (tactus phase magnitude &key (maximum-colour-value 255))
+(defun ridges-on-phase-image (ridges phase magnitude window-dimensions title &key 
+			      (maximum-colour-value 255d0)
+			      (aspect-ratio 0.15)
+			      (palette :spectral-highlight))
   "Plot the phase with the computed tactus in black."
-  (let* ((tactus-colour (imago:make-color 0 0 0)) ; black is for the ridge.
-	 (white (imago:make-color maximum-colour-value maximum-colour-value maximum-colour-value))
-	 ;; Create a color map that is a spectral distribution for all values except the
-	 ;; lowest which is white, the topmost which is black for minimal
-	 (ridge+phase-colormap (concatenate 'vector 
-					    (vector white) 
-					    (spectral-colormap (1- maximum-colour-value))
-					    (vector tactus-colour)))
-	 (max-ridge-colours (1- maximum-colour-value))
-	 (plotable-phase-with-ridge (plotable-phase phase magnitude max-ridge-colours)))
-    (insert-ridge tactus plotable-phase-with-ridge :constant-value maximum-colour-value)
-    (make-colour-mapped-image plotable-phase-with-ridge ridge+phase-colormap)))
+  (let* ((max-ridge-colours (1- maximum-colour-value))
+	 (plotable-phase-with-ridges (.* (plotable-phase phase magnitude max-ridge-colours) 1d0)))
+    (dolist (ridge ridges) 
+      (setf plotable-phase-with-ridges (insert-ridge ridge plotable-phase-with-ridges :constant-value maximum-colour-value)))
+    (phase-colour-box plotable-phase-with-ridges window-dimensions)
+    (set-plot-palette palette)
+    (image (.flip plotable-phase-with-ridges) nil nil
+	   :title (format nil "Phase of ~a" title)
+	   :xlabel "Time (Seconds)" 
+	   :ylabel "Scale as IOI Range\\n(Seconds)"
+	   :reset nil
+	   :aspect-ratio aspect-ratio)))
 
-(defun plot-image (image-generator file-extension data-to-plot
+(defmethod .decimate ((ridge-list list) reduce-list &key start-indices)
+  "Method to decimate a list of ridges."
+  (mapcar (lambda (ridge) (.decimate ridge reduce-list :start-indices start-indices)) ridge-list))
+
+(defun plot-image (image-plotter data-to-plot window-dimensions axes-labels
 		   &key (title "unnamed")
-		   (time-axis-decimation 4)
-		   (temp-directory "tmp")
-		   (image-file-type "pnm")) ; Can be "png"
-   "Generates a displayable and file writable image from a given set of data to plot.
+		   (time-axis-decimation 4))
+   "Plots a displayable image from a given set of data to plot.
     time-axis-decimation = The amount of downsampling of the data along the translation axis before we plot.
     We could do away with this when we can process the data without excess resource strain,
-    but it makes for diagrams which are not so wide, making them easier to view and interpret."
-  (let* ((pathname (make-pathname :directory (list :absolute temp-directory) 
-				  :name (concatenate 'string title file-extension)
-				  :type image-file-type))
-	 ;; Downsample the data 
-	 (down-sampled-data (mapcar (lambda (x) (.decimate x (list 1 time-axis-decimation))) data-to-plot))
-	 (plotable-image (apply image-generator down-sampled-data)))
-    ;; (imago:write-png plotable-image pathname)
-    (imago:write-pnm plotable-image pathname :ascii)
-    plotable-image))
+    but it also makes diagrams which are not so wide, making them easier to view and interpret."
+   (reset-plot)
+   (set-image-dimensions window-dimensions)
+   (set-axes-labels axes-labels)
+   ;; Downsample the data 
+   (let* ((down-sampled-data (mapcar (lambda (x) (.decimate x (list 1 time-axis-decimation))) data-to-plot))
+	  (plotable-image (apply image-plotter (append down-sampled-data (list window-dimensions title)))))
+     ;; If we need to do something with the image after plotting, here's where...
+     (reset-plot)
+     plotable-image))
 
-;; (plot-image #'magnitude-image "-magnitude" (list magnitude))
-;; (plot-image #'phase-image "-phase" (list phase magnitude))
-;; (plot-image #'tactus-image "-tactus" (list ridges tactus))
-;; (apply #'plot-image (list #'magnitude-image "-magnitude" (list magnitude) :title "blah")) 
+;; (plot-image #'magnitude-image (list magnitude) '((1.0 0.5) (0.0 0.3)) :title "blah")
+;; (plot-image #'phase-image (list phase magnitude) '((1.0 0.5) (0.0 0.0)))
+;; (plot-image #'highted-ridges-image (list ridges magnitude) '((1.0 0.5) (0.0 0.0)))
+;; (apply #'plot-image (list #'magnitude-image (list magnitude) :title "blah")) 
 
 (defun plot-images (image-list &key (title "unnamed") (time-axis-decimation 4))
-  "Plot a number of images as supplied in image-list"
+  "Plot a number of images as supplied in image-list in the same window"
+  (window)
+  (plot-command "set multiplot")
   (mapcar 
    (lambda (x) (apply #'plot-image (append x (list :title title :time-axis-decimation time-axis-decimation))))
-   image-list))
+   image-list)
+  (plot-command "unset multiplot")
+  (close-window)
+  (reset-plot))
 
-(defun plot-ridges+tactus (ridges computed-tactus &key 
-			       (title "unnamed")
-			       (image-extension "-tactus")
-			       (time-axis-decimation 4))
-  "Plot the ridges in greyscale and the computed tactus in red."
-  ;; We make a copy of the tactus since decimate modifies the object (it is, after all, an
-  ;; instance method)
-  (plot-image #'tactus-image image-extension (list (copy-object computed-tactus) ridges)
-	      :title title
-	      :time-axis-decimation time-axis-decimation))
+(defmethod make-plotable-ridges ((tf-plane n-double-array) (ridges list) &key
+					(time-axis-decimation 4)
+					(maximum-colour-value 255d0))
+  "Downsamples the time-frequency plane and inserts the list of ridges into the plane"
+  (let* ((max-ridge-colours (1- maximum-colour-value))
+	 (downsampled-tf-plane (.decimate tf-plane (list 1 time-axis-decimation)))
+	 (plotable-tf-plane (.* (invert-and-scale (.normalise downsampled-tf-plane) max-ridge-colours) 1d0))
+	 (downsampled-ridge))
+    (dolist (ridge ridges plotable-tf-plane)
+      ;; We make a copy of the ridge since decimate modifies the object (it is, after all, an instance method)
+      (setf downsampled-ridge (.decimate (copy-object ridge) (list 1 time-axis-decimation)))
+      (setf plotable-tf-plane (insert-ridge downsampled-ridge plotable-tf-plane :constant-value maximum-colour-value)))))
 
-(defmethod plot-ridges+tactus-labelled ((ridges n-double-array) (computed-tactus ridge) &key 
+(defmethod plot-highlighted-ridges-labelled ((ridges n-double-array) (highlighted-ridges list) &key 
 					(title "unnamed")
 					(time-axis-decimation 4)
 					(aspect-ratio 0.15)
 					(colorbox-divisions 4.0)
-					(maximum-colour-value 255))
-  "Plot the ridges in greyscale and the computed tactus in red."
+					(maximum-colour-value 255d0))
+  "Plot the ridges encoded in a time-frequency plane in greyscale and the highlighted ridges in red."
   (let* ((max-ridge-colours (1- maximum-colour-value))
-	 (downsampled-ridges (.decimate ridges (list 1 time-axis-decimation)))
-	 (downsampled-ridges-time (.array-dimension downsampled-ridges 1))
-	 ;; We make a copy of the tactus since decimate modifies the object (it is, after all, an instance method)
-	 (downsampled-tactus (.decimate	(copy-object computed-tactus) (list 1 time-axis-decimation)))
-	 (plotable-ridges (invert-and-scale (.normalise downsampled-ridges) max-ridge-colours))
-    	 (rescaled-ridges (.* (insert-ridge downsampled-tactus plotable-ridges :constant-value maximum-colour-value) 1d0)))
-
+    	 (rescaled-ridges (make-plotable-ridges ridges highlighted-ridges
+					:time-axis-decimation time-axis-decimation
+					:maximum-colour-value maximum-colour-value))
+	 (downsampled-ridges-time (.array-dimension rescaled-ridges 1)))
     (window)
     ;; White thru grey to black for ridge plots
-    (nlisp:palette-defined (list '(0 "#000000") (list max-ridge-colours "#FFFFFF") (list maximum-colour-value "#FF0000")))
-    ;; (format t "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" (label-samples-as-seconds (.array-dimension ridges 1) 200))
+    (nlisp:palette-defined (list '(0 "#000000") 
+				 (list max-ridge-colours "#FFFFFF")
+				 (list maximum-colour-value "#FF0000")))
     (plot-command (format nil "set xrange [0:~d]" downsampled-ridges-time))	; ensures last label plotted
     (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
 			  (label-samples-as-seconds (.array-dimension ridges 1)
@@ -329,10 +433,10 @@
 						    :time-axis-decimation time-axis-decimation)))
 ;;    (plot-command (format nil "set ytics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
 ;;			  (label-scale-as-time-support-seconds scaleogram-to-plot (sample-rate analysis-rhythm))))
-    ;; Expand the colorbox and only display the given number of tics.
-    ;; (plot-command "set colorbox user origin 0.88,0.45 size 0.03,0.2")
-    (plot-command (format nil "set cbtics ~5,2f" (/ (range downsampled-ridges) colorbox-divisions)))
+    (format t "set cbtics ~5,2f" (/ (range rescaled-ridges) colorbox-divisions))
+    (plot-command (format nil "set cbtics ~5,2f" (/ (range rescaled-ridges) colorbox-divisions)))
 
+;; for image x parameter: (.rseq 0.0 (time-as-seconds ridges 200) (.array-dimension rescaled-ridges 1))
     (image (.flip rescaled-ridges) nil nil
  	   :title (format nil "Ridges of ~a" title)
 	   :xlabel "Time (Seconds)" 
@@ -367,13 +471,3 @@
 ;;  (let ((clap-intensity (make-double-array (.array-dimensions claps) :initial-element 2d0)))
 ;;  (plot clap-intensity claps :style "impulses"))
 
-(defun plot-voice-behaviour (original-rhythm scaleogram-to-plot voices)
-  "Plots the magnitude response of several single wavelet voices (dilation scale) to a rhythm."
-  (let ((scaleogram-mag (scaleogram-magnitude scaleogram-to-plot)))
-    (nplot (append (mapcar (lambda (voice) (.row scaleogram-mag voice)) voices)
-		   (list (.* (.max scaleogram-mag) (time-signal original-rhythm))))
-	   nil
-	   :legends (append (mapcar (lambda (voice) (format nil "Voice ~a" voice)) voices) 
-			    (list (name original-rhythm)))
-	   :title "Select wavelet voice behaviours to non-isochronous rhythms"
-	   :aspect-ratio 0.15)))

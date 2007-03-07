@@ -78,13 +78,15 @@
     (multiple-value-bind (skeleton rhythm-scaleogram correlated-ridge-scale-peaks) 
 	(skeleton-of-rhythm anthem-rhythm :voices-per-octave voices-per-octave)
       (let* ((matching-ridges (bar-ridges-for-skeleton anthem skeleton rhythm-scaleogram)))
-	(plot-highlighted-ridges correlated-ridge-scale-peaks matching-ridges :title (name anthem-rhythm))
+	(plot-highlighted-ridges (scaleogram-magnitude rhythm-scaleogram) matching-ridges rhythm-scaleogram :title (name anthem-rhythm))
+;;	(plot-highlighted-ridges correlated-ridge-scale-peaks matching-ridges rhythm-scaleogram :title (name anthem-rhythm))
 	matching-ridges))))
 
 ;; (bar-ridges-for-anthem (anthem-named 'australia))
 ;; (multiple-value-setq (skeleton scaleogram peaks) (skeleton-of-rhythm (anthem-rhythm (anthem# 3))))
 ;; (setf matching-ridges (bar-ridges-for-skeleton (anthem# 3) skeleton scaleogram))
-;; (plot-highlighted-ridges peaks matching-ridges)
+;; (plot-highlighted-ridges peaks matching-ridges scaleogram)
+;; (plot-highlighted-ridges (scaleogram-magnitude scaleogram) matching-ridges scaleogram)
 
 ;; (defun bar-scale-for-anthem (anthem &key (tactus-selector #'select-longest-lowest-tactus))
 ;;   "Returns the scale of the given anthem matching the bar duration"

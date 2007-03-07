@@ -64,7 +64,7 @@
   (format stream " ~a ~a sample-rate ~f" 
 	  (name rhythm-to-print) (description rhythm-to-print) (sample-rate rhythm-to-print)))
 
-(defun intervals-in-samples (intervals &key ((:tempo tempo-in-bpm) 60)
+(defun intervals-in-samples (intervals &key ((:tempo tempo-in-bpm) 60 tempo-supplied-p)
 			     (ioi 1.0 interval-supplied-p)
 			     (sample-rate 1000)) ; in Hz (samples per second)
   "Converts a given rhythm (in relative interval values, 1.0 = the shortest interval) to
@@ -112,7 +112,10 @@
   (let* ((beat-positions (.find (time-signal rhythm))))
     (.aref beat-positions beat-number)))
 
-(defun iois-to-rhythm (name iois &key (shortest-ioi 1.0) (sample-rate 200))
+(defun iois-to-rhythm (name iois &key 
+		       (shortest-ioi 1.0) 
+		       (sample-rate 200) 
+		       ((:tempo tempo-in-bpm) 60 tempo-supplied-p))
   "Returns a rhythm instance given a list of inter-onset intervals"
     (make-instance 'rhythm 
 		   :name name
@@ -179,7 +182,6 @@
     (reset-plot)			; Since we don't reset with image.
     ;; "set size 0.7,0.7"
     ;; "set origin 0.1,0.1"
-    (plot-command "set multiplot")	; Put the magnitude plot above the phase on the same window.
     (plot-command "set xtics font \"Times,10\"")
     (plot-command "set ytics font \"Times,10\"")
     (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 

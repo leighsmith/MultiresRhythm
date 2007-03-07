@@ -52,8 +52,8 @@
 (defgeneric average-scale (ridge)
   (:documentation "Returns the average scale number of a ridge"))
 
-(defgeneric tactus-image (ridge ridges &key maximum-colour-value)
-  (:documentation "Returns an Imago image object displaying all ridges and the extracted tactus ridge."))
+;;(defgeneric tactus-image (ridge ridges &key maximum-colour-value)
+;;  (:documentation "Returns an Imago image object displaying all ridges and the extracted tactus ridge."))
 
 (defgeneric scales-as-array (ridge)
   (:documentation "Returns the scales list as an nlisp array"))
