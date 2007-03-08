@@ -24,17 +24,10 @@
 
 ;;; Declaration of interface
 
-(defgeneric make-plotable-ridges (tf-plane ridges &key time-axis-decimation maximum-colour-value)
-  (:documentation "Downsamples the time-frequency plane and inserts the list of ridges into the plane"))
-
-(defgeneric image-plotter (tf-plane window-dimensions title axes-labels &key palette aspect-ratio)
+(defgeneric image-plotter (tf-plane window-dimensions title &key palette aspect-ratio)
   (:documentation "Plot images TODO"))
 
 ;;; Implementation
-
-(defun invert-and-scale (matrix maximum-value)
-  "Scales a matrix of values ranging (0 to 1) to integers ranging (maximum-value to 0)"
-  (.floor (.- maximum-value (.* matrix maximum-value))))
 
 ;;; We assume max-undecimated-sample is the length of a scaleogram, *before time axis
 ;;; decimation* so the last element is the sample after the data to be displayed.
@@ -59,45 +52,6 @@
        collect (list (floor label) (floor position)))))
 
 ;;; Colour map generating functions
-
-(defun hls-value (n1 n2 hue)
-  "Sub-function to convert from hue (0-360 degrees) and positions within the 
-   colour pyramid to a value usable for conversion to RGB. From Van Dam and Foley (1982) p619."
-    (setf hue (cond ((> hue 360) (- hue 360))
-		    ((< hue 0) (+ hue 360))
-		    (t hue)))
-    (cond ((< hue 60) (+ n1 (* (- n2 n1) (/ hue 60))))
-	  ((< hue 180) n2)
-	  ((< hue 240) (+ n1 (* (- n2 n1) (/ (- 240 hue) 60))))
-	  (t n1)))
-
-(defun hls-to-rgb (hue lightness saturation)
-  "Converts from hue (0-360 degrees) lightness (0-1) and saturation (0-1) to normalised RGB values. 
-   From Van Dam and Foley (1982) p617."
-  ;; assume lightness > 0.5
-  (let* ((m2 (- (+ lightness saturation) (* lightness saturation)))
-	 (m1 (- (* 2 lightness) m2)))
-    (if (not (= saturation 0))
-	(list (hls-value m1 m2 (+ hue 120))   ; Red
-	      (hls-value m1 m2 hue)	      ; Green
-	      (hls-value m1 m2 (- hue 120)))  ; Blue
-	(list 0 0 0))))
-
-(defun spectral-colormap (map-length &key (alpha 255))
-  "Create a colormap of length map-length which is a spectral distribution, the colors forming a hue wheel."
-  (declare (type fixnum map-length))
-  (loop for map-index below map-length
-     with light = 0.5
-     with saturation = 1.0
-     with color-map = (make-array map-length)
-     with hue-polar-increment = (/ 360 map-length)
-     with normalised-rgb ; RGB values 0-1.
-     with rgba ; 0-255, including alpha channel
-     do 
-       (setf normalised-rgb (hls-to-rgb (* map-index hue-polar-increment) light saturation))
-       (setf rgba (append (mapcar (lambda (x) (floor (* x 255))) normalised-rgb) (list alpha)))
-       (setf (aref color-map map-index) (apply #'imago:make-color rgba))
-     finally (return color-map)))
 
 ;; (defun search-sorted (a x)
 ;;   "Returns index of the first element in the array a which exceeds x, and returns the
@@ -140,6 +94,9 @@
 
 ;; (setf red (linear-segmented-channel 256 '((0.0d0 0.0d0 0.0d0) (0.35d0  0.0d0 0.0d0) (0.66d0  1.0d0 1.0d0) (0.89d0 1.0d0 1.0d0) (1.0d0  0.5d0 0.5d0))))
 
+(defun make-color (r g b &optional (alpha #xff))
+  (logior (ash alpha 24) (ash r 16) (ash g 8) b))
+
 (defun linear-segmented-colormap (map-length colour-linear-segments &key (max-resolution 255) (alpha max-resolution))
   "Create an 1-d lookup table with map-length elements.
    colour-linear-segments is a dictionary with a red, green and blue entries. 
@@ -153,7 +110,7 @@
    with x=1, and all values of x must be in increasing order. Values between the given
    mapping points are determined by simple linear interpolation."
   (map '(array integer (*))
-       #'imago:make-color 
+       #'make-color 
        (val (.floor (.* (linear-segmented-channel map-length (first colour-linear-segments)) max-resolution)))
        (val (.floor (.* (linear-segmented-channel map-length (second colour-linear-segments)) max-resolution)))
        (val (.floor (.* (linear-segmented-channel map-length (third colour-linear-segments)) max-resolution)))
@@ -169,28 +126,16 @@
 	:alpha 0))
 
 (defun colour-palette (colourmap)
+  "Returns a list of indexes into a colour map and hex strings in RGB space of the given
+colourmap, suitable for use by NLISP's palette-defined function."
   (loop 
      for colour-index from 0 below (length colourmap)
      collect (list colour-index (format nil "#~6,'0x" (aref colourmap colour-index)))))
 
-;;; Functions to create IMAGO image instances from magnitude and phase components of a CWT.
-
-(defun make-colour-mapped-image (matrix-to-plot colour-map)
-  "Creates an Imago image instance from the supplied nlisp matrix and colour-map. 
-   The maximum values in the matrix and the length of the colour map must match."
-  (let ((image (make-instance 'imago:indexed-image
-			      :width (.array-dimension matrix-to-plot 0)
-			      :height (.array-dimension matrix-to-plot 1)
-			      :color-count (length colour-map))))
-    (setf (slot-value image 'imago::pixels) (val matrix-to-plot))
-    (setf (slot-value image 'imago::colormap) colour-map)
-    image))
-
 ;; Define this as a parameter rather than as a keyword parameter since it needs to be set
 ;; several calls higher in the hierarchy - cost of functional programming it seems...
 ;; (defparameter *magnitude-colour-map* #'jet-colormap)
-;; (defparameter *magnitude-colour-map* #'greyscale-colormap)
-
+;; (defparameter *magnitude-colour-map* :greyscale)
 
 #|
 (magnitude-limit 0 magnitude-limit-supplied-p)
@@ -205,33 +150,9 @@
       (let ((exceeded (.> magnitude magnitude-limit)))
 	(setf magnitude (.+ (.* (.not exceeded) magnitude) 
 			    (.* exceeded magnitude-limit)))))
-
 |#
 
-(defun axes-labelled-in-seconds (scaleogram-to-plot sample-rate time-axis-decimation)
-  "Returns the axes commands to gnuplot to label axes in seconds"
-  (let ((axes-commands (make-array 200 :element-type 'character :fill-pointer 0)))
-    ;; ensures last label plotted
-    ;; (format axes-commands "set xrange [0:~d]~%" (duration-in-samples scaleogram-to-plot))
-    ;; Label plots in seconds.
-    (format axes-commands "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
-	    (label-samples-as-seconds (duration-in-samples scaleogram-to-plot)
-				      sample-rate
-				      :time-axis-decimation time-axis-decimation))
-    (format axes-commands "set ytics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
-	    (label-scale-as-time-support-seconds scaleogram-to-plot sample-rate))
-    axes-commands))
-
-(defun axes-labelled-in-samples (scaleogram-to-plot time-axis-decimation)
-  "Returns the axes commands to gnuplot to label axes in samples"
-  (let ((axes-commands (make-array 200 :element-type 'character :fill-pointer 0)))
-    ;; ensures last label plotted
-    ;; (format axes-commands "set xrange [0:~d]" (duration-in-samples scaleogram-to-plot))
-    (format axes-commands "set xtics (~{~{\"~d\" ~5d~}~^, ~})~%" 
-	    (label-samples (duration-in-samples scaleogram-to-plot) :time-axis-decimation time-axis-decimation))
-    (format axes-commands "set ytics (~{~{\"~5,0f\" ~5d~}~^, ~})~%" 
-	    (label-scale-as-time-support scaleogram-to-plot))
-    axes-commands))
+;;; Image plotting functions.
 
 (defun set-image-dimensions (image-dimensions)
   (let ((image-size (first image-dimensions))
@@ -258,12 +179,15 @@
  			  (label-phase-in-radians (range phase-data) colorbox-divisions)))
     (plot-command (format nil "set colorbox user origin ~f,~f size 0.03,0.2" (+ (first window-origin) 0.88) (+ (second window-origin) 0.15)))))
 
-(defun set-plot-palette (palette &key( maximum-colour-value 255))
+(defun set-plot-palette (palette &key (maximum-colour-value 255))
   (cond ((eq palette :greyscale) ; White thru grey to black for magnitude plots
 	 (nlisp:palette-defined '((0 "#FFFFFF") (1 "#000000"))))
 	((eq palette :jet)
 	 (nlisp:palette-defined (colour-palette (jet-colormap 100))))
 	((eq palette :spectral)
+	 (nlisp:palette "model HSV maxcolors 256")
+	 (nlisp:palette (format nil "defined ( 0 0 0 1, 1 0 1 1, ~d 1 1 1)" maximum-colour-value)))
+	((eq palette :spectral-highlight)
 	 (nlisp:palette "model HSV maxcolors 256")
 	 (nlisp:palette (format nil "defined ( 0 0 0 1, 1 0 1 1, ~d 1 1 1, ~d 0 0 1)"
 				(1- maximum-colour-value) maximum-colour-value)))
@@ -379,10 +303,10 @@
      (reset-plot)
      plotable-image))
 
-;; (plot-image #'magnitude-image (list magnitude) '((1.0 0.5) (0.0 0.3)) :title "blah")
-;; (plot-image #'phase-image (list phase magnitude) '((1.0 0.5) (0.0 0.0)))
-;; (plot-image #'highted-ridges-image (list ridges magnitude) '((1.0 0.5) (0.0 0.0)))
-;; (apply #'plot-image (list #'magnitude-image (list magnitude) :title "blah")) 
+;; (plot-image #'magnitude-image (list magnitude) '((1.0 0.5) (0.0 0.3)) "" :title "blah")
+;; (plot-image #'phase-image (list phase magnitude) '((1.0 0.5) (0.0 0.0)) "")
+;; (plot-image #'highted-ridges-image (list ridges magnitude) '((1.0 0.5) (0.0 0.0)) "")
+;; (apply #'plot-image (list #'magnitude-image (list magnitude) "" :title "blah")) 
 
 (defun plot-images (image-list &key (title "unnamed") (time-axis-decimation 4))
   "Plot a number of images as supplied in image-list in the same window"
@@ -394,6 +318,42 @@
   (plot-command "unset multiplot")
   (close-window)
   (reset-plot))
+
+(defun plot-claps (original-rhythm claps &key foot-tap-AM (max-computed-scale 1.2d0)
+		   (comment "")
+		   (signal-description (name original-rhythm)))
+  "Plot locations of original beats, computed claps, the foot tap
+   amplitude modulation/phase and reference expected clap points."
+  (let* ((rhythm-signal (time-signal original-rhythm))
+	 (clap-signal (make-double-array (.array-dimensions rhythm-signal) :initial-element 0d0)))
+    (map nil (lambda (index) (setf (.aref clap-signal index) max-computed-scale)) (val claps))
+    (window)
+    (plot-command (format nil "set yrange [0:~f]" (+ max-computed-scale 0.2)))
+    (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
+			  (label-samples-as-seconds (duration-in-samples original-rhythm) (sample-rate original-rhythm))))
+    (nplot (list rhythm-signal clap-signal (.+ (./ foot-tap-AM pi 2.0d0) 0.5d0)) nil
+	   :legends '("Original Rhythm" "Computed foot-taps" "Normalised Foot-tap AM")
+	   :styles '("impulses linetype 6 linewidth 3" "impulses linetype 4" "dots 3")
+	   :xlabel "Time in Seconds"
+	   :ylabel "Scaled Intensity/Phase"
+	   :title (format nil "Computed foot-tap ~a of ~a" comment signal-description)
+	   :reset nil
+	   :aspect-ratio 0.66)
+    (close-window)))
+
+;; Alternative plot method if not using nplot.
+;;  (let ((clap-intensity (make-double-array (.array-dimensions claps) :initial-element 2d0)))
+;;  (plot clap-intensity claps :style "impulses"))
+
+
+
+
+(defgeneric make-plotable-ridges (tf-plane ridges &key time-axis-decimation maximum-colour-value)
+  (:documentation "Downsamples the time-frequency plane and inserts the list of ridges into the plane"))
+
+(defun invert-and-scale (matrix maximum-value)
+  "Scales a matrix of values ranging (0 to 1) to integers ranging (maximum-value to 0)"
+  (.floor (.- maximum-value (.* matrix maximum-value))))
 
 (defmethod make-plotable-ridges ((tf-plane n-double-array) (ridges list) &key
 					(time-axis-decimation 4)
@@ -444,30 +404,3 @@
  	   :reset nil
  	   :aspect-ratio aspect-ratio)
     (close-window)))
-
-(defun plot-claps (original-rhythm claps &key foot-tap-AM (max-computed-scale 1.2d0)
-		   (comment "")
-		   (signal-description (name original-rhythm)))
-  "Plot locations of original beats, computed claps, the foot tap
-   amplitude modulation/phase and reference expected clap points."
-  (let* ((rhythm-signal (time-signal original-rhythm))
-	 (clap-signal (make-double-array (.array-dimensions rhythm-signal) :initial-element 0d0)))
-    (map nil (lambda (index) (setf (.aref clap-signal index) max-computed-scale)) (val claps))
-    (window)
-    (plot-command (format nil "set yrange [0:~f]" (+ max-computed-scale 0.2)))
-    (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
-			  (label-samples-as-seconds (duration-in-samples original-rhythm) (sample-rate original-rhythm))))
-    (nplot (list rhythm-signal clap-signal (.+ (./ foot-tap-AM pi 2.0d0) 0.5d0)) nil
-	   :legends '("Original Rhythm" "Computed foot-taps" "Normalised Foot-tap AM")
-	   :styles '("impulses linetype 6 linewidth 3" "impulses linetype 4" "dots 3")
-	   :xlabel "Time in Seconds"
-	   :ylabel "Scaled Intensity/Phase"
-	   :title (format nil "Computed foot-tap ~a of ~a" comment signal-description)
-	   :reset nil
-	   :aspect-ratio 0.66)
-    (close-window)))
-
-;; Alternative plot method if not using nplot.
-;;  (let ((clap-intensity (make-double-array (.array-dimensions claps) :initial-element 2d0)))
-;;  (plot clap-intensity claps :style "impulses"))
-

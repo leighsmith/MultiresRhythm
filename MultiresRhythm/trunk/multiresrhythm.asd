@@ -10,7 +10,7 @@
 ;;;;
 ;;;; In nlisp (Matlab-alike Common Lisp library www.nlisp.info)
 ;;;;
-;;;; Known to work on SBCL 0.9.18
+;;;; Known to work on SBCL 1.0.2
 ;;;;
 ;;;; See for background:
 ;;;;   author =  {Leigh M. Smith},
@@ -39,7 +39,7 @@
   :description "A Multiresolution Time-Frequency Analysis and Interpretation of Musical Rhythm"
   :version "2.1"
   :author "Leigh M. Smith"
-  :depends-on (:nlisp :zlib :imago)
+  :depends-on (:nlisp)
   :components ((:file "signalprocessing")
 	       (:file "ridges")
 	       (:file "file_io")

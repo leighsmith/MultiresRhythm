@@ -314,9 +314,9 @@ then can extract ridges."
       (format t "Computed skeleton and chosen tactus ~a~%" chosen-tactus)
       (plot-cwt+ridges scaleogram (list chosen-tactus) analysis-rhythm
 		       ;; :phase-palette :greyscale
-		       :magnitude-palette :jet
+		       ;; :magnitude-palette :jet
 		       :title (name analysis-rhythm))
-      (plot-highlighted-ridges correlated-ridge-scale-peaks (list chosen-tactus) :title (name analysis-rhythm))
+      (plot-highlighted-ridges scaleogram (list chosen-tactus) correlated-ridge-scale-peaks :title (name analysis-rhythm))
       (format t "Finished plotting scalograms~%")
       (values chosen-tactus scaleogram))))
 

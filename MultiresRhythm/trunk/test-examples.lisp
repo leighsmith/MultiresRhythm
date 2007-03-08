@@ -42,7 +42,6 @@
 ;; (setf fm-scaleogram (cwt (fm-test) 16))
 ;; Test plotting of both magnitude and phase:
 ;; (plot-cwt (cwt (fm-test) 16) :title "fm")
-;; (plot-cwt-labelled (cwt (fm-test) 16) :title "fm")
 
 ;;; 
 (defun rising-harmonic-test (&key (signal-length 2048))
@@ -59,7 +58,6 @@
     rising-harmonic-signal))
 
 ;; (plot-cwt (cwt (rising-harmonic-test) 8) :title "rising-harmonic")
-;; (plot-cwt-labelled (cwt (rising-harmonic-test) 8) :title "rising-harmonic")
 ;; (time (cwt (rising-harmonic-test) 16))
 
 (defun test-lpc ()

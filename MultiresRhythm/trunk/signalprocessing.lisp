@@ -13,9 +13,12 @@
 ;;;;
 ;;;; See multiresrhythm.asd for further info.
 
-
 (in-package :multires-rhythm)
 (use-package :nlisp)
+
+(defun range (matrix)
+  "Determines the range of values in the matrix"
+  (- (.max matrix) (.min matrix)))
 
 ;;thresholdMag = magnitude > threshold;
 ;;newphase = (thresholdMag .* phase) + (!thresholdMag .* clamp);
