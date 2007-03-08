@@ -69,6 +69,9 @@
 	    (time-support bar-scale-index (voices-per-octave rhythm-scaleogram)))
     (ridges-containing-scale rhythm-skeleton bar-scale-index)))
 
+(defun canonical-bar-ridge (anthem rhythm-scaleogram)
+  (make-monotone-ridge (round (bar-scale anthem rhythm-scaleogram)) (duration-in-samples rhythm-scaleogram)))
+  
 ;;; Match known bar duration against a ridge & determine how much evidence
 ;;; there is for the bar duration against the time-frequency ridges. The critical question is
 ;;; how well bar duration matches against human perception of tactus given the same rhythms?
@@ -88,11 +91,21 @@
 
 ;; (bar-ridges-for-anthem (anthem-named 'australia))
 ;; (bar-ridges-for-anthem (anthem-named 'america))
+;; (bar-ridges-for-anthem (anthem-named 'france))
+;; (bar-ridges-for-anthem (anthem-named 'nepal))
+;; (bar-ridges-for-anthem (anthem-named 'sweden))
 ;; (multiple-value-setq (skeleton scaleogram peaks) (skeleton-of-rhythm (anthem-rhythm (anthem# 3))))
 ;; (setf matching-ridges (bar-ridges-for-skeleton (anthem# 3) skeleton scaleogram))
 ;; (plot-highlighted-ridges scaleogram matching-ridges peaks)
 ;; (plot-highlighted-ridges scaleogram matching-ridges (scaleogram-magnitude scaleogram))
 ;; (plot-highlighted-ridges-of-rhythm scaleogram matching-ridges peaks (anthem-rhythm (anthem# 3)))
+
+#|
+(plot-highlighted-ridges-of-rhythm scaleogram 
+				   (list (canonical-bar-ridge (anthem# 3) scaleogram))
+				   peaks
+				   (anthem-rhythm (anthem# 3)))
+|#
 
 ;; (defun bar-scale-for-anthem (anthem &key (tactus-selector #'select-longest-lowest-tactus))
 ;;   "Returns the scale of the given anthem matching the bar duration"

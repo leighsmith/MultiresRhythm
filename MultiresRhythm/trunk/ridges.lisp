@@ -129,43 +129,42 @@
 ;;; first order difference less than the tolerance. Problem is distinguishing between the
 ;;; two ridges.
 ;;; We should assert the ridges are sorted to simplify the search.
-#|
-(defun matching-ridges (ridge-scales-1 ridge-scales-2 &key (tolerance 1))
-  "Compute the difference in scale number and height between scales of the two ridges.
-  Return the list of ridges from ridge-scales-1 that match within a tolerance. 
-  Second value returned is the list of ridges from ridge-scales-2 that matches."
-  (let (ridge-1-matches	ridge-2-matches)
-    (dolist (current-ridge ridge-scales-1)
-      (dolist (comparison-ridge ridge-scales-2)
-	(if (<= (abs (- current-ridge comparison-ridge)) tolerance)
-	    ;; TODO do set addition, so there are no duplicates?
-	    (progn (setf ridge-1-matches (cons current-ridge ridge-1-matches))
-		   (setf ridge-2-matches (cons comparison-ridge ridge-2-matches))
-    (values ridge-1-matches ridge-2-matches)))
 
-(defun matching-ridges (ridge-scales-1 ridge-scales-2 &key (tolerance 1))
-  "Compute the difference in scale number and height between scales of the two ridges.
-  Return the list of ridges from ridge-scales-1 that match within a tolerance. 
-  Second value returned is the list of ridges from ridge-scales-2 that matches."
-  (let (ridge-1-matches	
-	ridge-2-matches
-	(next-unmatched-ridge 0))
-    (dolist (current-ridge ridge-scales-1)
-      ;; limit the loop by tolerance
-      (loop
-	 for comparison-ridge in ridge-scales-2
-	 while (<= (nth next-unmatched-ridge ridge-scales-2) (+ current-ridge tolerance))
-	 do (if (<= (abs (- current-ridge comparison-ridge)) tolerance)
-		(progn (setf ridge-1-matches (cons current-ridge ridge-1-matches))
-		       (setf ridge-2-matches (cons comparison-ridge ridge-2-matches))
-		       (setf next-unmatched-ridge (1+ next-unmatched-ridge))
-		       (loop-finish)))))
-    ;; need to increment next-unmatched-ridge 
-    ;; if (>= (nth next-unmatched-ridge ridge-scales-2) (- current-ridge tolerance))
-    ;; true.
-    (setf ridge-scales-2 (rest ridge-scales-2))
-    (values (reverse ridge-1-matches) (reverse ridge-2-matches))))
-|#
+;; (defun matching-ridges (ridge-scales-1 ridge-scales-2 &key (tolerance 1))
+;;   "Compute the difference in scale number and height between scales of the two ridges.
+;;   Return the list of ridges from ridge-scales-1 that match within a tolerance. 
+;;   Second value returned is the list of ridges from ridge-scales-2 that matches."
+;;   (let (ridge-1-matches	ridge-2-matches)
+;;     (dolist (current-ridge ridge-scales-1)
+;;       (dolist (comparison-ridge ridge-scales-2)
+;; 	(if (<= (abs (- current-ridge comparison-ridge)) tolerance)
+;; 	    ;; TODO do set addition, so there are no duplicates?
+;; 	    (progn (setf ridge-1-matches (cons current-ridge ridge-1-matches))
+;; 		   (setf ridge-2-matches (cons comparison-ridge ridge-2-matches))
+;;     (values ridge-1-matches ridge-2-matches)))
+
+;; (defun matching-ridges (ridge-scales-1 ridge-scales-2 &key (tolerance 1))
+;;   "Compute the difference in scale number and height between scales of the two ridges.
+;;   Return the list of ridges from ridge-scales-1 that match within a tolerance. 
+;;   Second value returned is the list of ridges from ridge-scales-2 that matches."
+;;   (let (ridge-1-matches	
+;; 	ridge-2-matches
+;; 	(next-unmatched-ridge 0))
+;;     (dolist (current-ridge ridge-scales-1)
+;;       ;; limit the loop by tolerance
+;;       (loop
+;; 	 for comparison-ridge in ridge-scales-2
+;; 	 while (<= (nth next-unmatched-ridge ridge-scales-2) (+ current-ridge tolerance))
+;; 	 do (if (<= (abs (- current-ridge comparison-ridge)) tolerance)
+;; 		(progn (setf ridge-1-matches (cons current-ridge ridge-1-matches))
+;; 		       (setf ridge-2-matches (cons comparison-ridge ridge-2-matches))
+;; 		       (setf next-unmatched-ridge (1+ next-unmatched-ridge))
+;; 		       (loop-finish)))))
+;;     ;; need to increment next-unmatched-ridge 
+;;     ;; if (>= (nth next-unmatched-ridge ridge-scales-2) (- current-ridge tolerance))
+;;     ;; true.
+;;     (setf ridge-scales-2 (rest ridge-scales-2))
+;;     (values (reverse ridge-1-matches) (reverse ridge-2-matches))))
 
 (defun matching-ridges (ridge-scales-1 ridge-scales-2 &key (tolerance 1))
   "Compute the difference in scale number and height between scales of the two ridges.
@@ -231,6 +230,13 @@
   			    :scales (list new-ridge-scale)
  			    :set-active t)))
 
+(defun make-monotone-ridge (constant-ridge-scale duration-in-samples &key (start 0))
+  "Creates a new ridge instance with a single scale spanning the given duration"
+  (make-instance 'ridge
+		 :start-sample start
+		 :scales (make-sequence 'list duration-in-samples :initial-element constant-ridge-scale)
+		 :set-active nil))
+
 ;;; TODO can we do it more functionally using substitute? Probably not because what we
 ;;; want to substitute is a modification of the data already there.
 (defun add-ridge-scale (prev-matching-scale new-scale active-ridges)
@@ -244,10 +250,10 @@
 	  prev-matching-ridges matching-ridges))
 
 ;;; TODO Assumes we have determined the peaks, in the final version the correlated
-;;; time-frequency profile should be passed in and the ridges determined within this
-;;; function.  TODO Probably keeping the active and inactive ridges in two separate lists
-;;; will be more efficient since it removes the requirement to extract out on each
-;;; iteration.
+;;; time-frequency profile (not just the peaks) should be passed in and the ridges
+;;; determined within this function.  TODO Probably keeping the active and inactive ridges
+;;; in two separate lists will be more efficient since it removes the requirement to
+;;; extract out on each iteration.
 (defun extract-ridges (scale-peaks)
   "Extract ridges by ``hill trekking''. That is, hike along the tops of the ridges,
   following the peaks. Returns a list of each ridge in time order (actually reversed)."
@@ -294,12 +300,10 @@
 ;; TODO Or should the tempo preferencing influence the selection rather than the ridge height?
 
 ;; Sorting the entire table gives us a graded set of good alternatives. 
-#|
-(defun select-longest-tactus (skeleton)
-  "Returns a time sequence of scales."
-  (let ((searchable-skeleton skeleton))
-    (first (sort searchable-skeleton #'>= :key #'duration-in-samples))))
-|#
+;; (defun select-longest-tactus (skeleton)
+;;   "Returns a time sequence of scales."
+;;   (let ((searchable-skeleton skeleton))
+;;     (first (sort searchable-skeleton #'>= :key #'duration-in-samples))))
 
 (defun select-longest-lowest-tactus (skeleton)
   "Returns the longest duration and lowest scale ridge."
