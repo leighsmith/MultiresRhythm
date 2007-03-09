@@ -18,6 +18,11 @@
 ;; (pm:CountDevices)
 ;; (pm:GetDeviceInfo))
 
+(defun iois-to-onsets (iois &optional (onset 0))
+  (if iois
+    (cons onset (iois-to-onsets (rest iois) (+ onset (first iois))))
+    (list onset)))
+
 (defun send-multiple-timed-notes (intervals pitch velocity duration &key (channel 0))
   "Sends the same pitch and duration at multiple times in milliseconds"
   (let* ((output-device (pm:OpenOutput *output-device-id* 100 1000))
