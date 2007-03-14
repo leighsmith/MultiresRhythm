@@ -175,7 +175,8 @@
 	 (voice-scaling (.sqrt period)))
 	 ;; voice-scaling = (.* voice-scaling (gauss number-of-scales))
 	 
-    (format t "Maximum Time Period analysed = ~d, dyadic length = ~d samples~%" maximum-time-period time-in-samples)
+    (format t "Maximum time period analysed = ~d samples, dyadic length = ~d samples~%" 
+	    maximum-time-period time-in-samples)
 
     ;; loop over each voice, beginning with the highest frequency scale.
     (loop 
@@ -338,3 +339,39 @@
       (.subarray (apply #'dyadic-icwt padded-magnitude padded-phase wavelets-per-octave parameters)
 		 (list 0 (second time-trim))))))
 
+;;; File I/O
+
+;;; For now just write these as S-expr text files. Eventually they should be replaced with
+;;; writing a list of n-double-arrays, ints and strings using the NLISP HDF5 I/O routines
+;;; (still needing to be written).
+(defmethod save-to-file ((scaleogram-to-write scaleogram) (file-stream stream))
+  (format file-stream "~a ~a~%~a~%~a~%"
+	  (voices-per-octave scaleogram-to-write)
+	  (skip-highest-octaves scaleogram-to-write)
+	  (val (scaleogram-magnitude scaleogram-to-write))
+	  (val (scaleogram-phase scaleogram-to-write))))
+
+(defmethod save-to-file ((scaleogram-to-write scaleogram) (filename pathname))
+  "Writes the scaleogram to the named file"
+  (with-open-file (file-stream filename :direction :output :if-exists :supersede)
+    (save-to-file scaleogram-to-write file-stream)))
+
+(defmethod read-scaleogram-from-file ((file-stream stream))
+  "Reads and returns a new scaleogram instance, returns nil when EOF"
+  (let* ((voices-per-octave (read file-stream nil))
+	 (skip-highest-octaves (read file-stream nil))
+	 (magnitude (read file-stream nil))
+	 (magnitude-class (nlisp::make-ninstance (row-major-aref magnitude 0)))
+	 (phase (read file-stream nil)))
+    (if voices-per-octave
+	(make-instance 'scaleogram 
+		       :voices-per-octave voices-per-octave
+		       :skip-highest-octaves skip-highest-octaves
+		       :magnitude (make-instance (class-of magnitude-class) :ival magnitude)
+		       :phase (make-instance (class-of magnitude-class) :ival phase))
+	nil)))
+
+(defmethod read-scaleogram-from-file ((filename pathname))
+  "Read the scaleogram contained in the named file"
+  (with-open-file (file-stream filename :direction :input)
+    (read-scaleogram-from-file file-stream)))

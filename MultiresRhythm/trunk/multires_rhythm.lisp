@@ -34,6 +34,10 @@
   (:documentation "Returns a normalised measure of the complexity of the rhythm,
    where 0 = impossibly simple -> 1 = impossibly hard."))
 
+(defgeneric generate-and-write (rhythm-to-analyse path)
+  (:documentation "Generates scaleogram and skeleton for the rhythm and writes them to
+  files."))
+
 ;;;; Implementation
 
 (defun preferred-tempo (rhythm-scaleogram rhythm-sample-rate 
@@ -281,6 +285,7 @@ then can extract ridges."
 	 (tempo-weighting (tempo-salience-weighting salient-scale (.array-dimensions magnitude)))
 	 ;; Weight by the absolute tempo preference.
 	 (tempo-weighted-ridges (.* correlated-ridges tempo-weighting)))
+    (declare (ignore tempo-weighted-ridges))
     (format t "Preferred tempo scale = ~d of ~d hierarchy~%" salient-scale (.array-dimension magnitude 0))
     ;; (plot (.column tempo-weighting 0) nil :title "Preferred tempo weighting profile")
     ;; show what we got as an intensity plot
@@ -319,6 +324,10 @@ then can extract ridges."
       (plot-highlighted-ridges scaleogram (list chosen-tactus) correlated-ridge-scale-peaks :title (name analysis-rhythm))
       (format t "Finished plotting scalograms~%")
       (values chosen-tactus scaleogram))))
+
+;;; To verify the ridge extraction accuracy:
+;;; (plot-highlighted-ridges-of-rhythm scaleogram skeleton correlated-ridge-scale-peaks analysis-rhythm)
+;;; No black ridges should be shown, only red highlighted ridges.
 
 ;;; TODO We could set any ill-conditioned phase (negligible magnitude) to zero using this function
 ;;; after we take the phase derivative (in stationary-phase) as it would
@@ -393,3 +402,26 @@ then can extract ridges."
   "Returns a normalised measure of the complexity of the rhythm, where 0 = impossibly simple -> 1 = impossibly hard."
   (let ((skeleton (skeleton-of-rhythm rhythm-to-analyse)))
     (length skeleton)))
+
+;;; TODO should this be renamed just save-to-file? strictly speaking no, since it's not
+;;; descriptive enough.
+(defmethod generate-and-write-rhythm ((rhythm-to-analyse rhythm) (path-to-write string))
+  (let* ((rhythm-name (name rhythm-to-analyse))
+	 (skeleton-filename (make-pathname :directory path-to-write :name rhythm-name :type "skeleton"))
+	 (scaleogram-filename (make-pathname :defaults skeleton-filename :type "scaleogram")))
+    (format t "Processing ~a~%" rhythm-name)
+    (multiple-value-bind (skeleton rhythm-scaleogram) 
+	(skeleton-of-rhythm rhythm-to-analyse :voices-per-octave 16)
+      (format t "Writing ~a~%" skeleton-filename) 
+      (save-to-file skeleton skeleton-filename)
+      (format t "Writing ~a~%" scaleogram-filename) 
+      (save-to-file rhythm-scaleogram scaleogram-filename))))
+
+;; read-skeleton-from-file
+(defmethod read-mra-from-file ((path-to-read string))
+  "Reads and returns skeleton and scaleogram instances, returns nil when EOF"
+  (let* ((skeleton-filename (make-pathname :defaults path-to-read :type "skeleton"))
+	 (skeleton (read-skeleton-from-file skeleton-filename))
+	 (scaleogram-filename (make-pathname :defaults skeleton-filename :type "scaleogram"))
+	 (scaleogram (read-scaleogram-from-file scaleogram-filename)))
+  (values skeleton scaleogram)))

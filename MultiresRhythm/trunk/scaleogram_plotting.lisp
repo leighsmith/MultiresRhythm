@@ -194,6 +194,13 @@
 	      :title title
 	      :time-axis-decimation time-axis-decimation))
 
+;;   		       (list #'ridges-on-phase-image
+;;   			     (list (mapcar #'copy-object highlighted-ridges) 
+;; 				   (scaleogram-phase scaleogram-to-plot)
+;; 				   (scaleogram-magnitude scaleogram-to-plot))
+;;  			     '((1.0 0.5) (0.0 0.0))
+;;   			     axes-labels)
+
 (defmethod plot-highlighted-ridges-of-rhythm ((scaleogram-to-plot scaleogram)
 					      (highlighted-ridges list)
 					      (ridge-peaks n-double-array)
@@ -212,17 +219,10 @@
 				   (scaleogram-magnitude scaleogram-to-plot))
 			     '((1.0 0.5) (0.0 0.3))
 			     axes-labels)
-;;  		       (list #'highlighted-ridges-image
-;;  			     (list (mapcar #'copy-object highlighted-ridges) ridge-peaks)
-;; 			     '((1.0 0.5) (0.0 0.0))
-;;  			     axes-labels)
-;;   		       (list #'ridges-on-phase-image
-;;   			     (list (mapcar #'copy-object highlighted-ridges) 
-;; 				   (scaleogram-phase scaleogram-to-plot)
-;; 				   (scaleogram-magnitude scaleogram-to-plot))
-;;  			     '((1.0 0.5) (0.0 0.0))
-;;   			     axes-labels)
-)
+  		       (list #'highlighted-ridges-image
+  			     (list (mapcar #'copy-object highlighted-ridges) ridge-peaks)
+ 			     '((1.0 0.5) (0.0 0.0))
+  			     axes-labels))
 		 :title title
 		 :time-axis-decimation time-axis-decimation)))
 

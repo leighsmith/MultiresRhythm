@@ -87,6 +87,10 @@
 					   matching-ridges 
 					   correlated-ridge-scale-peaks
 					   anthem-rhythm :title (name anthem-rhythm))
+	(plot-highlighted-ridges-of-rhythm rhythm-scaleogram 
+					   (list (canonical-bar-ridge anthem rhythm-scaleogram))
+					   correlated-ridge-scale-peaks
+					   anthem-rhythm)
 	matching-ridges))))
 
 ;; (bar-ridges-for-anthem (anthem-named 'australia))
@@ -94,6 +98,8 @@
 ;; (bar-ridges-for-anthem (anthem-named 'france))
 ;; (bar-ridges-for-anthem (anthem-named 'nepal))
 ;; (bar-ridges-for-anthem (anthem-named 'sweden))
+;; (bar-ridges-for-anthem (anthem-named 'netherlands))
+
 ;; (multiple-value-setq (skeleton scaleogram peaks) (skeleton-of-rhythm (anthem-rhythm (anthem# 3))))
 ;; (setf matching-ridges (bar-ridges-for-skeleton (anthem# 3) skeleton scaleogram))
 ;; (plot-highlighted-ridges scaleogram matching-ridges peaks)
@@ -118,3 +124,12 @@
   `(clap-to-rhythm (anthem-rhythm ,anthem)))
 
 ;; (time (clap-to-anthem (anthem# 32))
+
+(defun generate-anthem-skeletons (&key (count 3) ; (length *national-anthems*)
+				  (anthem-path "/Users/leigh/Data/Anthems"))
+  "Generates and writes the skeleton of the numbered anthems"
+  (dotimes (anthem-index count)
+    (let* ((anthem-rhythm (anthem-rhythm (anthem# anthem-index))))
+      (if (not (probe-file (make-pathname :directory anthem-path :name (name anthem-rhythm) :type "skeleton")))
+	  (generate-and-write-rhythm anthem-rhythm anthem-path)))))
+

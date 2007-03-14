@@ -7,6 +7,15 @@
 
 (in-package :multires-rhythm)
 
+(defgeneric save-to-file (object-to-write file-stream-or-name)
+  (:documentation "Writes the scaleogram to the named file or given stream"))
+
+(defgeneric read-scaleogram-from-file (file-stream-or-name)
+  (:documentation "Read the scaleogram contained in the named file or given stream"))
+
+(defgeneric read-skeleton-from-file (file-stream-or-name)
+  (:documentation "Read the ridge or skeleton contained in the named file or given stream"))
+
 ;;; (concatenate string filename ".handclap.score")
 
 ;;; General MIDI sounds:

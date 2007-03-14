@@ -158,7 +158,7 @@
 ;; 	 do (if (<= (abs (- current-ridge comparison-ridge)) tolerance)
 ;; 		(progn (setf ridge-1-matches (cons current-ridge ridge-1-matches))
 ;; 		       (setf ridge-2-matches (cons comparison-ridge ridge-2-matches))
-;; 		       (setf next-unmatched-ridge (1+ next-unmatched-ridge))
+;; 		       (incf next-unmatched-ridge)
 ;; 		       (loop-finish)))))
 ;;     ;; need to increment next-unmatched-ridge 
 ;;     ;; if (>= (nth next-unmatched-ridge ridge-scales-2) (- current-ridge tolerance))
@@ -183,7 +183,7 @@
 	 do (if (<= (abs (- current-ridge comparison-ridge)) tolerance)
 		(progn (setf ridge-1-matches (cons current-ridge ridge-1-matches))
 		       (setf ridge-2-matches (cons comparison-ridge ridge-2-matches))
-		       (setf comparison-index (1+ comparison-index))
+		       (incf comparison-index)
 		       (loop-finish)))
 	 finally (setf next-unmatched-ridge comparison-index)))
     (values (reverse ridge-1-matches) (reverse ridge-2-matches))))
@@ -357,6 +357,33 @@
 		 :set-active (active ridge-to-copy)
 		 :scales (copy-list (scales ridge-to-copy))
 		 :start-sample (start-sample ridge-to-copy)))
+
+;;; File I/O routines.
+
+(defmethod save-to-file ((ridge-to-save ridge) (file-stream stream))
+  (format file-stream "~a ~a~%" 
+	  (start-sample ridge-to-save)
+	  (scales ridge-to-save)))
+
+(defmethod save-to-file ((skeleton list) (filename pathname))
+  "Writes out all ridges in the skeleton"
+  (with-open-file (file-stream filename :direction :output :if-exists :supersede)
+    (dolist (ridge skeleton)
+      (save-to-file ridge file-stream))))
+
+(defmethod read-skeleton-from-file ((file-stream stream))
+  "Reads a single ridge, returns nil when EOF"
+  (let* ((start-sample (read file-stream nil))
+	 (scales-list (read file-stream nil)))
+    (if start-sample
+	(make-instance 'ridge :scales scales-list :start-sample start-sample)
+	nil)))
+
+(defmethod read-skeleton-from-file ((filename pathname))
+  "Read the entire file"
+  (with-open-file (file-stream filename :direction :input)
+    (loop for ridge = (read-skeleton-from-file file-stream)
+       while ridge collect ridge)))
 
 ;;; Test routines.
 

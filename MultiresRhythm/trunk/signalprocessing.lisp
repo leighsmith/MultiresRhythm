@@ -20,6 +20,9 @@
   "Determines the range of values in the matrix"
   (- (.max matrix) (.min matrix)))
 
+(defun mean (a)
+  (/ (.sum a) (.length a)))
+
 ;;thresholdMag = magnitude > threshold;
 ;;newphase = (thresholdMag .* phase) + (!thresholdMag .* clamp);
 (defun clamp-to-bounds (signal test-signal 
