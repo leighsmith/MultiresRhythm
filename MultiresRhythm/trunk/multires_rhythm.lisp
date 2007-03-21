@@ -418,7 +418,7 @@ then can extract ridges."
       (save-to-file rhythm-scaleogram scaleogram-filename))))
 
 ;; read-skeleton-from-file
-(defmethod read-mra-from-file ((path-to-read string))
+(defmethod read-mra-from-file ((path-to-read pathname))
   "Reads and returns skeleton and scaleogram instances, returns nil when EOF"
   (let* ((skeleton-filename (make-pathname :defaults path-to-read :type "skeleton"))
 	 (skeleton (read-skeleton-from-file skeleton-filename))

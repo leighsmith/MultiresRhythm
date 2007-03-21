@@ -26,6 +26,8 @@
 ;;; The *national-anthems* symbol is interned into :multires-rhythm package by loading.
 (load "/Volumes/iDisk/Research/Data/DesainHoning/national anthems.lisp")
 
+(defparameter *anthem-analysis-path* "/Users/leigh/Data/Anthems")
+
 (defmacro anthem# (anthem-number)
   "Retrieves the anthem by number"
   `(nth ,anthem-number *national-anthems*))
@@ -106,12 +108,10 @@
 ;; (plot-highlighted-ridges scaleogram matching-ridges (scaleogram-magnitude scaleogram))
 ;; (plot-highlighted-ridges-of-rhythm scaleogram matching-ridges peaks (anthem-rhythm (anthem# 3)))
 
-#|
-(plot-highlighted-ridges-of-rhythm scaleogram 
-				   (list (canonical-bar-ridge (anthem# 3) scaleogram))
-				   peaks
-				   (anthem-rhythm (anthem# 3)))
-|#
+;; (plot-highlighted-ridges-of-rhythm scaleogram 
+;; 				   (list (canonical-bar-ridge (anthem# 3) scaleogram))
+;; 				   peaks
+;; 				   (anthem-rhythm (anthem# 3)))
 
 ;; (defun bar-scale-for-anthem (anthem &key (tactus-selector #'select-longest-lowest-tactus))
 ;;   "Returns the scale of the given anthem matching the bar duration"
@@ -126,10 +126,22 @@
 ;; (time (clap-to-anthem (anthem# 32))
 
 (defun generate-anthem-skeletons (&key (count 3) ; (length *national-anthems*)
-				  (anthem-path "/Users/leigh/Data/Anthems"))
+				  (anthem-path *anthem-analysis-path*))
   "Generates and writes the skeleton of the numbered anthems"
   (dotimes (anthem-index count)
     (let* ((anthem-rhythm (anthem-rhythm (anthem# anthem-index))))
       (if (not (probe-file (make-pathname :directory anthem-path :name (name anthem-rhythm) :type "skeleton")))
 	  (generate-and-write-rhythm anthem-rhythm anthem-path)))))
 
+(defun bar-ridges-for-anthem-file (anthem)
+  "Returns the ridges of the given anthem matching the bar duration"
+  (let* ((anthem-rhythm (anthem-rhythm anthem))) 
+    (multiple-value-bind (skeleton rhythm-scaleogram) 
+	(read-mra-from-file (make-pathname :directory *anthem-analysis-path* :name (name anthem-rhythm)))
+      (let* ((matching-ridges (bar-ridges-for-skeleton anthem skeleton rhythm-scaleogram)))
+	(plot-cwt+ridges rhythm-scaleogram matching-ridges anthem-rhythm :title (name anthem-rhythm))
+	(values matching-ridges rhythm-scaleogram)))))
+
+;; (let ((anthem-rhythm (anthem-rhythm anthem)))
+;;   (multiple-value-bind (matching-ridges scaleogram) (bar-ridges-for-anthem-file anthem)
+;;     (plot-cwt+ridges scaleogram matching-ridges anthem-rhythm :title (name anthem-rhythm))))
