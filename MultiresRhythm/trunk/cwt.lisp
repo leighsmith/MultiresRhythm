@@ -74,6 +74,13 @@
 (defmethod duration-in-samples ((scaleogram-to-analyse scaleogram))
   (.array-dimension (scaleogram-magnitude scaleogram-to-analyse) 1))
 
+(defmethod print-object ((scaleogram-to-print scaleogram) stream)
+  (call-next-method scaleogram-to-print stream) ;; to print the superclass.
+  (format stream " ~d scales x ~d samples, ~d VPO" 
+	  (number-of-scales scaleogram-to-print)
+	  (duration-in-samples scaleogram-to-print)
+	  (voices-per-octave scaleogram-to-print)))
+
 (defun gaussian-envelope (width &key (mean 0d0) (stddev 1d0) 
 			    (scaling (/ 1d0 (* (sqrt (* 2d0 pi)) stddev))))
   "Compute a gaussian envelope.
