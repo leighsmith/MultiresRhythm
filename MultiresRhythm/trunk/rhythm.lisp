@@ -51,9 +51,6 @@
 (defgeneric plot-rhythm (rhythm-to-plot &key reset)
   (:documentation "Plot locations of beats of the given rhythm."))
 
-(defgeneric plot-rhythm-labelled (rhythm-to-plot)
-  (:documentation "Plot locations of beats of the given rhythm."))
-
 (defgeneric scale-amplitude (rhythm-to-scale scale-factor)
   (:documentation "Scales the amplitude of each onset by the given scale-factor."))
 
@@ -160,55 +157,45 @@
 (defmethod rhythm-iois ((rhythm-to-analyse rhythm))
   (.diff (onsets-in-seconds rhythm-to-analyse)))
 
-(defmethod plot-rhythm ((rhythm-to-plot rhythm) &key (reset t) (time-in-seconds nil))
+;;; Old plot-rhythm: (plot-rhythm :reset t :aspect-ratio 0.66
+;;; :maximum-indices 10
+(defmethod plot-rhythm ((rhythm-to-plot rhythm) &key 
+			(reset t)
+			(time-in-seconds nil)
+			(aspect-ratio 0.1))
   (if reset (reset-plot))
+  ;; "set size 0.7,0.7"
+  ;; "set origin 0.1,0.1"
+  (plot-command "set xtics font \"Times,10\"")
+  (plot-command "set ytics font \"Times,10\"")
   (if time-in-seconds
       (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
 			    (label-samples-as-seconds (duration-in-samples rhythm-to-plot)
-						      (sample-rate rhythm-to-plot)
-						      :maximum-indices 10))))
-  (plot-command "set yrange [0:1.1]")	; Gives some height for the key.
+						      (sample-rate rhythm-to-plot)))))
+  (plot-command (format nil "set xrange [0:~d]" (duration-in-samples rhythm-to-plot))) ; ensures last label plotted
+  (plot-command "set yrange [0:1.2]")	; Gives some height for the key.
+  (plot-command "set format y \"%3.1f\"")
+  (plot-command "set ytics 0.0, 0.20, 1.0")
+  (plot-command "set size 0.83,0.35")
+  (plot-command "set origin 0.055,0.65")
+  (plot-command "unset key")
   (plot (time-signal rhythm-to-plot) nil
-	 :label (format nil "Rhythm onsets of ~a" (description rhythm-to-plot))
-	 :style "impulses linetype 6"
-	 :xlabel (if time-in-seconds "Time in seconds"
-		     (format nil "Time in samples (~dHz sample rate)" (sample-rate rhythm-to-plot)))
-	 :ylabel "Scaled Intensity"
-	 :title (format nil "Rhythm of ~a" (name rhythm-to-plot))
-	 :aspect-ratio 0.66
-	 :reset nil))
-
-(defmethod plot-rhythm-labelled ((analysis-rhythm rhythm))
-    (reset-plot)			; Since we don't reset with image.
-    ;; "set size 0.7,0.7"
-    ;; "set origin 0.1,0.1"
-    (plot-command "set xtics font \"Times,10\"")
-    (plot-command "set ytics font \"Times,10\"")
-    (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
-			  (label-samples-as-seconds (duration-in-samples analysis-rhythm)
- 						    (sample-rate analysis-rhythm))))
-    (plot-command (format nil "set xrange [0:~d]" (duration-in-samples analysis-rhythm))) ; ensures last label plotted
-    (plot-command "set yrange [0:1.2]")	; Gives some height for the key.
-    (plot-command "set format y \"%3.1f\"")
-    (plot-command "set ytics 0.0, 0.20, 1.0")
-    (plot-command "set size 0.83,0.35")
-    (plot-command "set origin 0.055,0.65")
-    (plot-command "unset key")
-    (plot (time-signal analysis-rhythm) nil
-	  ;; :label (format nil "Rhythm onsets of ~a" (description analysis-rhythm))
-	  :style "impulses linetype 6"
-	  :ylabel "Normalised Intensity"
-	  :title (format nil "Rhythm of ~a" (name analysis-rhythm))
-	  :aspect-ratio 0.1
-	  :reset nil))
+	;; :label (format nil "Rhythm onsets of ~a" (description rhythm-to-plot))
+	:style "impulses linetype 6"
+	:xlabel (if time-in-seconds "Time in seconds"
+		    (format nil "Time in samples (~dHz sample rate)" (sample-rate rhythm-to-plot)))
+	:ylabel "Normalised Intensity"
+	:title (format nil "Rhythm of ~a" (name rhythm-to-plot))
+	:aspect-ratio aspect-ratio
+	:reset nil))
 
 (defmethod save-rhythm ((rhythm-to-save rhythm))
   (save-scorefile (format nil "/Users/leigh/~a.score" (name rhythm-to-save)) 
 		  ;; Convert to seconds.
-		(nlisp::array-to-list (rhythm-iois rhythm-to-save))
-		:instrument "midi"
-		:midi-channel 10
-		:description (description rhythm-to-save)))
+		  (nlisp::array-to-list (rhythm-iois rhythm-to-save))
+		  :instrument "midi"
+		  :midi-channel 10
+		  :description (description rhythm-to-save)))
 
 (defun add-rhythm (&rest rhythms-to-add)
   "Adds multiple rhythms together. Returns the shortest? longest? rhythm."
@@ -224,3 +211,12 @@
   "Scales the amplitude of each onset by the given scale-factor"
   (setf (time-signal rhythm-to-scale) (.* (time-signal rhythm-to-scale) scale-factor))
   rhythm-to-scale)
+
+(defmethod subset-of-rhythm ((rhythm-to-subset rhythm) time-region)
+  "Returns a new rhythm instance with a sub-region of the given rhythm. The time region
+  consists of the start and end specifiers. T defaults to the start or finish."
+    (make-instance 'rhythm 
+		   :name (format nil "subset of ~a" (name rhythm-to-subset)) 
+		   :description ""
+		   :time-signal (.subarray (time-signal rhythm-to-subset) (list 0 time-region))
+		   :sample-rate (sample-rate rhythm-to-subset)))
