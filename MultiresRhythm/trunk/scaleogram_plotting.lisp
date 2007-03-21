@@ -143,7 +143,7 @@
   ;; plot-images, or we create a delayed promise of invocation, in this case by passing in
   ;; the commands for later transfer to gnuplot.
   (let ((axes-labels (axes-labelled-in-seconds scaleogram-to-plot (sample-rate analysis-rhythm) time-axis-decimation)))
-    ;; TODO (plot-rhythm-labelled analysis-rhythm))
+    ;; TODO (plot-rhythm analysis-rhythm))
     ;; Put the magnitude plot above the phase on the same window.
     (plot-images (list (list #'magnitude-image 
 			     (list (scaleogram-magnitude scaleogram-to-plot))
@@ -279,7 +279,7 @@
 	 (setf plotable-phase-with-ridge (insert-ridge downsampled-ridge plotable-phase-with-ridge :constant-value maximum-colour-value)))
     (window)				; put this on a separate window.
     (plot-command "set multiplot")	; Put the magnitude plot above the phase on the same window.
-    (if analysis-rhythm (plot-rhythm-labelled analysis-rhythm))
+    (if analysis-rhythm (plot-rhythm analysis-rhythm))
     ;; Can we move this into plot-cwt-labelled?
     (reset-plot)			; Since we don't reset with image.
     (plot-command "set xtics font \"Times,10\"")
@@ -338,4 +338,3 @@
     (plot-command "unset multiplot")
     (close-window)
     (reset-plot)))
-
