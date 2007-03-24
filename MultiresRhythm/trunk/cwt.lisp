@@ -62,6 +62,9 @@
 (defgeneric number-of-octaves (scaleogram)
   (:documentation "Returns the number of octaves that the scaleogram spans in its dilation."))
 
+(defgeneric read-scaleogram-from-file (file-stream-or-name)
+  (:documentation "Read the scaleogram contained in the named file or given stream"))
+
 ;;;; Methods
 
 (defmethod number-of-scales ((scaleogram-to-analyse scaleogram))
@@ -131,7 +134,8 @@
 	(swapped-time-wavelet (.concatenate 
 			       (.subseq time-wavelet (1+ zero-frequency) (1- signal-time-period))
 			       (.subseq time-wavelet 0 zero-frequency))))
-   (nplot (list (.realpart swapped-time-wavelet) (.imagpart swapped-time-wavelet)) nil 
+   (nplot (list (.realpart swapped-time-wavelet) (.imagpart swapped-time-wavelet)) 
+	  nil ; TODO (.rseq ? ? signal-time-period)
 	  :legends (list "Real Part" "Imaginary Part"))))
 
 ;;; (plot-time-domain-kernel 1024 128 :omega0 6.2)
@@ -352,7 +356,10 @@
 ;;; writing a list of n-double-arrays, ints and strings using the NLISP HDF5 I/O routines
 ;;; (still needing to be written).
 (defmethod save-to-file ((scaleogram-to-write scaleogram) (file-stream stream))
-  (format file-stream "~a ~a~%~a~%~a~%"
+  (format file-stream ";; Format: duration, scales, voices per octave, skip highest octaves, magnitude, phase~%")
+  (format file-stream "~a ~a ~a ~a~%~a~%~a~%"
+	  (duration-in-samples scaleogram-to-write)
+	  (number-of-scales scaleogram-to-write)
 	  (voices-per-octave scaleogram-to-write)
 	  (skip-highest-octaves scaleogram-to-write)
 	  (val (scaleogram-magnitude scaleogram-to-write))
@@ -363,22 +370,40 @@
   (with-open-file (file-stream filename :direction :output :if-exists :supersede)
     (save-to-file scaleogram-to-write file-stream)))
 
+(defun read-scaleogram-file-header (file-stream)
+  ;; Throw away the first comment line for now, one day, we may check it.
+  (read-line file-stream)
+  (values (read file-stream nil)	; duration
+	  (read file-stream nil)	; scale-number
+	  (read file-stream nil)	; voices-per-octave
+	  (read file-stream nil)))	; skip-highest-octaves
+
 (defmethod read-scaleogram-from-file ((file-stream stream))
   "Reads and returns a new scaleogram instance, returns nil when EOF"
-  (let* ((voices-per-octave (read file-stream nil))
-	 (skip-highest-octaves (read file-stream nil))
-	 (magnitude (read file-stream nil))
-	 (magnitude-class (nlisp::make-ninstance (row-major-aref magnitude 0)))
-	 (phase (read file-stream nil)))
-    (if voices-per-octave
-	(make-instance 'scaleogram 
-		       :voices-per-octave voices-per-octave
-		       :skip-highest-octaves skip-highest-octaves
-		       :magnitude (make-instance (class-of magnitude-class) :ival magnitude)
-		       :phase (make-instance (class-of magnitude-class) :ival phase))
-	nil)))
+  (multiple-value-bind (duration scale-number voices-per-octave skip-highest-octaves)
+      (read-scaleogram-file-header file-stream)
+    (let* ((magnitude (read file-stream nil))
+	   (magnitude-class (nlisp::make-ninstance (row-major-aref magnitude 0)))
+	   (phase (read file-stream nil)))
+      (if (= duration (array-dimension magnitude 0) )
+	  (format t "Eeek! read data and expected duration (~a) don't match!~%" duration))
+      (if (= scale-number (array-dimension magnitude 1))
+	  (format t "Eeek! read data and expected scales (~a) don't match!~%" scale-number))
+      (if voices-per-octave
+	  (make-instance 'scaleogram 
+			 :voices-per-octave voices-per-octave
+			 :skip-highest-octaves skip-highest-octaves
+			 :magnitude (make-instance (class-of magnitude-class) :ival magnitude)
+			 :phase (make-instance (class-of magnitude-class) :ival phase))
+	  nil))))
 
 (defmethod read-scaleogram-from-file ((filename pathname))
   "Read the scaleogram contained in the named file"
   (with-open-file (file-stream filename :direction :input)
     (read-scaleogram-from-file file-stream)))
+
+(defmethod read-scaleogram-dimensions-from-file ((filename pathname))
+  "Reads just the dimensions of the scaleogram contained in the named file. 
+This is *much* quicker than reading the two matrices."
+  (with-open-file (file-stream filename :direction :input)
+    (read-scaleogram-file-header file-stream)))

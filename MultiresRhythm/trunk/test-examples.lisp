@@ -153,8 +153,8 @@
 ;; (clap-to-octave-file "greensleeves-perform-medium" :sample-rate 400 :description "Greensleeves performed")
 
 ;; (clap-to-octave-file "desain-unquantized" :sample-rate 200)
-;; (clap-to-octave-file "desain-unquantized" :sample-rate 200 :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time 58 62 skeleton)))
-;; (clap-to-octave-file "desain-unquantized" :sample-rate 200 :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time 73 65 skeleton)))
+;; (clap-to-octave-file "desain-unquantized" :sample-rate 200 :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time skeleton 58 62)))
+;; (clap-to-octave-file "desain-unquantized" :sample-rate 200 :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time skeleton 73 65)))
 ;; (clap-to-octave-file "desain-quantized" :sample-rate 200)
 ;; (clap-to-octave-file "lengthen_corr" :sample-rate 200)
 ;; (clap-to-octave-file "anapest-with-rubato" :sample-rate 200)
@@ -167,7 +167,7 @@
 ;;(clap-to-rhythm loaded-rhythm :tactus-selector #'select-longest-lowest-tactus)
 
 
-;; (setf desain-at-65 (mapcar (lambda (x) (scale-at-time x 65)) desain-skeleton))
+;; (setf desain-at-65 (mapcar (lambda (x) (scale-at-time x 65)) (ridges desain-skeleton)))
 ;; (loop for y in desain-at-65 when y collect y)
 
 
@@ -230,7 +230,7 @@
 ;;; From Desain & Honing 1999
 ;; (clap-to-iois "desain99" '(3 1 6 2 3 1 6 2 3 1) :shortest-ioi 50)
 ;; (clap-to-rhythm (iois-to-rhythm "desain99" '(3 1 6 2 3 1 6 2 3 1) :shortest-ioi 50)
-;;                 :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time 91 0 skeleton)))
+;;                 :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time skeleton 91 0)))
 ;;
 ;;; TODO need to generate claps as scorefile from clap-to-rhythm
 

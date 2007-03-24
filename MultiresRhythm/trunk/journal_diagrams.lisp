@@ -20,7 +20,7 @@
 ;;; (clap-to-rhythm (iois-to-rhythm "3-beat-lengthen-corr" (repeat-rhythm '(61 75 89) 16)))
 
 ;;; Until we fix the over long ridge bug, this is a work around to select the right ridge.
-;;; (clap-to-rhythm (iois-to-rhythm "3-beat-lengthen-corr" (repeat-rhythm '(61 75 89) 16)) :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time 94 0 skeleton)))
+;;; (clap-to-rhythm (iois-to-rhythm "3-beat-lengthen-corr" (repeat-rhythm '(61 75 89) 16)) :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time skeleton 94 0)))
 ;;;
 ;;; (setf 3-beat-rhythm (iois-to-rhythm "3-beat-lengthen-corr" (repeat-rhythm '(61 75 89) 16)))
 ;;; (setf skeleton (skeleton-of-rhythm 3-beat-rhythm :voices-per-octave 16))

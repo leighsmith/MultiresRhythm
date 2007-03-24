@@ -28,7 +28,7 @@
   (:documentation "Returns the scaleogram for the rhythm."))
 
 (defgeneric skeleton-of-rhythm (rhythm-to-analyse &key voices-per-octave)
-  (:documentation "Returns a list of ridges (a skeleton) for the given rhythm."))
+  (:documentation "Returns a skeleton (holds a list of ridges) for the given rhythm."))
 
 (defgeneric rhythm-complexity (rhythm-to-analyse)
   (:documentation "Returns a normalised measure of the complexity of the rhythm,
@@ -306,7 +306,12 @@ then can extract ridges."
   "Returns the skeleton given the rhythm."
   (let* ((scaleogram (scaleogram-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave))
 	 (correlated-ridge-scale-peaks (scale-peaks-of-scaleogram scaleogram (sample-rate analysis-rhythm)))
-       	 (skeleton (extract-ridges correlated-ridge-scale-peaks)))
+       	 (skeleton (make-instance 'skeleton 
+				  :ridges (extract-ridges correlated-ridge-scale-peaks)
+				  :duration (duration-in-samples scaleogram)
+				  :scales (number-of-scales scaleogram)
+				  :voices-per-octave (voices-per-octave scaleogram)
+				  :skip-highest-octaves (skip-highest-octaves scaleogram))))
     (values skeleton scaleogram correlated-ridge-scale-peaks)))
 
 (defmethod tactus-for-rhythm ((analysis-rhythm rhythm) 
@@ -326,7 +331,7 @@ then can extract ridges."
       (values chosen-tactus scaleogram))))
 
 ;;; To verify the ridge extraction accuracy:
-;;; (plot-highlighted-ridges-of-rhythm scaleogram skeleton correlated-ridge-scale-peaks analysis-rhythm)
+;;; (plot-highlighted-ridges-of-rhythm scaleogram (ridges skeleton) correlated-ridge-scale-peaks analysis-rhythm)
 ;;; No black ridges should be shown, only red highlighted ridges.
 
 ;;; TODO We could set any ill-conditioned phase (negligible magnitude) to zero using this function
@@ -401,7 +406,7 @@ then can extract ridges."
 (defmethod rhythm-complexity ((rhythm-to-analyse rhythm))
   "Returns a normalised measure of the complexity of the rhythm, where 0 = impossibly simple -> 1 = impossibly hard."
   (let ((skeleton (skeleton-of-rhythm rhythm-to-analyse)))
-    (length skeleton)))
+    (length (ridges skeleton))))
 
 ;;; TODO should this be renamed just save-to-file? strictly speaking no, since it's not
 ;;; descriptive enough.
@@ -417,11 +422,7 @@ then can extract ridges."
       (format t "Writing ~a~%" scaleogram-filename) 
       (save-to-file rhythm-scaleogram scaleogram-filename))))
 
-;; read-skeleton-from-file
 (defmethod read-mra-from-file ((path-to-read pathname))
   "Reads and returns skeleton and scaleogram instances, returns nil when EOF"
-  (let* ((skeleton-filename (make-pathname :defaults path-to-read :type "skeleton"))
-	 (skeleton (read-skeleton-from-file skeleton-filename))
-	 (scaleogram-filename (make-pathname :defaults skeleton-filename :type "scaleogram"))
-	 (scaleogram (read-scaleogram-from-file scaleogram-filename)))
-  (values skeleton scaleogram)))
+  (values (read-skeleton-from-file (make-pathname :defaults path-to-read :type "skeleton"))
+	  (read-scaleogram-from-file (make-pathname :defaults path-to-read :type "scaleogram"))))

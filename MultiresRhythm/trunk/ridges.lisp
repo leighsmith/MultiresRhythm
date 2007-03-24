@@ -49,6 +49,9 @@
 (defgeneric contains-scale-p (ridge scale)
   (:documentation "Returns t if the given scale is within this ridge."))
 
+(defgeneric count-contains-scale (ridge scale)
+  (:documentation "Returns the number of the given scale in this ridge"))
+
 (defgeneric average-scale (ridge)
   (:documentation "Returns the average scale number of a ridge"))
 
@@ -101,6 +104,10 @@
 (defmethod contains-scale-p ((the-ridge ridge) scale)
   "Returns t if the given scale is within this ridge"
   (find scale (scales the-ridge)))
+
+(defmethod count-contains-scale ((the-ridge ridge) scale)
+  "Returns the number of the given scale in this ridge"
+  (count scale (scales the-ridge)))
 
 (defmethod average-scale ((the-ridge ridge))
   "Returns the mean average of the scale numbers"
@@ -296,48 +303,12 @@
        ;; them before returning them.
        finally (return (mapcar #'reverse-time all-ridges))))
 
-
 ;; TODO Or should the tempo preferencing influence the selection rather than the ridge height?
-
-;; Sorting the entire table gives us a graded set of good alternatives. 
-;; (defun select-longest-tactus (skeleton)
-;;   "Returns a time sequence of scales."
-;;   (let ((searchable-skeleton skeleton))
-;;     (first (sort searchable-skeleton #'>= :key #'duration-in-samples))))
-
-(defun select-longest-lowest-tactus (skeleton)
-  "Returns the longest duration and lowest scale ridge."
-  (let ((max-ridge (make-instance 'ridge)))
-    (dolist (ridge skeleton)
-      (if (or (> (duration-in-samples ridge) (duration-in-samples max-ridge))
-	      ;; average-scale returns scale numbers indexed from the highest scales, so 
-	      (and (eql (duration-in-samples ridge) (duration-in-samples max-ridge))
-		   (> (average-scale ridge) (average-scale max-ridge))))
-	  (setf max-ridge ridge)))
-    max-ridge))
-
-(defun ridge-containing-scale-and-time (scale time-sample skeleton)
-  "Returns the ridge containing the given scale and time element."
-  (find-if (lambda (ridge) (contains-scale-and-time ridge scale time-sample)) skeleton))
-
-(defun ridges-at-time (skeleton time)
-  "Returns a list of ridges which have energy in a scale at the given time"
-  (loop
-     for ridge-candidate in skeleton
-     when (scale-at-time ridge-candidate time)
-     collect ridge-candidate))
-
-(defun ridges-containing-scale (skeleton scale)
-  "Returns a list of ridges which have energy in a scale"
-  (loop
-     for ridge-candidate in skeleton
-     when (contains-scale-p ridge-candidate scale)
-     collect ridge-candidate))
 
 (defmethod scales-as-array ((the-ridge ridge))
   "Returns the scales list as an nlisp array"
-  (make-instance 'n-fixnum-array :ival (make-array (duration-in-samples the-ridge) :initial-contents
-					     (scales the-ridge))))
+  (make-instance 'n-fixnum-array :ival (make-array (duration-in-samples the-ridge)
+						   :initial-contents (scales the-ridge))))
 
 (defmethod insert-ridge ((ridge-to-insert ridge) time-frequency-plane &key constant-value)
   "Insert the given ridge into the time-frequency plane, overwriting existing values with constant-value"
@@ -365,13 +336,7 @@
 	  (start-sample ridge-to-save)
 	  (scales ridge-to-save)))
 
-(defmethod save-to-file ((skeleton list) (filename pathname))
-  "Writes out all ridges in the skeleton"
-  (with-open-file (file-stream filename :direction :output :if-exists :supersede)
-    (dolist (ridge skeleton)
-      (save-to-file ridge file-stream))))
-
-(defmethod read-skeleton-from-file ((file-stream stream))
+(defmethod read-ridge-from-file ((file-stream stream))
   "Reads a single ridge, returns nil when EOF"
   (let* ((start-sample (read file-stream nil))
 	 (scales-list (read file-stream nil)))
@@ -379,36 +344,3 @@
 	(make-instance 'ridge :scales scales-list :start-sample start-sample)
 	nil)))
 
-(defmethod read-skeleton-from-file ((filename pathname))
-  "Read the entire file"
-  (with-open-file (file-stream filename :direction :input)
-    (loop for ridge = (read-skeleton-from-file file-stream)
-       while ridge collect ridge)))
-
-;;; Test routines.
-
-(defun test-ridges (filename)
-  (let* ((data-directory "/Users/leigh/Research/Data/NewAnalysedRhythms/")
-	 (absolute-pathname (concatenate 'string data-directory filename ".ridges"))
-	 (determined-ridges (.load-octave-file absolute-pathname))
-	 (skeleton (extract-ridges determined-ridges))
-	 (longest-tactus (select-longest-lowest-tactus skeleton)))
-    (.save-to-octave-file (scales longest-tactus)
-			  (concatenate 'string data-directory filename ".tactus")
-			  :variable-name "tactus")
-    skeleton))
-
-;; (setf skeleton (test-ridges "greensleeves-perform-medium"))
-;; (setf determined-ridges (.load-octave-file "/Users/leigh/Research/Data/NewAnalysedRhythms/greensleeves-perform-medium.ridges"))
-;; (setf skeleton (extract-ridges determined-ridges))
-;; (setf longest-tactus (select-longest-lowest-tactus skeleton))
-;; (.save-to-octave-file (scales longest-tactus) "/Users/leigh/Research/Data/NewAnalysedRhythms/greensleeves-perform-medium.tactus" :variable-name "tactus")
-;; (start-sample longest-tactus)
-
-;; 	 (example-ridge (ridge-containing-scale-and-time (- 144 (1+ 54)) 209 skeleton)))
-;;     (.save-to-octave-file (scales example-ridge)
-;;			  "/Users/leigh/Research/Data/NewAnalysedRhythms/greensleeves-example-ridge.tactus"
-;;			  :variable-name "tactus")
-;;    (format t "start sample ~a~%" (start-sample example-ridge))
-
-;;(test-ridges "greensleeves-perform-medium")
