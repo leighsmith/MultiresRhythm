@@ -118,7 +118,7 @@
 ;; Test reconstruction of a dirac function defined rhythmic signal.
 ;; (test-cwt-reconstruction (time-signal (rhythm-of-grid "test" '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0))))
 
-(defun load-rhythm-file (filename &key (sample-rate 200) (description ""))
+(defun load-octave-rhythm-file (filename &key (sample-rate 200) (description ""))
   (let* ((file-path (make-pathname 
 		     :directory (list :absolute "/Users/leigh/Research/Data/NewAnalysedRhythms/") 
 		     :name filename
@@ -140,11 +140,11 @@
 			 (sample-rate 200) 
 			 (description "") 
 			 (tactus-selector #'select-longest-lowest-tactus))
-  (let* ((loaded-rhythm (load-rhythm-file filename :description description :sample-rate sample-rate)))
+  (let* ((loaded-rhythm (load-octave-rhythm-file filename :description description :sample-rate sample-rate)))
     (clap-to-rhythm loaded-rhythm :tactus-selector tactus-selector)))
 
 ;; For decimating greensleeves to 200Hz.
-;;(setf x (load-rhythm-file "greensleeves-perform-medium" :sample-rate 400))
+;;(setf x (load-octave-rhythm-file "greensleeves-perform-medium" :sample-rate 400))
 ;;(floor (.length (time-signal x)) 2)
 ;;(.floor (.find (time-signal x)) 2.0)
 
@@ -162,7 +162,7 @@
 ;; (require :sb-sprof)
 ;; (sb-sprof:with-profiling (:max-samples 1500 :report :flat) (clap-to-octave-file "longuet_cliche" :sample-rate 200))
 
-;;(setf loaded-rhythm (load-rhythm-file "longuet_cliche" :description "longuet" :sample-rate 200))
+;;(setf loaded-rhythm (load-octave-rhythm-file "longuet_cliche" :description "longuet" :sample-rate 200))
 ;;(setf (time-signal loaded-rhythm) (dyadic-pad (time-signal loaded-rhythm) :silence-pad t :padded-length 2048))
 ;;(clap-to-rhythm loaded-rhythm :tactus-selector #'select-longest-lowest-tactus)
 
@@ -171,7 +171,7 @@
 ;; (loop for y in desain-at-65 when y collect y)
 
 
-;; (setf cliche-rhythm (load-rhythm-file "longuet_cliche"))
+;; (setf cliche-rhythm (load-octave-rhythm-file "longuet_cliche"))
 ;; (multiple-value-setq (cliche-tactus cliche-scaleogram) (tactus-for-rhythm cliche-rhythm))
 ;; (multiple-value-setq (cliche-skeleton cliche-scaleogram) (skeleton-of-rhythm cliche-rhythm))
 ;; (plot-cwt cliche-scaleogram)
@@ -247,7 +247,7 @@
 ;; (clap-to-octave-file "lengthen_corr" :sample-rate 200)
 
 ;;; For testing plotting
-;; (setf plot-test-rhythm (load-rhythm-file "intensity34_to_44" :description "intensity" :sample-rate 200))
+;; (setf plot-test-rhythm (load-octave-rhythm-file "intensity34_to_44" :description "intensity" :sample-rate 200))
 ;; (multiple-value-setq (plot-test-tactus plot-test-scaleogram) (tactus-for-rhythm plot-test-rhythm))
 ;; (plot-cwt+tactus-labelled plot-test-scaleogram plot-test-tactus plot-test-rhythm :magnitude-palette #'jet-colormap :phase-palette :greyscale)
 

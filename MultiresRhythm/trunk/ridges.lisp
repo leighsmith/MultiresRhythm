@@ -23,6 +23,7 @@
 (use-package :nlisp)
 
 ;;; A ridge is a zero-based span of time across a time-frequency plane.
+;;; A collection of ridges is held in a skeleton instance.
 (defclass ridge ()
   ((active :initform nil :initarg :set-active :accessor active)
    ;; Holds a time sequence of scale indices.
@@ -54,9 +55,6 @@
 
 (defgeneric average-scale (ridge)
   (:documentation "Returns the average scale number of a ridge"))
-
-;;(defgeneric tactus-image (ridge ridges &key maximum-colour-value)
-;;  (:documentation "Returns an Imago image object displaying all ridges and the extracted tactus ridge."))
 
 (defgeneric scales-as-array (ridge)
   (:documentation "Returns the scales list as an nlisp array"))
@@ -310,7 +308,8 @@
   (make-instance 'n-fixnum-array :ival (make-array (duration-in-samples the-ridge)
 						   :initial-contents (scales the-ridge))))
 
-(defmethod insert-ridge ((ridge-to-insert ridge) time-frequency-plane &key constant-value)
+(defmethod insert-ridge ((ridge-to-insert ridge) (time-frequency-plane n-double-array)
+			 &key (constant-value 1.0d0)) 
   "Insert the given ridge into the time-frequency plane, overwriting existing values with constant-value"
   (let* ((time-in-samples (.array-dimension time-frequency-plane 1))
 	 (row-major-indices (.+ (.* (scales-as-array ridge-to-insert) time-in-samples) 

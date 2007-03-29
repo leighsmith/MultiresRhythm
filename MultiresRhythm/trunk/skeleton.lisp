@@ -107,6 +107,14 @@
      when (contains-scale-p ridge-candidate scale)
      collect ridge-candidate))
 
+(defmethod make-ridge-plane ((skeleton-to-analyse skeleton))
+  "Creates a time-frequency plane from the skeleton, similar to
+correlated-ridge-scale-peaks, but without variation in value."
+  (let ((tf-plane (make-double-array (list (number-of-scales skeleton-to-analyse)
+					   (duration-in-samples skeleton-to-analyse)))))
+    (dolist (ridge (ridges skeleton-to-analyse) tf-plane)
+      (insert-ridge ridge tf-plane :constant-value 1d0))))
+
 ;;; File I/O
 
 (defmethod save-to-file ((skeleton-to-write skeleton) (filename pathname))

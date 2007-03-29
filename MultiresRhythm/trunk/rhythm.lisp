@@ -216,7 +216,14 @@
   "Returns a new rhythm instance with a sub-region of the given rhythm. The time region
   consists of the start and end specifiers. T defaults to the start or finish."
     (make-instance 'rhythm 
-		   :name (format nil "subset of ~a" (name rhythm-to-subset)) 
-		   :description ""
+		   :name (name rhythm-to-subset) 
+		   :description (format nil "subset of ~a" (name rhythm-to-subset))
 		   :time-signal (.subarray (time-signal rhythm-to-subset) (list 0 time-region))
 		   :sample-rate (sample-rate rhythm-to-subset)))
+
+;;; TODO this should also allow limitation by the number of beats, number of bars etc.
+(defmethod limit-rhythm ((rhythm-to-limit rhythm) &key (maximum-samples 16384))
+  "Returns a rhythm that is bounded in it's length to a maximum number of samples"
+  (if (< (duration-in-samples rhythm-to-limit) maximum-samples)
+      rhythm-to-limit	; under maximum, no change
+      (subset-of-rhythm rhythm-to-limit (list 0 (1- maximum-samples)))))

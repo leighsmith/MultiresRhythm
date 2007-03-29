@@ -16,7 +16,12 @@
 (in-package :multires-rhythm)
 (use-package :nlisp)
 
+(defparameter *mra-cache-path* "/Users/leigh/Data/")
+
+;;;; TODO should we be declaring a MRA class that holds a skeleton, scaleogram and
+;;;; correlated-ridge-scale-peaks frames?
 ;;;; Declarations (see rhythm.lisp for the class definition)
+
 
 (defgeneric clap-to-rhythm (rhythm-to-analyse &key tactus-selector)
   (:documentation "Returns a set of sample times to clap to given the supplied rhythm"))
@@ -34,9 +39,9 @@
   (:documentation "Returns a normalised measure of the complexity of the rhythm,
    where 0 = impossibly simple -> 1 = impossibly hard."))
 
-(defgeneric generate-and-write (rhythm-to-analyse path)
-  (:documentation "Generates scaleogram and skeleton for the rhythm and writes them to
-  files."))
+(defgeneric skeleton-of-rhythm-cached (rhythm-to-analyse &key voices-per-octave cache-directory)
+  (:documentation "Reads the skeleton, scaleogram and ridge-scale-peaks from disk if they have been cached,
+otherwise, generates them and writes to disk."))
 
 ;;;; Implementation
 
@@ -408,21 +413,31 @@ then can extract ridges."
   (let ((skeleton (skeleton-of-rhythm rhythm-to-analyse)))
     (length (ridges skeleton))))
 
-;;; TODO should this be renamed just save-to-file? strictly speaking no, since it's not
-;;; descriptive enough.
-(defmethod generate-and-write-rhythm ((rhythm-to-analyse rhythm) (path-to-write string))
-  (let* ((rhythm-name (name rhythm-to-analyse))
-	 (skeleton-filename (make-pathname :directory path-to-write :name rhythm-name :type "skeleton"))
-	 (scaleogram-filename (make-pathname :defaults skeleton-filename :type "scaleogram")))
-    (format t "Processing ~a~%" rhythm-name)
-    (multiple-value-bind (skeleton rhythm-scaleogram) 
-	(skeleton-of-rhythm rhythm-to-analyse :voices-per-octave 16)
+;;; File I/O
+
+(defmethod save-mra-to-file ((skeleton-to-write skeleton) 
+			 (scaleogram-to-write scaleogram)
+			 ridge-peaks-to-write
+			 (path-to-write pathname))
+  (let* ((skeleton-filename (make-pathname :defaults path-to-write :type "skeleton"))
+	 (scaleogram-filename (make-pathname :defaults path-to-write :type "scaleogram")))
       (format t "Writing ~a~%" skeleton-filename) 
-      (save-to-file skeleton skeleton-filename)
+      (save-to-file skeleton-to-write skeleton-filename)
       (format t "Writing ~a~%" scaleogram-filename) 
-      (save-to-file rhythm-scaleogram scaleogram-filename))))
+      (save-to-file scaleogram-to-write scaleogram-filename)))
 
 (defmethod read-mra-from-file ((path-to-read pathname))
   "Reads and returns skeleton and scaleogram instances, returns nil when EOF"
   (values (read-skeleton-from-file (make-pathname :defaults path-to-read :type "skeleton"))
 	  (read-scaleogram-from-file (make-pathname :defaults path-to-read :type "scaleogram"))))
+
+(defmethod skeleton-of-rhythm-cached ((analysis-rhythm rhythm) &key (voices-per-octave 16)
+				      (cache-directory *mra-cache-path*))
+  "Reads the skeleton, scaleogram and ridge-scale-peaks from disk if they have been cached,
+otherwise, generates them and writes to disk."
+  (let ((cache-root-pathname (make-pathname :directory cache-directory :name (name analysis-rhythm))))
+    (if (probe-file (make-pathname :defaults cache-root-pathname :type "skeleton"))
+	(read-mra-from-file cache-root-pathname)
+	(let ((mra (multiple-value-list (skeleton-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave))))
+	  (apply #'save-mra-to-file (append mra (list cache-root-pathname)))
+	  (values-list mra)))))
