@@ -40,6 +40,10 @@
   :version "2.1"
   :author "Leigh M. Smith"
   :depends-on (:nlisp)
+  :properties ((#:author-email . "lsmith@science.uva.nl")
+	       (#:date . "2007")	; Compute this automatically?
+	       ((#:albert #:output-dir) . "documentation")
+	       ((#:albert #:formats) . ("docbook")))
   :components ((:file "signalprocessing")
 	       (:file "ridges")
 	       (:file "file_io")
@@ -50,4 +54,5 @@
 	       (:file "scaleogram_plotting" :depends-on ("cwt"))
 	       (:file "multires_rhythm" :depends-on ("cwt" "skeleton" "plotting" "rhythm" "signalprocessing"))
 	       (:file "test-examples" :depends-on ("rhythm" "multires_rhythm"))
-	       (:file "test-anthems" :depends-on ("multires_rhythm"))))
+	       (:file "national anthems")
+	       (:file "test-anthems" :depends-on ("multires_rhythm" "national anthems"))))
