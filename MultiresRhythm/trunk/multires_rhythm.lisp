@@ -420,16 +420,20 @@ then can extract ridges."
 			 ridge-peaks-to-write
 			 (path-to-write pathname))
   (let* ((skeleton-filename (make-pathname :defaults path-to-write :type "skeleton"))
-	 (scaleogram-filename (make-pathname :defaults path-to-write :type "scaleogram")))
+	 (scaleogram-filename (make-pathname :defaults path-to-write :type "scaleogram"))
+	 (ridge-peaks-filename (make-pathname :defaults path-to-write :type "peaks")))
       (format t "Writing ~a~%" skeleton-filename) 
       (save-to-file skeleton-to-write skeleton-filename)
       (format t "Writing ~a~%" scaleogram-filename) 
-      (save-to-file scaleogram-to-write scaleogram-filename)))
+      (save-to-file scaleogram-to-write scaleogram-filename)
+      (format t "Writing ~a~%" ridge-peaks-filename)
+      (.save-to-octave-file ridge-peaks-to-write ridge-peaks-filename)))
 
 (defmethod read-mra-from-file ((path-to-read pathname))
   "Reads and returns skeleton and scaleogram instances, returns nil when EOF"
   (values (read-skeleton-from-file (make-pathname :defaults path-to-read :type "skeleton"))
-	  (read-scaleogram-from-file (make-pathname :defaults path-to-read :type "scaleogram"))))
+	  (read-scaleogram-from-file (make-pathname :defaults path-to-read :type "scaleogram"))
+	  (.load-octave-file (make-pathname :defaults path-to-read :type "peaks"))))
 
 (defmethod skeleton-of-rhythm-cached ((analysis-rhythm rhythm) &key (voices-per-octave 16)
 				      (cache-directory *mra-cache-path*))
