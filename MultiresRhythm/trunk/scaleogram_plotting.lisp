@@ -28,16 +28,6 @@
 (defgeneric plot-cwt-of-rhythm (scaleogram rhythm &key title time-axis-decimation)
   (:documentation "Function to plot the magnitude and phase components of the result of a continuous wavelet transform on a rhythm signal."))
 
-(defgeneric plot-cwt+ridges-labelled (scaleogram ridges rhythm &key 
-					title
-					time-axis-decimation
-					colorbox-divisions
-					maximum-colour-value
-					aspect-ratio
-					phase-palette
-					magnitude-palette)
-  (:documentation "Plot the magnitude in greyscale overlaid with the nominated ridges in red, the phase overlaid with the ridges in black."))
-
 (defgeneric plot-cwt+ridges (scaleogram ridges rhythm &key title time-axis-decimation)
   (:documentation "Plot the magnitude in greyscale overlaid with the computed tactus in red, the phase overlaid with the tactus in black."))
 
@@ -241,6 +231,26 @@
 	:reset nil
 	:aspect-ratio 0.2))
 
+(defmethod plot-scale-energy+peaks-at-time ((scaleogram-to-plot scaleogram) time peaks)
+  "Plot a cross-section of the magnitude at a given time point so we can spot the highest activated scales."
+  (plot-command "set title font \"Times,20\"")
+  (plot-command "set xlabel font \"Times,20\"")
+  (plot-command "set ylabel font \"Times,20\"")
+  (plot-command "set key off")
+  (plot-command (format nil "set xtics (~{~{\"~a\" ~d~}~^, ~})~%" (label-scale-as-time-support scaleogram-to-plot)))
+  (let ((time-slice (.column (scaleogram-magnitude scaleogram-to-plot) time)))
+    ;; We reverse the column so we plot in more intuitive lowest scale on the left orientation.
+    (nplot (list (.reverse time-slice) 
+		 ;; scale it down to magnitude maximum.
+		 (.* (.max time-slice) (.reverse (.column peaks time)))) 
+	   nil 
+	   :title (format nil "Energy profile and scale peaks at sample number ~d" time)
+	   :xlabel "Scale as IOI Range in Samples"
+	   :ylabel "Magnitude Energy"
+	   :styles '("lines" "impulses")
+	   :reset nil
+	   :aspect-ratio 0.2)))
+
 (defun plot-voice-behaviour (original-rhythm scaleogram-to-plot voices)
   "Plots the magnitude response of several single wavelet voices (dilation scale) to a rhythm."
   (let ((scaleogram-mag (scaleogram-magnitude scaleogram-to-plot)))
@@ -251,90 +261,3 @@
 			    (list (name original-rhythm)))
 	   :title "Select wavelet voice behaviours to non-isochronous rhythms"
 	   :aspect-ratio 0.15)))
-
-
-;;; TODO see if we can modularise this!!!
-;;; Now the image function is fixed, this is how to plot using nlisp with axes labelling.
-(defmethod plot-cwt+ridges-labelled ((scaleogram-to-plot scaleogram)
-			    (ridges list)
-			    (analysis-rhythm rhythm) &key 
-			    (title "unnamed")
-			    (time-axis-decimation 4)
-			    (colorbox-divisions 4.0)
-			    (maximum-colour-value 255d0)
-			    (magnitude-palette :greyscale)
-			    (phase-palette :spectral)
-			    (aspect-ratio 0.15))
-  "Method to plot the magnitude and phase components of the result of
-   a continuous wavelet transform on a signal. Plot the phase with the computed tactus in black."
-  (let* ((downsampled-magnitude (.decimate (scaleogram-magnitude scaleogram-to-plot) (list 1 time-axis-decimation)))
-	 (downsampled-phase (.decimate (scaleogram-phase scaleogram-to-plot) (list 1 time-axis-decimation)))
-	 (downsampled-magnitude-time (.array-dimension downsampled-magnitude 1))
-	 ;; (scaleogram-dim-ratio (/ (.array-dimension downsampled-magnitude 0) (.array-dimension downsampled-magnitude 1)))
-	 ;; (aspect-ratio (if (< scaleogram-dim-ratio 0.3) 0.15 scaleogram-dim-ratio))
-	 (plotable-phase-with-ridge (.* (plotable-phase downsampled-phase downsampled-magnitude maximum-colour-value) 1d0))
-	 (downsampled-ridge))
-    (dolist (ridge ridges) 
-      	 (setf downsampled-ridge (.decimate (copy-object ridge) (list 1 time-axis-decimation)))
-	 (setf plotable-phase-with-ridge (insert-ridge downsampled-ridge plotable-phase-with-ridge :constant-value maximum-colour-value)))
-    (window)				; put this on a separate window.
-    (plot-command "set multiplot")	; Put the magnitude plot above the phase on the same window.
-    (if analysis-rhythm (plot-rhythm analysis-rhythm))
-    ;; Can we move this into plot-cwt-labelled?
-    (reset-plot)			; Since we don't reset with image.
-    (plot-command "set xtics font \"Times,10\"")
-    (plot-command "set ytics font \"Times,10\"")
-    (plot-command "set format cb \"%4.2f\"")
-    (plot-command "set size 1.0,0.5")
-    (plot-command "set origin 0.0,0.3")
-    ;; Label both magnitude & phase plots in seconds.
-    (plot-command (format nil "set xrange [0:~d]" downsampled-magnitude-time))	; ensures last label plotted
-    (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
-			  (label-samples-as-seconds (duration-in-samples analysis-rhythm)
-						    (sample-rate analysis-rhythm)
-						    :time-axis-decimation time-axis-decimation)))
-    (plot-command (format nil "set ytics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
-			  (label-scale-as-time-support-seconds scaleogram-to-plot (sample-rate analysis-rhythm))))
-    ;; Expand the colorbox and only display the given number of tics.
-    (plot-command "set colorbox user origin 0.88,0.45 size 0.03,0.2")
-    (plot-command (format nil "set cbtics ~5,2f" (/ (range downsampled-magnitude) colorbox-divisions)))
-    ;; (plot-command "set title -35") ; moves the titles leftwards but it doesn't help our shrinking the size.
-    (cond ((eq magnitude-palette :greyscale) ; White thru grey to black for magnitude plots
-	   (nlisp:palette-defined '((0 "#FFFFFF") (1 "#000000"))))
-	  ((eq magnitude-palette :jet)
-	   (nlisp:palette-defined (colour-palette (jet-colormap 100))))
-	  (t 				; Otherwise assume it's a colourmap function
-	   (nlisp:palette-defined (colour-palette (funcall magnitude-palette 100)))))
-    (image (.flip downsampled-magnitude) nil nil
- 	   :title (format nil "Magnitude of ~a" title)
-	   :xlabel nil
- 	   :ylabel "Scale as IOI Range\\n(Seconds)"
- 	   :reset nil
- 	   :aspect-ratio aspect-ratio)
-    ;; Phase plot
-    (plot-command "set size 1.0,0.5")
-    (plot-command "set origin 0.0,0.0")
-    (cond ((eq phase-palette :spectral)
-	   (nlisp:palette "model HSV maxcolors 256")
-	   (nlisp:palette (format nil "defined ( 0 0 0 1, 1 0 1 1, ~d 1 1 1, ~d 0 0 1)"
-				   (1- maximum-colour-value) maximum-colour-value)))
-	  ((eq phase-palette :grey-smooth)
-	   (nlisp:palette "model RGB")
-	   (nlisp:palette-defined '((0 "#FFFFFF") (0.5 "#000000") (1 "#FFFFFF"))))
-	  (t (nlisp:palette-defined '((0 "#FFFFFF") (1 "#000000")))))
-    ;; (nlisp:palette (format nil "defined ( 0 0 0 1, 1 0 0 1, 1 0 1 1, ~d 1 1 1 )" maximum-colour-value))
-    ;; (nlisp:palette (format nil "defined ( 0 0 0 1, 0 0 1 1, 1 0 1 1, ~d 1 1 1 )" 255))
-    ;; -1 0 1 0
-    ;; (plot-command "set cbtics font \"Symbol,12\"") ; Doesn't work on Aquaterm yet.
-    (plot-command (format nil "set cbtics (~{~{\"~a\" ~d~}~^, ~})~%" 
- 			  (label-phase-in-radians (range plotable-phase-with-ridge) colorbox-divisions)))
-    (plot-command "set colorbox user origin 0.88,0.15 size 0.03,0.2")
-    (image (.flip plotable-phase-with-ridge) nil nil
-	   :title (format nil "Phase of ~a" title)
-	   :xlabel "Time (Seconds)" 
-	   :ylabel "Scale as IOI Range\\n(Seconds)"
-	   :reset nil
-	   :aspect-ratio aspect-ratio)
-    (plot-command "unset multiplot")
-    (close-window)
-    (reset-plot)))
