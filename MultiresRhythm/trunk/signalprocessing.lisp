@@ -20,8 +20,9 @@
   "Determines the range of values in the matrix"
   (- (.max matrix) (.min matrix)))
 
-(defun mean (a)
-  (/ (.sum a) (.length a)))
+;;; Obsolete now we have a stats package access within NLISP/GSL
+;;(defun mean (a)
+;;  (/ (.sum a) (.length a)))
 
 ;;thresholdMag = magnitude > threshold;
 ;;newphase = (thresholdMag .* phase) + (!thresholdMag .* clamp);
