@@ -67,6 +67,12 @@
 (defun anthem-anacrusis (anthem)
   (- (anthem-bar-duration anthem) (anthem-start-at anthem)))
 
+(defun anthem-interval-scale (anthem voices-per-octave interval)
+  "Compute the scale index that the interval in the given anthem would activate on its scaleogram"
+  (scale-from-period (anthem-duration-in-samples anthem interval) voices-per-octave))
+
+;; (anthem-interval-scale (anthem-named 'australia) 16 (anthem-beat-period (anthem-named 'australia)))
+
 (defun bar-scale (anthem voices-per-octave)
   "Compute the scale index that the anthem would activate on the scaleogram for the bar"
   (scale-from-period (anthem-duration-in-samples anthem (anthem-bar-duration anthem))
@@ -78,6 +84,7 @@
   (scale-from-period (anthem-duration-in-samples anthem (anthem-beat-period anthem))
 		     voices-per-octave))
 
+
 (defun canonical-bar-ridge (anthem rhythm-scaleogram)
   (make-monotone-ridge (round (bar-scale anthem (voices-per-octave rhythm-scaleogram)))
 		       (duration-in-samples rhythm-scaleogram)))
@@ -86,14 +93,14 @@
 ;;; there is for the bar duration against the time-frequency ridges. The critical question is
 ;;; how well bar duration matches against human perception of tactus given the same rhythms?
 ;;; TODO need to match anacrusis for phase
-(defun bar-ridges-for-anthem (anthem &key (voices-per-octave 16))
+(defun bar-ridges-for-anthem (anthem &key (voices-per-octave 16) (anthem-path *anthem-analysis-path*))
   "Returns the ridges of the given anthem matching the bar duration"
   (let* ((anthem-rhythm (anthem-rhythm anthem))
 	 (bar-scale-index))
     (multiple-value-bind (rhythm-skeleton rhythm-scaleogram correlated-ridge-scale-peaks) 
 	(skeleton-of-rhythm-cached anthem-rhythm 
 				   :voices-per-octave voices-per-octave 
-				   :cache-directory *anthem-analysis-path*)
+				   :cache-directory anthem-path)
       (declare (ignore correlated-ridge-scale-peaks))
       (setf bar-scale-index (round (bar-scale anthem (voices-per-octave rhythm-skeleton))))
       (format t "bar scale index ~a time-support ~a samples~%" 
@@ -119,6 +126,27 @@
 ;; 				   peaks
 ;; 				   (anthem-rhythm (anthem# 3)))
 
+(defmethod plot-scaleogram-skeleton-of-rhythm ((scaleogram-to-plot scaleogram)
+					       (highlighted-ridges list)
+					       (ridge-peaks n-double-array)
+					       (analysis-rhythm rhythm)
+					       &key 
+					       (title "unnamed")
+					       (time-axis-decimation 4))
+  "Plot the ridges in greyscale and the highlighted ridges in red."
+  (let ((axes-labels (axes-labelled-in-seconds scaleogram-to-plot (sample-rate analysis-rhythm) time-axis-decimation)))
+    (plot-images (list (list #'magnitude-image 
+			     (list (scaleogram-magnitude scaleogram-to-plot))
+			     '((1.0 0.9) (0.0 0.4))
+			     axes-labels)
+  		       (list #'highlighted-ridges-image
+  			     (list (mapcar #'copy-object highlighted-ridges) ridge-peaks)
+ 			     '((1.0 0.9) (0.0 0.0))
+  			     axes-labels))
+		 :title title
+		 :time-axis-decimation time-axis-decimation)))
+
+
 (defun plot-bar-ridges-of-anthem (anthem)
   (let ((anthem-rhythm (anthem-rhythm anthem)))
     (multiple-value-bind (matching-ridges rhythm-scaleogram correlated-ridge-scale-peaks) 
@@ -127,10 +155,15 @@
 					 matching-ridges 
 					 correlated-ridge-scale-peaks
 					 anthem-rhythm :title (name anthem-rhythm))
-      (plot-highlighted-ridges-of-rhythm rhythm-scaleogram 
+;;       (plot-highlighted-ridges-of-rhythm rhythm-scaleogram 
+;; 					 (list (canonical-bar-ridge anthem rhythm-scaleogram))
+;; 					 correlated-ridge-scale-peaks
+;; 					 anthem-rhythm :title (name anthem-rhythm))
+      (plot-scaleogram-skeleton-of-rhythm rhythm-scaleogram 
 					 (list (canonical-bar-ridge anthem rhythm-scaleogram))
 					 correlated-ridge-scale-peaks
-					 anthem-rhythm :title (name anthem-rhythm)))))
+					 anthem-rhythm :title (name anthem-rhythm))
+      (plot-scale-energy+peaks-at-time rhythm-scaleogram 500 correlated-ridge-scale-peaks))))
 
 ;;	(plot-highlighted-ridges rhythm-scaleogram matching-ridges (scaleogram-magnitude rhythm-scaleogram) :title (name anthem-rhythm))
 ;;	(plot-highlighted-ridges rhythm-scaleogram matching-ridges correlated-ridge-scale-peaks :title (name anthem-rhythm))
@@ -162,10 +195,25 @@
 ;;; (generate-anthem-skeletons :anthem-path "/Users/leigh/Data/Anthems" :length-limit 16384)
 ;;; Limits to the first 48 semi-quavers, matching Zaanen
 ;;; (generate-anthem-skeletons :anthem-path "/Users/leigh/Data/ShortAnthems" :length-limit (* 48 25))
+;;; For the Ghanian anthem, which has a period which exceeds the maximum wavelet period.
+;;; (generate-anthem-skeletons :anthem-path "/Users/leigh/Data/ShortAnthems" :length-limit 4096)
 
-(defun error-span (period vpo)
-  (let ((scale (round (scale-from-period period vpo))))
-    (- (time-support (1+ scale) vpo) (time-support (1- scale) vpo))))
+
+(defun error-span (scale vpo)
+  "Returns the error in duration from neighbour scales"
+  (let ((scale-index (round scale)))
+    (- (time-support (1+ scale-index) vpo) (time-support (1- scale-index) vpo))))
+
+;; (error-span (bar-scale (first (anthems-of-meter "4/4")) 16) 16)
+;; (error-span (beat-scale (first (anthems-of-meter "4/4")) 16) 16)
+;; (error-span (bar-scale (first (anthems-of-meter "3/4")) 16) 16)
+;; (error-span (beat-scale (first (anthems-of-meter "3/4")) 16) 16)
+;; (error-span (bar-scale (first (anthems-of-meter "2/2")) 16) 16)
+;; (error-span (beat-scale (first (anthems-of-meter "2/2")) 16) 16)
+;; (error-span (bar-scale (first (anthems-of-meter "12/8")) 16) 16)
+;; (error-span (beat-scale (first (anthems-of-meter "12/8")) 16) 16)
+;; (error-span (bar-scale (first (anthems-of-meter "2/4")) 16) 16)
+;; (error-span (beat-scale (first (anthems-of-meter "2/4")) 16) 16)
 
 ;;; trawls over entire skeleton. This may not be enough, since it doesn't properly measure
 ;;; the degree of continuity between scales. Perhaps we should expand the count test to
@@ -211,7 +259,14 @@
 	  (.array-dimension scale-peaks 1))
       nil))
 
-(defun plot-ridge-persistency-for-anthem (anthem &key (voices-per-octave 16))
+(defun ridge-persistency-of-anthem (anthem &key (anthem-path *anthem-analysis-path*))
+  (let* ((anthem-rhythm (anthem-rhythm anthem))
+	 (skeleton-pathname (make-pathname :directory anthem-path :name (name anthem-rhythm) :type "skeleton"))
+	 (skeleton (read-skeleton-from-file skeleton-pathname)))
+    (format t "Reading ~a~%" (anthem-name anthem))
+    (ridge-persistency (make-ridge-plane skeleton))))
+
+(defun plot-ridge-persistency-for-anthem (anthem &key (voices-per-octave 16) (anthem-path *anthem-analysis-path*))
   (let* ((anthem-rhythm (anthem-rhythm anthem))
 	 (bar-scale-index)
 	 (beat-scale-index)) 
@@ -219,11 +274,11 @@
     (multiple-value-bind (rhythm-skeleton rhythm-scaleogram) ;  correlated-ridge-scale-peaks
 	(skeleton-of-rhythm-cached anthem-rhythm 
 				   :voices-per-octave voices-per-octave 
-				   :cache-directory *anthem-analysis-path*)
+				   :cache-directory anthem-path)
       (setf bar-scale-index (round (bar-scale anthem (voices-per-octave rhythm-skeleton))))
       (setf beat-scale-index (round (beat-scale anthem (voices-per-octave rhythm-skeleton))))
-      (plot-command (format nil "set arrow 1 to ~d,0.5 from ~d,0.7 ls 3" bar-scale-index bar-scale-index))
-      (plot-command (format nil "set arrow 2 to ~d,0.5 from ~d,0.7 ls 4" beat-scale-index beat-scale-index))
+      (plot-command (format nil "set arrow 1 from ~d,0.3 to ~d,0.2" bar-scale-index bar-scale-index))
+      (plot-command (format nil "set arrow 2 from ~d,0.3 to ~d,0.2" beat-scale-index beat-scale-index))
       (plot-command "show arrow 1")
       (plot-command "show arrow 2")
       (nplot (list (ridge-persistency (scaleogram-magnitude rhythm-scaleogram))
@@ -248,81 +303,115 @@
 
 ;; (bar-scale (anthem-named 'america) 16)
 ;; (.aref america-ridge-persistency 99)
-;; (time-support (.+ (.find prominent-scales) 1) (voices-per-octave skeleton))
 ;; (.* x ridge-persistence)
 ;; (plot-image #'magnitude-image (list correlated-ridge-scale-peaks) '((1.0 0.5) (0.0 0.6))
 ;;	    (axes-labelled-in-seconds rhythm-scaleogram 200 4))
 ;; (nplot (list (ridge-persistency correlated-ridge-scale-peaks) x) nil)
 
-(defun beat-persistency-of-skeleton (anthem skeleton)
-  "The ratio constitutes the degree to which the beat duration is present in the scaleogram for the given rhythm."
-  (let* ((beat-scale-index (round (beat-scale anthem (voices-per-octave skeleton))))
-	 (ridge-persistence (ridge-persistency (make-ridge-plane skeleton))))
-    (format t "beat scale = ~a~%" beat-scale-index)
-    (.aref ridge-persistence (1- beat-scale-index))))
+;; (defun persistency-of-period-in-skeleton (anthem skeleton period)
+;;   "Returns the proportion of the degree to which the given period duration is present in the skeleton for the given anthem."
+;;   (let* ((period-scale (round (anthem-interval-scale anthem (voices-per-octave skeleton) period)))
+;; 	 (ridge-persistence (ridge-persistency (make-ridge-plane skeleton))))
+;;     (format t "anthem interval ~a, scaleogram scale = ~a, duration ~a samples~%" 
+;; 	    period period-scale (time-support period-scale (voices-per-octave skeleton)))
+;;     (.aref ridge-persistence (1- period-scale))))
 
-(defun bar-persistency-of-skeleton (anthem skeleton)
-  "The ratio constitutes the degree to which the bar duration is present in the scaleogram for the given rhythm."
-  (let* ((bar-scale-index (round (bar-scale anthem (voices-per-octave skeleton))))
-	 (ridge-persistence (ridge-persistency (make-ridge-plane skeleton))))
-    (format t "bar scale = ~a~%" bar-scale-index)
-    (.aref ridge-persistence (1- bar-scale-index))))
+(defun persistency-of-period-in-skeleton (anthem skeleton period)
+  "Returns the proportion of the degree to which the given period duration is present in the skeleton for the given anthem."
+  (let* ((period-scale (round (anthem-interval-scale anthem (voices-per-octave skeleton) period)))
+	 (ridge-plane (make-ridge-plane skeleton)))
+    (format t "anthem interval ~a, scaleogram scale = ~a, duration ~a samples~%" 
+	    period period-scale (time-support period-scale (voices-per-octave skeleton)))
+    ;; persistency-of-scale-in-plane?
+    (./ (.sum (.or (.row ridge-plane (1- period-scale))
+		   (.row ridge-plane period-scale)
+		   (.row ridge-plane (1+ period-scale))))
+	(duration-in-samples skeleton))))
 
-(defun skeleton-has-prominent-scale (skeleton scale-index)
+(defun skeleton-has-prominent-scale (skeleton scale-index &key (threshold 0.25))
   "Returns T or NIL if the bar duration is strongly present in the scaleogram for the given rhythm."
   (let* ((ridge-plane (make-ridge-plane skeleton))
 	 (ridge-persistence (ridge-persistency ridge-plane))
 	 ;; The threshold below should be calculated using a variance measure.
-	 (prominent-ridge-profiles (.> ridge-persistence 0.25))
+	 (prominent-ridge-profiles (.> ridge-persistence threshold))
 	 ;; (nplot (list ridge-persistence prominent-ridge-profiles) nil)
 	 (prominent-scale-indices (.+ (.find prominent-ridge-profiles) 1))
-	 (duration-present (numberp (find scale-index (val prominent-scale-indices)))))
+	 (duration-present (numberp (find scale-index (val prominent-scale-indices))))
+	 (periods (time-support prominent-scale-indices (voices-per-octave skeleton))))
 ;;     (format t "Count for scale ~a = ~a prominent-scale-indices ~a~%"
 ;; 	    scale-index
 ;; 	    (/ (count-scale-in-skeleton skeleton scale-index) (duration-in-samples skeleton))
-    (format t "prominent-scale-indices ~a~%periods ~a~%" 
-	    prominent-scale-indices 
-	    (time-support prominent-scale-indices (voices-per-octave skeleton)))
+    (format t "prominent-scale-indices ~a~%periods ~a~%crochets ~a~%" 
+	    prominent-scale-indices periods (./ periods 100.0))
     duration-present))
+
+(defun assess-anthem-for-period (anthem period &key (anthem-path *anthem-analysis-path*))
+  (format t "Reading ~a~%" (anthem-name anthem))
+  (let* ((anthem-rhythm (anthem-rhythm anthem))
+	 (skeleton-pathname (make-pathname :directory anthem-path :name (name anthem-rhythm) :type "skeleton"))
+	 (skeleton (read-skeleton-from-file skeleton-pathname)))
+    (persistency-of-period-in-skeleton anthem skeleton period)))
+
+;; (assess-anthem-for-period (anthem-named 'greenland) 20)
+;; (assess-anthem-for-period (anthem-named 'greenland) 12)
 
 (defun assess-anthem (anthem &key (anthem-path *anthem-analysis-path*))
   (format t "Reading ~a~%" (anthem-name anthem))
   (let* ((anthem-rhythm (anthem-rhythm anthem))
 	 (skeleton-pathname (make-pathname :directory anthem-path :name (name anthem-rhythm) :type "skeleton"))
 	 (skeleton (read-skeleton-from-file skeleton-pathname))
-	 (beat-persistency (beat-persistency-of-skeleton anthem skeleton))
-	 (bar-persistency (bar-persistency-of-skeleton anthem skeleton)))
+	 (beat-persistency (persistency-of-period-in-skeleton anthem skeleton (anthem-beat-period anthem)))
+	 (bar-persistency (persistency-of-period-in-skeleton anthem skeleton (anthem-bar-duration anthem))))
     (format t "bar prominently in skeleton ~a~%" 
 	    (skeleton-has-prominent-scale skeleton (round (bar-scale anthem (voices-per-octave skeleton)))))
     (format t "relative presence of beat ridge ~f~%" beat-persistency)
     (format t "relative presence of bar ridge ~f~%" bar-persistency)
     bar-persistency))
 
-(defun bars-in-anthem-skeletons (&key (count (length *national-anthems*)))
+(defun bars-in-anthem-skeletons (&key (anthems *national-anthems*))
   "Returns the ridges of the given anthem matching the bar duration"
   (loop
-     for anthem-index from 0 below count
-     for anthem = (anthem# anthem-index)
-     collect (assess-anthem anthem)))
+     for anthem in anthems
+     collect (assess-anthem-for-period anthem (anthem-bar-duration anthem))))
 
-(defun label-country (count)
+(defun beats-in-anthem-skeletons (&key (anthems *national-anthems*))
+  "Returns the ridges of the given anthem matching the bar duration"
+  (loop
+     for anthem in anthems
+     collect (assess-anthem-for-period anthem (anthem-beat-period anthem))))
+
+(defun label-country (anthems)
   "Routine to create a labelling based on country."
   (loop
-     for anthem-index from 0 below count
+     for anthem-index from 0 below (length anthems) by 5
      collect (list (string (anthem-name (anthem# anthem-index))) anthem-index)))
 
-(defun plot-anthem-bar-presence (&key (count (length *national-anthems*)))
-  (let ((bar-ratios (bars-in-anthem-skeletons :count count)))
+(defun plot-anthem-bar-presence (&key (anthems *national-anthems*))
+  (let ((bar-ratios (nlisp::list-to-array (bars-in-anthem-skeletons :anthems anthems))))
+    (format t "Average bar presence ratio ~4,3f (~4,3f) in ~a~%" 
+	    (mean bar-ratios) (stddev bar-ratios) *anthem-analysis-path*)
     (reset-plot)
+    (plot-command "set title font \"Times,24\"")
+    (plot-command "set xlabel font \"Times,24\"")
+    (plot-command "set ylabel font \"Times,24\"")
     ;; TODO Rotate the xtics & drop the font size.
-    ;; (plot-command (format nil "set xtics (~{~{\"~a\" ~5d~}~^, ~})~%" (label-country count)))
-    (plot (nlisp::list-to-array bar-ratios) nil 
+    (plot-command (format nil "set xtics rotate (~{~{\"~a\" ~5d~}~^, ~})~%" (label-country anthems)))
+    ;; (plot-command (format nil "set xtics 0,10,~d~%" (length anthems)))
+    (plot bar-ratios nil ; (.iseq 0 (1- (length anthems)))
 	  :style "boxes fill solid border 9" 
-	  :label "Proportion of bar duration present in scaleogram of anthem"
+	  :title (format nil "Bar presence of ~a" *anthem-analysis-path*) ; "for ~4,2f second excerpts"
+	  :label nil
+	  :ylabel "Proportion of Bar Duration Present in Skeleton"
+	  :xlabel "Anthem" ; or "Anthem Number"
 	  :aspect-ratio 0.66
 	  :reset nil)))
 
 ;; (plot-anthem-bar-presence)
+
+;; (setf non-bar-ratios (nlisp::list-to-array (loop for anthem in *national-anthems* collect (assess-anthem-for-period anthem 7))))
+;; (mean non-bar-ratios)
+;; (stddev non-bar-ratios)
+
 ;; (setf bar-ratios (bars-in-anthem-skeletons :count count))
 ;; (mean bar-ratios)
 ;; (.save-to-octave-file bar-ratios "/Users/leigh/Data/anthem-bar-ratios.octave")
@@ -337,20 +426,135 @@
     (map nil (lambda (element) (incf (gethash element element-count-hash 0))) data)
     element-count-hash))
 
-(defun relative-interval-counts (anthem)
-  (maphash (lambda (key count) (format t "duration ~a count ~a~%" key count)) (make-histogram (second anthem))))
+(defun display-interval-counts (histogram-hash-table)
+  (maphash (lambda (key count) (format t "duration ~a count ~a~%" key count)) histogram-hash-table))
+
+;; (display-interval-counts (make-histogram (second (anthem-named 'america))))
+
+(defun make-histogram-of-anthem-intervals (&key (anthems *national-anthems*))
+  "Returns each unique value in data along with the count of it's occurance in a hash-table"
+  (let ((element-count-hash (make-hash-table)))
+    (dolist (anthem anthems)
+      (map nil
+	   (lambda (element) (incf (gethash element element-count-hash 0)))
+	   (mapcar (lambda (x) (/ x (float (anthem-beat-period anthem) 1d0))) (second anthem))))
+    element-count-hash))
+
+(defun histogram-counts (histogram-hash-table intervals)
+  (nlisp::list-to-array (loop for interval across (val intervals)
+			   collect (float (gethash interval histogram-hash-table)))))
+
+(defun histogram-intervals (histogram-hash-table)
+  "Returns a sorted n-array of histogram intervals from the hash-table"
+  (let ((all-keys '()))
+    (maphash #'(lambda (key value) (push key all-keys)) histogram-hash-table)
+    (nlisp::list-to-array (sort all-keys #'<))))
+
+;; (display-interval-counts (make-histogram-of-anthem-intervals :anthems (anthems-of-meter "3/4")))
+
+(defun plot-histogram-of-meter (meter &key (crochet-duration 100) (vpo 16))
+  (let* ((meter-histogram (make-histogram-of-anthem-intervals :anthems (anthems-of-meter meter)))
+	 (intervals (histogram-intervals meter-histogram)))
+    (reset-plot)
+    (plot-command (format nil "set xtics border (~{~{\"~a\" ~d~}~^, ~}) font \"Sonata,28\"~%" 
+			  (x-axis-pad (label-scale-as-rhythmic-beat vpo crochet-duration))))
+    (plot (.normalise (histogram-counts meter-histogram intervals))
+	  (scale-from-period (.* intervals crochet-duration) vpo) 
+	  :style "linespoints" 
+	  :title (format nil "Relative Frequency of Occurance of Intervals For ~d Anthems in ~a Meter"
+			 (length (anthems-of-meter meter)) meter)
+	  :reset nil
+	  :aspect-ratio 0.66)))
+
+(defun crochets-of-anthems (anthems)
+  (let ((b '())) 
+    (dolist (anthem anthems (reverse b))
+      (push (sort (mapcar (lambda (x) (/ x (float (anthem-beat-period anthem) 1d0))) (second anthem)) #'<)
+	    b))))
+
+(defun check-integrity-of-anthems (anthems)
+  "Returns any anthems which have intervals longer than more than 4 crochets.
+Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
+  (let* ((highest-intervals (nlisp::list-to-array (mapcar (lambda (x) (first (last x))) (crochets-of-anthems anthems))))
+	 (suspicious (.find (.> highest-intervals 4))))
+    (loop 
+       for anthem-index across (val suspicious)
+       do (format t "~a~%" (nth anthem-index anthems)))))
+
+(defun bar-period-in-anthem-intervals (&key (anthems *national-anthems*))
+  "Returns the ridges of the given anthem matching the bar duration"
+  (loop
+     for anthem in anthems
+     do (format t "~a~%" (anthem-name anthem))
+     collect (gethash (anthem-bar-duration anthem) (make-histogram (second anthem)))))
+
+;; (bar-period-in-anthem-intervals :anthems (anthems-of-meter "4/4"))
+
+;; (/ (count-if #'numberp (bar-in-anthem-intervals)) (float (length *national-anthems*)))
 
 ;;; Low combined value for beat and bar values.
-;; (assess-anthem (anthem-named 'ghana))
-;; (relative-interval-counts (anthem-named 'ghana))
-;; (plot-ridge-persistency-for-anthem (anthem-named 'ghana))
-;; (plot-rhythm (anthem-rhythm (anthem-named 'ghana)))
-;; (plot-bar-ridges-of-anthem (anthem-named 'ghana))
+;;; (inspect-anthem (anthem-named 'ghana))
+
+(defun inspect-anthem (anthem)
+  (assess-anthem anthem :anthem-path "/Users/leigh/Data/Anthems")
+  (relative-interval-counts anthem)
+  (plot-ridge-persistency-for-anthem anthem)
+  (window)
+  (plot-rhythm (anthem-rhythm anthem))
+  (window)
+  (plot-bar-ridges-of-anthem anthem))
+
 ;; (time-support 116 16) = 12 * 50 = 608
 
+(defun anthems-of-meter (meter)
+  (remove-if-not (lambda (x) (equal x meter)) *national-anthems* :key #'cadar))
+
 ;; Count the meters in the database. Should match Zaanen et al.
-;; (count "4/4" *national-anthems* :test #'equal :key #'cadar)
-;; (count "12/8" *national-anthems* :test #'equal :key #'cadar)
-;; (count "2/4" *national-anthems* :test #'equal :key #'cadar)
-;; (count "3/4" *national-anthems* :test #'equal :key #'cadar)
-;; (count "2/2" *national-anthems* :test #'equal :key #'cadar)
+;; (length (anthems-of-meter "4/4"))
+;; (length (anthems-of-meter "12/8"))
+;; (length (anthems-of-meter "2/4"))
+;; (length (anthems-of-meter "3/4"))
+;; (length (anthems-of-meter "2/2"))
+
+(defun pad-end-to-length (vector length)
+  (let ((pad-length (- length (.length vector))))
+    (.concatenate vector (make-double-array pad-length))))
+
+(defun average-ridge-persistency (&key (anthems *national-anthems*)
+				  (max-time-limit 16384))
+  "Sum the ridge persistencies over each meter and plot the average ridges."
+  (loop
+     for anthem in anthems
+     ;; Since some rhythms are shorter than the maximum, we need to pad the ridge-persistency responses.
+     for total-persistency = (make-double-array 
+			      (floor (scale-from-period (/ (dyadic-length max-time-limit) 4) 16)))
+     then (.+ total-persistency (pad-end-to-length (ridge-persistency-of-anthem anthem)
+						   (.length total-persistency)))
+     finally (return (./ total-persistency (length anthems)))))
+
+(defun x-axis-pad (rhythmic-beats)
+    (mapcar (lambda (x) (list (concatenate 'string "\\n" (first x)) (second x))) rhythmic-beats))
+
+(defun plot-ridge-persistency-for-meter (meter &key (vpo 16) (crochet-duration 100))
+  (let* ((arp (average-ridge-persistency :anthems (anthems-of-meter meter) :max-time-limit 16384)) ; (* 48 25)
+	 (anthem-bar-scale (bar-scale (first (anthems-of-meter meter)) vpo))
+	 (prominent-scale-indices (.+ (.find (.> arp 0.20)) 1)))
+    (format t "anthem bar scale ~a prominent scale indices ~a~%period ~a~%"
+	    anthem-bar-scale prominent-scale-indices (time-support prominent-scale-indices vpo))
+    (reset-plot)
+    (plot-command "set title font \"Times,24\"")
+    (plot-command "set xlabel ,-1 font \"Times,24\"")
+    (plot-command "set ylabel font \"Times,24\"")
+    (plot-command (format nil "set xtics border (~{~{\"~a\" ~d~}~^, ~}) font \"Sonata,28\"~%" 
+			  (x-axis-pad (label-scale-as-rhythmic-beat vpo crochet-duration))))
+    (plot arp nil 
+	  :title (format nil "Time-Frequency Scale Presence For ~d Anthems in ~a Meter"
+			 (length (anthems-of-meter meter)) meter)
+	  :style "lines linetype 3 linewidth 2"
+	  :xlabel "Dilation Scales in Units of Musical Time"
+	  :ylabel "Proportion of Bar Duration Present in Skeleton"
+	  :label nil
+	  :aspect-ratio 0.66
+	  :reset nil)))
+
+;; (plot-ridge-persistency-for-meter "4/4")
