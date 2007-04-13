@@ -66,6 +66,35 @@
 	    (cons (/ (first label-and-index) sample-rate) (rest label-and-index)))
 	  (label-scale-as-time-support scaleogram-to-plot)))
 
+;; We use the characters from the Sonata Postscript font
+(let ((beats '(;;("r"   0.125)		; r = 32nd somehow doesn't work properly.
+	       ("x3"  0.1667)
+	       ;; ("r ." 0.1875) 
+	       ("x"   0.25)		; x = sixteenth
+	       ("x ." 0.375) 
+	       ("e"   0.5)		; e = eighth note
+	       ("e ." 0.75) 
+	       ("q"   1)		; q = quarter note
+	       ("q ." 1.5) 
+	       ("h"   2)		; h = half note
+	       ("h ." 3) 
+	       ("w"   4)		; w = whole note
+	       ("w ." 6) 
+	       ("W"   8)		; W = breve (two whole notes)
+	       ("WW"  16))))		; WW = tied breves
+
+  (defun label-scale-as-rhythmic-beat (voices-per-octave crochet-IOI)
+    "Label the scale axes in notated rhythmic units, from the current tempo."
+    ;; determine the IOI for a crochet at the given tempo
+    ;; (crochet-IOI (samples-per-crochet tempo)))
+    (mapcar (lambda (x)     ; build the label, scaling by the crochet-IOI
+	      ;; (list (format nil "{/Sonata ~a}" (first x))
+	      (list (format nil "~a" (first x))
+		    (scale-from-period (* (second x) crochet-IOI) voices-per-octave))) beats)))
+
+;; (defmethod label-scale-as-rhythmic-beat ((scaleogram-to-plot scaleogram) crochet-IOI)
+;; (label-scale-as-rhythmic-beat (voices-per-octave scaleogram-to-plot) crochet-IOI))
+
 (defun label-phase-in-radians (phaseogram-range divisions)
   (declare (ignore phaseogram-range divisions))
   ;; '(("-{/Symbol p}" 0) ("-{/Symbol p}/2" 64) ("0" 128) ("{/Symbol p}/2" 192) ("{/Symbol p}" 254)))
