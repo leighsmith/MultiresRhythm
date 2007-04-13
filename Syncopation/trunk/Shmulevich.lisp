@@ -36,7 +36,7 @@
     (2.60 (1 1 0 1 1 1 0 1 1 1 0 0 1 0 0 0))
     (2.60 (1 1 0 1 1 1 0 0 1 1 0 1 1 0 0 0))
     (2.64 (1 1 0 0 1 1 0 1 1 1 1 0 1 0 0 0))
-    (3.24 (1 1 0 0 1 1 0 1 1 1 1 0 1 0 0 0))
+    (3.24 (1 1 0 0 1 1 0 1 1 1 0 1 1 0 0 0))
     (3.08 (1 1 1 1 1 0 1 1 0 1 0 0 1 0 0 0))
     (3.04 (1 1 1 1 0 1 0 0 1 1 1 0 1 0 0 0))
     (3.04 (1 1 1 0 0 1 1 0 1 1 1 0 1 0 0 0))
@@ -231,9 +231,11 @@
 ;; (sqrt (/ (.sum (.expt (.- (.iseq 1 10) (.iseq 4 14)) 2)) (length observations)))
 
 
-; (plot-syncopation-comparisons *shmulevich-patterns* '(2 2 2 2))
-; (plot-syncopation-comparisons *sorted-shmulevich-patterns* '(2 2 2 2))
-; (multiplot-syncopation-comparisons *sorted-shmulevich-patterns* '(2 2 2 2))
+;; (plot-syncopation-comparisons *shmulevich-patterns* '(2 2 2 2))
+;; (plot-syncopation-comparisons *sorted-shmulevich-patterns* '(2 2 2 2))
+;; (multiplot-syncopation-comparisons *sorted-shmulevich-patterns* '(2 2 2 2))
+;; (syncopation-test *sorted-shmulevich-patterns* '(2 2 2 2))
+
 
 ;;; "Just the patterns, Ma'am"...
 ; (multires-pattern-complexity "shmulevich" (mapcar #'second *shmulevich-patterns*))
