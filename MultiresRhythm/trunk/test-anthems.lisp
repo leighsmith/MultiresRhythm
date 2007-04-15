@@ -126,47 +126,7 @@
 ;; 				   peaks
 ;; 				   (anthem-rhythm (anthem# 3)))
 
-(defmethod plot-scaleogram-skeleton-of-rhythm ((scaleogram-to-plot scaleogram)
-					       (highlighted-ridges list)
-					       (ridge-peaks n-double-array)
-					       (analysis-rhythm rhythm)
-					       &key 
-					       (title "unnamed")
-					       (time-axis-decimation 4))
-  "Plot the ridges in greyscale and the highlighted ridges in red."
-  (let ((axes-labels (axes-labelled-in-seconds scaleogram-to-plot (sample-rate analysis-rhythm) time-axis-decimation)))
-    (plot-images (list (list #'magnitude-image 
-			     (list (scaleogram-magnitude scaleogram-to-plot))
-			     '((1.0 0.9) (0.0 0.4))
-			     axes-labels)
-  		       (list #'highlighted-ridges-image
-  			     (list (mapcar #'copy-object highlighted-ridges) ridge-peaks)
- 			     '((1.0 0.9) (0.0 0.0))
-  			     axes-labels))
-		 :title title
-		 :time-axis-decimation time-axis-decimation)))
 
-
-(defun plot-bar-ridges-of-anthem (anthem)
-  (let ((anthem-rhythm (anthem-rhythm anthem)))
-    (multiple-value-bind (matching-ridges rhythm-scaleogram correlated-ridge-scale-peaks) 
-	(bar-ridges-for-anthem anthem)
-      (plot-highlighted-ridges-of-rhythm rhythm-scaleogram 
-					 matching-ridges 
-					 correlated-ridge-scale-peaks
-					 anthem-rhythm :title (name anthem-rhythm))
-;;       (plot-highlighted-ridges-of-rhythm rhythm-scaleogram 
-;; 					 (list (canonical-bar-ridge anthem rhythm-scaleogram))
-;; 					 correlated-ridge-scale-peaks
-;; 					 anthem-rhythm :title (name anthem-rhythm))
-      (plot-scaleogram-skeleton-of-rhythm rhythm-scaleogram 
-					 (list (canonical-bar-ridge anthem rhythm-scaleogram))
-					 correlated-ridge-scale-peaks
-					 anthem-rhythm :title (name anthem-rhythm))
-      (plot-scale-energy+peaks-at-time rhythm-scaleogram 500 correlated-ridge-scale-peaks))))
-
-;;	(plot-highlighted-ridges rhythm-scaleogram matching-ridges (scaleogram-magnitude rhythm-scaleogram) :title (name anthem-rhythm))
-;;	(plot-highlighted-ridges rhythm-scaleogram matching-ridges correlated-ridge-scale-peaks :title (name anthem-rhythm))
 
 ;; (defun bar-scale-for-anthem (anthem &key (tactus-selector #'select-longest-lowest-tactus))
 ;;   "Returns the scale of the given anthem matching the bar duration"
@@ -266,41 +226,6 @@
     (format t "Reading ~a~%" (anthem-name anthem))
     (ridge-persistency (make-ridge-plane skeleton))))
 
-(defun plot-ridge-persistency-for-anthem (anthem &key (voices-per-octave 16) (anthem-path *anthem-analysis-path*))
-  (let* ((anthem-rhythm (anthem-rhythm anthem))
-	 (bar-scale-index)
-	 (beat-scale-index)) 
-    (reset-plot)
-    (multiple-value-bind (rhythm-skeleton rhythm-scaleogram) ;  correlated-ridge-scale-peaks
-	(skeleton-of-rhythm-cached anthem-rhythm 
-				   :voices-per-octave voices-per-octave 
-				   :cache-directory anthem-path)
-      (setf bar-scale-index (round (bar-scale anthem (voices-per-octave rhythm-skeleton))))
-      (setf beat-scale-index (round (beat-scale anthem (voices-per-octave rhythm-skeleton))))
-      (plot-command (format nil "set arrow 1 from ~d,0.3 to ~d,0.2" bar-scale-index bar-scale-index))
-      (plot-command (format nil "set arrow 2 from ~d,0.3 to ~d,0.2" beat-scale-index beat-scale-index))
-      (plot-command "show arrow 1")
-      (plot-command "show arrow 2")
-      (nplot (list (ridge-persistency (scaleogram-magnitude rhythm-scaleogram))
-		   ;; (ridge-persistency correlated-ridge-scale-peaks) 
-		   (ridge-persistency (make-ridge-plane rhythm-skeleton)))
-	     nil
-	     :reset nil
-	     :aspect-ratio 0.66
-	     :legends '("magnitude persistency" "skeleton persistency") ; "ridge persistency"
-	  ;   :styles '("lines linestyle 1" "lines linestyle 3")
-	     :title (format nil "Ridge persistency for ~a" (name anthem-rhythm))))))
-
-;; (plot-ridge-persistency-for-anthem (anthem-named 'america))
-;; (plot-ridge-persistency-for-anthem (anthem-named 'netherlands))
-
-;;; "The axis of non-metricality": Anthems that have low bar-ridge measures:
-;; (plot-ridge-persistency-for-anthem (anthem-named 'australia))
-;; (plot-ridge-persistency-for-anthem (anthem-named 'greenland))
-;; (plot-ridge-persistency-for-anthem (anthem-named 'jordan))
-;; (plot-ridge-persistency-for-anthem (anthem-named 'vatican))
-;; (plot-ridge-persistency-for-anthem (anthem-named 'luxembourg))
-
 ;; (bar-scale (anthem-named 'america) 16)
 ;; (.aref america-ridge-persistency 99)
 ;; (.* x ridge-persistence)
@@ -386,28 +311,6 @@
      for anthem-index from 0 below (length anthems) by 5
      collect (list (string (anthem-name (anthem# anthem-index))) anthem-index)))
 
-(defun plot-anthem-bar-presence (&key (anthems *national-anthems*))
-  (let ((bar-ratios (nlisp::list-to-array (bars-in-anthem-skeletons :anthems anthems))))
-    (format t "Average bar presence ratio ~4,3f (~4,3f) in ~a~%" 
-	    (mean bar-ratios) (stddev bar-ratios) *anthem-analysis-path*)
-    (reset-plot)
-    (plot-command "set title font \"Times,24\"")
-    (plot-command "set xlabel font \"Times,24\"")
-    (plot-command "set ylabel font \"Times,24\"")
-    ;; TODO Rotate the xtics & drop the font size.
-    (plot-command (format nil "set xtics rotate (~{~{\"~a\" ~5d~}~^, ~})~%" (label-country anthems)))
-    ;; (plot-command (format nil "set xtics 0,10,~d~%" (length anthems)))
-    (plot bar-ratios nil ; (.iseq 0 (1- (length anthems)))
-	  :style "boxes fill solid border 9" 
-	  :title (format nil "Bar presence of ~a" *anthem-analysis-path*) ; "for ~4,2f second excerpts"
-	  :label nil
-	  :ylabel "Proportion of Bar Duration Present in Skeleton"
-	  :xlabel "Anthem" ; or "Anthem Number"
-	  :aspect-ratio 0.66
-	  :reset nil)))
-
-;; (plot-anthem-bar-presence)
-
 ;; (setf non-bar-ratios (nlisp::list-to-array (loop for anthem in *national-anthems* collect (assess-anthem-for-period anthem 7))))
 ;; (mean non-bar-ratios)
 ;; (stddev non-bar-ratios)
@@ -452,21 +355,8 @@
 
 ;; (display-interval-counts (make-histogram-of-anthem-intervals :anthems (anthems-of-meter "3/4")))
 
-(defun plot-histogram-of-meter (meter &key (crochet-duration 100) (vpo 16))
-  (let* ((meter-histogram (make-histogram-of-anthem-intervals :anthems (anthems-of-meter meter)))
-	 (intervals (histogram-intervals meter-histogram)))
-    (reset-plot)
-    (plot-command (format nil "set xtics border (~{~{\"~a\" ~d~}~^, ~}) font \"Sonata,28\"~%" 
-			  (x-axis-pad (label-scale-as-rhythmic-beat vpo crochet-duration))))
-    (plot (.normalise (histogram-counts meter-histogram intervals))
-	  (scale-from-period (.* intervals crochet-duration) vpo) 
-	  :style "linespoints" 
-	  :title (format nil "Relative Frequency of Occurance of Intervals For ~d Anthems in ~a Meter"
-			 (length (anthems-of-meter meter)) meter)
-	  :reset nil
-	  :aspect-ratio 0.66)))
-
 (defun crochets-of-anthems (anthems)
+  "Returns the crotchet ratios of the intervals sorted in ascending order"
   (let ((b '())) 
     (dolist (anthem anthems (reverse b))
       (push (sort (mapcar (lambda (x) (/ x (float (anthem-beat-period anthem) 1d0))) (second anthem)) #'<)
@@ -492,18 +382,6 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 
 ;; (/ (count-if #'numberp (bar-in-anthem-intervals)) (float (length *national-anthems*)))
 
-;;; Low combined value for beat and bar values.
-;;; (inspect-anthem (anthem-named 'ghana))
-
-(defun inspect-anthem (anthem)
-  (assess-anthem anthem :anthem-path "/Users/leigh/Data/Anthems")
-  (relative-interval-counts anthem)
-  (plot-ridge-persistency-for-anthem anthem)
-  (window)
-  (plot-rhythm (anthem-rhythm anthem))
-  (window)
-  (plot-bar-ridges-of-anthem anthem))
-
 ;; (time-support 116 16) = 12 * 50 = 608
 
 (defun anthems-of-meter (meter)
@@ -520,24 +398,97 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
   (let ((pad-length (- length (.length vector))))
     (.concatenate vector (make-double-array pad-length))))
 
-(defun average-ridge-persistency (&key (anthems *national-anthems*)
-				  (max-time-limit 16384))
+(defun average-ridge-persistency (&key (anthems *national-anthems*) (max-time-limit 16384))
   "Sum the ridge persistencies over each meter and plot the average ridges."
   (loop
      for anthem in anthems
      ;; Since some rhythms are shorter than the maximum, we need to pad the ridge-persistency responses.
-     for total-persistency = (make-double-array 
-			      (floor (scale-from-period (/ (dyadic-length max-time-limit) 4) 16)))
+     for total-persistency = (make-double-array (number-of-scales-for-period max-time-limit))
      then (.+ total-persistency (pad-end-to-length (ridge-persistency-of-anthem anthem)
 						   (.length total-persistency)))
      finally (return (./ total-persistency (length anthems)))))
 
+(defun scale-histogram-of-anthems (anthems &key (vpo 16) (crochet-duration 100))
+  "Returns an narray of scales based on histogram counts"
+  (let* ((anthem-duration (duration-in-samples (anthem-rhythm (first anthems))))
+	 (scale-histogram (make-double-array (number-of-scales-for-period anthem-duration :voices-per-octave vpo)))
+	 (histogram-hash-table (make-histogram-of-anthem-intervals :anthems anthems))
+	 (intervals (histogram-intervals histogram-hash-table)))
+    (nlisp::setf-array-indices scale-histogram
+			       (.normalise (histogram-counts histogram-hash-table intervals))
+			       (.floor (scale-from-period (.* intervals crochet-duration) vpo)))
+    scale-histogram))
+
 (defun x-axis-pad (rhythmic-beats)
     (mapcar (lambda (x) (list (concatenate 'string "\\n" (first x)) (second x))) rhythmic-beats))
 
-(defun plot-ridge-persistency-for-meter (meter &key (vpo 16) (crochet-duration 100))
-  (let* ((arp (average-ridge-persistency :anthems (anthems-of-meter meter) :max-time-limit 16384)) ; (* 48 25)
-	 (anthem-bar-scale (bar-scale (first (anthems-of-meter meter)) vpo))
+;;;
+;;; Plotting routines
+;;;
+
+(defun plot-bar-ridges-of-anthem (anthem)
+  (let ((anthem-rhythm (anthem-rhythm anthem)))
+    (multiple-value-bind (matching-ridges rhythm-scaleogram correlated-ridge-scale-peaks) 
+	(bar-ridges-for-anthem anthem)
+      (plot-highlighted-ridges-of-rhythm rhythm-scaleogram 
+					 matching-ridges 
+					 correlated-ridge-scale-peaks
+					 anthem-rhythm :title (name anthem-rhythm))
+      (plot-highlighted-ridges-of-rhythm rhythm-scaleogram 
+					 (list (canonical-bar-ridge anthem rhythm-scaleogram))
+					 correlated-ridge-scale-peaks
+					 anthem-rhythm :title (name anthem-rhythm))
+      (plot-scale-energy+peaks-at-time rhythm-scaleogram 500 correlated-ridge-scale-peaks))))
+
+(defun plot-scaleogram-skeleton-of-anthem (anthem)
+  "Plot the ridges in greyscale and the highlighted ridges in red."
+  (multiple-value-bind (matching-ridges rhythm-scaleogram correlated-ridge-scale-peaks) 
+      (bar-ridges-for-anthem anthem)
+    (declare (ignore matching-ridges))
+    (let* ((anthem-rhythm (anthem-rhythm anthem))
+	   (time-axis-decimation 4)
+	   (axes-labels (axes-labelled-in-seconds rhythm-scaleogram (sample-rate anthem-rhythm) time-axis-decimation))
+	   (highlighted-ridges (list (canonical-bar-ridge anthem rhythm-scaleogram))))
+      (format t "Plotting images~%")
+      (plot-images (list (list #'magnitude-image 
+			       (list (scaleogram-magnitude rhythm-scaleogram))
+			       '((1.0 1.0) (0.0 0.3))
+			       axes-labels)
+			 (list #'highlighted-ridges-image
+			       (list (mapcar #'copy-object highlighted-ridges)  correlated-ridge-scale-peaks)
+			       '((1.0 1.0) (0.0 0.0))
+			       axes-labels)) ; ':xlabel "Time (Seconds)"
+		   :title (name anthem-rhythm)
+		   :time-axis-decimation time-axis-decimation))))
+
+;;	(plot-highlighted-ridges rhythm-scaleogram matching-ridges (scaleogram-magnitude rhythm-scaleogram) :title (name anthem-rhythm))
+;;	(plot-highlighted-ridges rhythm-scaleogram matching-ridges correlated-ridge-scale-peaks :title (name anthem-rhythm))
+
+(defun plot-anthem-bar-presence (&key (anthems *national-anthems*))
+  (let ((bar-ratios (nlisp::list-to-array (bars-in-anthem-skeletons :anthems anthems))))
+    (format t "Average bar presence ratio ~4,3f (~4,3f) in ~a~%" 
+	    (mean bar-ratios) (stddev bar-ratios) *anthem-analysis-path*)
+    (reset-plot)
+    (plot-command "set title font \"Times,24\"")
+    (plot-command "set xlabel font \"Times,24\"")
+    (plot-command "set ylabel font \"Times,24\"")
+    ;; TODO Rotate the xtics & drop the font size.
+    (plot-command (format nil "set xtics rotate (~{~{\"~a\" ~5d~}~^, ~})~%" (label-country anthems)))
+    ;; (plot-command (format nil "set xtics 0,10,~d~%" (length anthems)))
+    (plot bar-ratios nil ; (.iseq 0 (1- (length anthems)))
+	  :style "boxes fill solid border 9" 
+	  :title (format nil "Bar presence of ~a" *anthem-analysis-path*) ; "for ~4,2f second excerpts"
+	  :label nil
+	  :ylabel "Proportion of Bar Duration Present in Skeleton"
+	  :xlabel "Anthem" ; or "Anthem Number"
+	  :aspect-ratio 0.66
+	  :reset nil)))
+
+;; (plot-anthem-bar-presence)
+
+(defun plot-ridge-persistency-for-anthems (anthems description &key (vpo 16) (crochet-duration 100))
+  (let* ((arp (average-ridge-persistency :anthems anthems :max-time-limit 16384)) ; (* 48 25)
+	 (anthem-bar-scale (bar-scale (first anthems) vpo))
 	 (prominent-scale-indices (.+ (.find (.> arp 0.20)) 1)))
     (format t "anthem bar scale ~a prominent scale indices ~a~%period ~a~%"
 	    anthem-bar-scale prominent-scale-indices (time-support prominent-scale-indices vpo))
@@ -548,8 +499,8 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
     (plot-command (format nil "set xtics border (~{~{\"~a\" ~d~}~^, ~}) font \"Sonata,28\"~%" 
 			  (x-axis-pad (label-scale-as-rhythmic-beat vpo crochet-duration))))
     (plot arp nil 
-	  :title (format nil "Time-Frequency Scale Presence For ~d Anthems in ~a Meter"
-			 (length (anthems-of-meter meter)) meter)
+	  :title (format nil "Time-Frequency Scale Presence For ~d Anthems ~a"
+			 (length anthems) description)
 	  :style "lines linetype 3 linewidth 2"
 	  :xlabel "Dilation Scales in Units of Musical Time"
 	  :ylabel "Proportion of Bar Duration Present in Skeleton"
@@ -557,4 +508,68 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 	  :aspect-ratio 0.66
 	  :reset nil)))
 
-;; (plot-ridge-persistency-for-meter "4/4")
+;; (plot-ridge-persistency-for-anthems (anthems-of-meter "4/4") "in 4/4 Meter")
+
+(defun plot-histogram-of-anthems (anthems description &key (crochet-duration 100) (vpo 16))
+  "Plots a comparison between the histogram of intervals and the multiresolution ridge presence"
+  (reset-plot)
+  (plot-command (format nil "set xtics border (~{~{\"~a\" ~d~}~^, ~}) font \"Sonata,28\"~%" 
+			(x-axis-pad (label-scale-as-rhythmic-beat vpo crochet-duration))))
+  (nplot (list (scale-histogram-of-anthems anthems) (average-ridge-persistency :anthems anthems))
+	 nil
+	 :styles '("boxes fill solid border 9" "lines linetype 3 linewidth 2")
+	 :legends '("Relative Frequency of Occurance of Intervals" "Time-Frequency Scale Presence")
+	 :title (format nil "Comparison Between Time-Frequency Scale Presence and Occurance of Intervals For ~d Anthems ~a"
+			(length anthems) description)
+	 :reset nil
+	 :aspect-ratio 0.66))
+
+;; (plot-histogram-of-anthems (anthems-of-meter "4/4") "in 4/4 Meter")
+;; (plot-histogram-of-anthems (anthems-of-meter "3/4") "in 3/4 Meter")
+
+(defun plot-ridge-persistency-for-anthem (anthem &key (voices-per-octave 16) (anthem-path *anthem-analysis-path*))
+  (let* ((anthem-rhythm (anthem-rhythm anthem))
+	 (bar-scale-index)
+	 (beat-scale-index)) 
+    (reset-plot)
+    (multiple-value-bind (rhythm-skeleton rhythm-scaleogram) ;  correlated-ridge-scale-peaks
+	(skeleton-of-rhythm-cached anthem-rhythm 
+				   :voices-per-octave voices-per-octave 
+				   :cache-directory anthem-path)
+      (setf bar-scale-index (round (bar-scale anthem (voices-per-octave rhythm-skeleton))))
+      (setf beat-scale-index (round (beat-scale anthem (voices-per-octave rhythm-skeleton))))
+      (plot-command (format nil "set arrow 1 from ~d,0.3 to ~d,0.2" bar-scale-index bar-scale-index))
+      (plot-command (format nil "set arrow 2 from ~d,0.3 to ~d,0.2" beat-scale-index beat-scale-index))
+      (plot-command "show arrow 1")
+      (plot-command "show arrow 2")
+      (nplot (list (ridge-persistency (scaleogram-magnitude rhythm-scaleogram))
+		   ;; (ridge-persistency correlated-ridge-scale-peaks) 
+		   (ridge-persistency (make-ridge-plane rhythm-skeleton)))
+	     nil
+	     :reset nil
+	     :aspect-ratio 0.66
+	     :legends '("magnitude persistency" "skeleton persistency") ; "ridge persistency"
+	  ;   :styles '("lines linestyle 1" "lines linestyle 3")
+	     :title (format nil "Ridge persistency for ~a" (name anthem-rhythm))))))
+
+;; (plot-ridge-persistency-for-anthem (anthem-named 'america))
+;; (plot-ridge-persistency-for-anthem (anthem-named 'netherlands))
+
+;;; "The axis of non-metricality": Anthems that have low bar-ridge measures:
+;; (plot-ridge-persistency-for-anthem (anthem-named 'australia))
+;; (plot-ridge-persistency-for-anthem (anthem-named 'greenland))
+;; (plot-ridge-persistency-for-anthem (anthem-named 'jordan))
+;; (plot-ridge-persistency-for-anthem (anthem-named 'vatican))
+;; (plot-ridge-persistency-for-anthem (anthem-named 'luxembourg))
+
+(defun inspect-anthem (anthem)
+  (assess-anthem anthem :anthem-path "/Users/leigh/Data/Anthems")
+  (relative-interval-counts anthem)
+  (plot-ridge-persistency-for-anthem anthem)
+  (window)
+  (plot-rhythm (anthem-rhythm anthem))
+  (window)
+  (plot-bar-ridges-of-anthem anthem))
+
+;;; Low combined value for beat and bar values.
+;;; (inspect-anthem (anthem-named 'ghana))

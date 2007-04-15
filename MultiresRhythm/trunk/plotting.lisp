@@ -166,11 +166,15 @@ colourmap, suitable for use by NLISP's palette-defined function."
   (plot-command axes-commands))
 
 (defun set-colour-box (data-to-plot window-dimensions &key (colorbox-divisions 4.0))
-  (let ((window-origin (second window-dimensions)))
+  (let ((window-size (first window-dimensions))
+	(window-origin (second window-dimensions)))
     ;; Expand the colorbox and only display the given number of tics.
     (plot-command "set format cb \"%4.2f\"")
     (plot-command (format nil "set cbtics ~5,2f" (/ (range data-to-plot) colorbox-divisions)))
-    (plot-command (format nil "set colorbox user origin ~f,~f size 0.03,0.2" (+ (first window-origin) 0.88) (+ (second window-origin) 0.15)))))
+    (plot-command (format nil "set colorbox user origin ~f,~f size 0.03,0.2"
+			  (+ (first window-origin) (* (first window-size) 0.88))
+			  (+ (second window-origin) (* (second window-size) 0.38))))))
+;;    (plot-command (format nil "set colorbox user origin ~f,~f size 0.03,0.2" (+ (first window-origin) 0.88) (+ (second window-origin) 0.15)))))
 
 (defun phase-colour-box (phase-data window-dimensions  &key (colorbox-divisions 4.0))
   (let ((window-origin (second window-dimensions)))
@@ -249,7 +253,8 @@ colourmap, suitable for use by NLISP's palette-defined function."
 (defun highlighted-ridges-image (ridges tf-plane window-dimensions title &key
 				 (maximum-colour-value 255d0)
 				 (aspect-ratio 0.15)
-				 (palette :greyscale-highlight))
+				 (palette :greyscale-highlight)
+				 (xlabel "Time (Seconds)"))
   "Plot the tf-plane in greyscale and the ridges in red. Dark values are higher valued, lighter values are lower valued."
   (let* ((max-ridge-colours (1- maximum-colour-value))
 	 (plotable-ridges (.* (.normalise tf-plane) max-ridge-colours)))
@@ -259,7 +264,7 @@ colourmap, suitable for use by NLISP's palette-defined function."
     (set-plot-palette palette)
     (image (.flip plotable-ridges) nil nil
 	   :title (format nil "Highlighted Ridges of ~a" title)
-	   :xlabel nil
+	   :xlabel xlabel
 	   :ylabel "Scale as IOI Range\\n(Seconds)"
 	   :reset nil
 	   :aspect-ratio aspect-ratio)))

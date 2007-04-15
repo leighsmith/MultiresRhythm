@@ -273,6 +273,10 @@
 ;; (dyadic-pad (.rseq2 1 10 10) :silence-pad t)
 ;; (dyadic-pad (.rseq 1 10 10) :silence-pad t)
 
+(defun number-of-scales-for-period (period &key (voices-per-octave 16))
+  "Returns the number of scales that are required to represent the given signal length"
+  (floor (scale-from-period (/ (dyadic-length period) 4) voices-per-octave)))
+
 ;;; The public interface to the continuous wavelet transform for non-dyadic signals
 (defun cwt (time-signal voices-per-octave 
 	    &key (max-wavelet-period (dyadic-length (./ (.array-dimension time-signal 0) 4))))
@@ -284,9 +288,10 @@
   (multiple-value-bind (pad-signal time-trim) (dyadic-pad time-signal)
     (multiple-value-bind (padded-magnitude padded-phase)
 	(dyadic-cwt pad-signal voices-per-octave max-wavelet-period)
-      (let* ((scaleogram-result (make-instance 'scaleogram :voices-per-octave voices-per-octave))
-	     (scale-rows (.array-dimension padded-magnitude 0))
-	     (trim (list (list 0 (1- scale-rows)) (second time-trim))))
+      (let* ((scale-rows (.array-dimension padded-magnitude 0))
+	     (trim (list (list 0 (1- scale-rows)) (second time-trim)))
+	     (scaleogram-result (make-instance 'scaleogram 
+					       :voices-per-octave voices-per-octave)))
 	(setf (time-trim scaleogram-result) trim)
 	(setf (dyadic-padded-magnitude scaleogram-result) padded-magnitude)
 	(setf (dyadic-padded-phase scaleogram-result) padded-phase)
