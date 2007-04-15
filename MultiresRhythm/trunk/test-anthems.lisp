@@ -126,7 +126,8 @@
 ;; 				   peaks
 ;; 				   (anthem-rhythm (anthem# 3)))
 
-
+;; (plot-highlighted-ridges rhythm-scaleogram matching-ridges (scaleogram-magnitude rhythm-scaleogram) :title (name anthem-rhythm))
+;; (plot-highlighted-ridges rhythm-scaleogram matching-ridges correlated-ridge-scale-peaks :title (name anthem-rhythm))
 
 ;; (defun bar-scale-for-anthem (anthem &key (tactus-selector #'select-longest-lowest-tactus))
 ;;   "Returns the scale of the given anthem matching the bar duration"
@@ -220,10 +221,10 @@
       nil))
 
 (defun ridge-persistency-of-anthem (anthem &key (anthem-path *anthem-analysis-path*))
+  (format t "Reading ~a~%" (anthem-name anthem))
   (let* ((anthem-rhythm (anthem-rhythm anthem))
 	 (skeleton-pathname (make-pathname :directory anthem-path :name (name anthem-rhythm) :type "skeleton"))
 	 (skeleton (read-skeleton-from-file skeleton-pathname)))
-    (format t "Reading ~a~%" (anthem-name anthem))
     (ridge-persistency (make-ridge-plane skeleton))))
 
 ;; (bar-scale (anthem-named 'america) 16)
@@ -403,9 +404,9 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
   (loop
      for anthem in anthems
      ;; Since some rhythms are shorter than the maximum, we need to pad the ridge-persistency responses.
-     for total-persistency = (make-double-array (number-of-scales-for-period max-time-limit))
-     then (.+ total-persistency (pad-end-to-length (ridge-persistency-of-anthem anthem)
-						   (.length total-persistency)))
+     with total-persistency = (make-double-array (number-of-scales-for-period max-time-limit))
+     do (setf total-persistency (.+ total-persistency (pad-end-to-length (ridge-persistency-of-anthem anthem)
+						   (.length total-persistency))))
      finally (return (./ total-persistency (length anthems)))))
 
 (defun scale-histogram-of-anthems (anthems &key (vpo 16) (crochet-duration 100))
@@ -447,22 +448,22 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
     (declare (ignore matching-ridges))
     (let* ((anthem-rhythm (anthem-rhythm anthem))
 	   (time-axis-decimation 4)
+	   (formatting "set title font \"Times,20\"~%set xlabel font \"Times,20\"~%set ylabel font \"Times,20\"")
 	   (axes-labels (axes-labelled-in-seconds rhythm-scaleogram (sample-rate anthem-rhythm) time-axis-decimation))
 	   (highlighted-ridges (list (canonical-bar-ridge anthem rhythm-scaleogram))))
       (format t "Plotting images~%")
       (plot-images (list (list #'magnitude-image 
 			       (list (scaleogram-magnitude rhythm-scaleogram))
 			       '((1.0 1.0) (0.0 0.3))
-			       axes-labels)
+			       (concatenate 'string axes-labels formatting))
 			 (list #'highlighted-ridges-image
 			       (list (mapcar #'copy-object highlighted-ridges)  correlated-ridge-scale-peaks)
 			       '((1.0 1.0) (0.0 0.0))
-			       axes-labels)) ; ':xlabel "Time (Seconds)"
+			       (concatenate 'string axes-labels formatting))) ; ':xlabel "Time (Seconds)"
 		   :title (name anthem-rhythm)
 		   :time-axis-decimation time-axis-decimation))))
 
-;;	(plot-highlighted-ridges rhythm-scaleogram matching-ridges (scaleogram-magnitude rhythm-scaleogram) :title (name anthem-rhythm))
-;;	(plot-highlighted-ridges rhythm-scaleogram matching-ridges correlated-ridge-scale-peaks :title (name anthem-rhythm))
+;; (plot-scaleogram-skeleton-of-anthem (anthem-named 'tunisia))
 
 (defun plot-anthem-bar-presence (&key (anthems *national-anthems*))
   (let ((bar-ratios (nlisp::list-to-array (bars-in-anthem-skeletons :anthems anthems))))
@@ -519,7 +520,7 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 	 nil
 	 :styles '("boxes fill solid border 9" "lines linetype 3 linewidth 2")
 	 :legends '("Relative Frequency of Occurance of Intervals" "Time-Frequency Scale Presence")
-	 :title (format nil "Comparison Between Time-Frequency Scale Presence and Occurance of Intervals For ~d Anthems ~a"
+	 :title (format nil "Time-Frequency Scale Presence vs. Occurance of Intervals For ~d Anthems ~a"
 			(length anthems) description)
 	 :reset nil
 	 :aspect-ratio 0.66))
