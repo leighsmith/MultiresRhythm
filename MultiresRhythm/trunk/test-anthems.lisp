@@ -325,7 +325,7 @@
 ;; (.save-to-octave-file beat-ratios "/Users/leigh/Data/anthem-beat-ratios.octave")
 
 (defun make-histogram (data)
-  "Returns each unique value in data along with the count of it's occurance in a hash-table"
+  "Returns each unique value in data along with the count of it's occurrence in a hash-table"
   (let ((element-count-hash (make-hash-table :size (length data))))
     (map nil (lambda (element) (incf (gethash element element-count-hash 0))) data)
     element-count-hash))
@@ -336,7 +336,7 @@
 ;; (display-interval-counts (make-histogram (second (anthem-named 'america))))
 
 (defun make-histogram-of-anthem-intervals (&key (anthems *national-anthems*))
-  "Returns each unique value in data along with the count of it's occurance in a hash-table"
+  "Returns each unique value in data along with the count of it's occurrence in a hash-table"
   (let ((element-count-hash (make-hash-table)))
     (dolist (anthem anthems)
       (map nil
@@ -381,9 +381,24 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 
 ;; (bar-period-in-anthem-intervals :anthems (anthems-of-meter "4/4"))
 
-;; (/ (count-if #'numberp (bar-in-anthem-intervals)) (float (length *national-anthems*)))
+;; (/ (count-if #'numberp (bar-period-in-anthem-intervals)) (float (length *national-anthems*)))
 
 ;; (time-support 116 16) = 12 * 50 = 608
+
+(defun relative-interval-occurrence-for-anthem (anthem &key 
+						(vpo 16) (crochet-duration 100) (max-time-limit 16384))
+  "Returns an narray of scales with the relative occurrence of each interval over the duration of the anthem rhythm"
+  (let* ((scale-histogram (make-double-array (number-of-scales-for-period max-time-limit :voices-per-octave vpo)))
+	 (duration-histogram (make-histogram (second anthem)))
+	 (intervals (histogram-intervals duration-histogram))
+	 ;; Multiply the intervals by the counts to measure the time over which each interval spans.
+	 (spans (.* intervals (histogram-counts duration-histogram intervals)))
+	 (relative-occurrence (./ spans (.sum spans))) ; make it a relative measure wrt time.
+	 (crochet-ratios (./ intervals (float (anthem-beat-period anthem) 1d0))))
+    (nlisp::setf-array-indices scale-histogram
+			       relative-occurrence
+			       ;; TODO should be .round
+			       (.floor (scale-from-period (.* crochet-ratios crochet-duration) vpo)))))
 
 (defun anthems-of-meter (meter)
   (remove-if-not (lambda (x) (equal x meter)) *national-anthems* :key #'cadar))
@@ -409,16 +424,26 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 						   (.length total-persistency))))
      finally (return (./ total-persistency (length anthems)))))
 
-(defun scale-histogram-of-anthems (anthems &key (vpo 16) (crochet-duration 100))
+;; (defun scale-histogram-of-anthems (anthems &key (vpo 16) (crochet-duration 100))
+;;   "Returns an narray of scales based on histogram counts"
+;;   (let* ((anthem-duration (duration-in-samples (anthem-rhythm (first anthems))))
+;; 	 (scale-histogram (make-double-array (number-of-scales-for-period anthem-duration :voices-per-octave vpo)))
+;; 	 (histogram-hash-table (make-histogram-of-anthem-intervals :anthems anthems))
+;; 	 (intervals (histogram-intervals histogram-hash-table)))
+;;     (nlisp::setf-array-indices scale-histogram
+;; 			       (.normalise (histogram-counts histogram-hash-table intervals))
+;; 			       ;; TODO should be .round
+;; 			       (.floor (scale-from-period (.* intervals crochet-duration) vpo)))
+;;     scale-histogram))
+
+(defun scale-histogram-of-anthems (anthems &key (vpo 16) (crochet-duration 100) max-time-limit)
   "Returns an narray of scales based on histogram counts"
-  (let* ((anthem-duration (duration-in-samples (anthem-rhythm (first anthems))))
-	 (scale-histogram (make-double-array (number-of-scales-for-period anthem-duration :voices-per-octave vpo)))
-	 (histogram-hash-table (make-histogram-of-anthem-intervals :anthems anthems))
-	 (intervals (histogram-intervals histogram-hash-table)))
-    (nlisp::setf-array-indices scale-histogram
-			       (.normalise (histogram-counts histogram-hash-table intervals))
-			       (.floor (scale-from-period (.* intervals crochet-duration) vpo)))
-    scale-histogram))
+  (loop
+     for anthem in anthems
+     ;; Since some rhythms are shorter than the maximum, we need to pad the ridge-persistency responses.
+     with scale-histogram = (make-double-array (number-of-scales-for-period max-time-limit :voices-per-octave vpo))
+     do (setf scale-histogram (.+ scale-histogram (relative-interval-occurrence-for-anthem anthem)))
+     finally (return (./ scale-histogram (length anthems)))))
 
 (defun x-axis-pad (rhythmic-beats)
     (mapcar (lambda (x) (list (concatenate 'string "\\n" (first x)) (second x))) rhythmic-beats))
@@ -514,13 +539,21 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 (defun plot-histogram-of-anthems (anthems description &key (crochet-duration 100) (vpo 16))
   "Plots a comparison between the histogram of intervals and the multiresolution ridge presence"
   (reset-plot)
+  (plot-command "set title font \"Times,24\"")
+  (plot-command "set xlabel ,-1 font \"Times,24\"")
+  (plot-command "set ylabel font \"Times,24\"")
   (plot-command (format nil "set xtics border (~{~{\"~a\" ~d~}~^, ~}) font \"Sonata,28\"~%" 
 			(x-axis-pad (label-scale-as-rhythmic-beat vpo crochet-duration))))
+  (let ((bar-scale-index (round (bar-scale (first anthems) vpo))))
+    (plot-command (format nil "set arrow 1 from ~d,0.4 to ~d,0.3" bar-scale-index bar-scale-index))
+    (plot-command "show arrow 1"))
   (nplot (list (scale-histogram-of-anthems anthems) (average-ridge-persistency :anthems anthems))
 	 nil
 	 :styles '("boxes fill solid border 9" "lines linetype 3 linewidth 2")
-	 :legends '("Relative Frequency of Occurance of Intervals" "Time-Frequency Scale Presence")
-	 :title (format nil "Time-Frequency Scale Presence vs. Occurance of Intervals For ~d Anthems ~a"
+	 :legends '("Relative Frequency of Occurrence of Intervals" "Time-Frequency Scale Presence")
+	 :xlabel "Dilation Scales in Units of Musical Time"
+	 :ylabel "Proportion of Interval Present"
+	 :title (format nil "Skeleton Scale Presence vs. Occurrence of Intervals For ~d Anthems ~a"
 			(length anthems) description)
 	 :reset nil
 	 :aspect-ratio 0.66))
