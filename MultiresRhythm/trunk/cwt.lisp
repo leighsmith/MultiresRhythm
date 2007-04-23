@@ -207,11 +207,11 @@
 
 		(scale-row (list scale-index t)))
 
-	   (setf-subarray (val magnitude) (val magnitude-at-scale) scale-row)
+	   (setf (.subarray magnitude scale-row) magnitude-at-scale)
 	   ;; If the magnitude value is low, the phase will be ill-conditioned,
 	   ;; which we will plot different to significant phase behaviour.
 	   ;; atan2 used by arg will return -pi to pi.
-	   (setf-subarray (val phase) (val (.phase voice-response)) scale-row)))
+	   (setf (.subarray phase scale-row) (.phase voice-response))))
 	   ;; (format t "scale-index ~d~%" scale-index)
     (format t "Finished CWT, ~d scales, last time period = ~d samples~%" number-of-scales
 	   (floor (.aref period (1- number-of-scales))))

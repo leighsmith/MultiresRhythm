@@ -69,8 +69,8 @@ This is weighted by absolute constraints, look in the 600ms period range."
 						   :stddev 2.0d0 ; keeps the weighting broad
 						   :scaling 1d0)))
     (dotimes (time time-in-samples)
-      (setf-subarray (val tempo-weighting-over-time) 
-		     (val (.reshape tempo-scale-weighting (list number-of-scales 1))) (list t time)))
+      (setf (.subarray tempo-weighting-over-time (list t time))
+	    (.reshape tempo-scale-weighting (list number-of-scales 1))))
     tempo-weighting-over-time))
 
 ;; (plot (.column (tempo-salience-weighting 78 '(144 1)) 0) nil :title "Preferred tempo weighting profile")
@@ -92,9 +92,8 @@ This is weighted by absolute constraints, look in the 600ms period range."
 	     (normalised-time-slice (./ scales-per-time (if (zerop max-scale-per-time) 1 max-scale-per-time))))
 	;; scales-per-time will be returned as a vector, we need to reshape it in order to
 	;; store it.
-	(setf-subarray (val normalised-values) 
-		       (val (.reshape normalised-time-slice (list number-of-scales 1)))
-		       (list t i))))
+	(setf (.subarray normalised-values (list t i))
+	      (.reshape normalised-time-slice (list number-of-scales 1)))))
     normalised-values))
 
 (defun stationary-phase (magnitude phase voices-per-octave &key (magnitude-minimum 0.01))
@@ -155,9 +154,8 @@ This is weighted by absolute constraints, look in the 600ms period range."
     (dotimes (i number-of-scales)
       ;; Accept if the signal period (from its phase derivatives) and the time support of
       ;; the wavelet at each dilation scale are within 1.5 sample of one another.
-      (setf-subarray (val signal-phase-diff)
-		     (val (.abs (.- (.subarray signal-period (list i t)) (.aref scale-time-support i))))
-		     (list i (1- time-in-samples))))
+      (setf (.subarray signal-phase-diff (list i (1- time-in-samples)))
+	    (.abs (.- (.subarray signal-period (list i t)) (.aref scale-time-support i)))))
 
     ;; We invert the normalised phase difference so that maximum values indicate
     ;; stationary phase -> ridges.
@@ -201,9 +199,9 @@ This is weighted by absolute constraints, look in the 600ms period range."
 	 (maximal-local-pc)
 	 ;; (no-outliers)
 	 (local-pc-for-mag))
-    ;; Since we produce the derivative from the difference, local-phase-diff is one
-    ;; element less.
-    (setf-subarray (val congruency) (val (.transpose local-phase-diff)) (list (list 1 (1- number-of-scales)) t))
+    ;; Since we produce the derivative from the difference, local-phase-diff is one element less.
+    (setf (.subarray congruency (list (list 1 (1- number-of-scales)) t))
+	  (.transpose local-phase-diff))
 
 #|
     ;; so we need to interpolate the result to
@@ -264,8 +262,8 @@ then can extract ridges."
 	 (rotated-row (if (eql direction :up) 
 			  (list (list 0 t) (list last-scale t)) 
 			  (list (list last-scale t) (list 0 t)))))
-    (setf-subarray (val scales-shifted) (val (.subarray scales (first matrix-position))) (second matrix-position))
-    (setf-subarray (val scales-shifted) (val (.subarray scales (first rotated-row))) (second rotated-row))
+    (setf (.subarray scales-shifted (second matrix-position)) (.subarray scales (first matrix-position)))
+    (setf (.subarray scales-shifted (second rotated-row)) (.subarray scales (first rotated-row)))
     scales-shifted))
 
 (defun determine-scale-peaks (correlated-profile &key (correlation-minimum 0.01))
