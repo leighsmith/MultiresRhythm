@@ -436,7 +436,8 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 ;; 			       (.floor (scale-from-period (.* intervals crochet-duration) vpo)))
 ;;     scale-histogram))
 
-(defun scale-histogram-of-anthems (anthems &key (vpo 16) (crochet-duration 100) max-time-limit)
+;;; TODO need to time limit histograms
+(defun scale-histogram-of-anthems (anthems &key (vpo 16) (max-time-limit 16384))
   "Returns an narray of scales based on histogram counts"
   (loop
      for anthem in anthems
