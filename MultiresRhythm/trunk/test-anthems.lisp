@@ -395,10 +395,9 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 	 (spans (.* intervals (histogram-counts duration-histogram intervals)))
 	 (relative-occurrence (./ spans (.sum spans))) ; make it a relative measure wrt time.
 	 (crochet-ratios (./ intervals (float (anthem-beat-period anthem) 1d0))))
-    (nlisp::setf-array-indices scale-histogram
-			       relative-occurrence
-			       ;; TODO should be .round
-			       (.floor (scale-from-period (.* crochet-ratios crochet-duration) vpo)))))
+    ;; TODO .floor should be .round
+    (setf (.arefs scale-histogram (.floor (scale-from-period (.* crochet-ratios crochet-duration) vpo)))
+	  relative-occurrence)))
 
 (defun anthems-of-meter (meter)
   (remove-if-not (lambda (x) (equal x meter)) *national-anthems* :key #'cadar))
@@ -430,10 +429,9 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 ;; 	 (scale-histogram (make-double-array (number-of-scales-for-period anthem-duration :voices-per-octave vpo)))
 ;; 	 (histogram-hash-table (make-histogram-of-anthem-intervals :anthems anthems))
 ;; 	 (intervals (histogram-intervals histogram-hash-table)))
-;;     (nlisp::setf-array-indices scale-histogram
-;; 			       (.normalise (histogram-counts histogram-hash-table intervals))
-;; 			       ;; TODO should be .round
-;; 			       (.floor (scale-from-period (.* intervals crochet-duration) vpo)))
+;;     ;; TODO should be .round
+;;     (setf (.arefs scale-histogram (.floor (scale-from-period (.* intervals crochet-duration) vpo)))
+;; 			       (.normalise (histogram-counts histogram-hash-table intervals)))
 ;;     scale-histogram))
 
 ;;; TODO need to time limit histograms
