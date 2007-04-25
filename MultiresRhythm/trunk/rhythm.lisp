@@ -169,10 +169,10 @@
   (plot-command "set xtics font \"Times,10\"")
   (plot-command "set ytics font \"Times,10\"")
   (if time-in-seconds
-      (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
-			    (label-samples-as-seconds (duration-in-samples rhythm-to-plot)
-						      (sample-rate rhythm-to-plot)))))
-  (plot-command (format nil "set xrange [0:~d]" (duration-in-samples rhythm-to-plot))) ; ensures last label plotted
+      (plot-command "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
+		    (label-samples-as-seconds (duration-in-samples rhythm-to-plot)
+					      (sample-rate rhythm-to-plot))))
+  (plot-command "set xrange [0:~d]" (duration-in-samples rhythm-to-plot)) ; ensures last label plotted
   (plot-command "set yrange [0:1.2]")	; Gives some height for the key.
   (plot-command "set format y \"%3.1f\"")
   (plot-command "set ytics 0.0, 0.20, 1.0")

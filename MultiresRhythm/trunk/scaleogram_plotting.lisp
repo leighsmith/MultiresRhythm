@@ -251,7 +251,7 @@
   (plot-command "set xlabel font \"Times,20\"")
   (plot-command "set ylabel font \"Times,20\"")
   (plot-command "set key off")
-  (plot-command (format nil "set xtics (~{~{\"~a\" ~d~}~^, ~})~%" (label-scale-as-time-support scaleogram-to-plot)))
+  (plot-command "set xtics (~{~{\"~a\" ~d~}~^, ~})~%" (label-scale-as-time-support scaleogram-to-plot))
   ;; We reverse the column so we plot in more intuitive lowest scale on the left orientation.
   (plot (.reverse (.column (scaleogram-magnitude scaleogram-to-plot) time)) nil 
 	:title (format nil "Energy profile at sample number ~d" time)
@@ -266,7 +266,7 @@
   (plot-command "set xlabel font \"Times,20\"")
   (plot-command "set ylabel font \"Times,20\"")
   (plot-command "set key off")
-  (plot-command (format nil "set xtics (~{~{\"~a\" ~d~}~^, ~})~%" (label-scale-as-time-support scaleogram-to-plot)))
+  (plot-command "set xtics (~{~{\"~a\" ~d~}~^, ~})~%" (label-scale-as-time-support scaleogram-to-plot))
   (let ((time-slice (.column (scaleogram-magnitude scaleogram-to-plot) time)))
     ;; We reverse the column so we plot in more intuitive lowest scale on the left orientation.
     (nplot (list (.reverse time-slice) 

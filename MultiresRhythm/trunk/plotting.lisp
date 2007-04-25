@@ -157,8 +157,8 @@ colourmap, suitable for use by NLISP's palette-defined function."
 (defun set-image-dimensions (image-dimensions)
   (let ((image-size (first image-dimensions))
 	(image-origin (second image-dimensions)))
-    (plot-command (format nil "set size ~f,~f" (first image-size) (second image-size)))
-    (plot-command (format nil "set origin ~f,~f" (first image-origin) (second image-origin)))))
+    (plot-command "set size ~f,~f" (first image-size) (second image-size))
+    (plot-command "set origin ~f,~f" (first image-origin) (second image-origin))))
 
 (defun set-axes-labels (axes-commands)
   (plot-command "set xtics font \"Times,10\"")
@@ -170,18 +170,18 @@ colourmap, suitable for use by NLISP's palette-defined function."
 	(window-origin (second window-dimensions)))
     ;; Expand the colorbox and only display the given number of tics.
     (plot-command "set format cb \"%4.2f\"")
-    (plot-command (format nil "set cbtics ~5,2f" (/ (range data-to-plot) colorbox-divisions)))
-    (plot-command (format nil "set colorbox user origin ~f,~f size 0.03,0.2"
-			  (+ (first window-origin) (* (first window-size) 0.88))
-			  (+ (second window-origin) (* (second window-size) 0.38))))))
-;;    (plot-command (format nil "set colorbox user origin ~f,~f size 0.03,0.2" (+ (first window-origin) 0.88) (+ (second window-origin) 0.15)))))
+    (plot-command "set cbtics ~5,2f" (/ (range data-to-plot) colorbox-divisions))
+    (plot-command "set colorbox user origin ~f,~f size 0.03,0.2"
+		  (+ (first window-origin) (* (first window-size) 0.88))
+		  (+ (second window-origin) (* (second window-size) 0.38)))))
+;;    (plot-command "set colorbox user origin ~f,~f size 0.03,0.2" (+ (first window-origin) 0.88) (+ (second window-origin) 0.15))))
 
 (defun phase-colour-box (phase-data window-dimensions  &key (colorbox-divisions 4.0))
   (let ((window-origin (second window-dimensions)))
     ;; (plot-command "set cbtics font \"Symbol,12\"") ; Doesn't work on Aquaterm yet.
-    (plot-command (format nil "set cbtics (~{~{\"~a\" ~d~}~^, ~})~%" 
- 			  (label-phase-in-radians (range phase-data) colorbox-divisions)))
-    (plot-command (format nil "set colorbox user origin ~f,~f size 0.03,0.2" (+ (first window-origin) 0.88) (+ (second window-origin) 0.15)))))
+    (plot-command "set cbtics (~{~{\"~a\" ~d~}~^, ~})~%" 
+		  (label-phase-in-radians (range phase-data) colorbox-divisions))
+    (plot-command "set colorbox user origin ~f,~f size 0.03,0.2" (+ (first window-origin) 0.88) (+ (second window-origin) 0.15))))
 
 (defun set-plot-palette (palette &key (maximum-colour-value 255))
   (cond ((eq palette :greyscale) ; White thru grey to black for magnitude plots
@@ -333,9 +333,9 @@ colourmap, suitable for use by NLISP's palette-defined function."
 	 (clap-signal (make-double-array (.array-dimensions rhythm-signal) :initial-element 0d0)))
     (map nil (lambda (index) (setf (.aref clap-signal index) max-computed-scale)) (val claps))
     (window)
-    (plot-command (format nil "set yrange [0:~f]" (+ max-computed-scale 0.2)))
-    (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
-			  (label-samples-as-seconds (duration-in-samples original-rhythm) (sample-rate original-rhythm))))
+    (plot-command "set yrange [0:~f]" (+ max-computed-scale 0.2))
+    (plot-command "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
+		  (label-samples-as-seconds (duration-in-samples original-rhythm) (sample-rate original-rhythm)))
     (nplot (list rhythm-signal clap-signal (.+ (./ foot-tap-AM pi 2.0d0) 0.5d0)) nil
 	   :legends '("Original Rhythm" "Computed foot-taps" "Normalised Foot-tap AM")
 	   :styles '("impulses linetype 6 linewidth 3" "impulses linetype 4" "dots 3")
@@ -390,16 +390,15 @@ colourmap, suitable for use by NLISP's palette-defined function."
     (nlisp:palette-defined (list '(0 "#000000") 
 				 (list max-ridge-colours "#FFFFFF")
 				 (list maximum-colour-value "#FF0000")))
-    (plot-command (format nil "set xrange [0:~d]" downsampled-ridges-time))	; ensures last label plotted
-    (plot-command (format nil "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
-			  (label-samples-as-seconds (.array-dimension ridges 1)
-						    200
-						    ;; (sample-rate original-rhythm)
-						    :time-axis-decimation time-axis-decimation)))
-;;    (plot-command (format nil "set ytics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
-;;			  (label-scale-as-time-support-seconds scaleogram-to-plot (sample-rate analysis-rhythm))))
-    (format t "set cbtics ~5,2f" (/ (range rescaled-ridges) colorbox-divisions))
-    (plot-command (format nil "set cbtics ~5,2f" (/ (range rescaled-ridges) colorbox-divisions)))
+    (plot-command "set xrange [0:~d]" downsampled-ridges-time)	; ensures last label plotted
+    (plot-command "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
+		  (label-samples-as-seconds (.array-dimension ridges 1)
+					    200
+					    ;; (sample-rate original-rhythm)
+					    :time-axis-decimation time-axis-decimation))
+    ;;    (plot-command "set ytics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
+    ;;			  (label-scale-as-time-support-seconds scaleogram-to-plot (sample-rate analysis-rhythm)))
+    (plot-command "set cbtics ~5,2f" (/ (range rescaled-ridges) colorbox-divisions))
 
 ;; for image x parameter: (.rseq 0.0 (time-as-seconds ridges 200) (.array-dimension rescaled-ridges 1))
     (image (.flip rescaled-ridges) nil nil

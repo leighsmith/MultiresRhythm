@@ -498,8 +498,8 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
     (plot-command "set xlabel font \"Times,24\"")
     (plot-command "set ylabel font \"Times,24\"")
     ;; TODO Rotate the xtics & drop the font size.
-    (plot-command (format nil "set xtics rotate (~{~{\"~a\" ~5d~}~^, ~})~%" (label-country anthems)))
-    ;; (plot-command (format nil "set xtics 0,10,~d~%" (length anthems)))
+    (plot-command "set xtics rotate (~{~{\"~a\" ~5d~}~^, ~})~%" (label-country anthems))
+    ;; (plot-command "set xtics 0,10,~d~%" (length anthems))
     (plot bar-ratios nil ; (.iseq 0 (1- (length anthems)))
 	  :style "boxes fill solid border 9" 
 	  :title (format nil "Bar presence of ~a" *anthem-analysis-path*) ; "for ~4,2f second excerpts"
@@ -521,8 +521,8 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
     (plot-command "set title font \"Times,24\"")
     (plot-command "set xlabel ,-1 font \"Times,24\"")
     (plot-command "set ylabel font \"Times,24\"")
-    (plot-command (format nil "set xtics border (~{~{\"~a\" ~d~}~^, ~}) font \"Sonata,28\"~%" 
-			  (x-axis-pad (label-scale-as-rhythmic-beat vpo crochet-duration))))
+    (plot-command "set xtics border (~{~{\"~a\" ~d~}~^, ~}) font \"Sonata,28\"~%" 
+		  (x-axis-pad (label-scale-as-rhythmic-beat vpo crochet-duration)))
     (plot arp nil 
 	  :title (format nil "Time-Frequency Scale Presence For ~d Anthems ~a"
 			 (length anthems) description)
@@ -541,10 +541,10 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
   (plot-command "set title font \"Times,24\"")
   (plot-command "set xlabel ,-1 font \"Times,24\"")
   (plot-command "set ylabel font \"Times,24\"")
-  (plot-command (format nil "set xtics border (~{~{\"~a\" ~d~}~^, ~}) font \"Sonata,28\"~%" 
-			(x-axis-pad (label-scale-as-rhythmic-beat vpo crochet-duration))))
+  (plot-command "set xtics border (~{~{\"~a\" ~d~}~^, ~}) font \"Sonata,28\"~%" 
+		(x-axis-pad (label-scale-as-rhythmic-beat vpo crochet-duration)))
   (let ((bar-scale-index (round (bar-scale (first anthems) vpo))))
-    (plot-command (format nil "set arrow 1 from ~d,0.4 to ~d,0.3" bar-scale-index bar-scale-index))
+    (plot-command "set arrow 1 from ~d,0.4 to ~d,0.3" bar-scale-index bar-scale-index)
     (plot-command "show arrow 1"))
   (nplot (list (scale-histogram-of-anthems anthems) (average-ridge-persistency :anthems anthems))
 	 nil
@@ -571,8 +571,8 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 				   :cache-directory anthem-path)
       (setf bar-scale-index (round (bar-scale anthem (voices-per-octave rhythm-skeleton))))
       (setf beat-scale-index (round (beat-scale anthem (voices-per-octave rhythm-skeleton))))
-      (plot-command (format nil "set arrow 1 from ~d,0.3 to ~d,0.2" bar-scale-index bar-scale-index))
-      (plot-command (format nil "set arrow 2 from ~d,0.3 to ~d,0.2" beat-scale-index beat-scale-index))
+      (plot-command "set arrow 1 from ~d,0.3 to ~d,0.2" bar-scale-index bar-scale-index)
+      (plot-command "set arrow 2 from ~d,0.3 to ~d,0.2" beat-scale-index beat-scale-index)
       (plot-command "show arrow 1")
       (plot-command "show arrow 2")
       (nplot (list (ridge-persistency (scaleogram-magnitude rhythm-scaleogram))
