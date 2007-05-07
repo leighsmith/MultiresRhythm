@@ -44,6 +44,11 @@
 (defmacro anthem-beat-period (anthem)
   `(fifth (first ,anthem)))
 
+;;; :start-at = the anacrusis duration from the start of the bar.
+(defmacro anthem-start-at (anthem)
+  "Returns the position in the bar where the upbeat starts, in grid units"
+  `(ninth (first ,anthem)))
+
 ;;; 1 crochet = 100 samples => 120 BPM
 (defun anthem-minimum-duration (anthem &key (crochet-duration 100))
   "Returns the duration of the smallest interval in the anthem, in samples, given a fixed tempo."
@@ -59,10 +64,6 @@
 	 (anthem-name (symbol-name (first anthem-descriptor)))
 	 (anthem-iois (second anthem)))
     (iois-to-rhythm anthem-name anthem-iois :shortest-ioi (anthem-minimum-duration anthem))))
-
-;;; :start-at = the anacrusis duration from the start of the bar.
-(defun anthem-start-at (anthem)
-  (ninth (first anthem)))
 
 (defun anthem-anacrusis (anthem)
   (- (anthem-bar-duration anthem) (anthem-start-at anthem)))
@@ -80,10 +81,8 @@
 
 ;;; TODO should make both bar-scale and beat-scale the same function.
 (defun beat-scale (anthem voices-per-octave)
-  "Compute the scale index that the anthem would activate on "
   (scale-from-period (anthem-duration-in-samples anthem (anthem-beat-period anthem))
 		     voices-per-octave))
-
 
 (defun canonical-bar-ridge (anthem rhythm-scaleogram)
   (make-monotone-ridge (round (bar-scale anthem (voices-per-octave rhythm-scaleogram)))
@@ -136,8 +135,8 @@
 ;;     (format t "computed tactus ~a~%" computed-tactus)
 ;;     (bar-scale-number (bar-scale anthem (voices-per-octave rhythm-scaleogram)))))
 
-(defmacro clap-to-anthem (anthem)
-  `(clap-to-rhythm (anthem-rhythm ,anthem)))
+(defun clap-to-anthem (anthem)
+  (clap-to-rhythm (anthem-rhythm anthem) :start-from-beat (anthem-anacrusis anthem)))
 
 ;; (time (clap-to-anthem (anthem# 32))
 

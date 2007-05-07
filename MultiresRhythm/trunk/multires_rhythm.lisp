@@ -22,8 +22,7 @@
 ;;;; correlated-ridge-scale-peaks frames?
 ;;;; Declarations (see rhythm.lisp for the class definition)
 
-
-(defgeneric clap-to-rhythm (rhythm-to-analyse &key tactus-selector)
+(defgeneric clap-to-rhythm (rhythm-to-analyse &key tactus-selector start-from-beat)
   (:documentation "Returns a set of sample times to clap to given the supplied rhythm"))
 
 (defgeneric tactus-for-rhythm (rhythm-to-analyse &key voices-per-octave tactus-selector)
@@ -391,11 +390,13 @@ then can extract ridges."
     (plot-claps original-rhythm clap-at :foot-tap-AM foot-tap-phase)
     clap-at))
 
-(defmethod clap-to-rhythm ((performed-rhythm rhythm) &key (tactus-selector #'select-longest-lowest-tactus))
+(defmethod clap-to-rhythm ((performed-rhythm rhythm) &key 
+			   (start-from-beat 1)
+			   (tactus-selector #'select-longest-lowest-tactus))
   "Returns a set of sample times to clap to given the supplied rhythm"
   (multiple-value-bind (computed-tactus rhythm-scaleogram)
       (tactus-for-rhythm performed-rhythm :tactus-selector tactus-selector)
-    (clap-to-tactus-phase performed-rhythm rhythm-scaleogram computed-tactus :start-from-beat 1)))
+    (clap-to-tactus-phase performed-rhythm rhythm-scaleogram computed-tactus :start-from-beat start-from-beat)))
 
 ;; Approaches:
 ;; 1. Count the number of ridges.
