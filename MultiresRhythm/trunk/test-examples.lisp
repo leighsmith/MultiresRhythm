@@ -57,8 +57,9 @@
     ;; (plot rising-harmonic-signal nil)
     rising-harmonic-signal))
 
-;; (plot-cwt (cwt (rising-harmonic-test) 8) :title "rising-harmonic")
+;; (plot-cwt (cwt (rising-harmonic-test :signal-length 4096) 8) :title "rising-harmonic")
 ;; (time (cwt (rising-harmonic-test) 16))
+;; (plot (rising-harmonic-test) nil)
 
 (defun test-lpc ()
 "Tests local phase congruency"
@@ -135,13 +136,12 @@
 		   :time-signal (.row aligned-signal 0)
 		   :sample-rate sample-rate)))
 
-(defun clap-to-octave-file (filename 
-			 &key
-			 (sample-rate 200) 
-			 (description "") 
+(defun clap-to-octave-file (filename &key (sample-rate 200) (description "") 
 			 (tactus-selector #'select-longest-lowest-tactus))
-  (let* ((loaded-rhythm (load-octave-rhythm-file filename :description description :sample-rate sample-rate)))
-    (clap-to-rhythm loaded-rhythm :tactus-selector tactus-selector)))
+  (let* ((loaded-rhythm (load-octave-rhythm-file filename :description description :sample-rate sample-rate))
+	 (clap-at (clap-to-rhythm loaded-rhythm :tactus-selector tactus-selector)))
+    (save-rhythm-and-claps loaded-rhythm clap-at)
+    clap-at))
 
 ;; For decimating greensleeves to 200Hz.
 ;;(setf x (load-octave-rhythm-file "greensleeves-perform-medium" :sample-rate 400))

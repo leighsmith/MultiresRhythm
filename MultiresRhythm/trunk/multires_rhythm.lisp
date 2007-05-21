@@ -398,6 +398,16 @@ then can extract ridges."
       (tactus-for-rhythm performed-rhythm :tactus-selector tactus-selector)
     (clap-to-tactus-phase performed-rhythm rhythm-scaleogram computed-tactus :start-from-beat start-from-beat)))
 
+(defun save-rhythm-and-claps (original-rhythm clap-at)
+  "Writes out the rhythm and the handclaps to a scorefile"
+  (save-scorefile (format nil "/Users/leigh/~a.handclap.score" (name original-rhythm)) 
+		  (list (nlisp::array-to-list (onsets-in-seconds original-rhythm)) 
+			(nlisp::array-to-list (./ clap-at (* (sample-rate original-rhythm) 1d0))))
+		  :instrument "midi"
+		  :midi-channel 10
+		  :key-numbers (list *low-woodblock* *closed-hi-hat*)
+		  :description (format nil "Handclapping to ~a" (description original-rhythm))))
+
 ;; Approaches:
 ;; 1. Count the number of ridges.
 ;; 2. Each ridge is tempo weighted by each of it's scales. Therefore 1 long ridge would be more complex than shorter ridges.

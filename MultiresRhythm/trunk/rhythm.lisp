@@ -191,10 +191,10 @@
 
 (defmethod save-rhythm ((rhythm-to-save rhythm))
   (save-scorefile (format nil "/Users/leigh/~a.score" (name rhythm-to-save)) 
-		  ;; Convert to seconds.
-		  (nlisp::array-to-list (rhythm-iois rhythm-to-save))
+		  (list (nlisp::array-to-list (onsets-in-seconds rhythm-to-save)))
 		  :instrument "midi"
 		  :midi-channel 10
+		  :key-numbers (list *low-woodblock*)
 		  :description (description rhythm-to-save)))
 
 (defun add-rhythm (&rest rhythms-to-add)
