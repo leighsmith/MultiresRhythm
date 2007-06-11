@@ -45,3 +45,17 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 ;; Only good for vectors, of course.
 (defun .subseq (a start &optional end)
   (make-instance (class-of a) :ival (subseq (val a) start end)))
+
+;;; Really good candidate to replace with a BLAS routine...
+(defun .partial-sum (a &key (dimension 1)) 
+  (declare (optimize (speed 3) (space 0) (safety 1)))
+  (let* ((result-length (.array-dimension a dimension))
+	 (rows (.array-dimension a 0)) ; TODO HACK!
+	 (r (make-double-array result-length)) ; (make-ninstance a result-length)
+	 (a-val (val a))
+	 (r-val (val r)))
+    (dotimes (j result-length)
+      (dotimes (i rows)
+	(declare (type fixnum i j))
+	(setf (aref r-val j) (+ (aref r-val j) (aref a-val i j))))) 
+    r))

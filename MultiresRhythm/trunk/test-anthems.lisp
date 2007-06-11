@@ -45,9 +45,10 @@
   `(fifth (first ,anthem)))
 
 ;;; :start-at = the anacrusis duration from the start of the bar.
-(defmacro anthem-start-at (anthem)
+;;; Defined as a function, rather than as a macro to allow it to be used as a key to remove-if-not.
+(defun anthem-start-at (anthem)
   "Returns the position in the bar where the upbeat starts, in grid units"
-  `(ninth (first ,anthem)))
+  (ninth (first anthem)))
 
 ;;; 1 crochet = 100 samples => 120 BPM
 (defun anthem-minimum-duration (anthem &key (crochet-duration 100))
@@ -65,7 +66,8 @@
 	 (anthem-iois (second anthem)))
     (iois-to-rhythm anthem-name anthem-iois :shortest-ioi (anthem-minimum-duration anthem))))
 
-(defun anthem-anacrusis (anthem)
+(defun anthem-anacrusis-duration (anthem)
+  "Returns the number of grid units of time (not the number of notes), before the downbeat"
   (- (anthem-bar-duration anthem) (anthem-start-at anthem)))
 
 (defun anthem-interval-scale (anthem voices-per-octave interval)
@@ -135,10 +137,21 @@
 ;;     (format t "computed tactus ~a~%" computed-tactus)
 ;;     (bar-scale-number (bar-scale anthem (voices-per-octave rhythm-scaleogram)))))
 
+(defun anacrusis-notes (anthem)
+  "Return the sample times of notes of the anacrusis, prior to the downbeat"
+  (onsets-in-samples (subset-of-rhythm (anthem-rhythm anthem)
+				       (list t (* (anthem-anacrusis-duration anthem)
+						  (anthem-minimum-duration anthem))))))
+
+(defun downbeat-number (anthem)
+  "Return the number of notes of the anacrusis, prior to the downbeat"
+  (.length (anacrusis-notes anthem)))
+
 (defun clap-to-anthem (anthem)
-  (clap-to-rhythm (anthem-rhythm anthem) :start-from-beat (anthem-anacrusis anthem)))
+  (clap-to-rhythm (anthem-rhythm anthem) :start-from-beat (downbeat-number anthem)))
 
 ;; (time (clap-to-anthem (anthem# 32))
+;; (save-rhythm-and-claps (anthem-rhythm (anthem-named 'america)) (clap-to-anthem (anthem-named 'america)))
 
 (defun generate-anthem-skeletons (&key (count (length *national-anthems*)) 
 				  (anthem-path *anthem-analysis-path*)
@@ -195,20 +208,6 @@
 ;; 	    (1- bar-scale-index)
 ;; 	    (count-scale-in-skeleton skeleton (1- bar-scale-index)))
 ;;     (/ (count-scale-in-skeleton skeleton bar-scale-index) (duration-in-samples skeleton))))
-
-;;; Really good candidate to replace with a BLAS routine...
-(defun .partial-sum (a &key (dimension 1)) 
-  (declare (optimize (speed 3) (space 0) (safety 1)))
-  (let* ((result-length (.array-dimension a dimension))
-	 (rows (.array-dimension a 0)) ; TODO HACK!
-	 (r (make-double-array result-length)) ; (make-ninstance a result-length)
-	 (a-val (val a))
-	 (r-val (val r)))
-    (dotimes (j result-length)
-      (dotimes (i rows)
-	(declare (type fixnum i j))
-	(setf (aref r-val j) (+ (aref r-val j) (aref a-val i j))))) 
-    r))
 
 ;;; Just sum over all scales, across time, either the magnitude or correlated ridge peaks.
 ;;; TODO This is pretty slow, due to the n^2 .partial-sum function and the .transpose.
@@ -451,6 +450,7 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 ;;;
 
 (defun plot-bar-ridges-of-anthem (anthem)
+  "Plot the magnitude"
   (let ((anthem-rhythm (anthem-rhythm anthem)))
     (multiple-value-bind (matching-ridges rhythm-scaleogram correlated-ridge-scale-peaks) 
 	(bar-ridges-for-anthem anthem)
@@ -487,6 +487,8 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 		   :time-axis-decimation time-axis-decimation))))
 
 ;; (plot-scaleogram-skeleton-of-anthem (anthem-named 'tunisia))
+;; (plot-scaleogram-skeleton-of-anthem (anthem-named 'vietnam))
+;; (plot-scaleogram-skeleton-of-anthem (anthem-named 'america))
 
 (defun plot-anthem-bar-presence (&key (anthems *national-anthems*))
   (let ((bar-ratios (nlisp::list-to-array (bars-in-anthem-skeletons :anthems anthems))))
