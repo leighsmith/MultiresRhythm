@@ -284,7 +284,7 @@
    using dyadic-cwt, trimming off the returned result to match the original signal length.
    Returns a scaleogram instance containing magnitude and phase."
   ;; The wavelet transform operates on 1 x N vector
-  (format t "CWT Input signal length ~d samples~%" (.array-dimension time-signal 0))
+  (format t "CWT input signal length ~d samples~%" (.array-dimension time-signal 0))
   (multiple-value-bind (pad-signal time-trim) (dyadic-pad time-signal)
     (multiple-value-bind (padded-magnitude padded-phase)
 	(dyadic-cwt pad-signal voices-per-octave max-wavelet-period)

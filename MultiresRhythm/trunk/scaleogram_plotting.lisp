@@ -31,7 +31,7 @@
 (defgeneric plot-cwt+ridges (scaleogram ridges rhythm &key title time-axis-decimation)
   (:documentation "Plot the magnitude in greyscale overlaid with the computed tactus in red, the phase overlaid with the tactus in black."))
 
-(defgeneric plot-scale-energy-at-time (scaleogram time)
+(defgeneric plot-scale-energy-at-times (scaleogram times &key description)
   (:documentation "Plot a cross-section of the magnitude at a given time point so we can spot the highest activated scales."))
 
 (defgeneric plot-highlighted-ridges (scaleogram highlighted-ridges ridge-peaks &key title time-axis-decimation)
@@ -245,20 +245,24 @@
 		 :title title
 		 :time-axis-decimation time-axis-decimation)))
 
-(defmethod plot-scale-energy-at-time ((scaleogram-to-plot scaleogram) time)
+(defmethod plot-scale-energy-at-times ((scaleogram-to-plot scaleogram) times &key
+				       (description "unnamed"))
   "Plot a cross-section of the magnitude at a given time point so we can spot the highest activated scales."
+  ;; (reset-plot)
   (plot-command "set title font \"Times,20\"")
   (plot-command "set xlabel font \"Times,20\"")
   (plot-command "set ylabel font \"Times,20\"")
-  (plot-command "set key off")
+  ;; (plot-command "set key off")
   (plot-command "set xtics (~{~{\"~a\" ~d~}~^, ~})~%" (label-scale-as-time-support scaleogram-to-plot))
   ;; We reverse the column so we plot in more intuitive lowest scale on the left orientation.
-  (plot (.reverse (.column (scaleogram-magnitude scaleogram-to-plot) time)) nil 
-	:title (format nil "Energy profile at sample number ~d" time)
-	:xlabel "Scale as IOI Range in Samples"
-	:ylabel "Magnitude Energy"
-	:reset nil
-	:aspect-ratio 0.2))
+  (nplot (mapcar (lambda (time) (.reverse (.column (scaleogram-magnitude scaleogram-to-plot) time))) times)
+	 nil 
+	 :title (format nil "Energy profiles at select times of ~a" description)
+	 :legends times ; "sample number ~d" 
+	 :xlabel "Scale as IOI Range in Samples"
+	 :ylabel "Magnitude Energy"
+	 :reset nil
+	 :aspect-ratio 0.2))
 
 (defmethod plot-scale-energy+peaks-at-time ((scaleogram-to-plot scaleogram) time peaks)
   "Plot a cross-section of the magnitude at a given time point so we can spot the highest activated scales."

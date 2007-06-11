@@ -62,27 +62,40 @@
 ;; (plot (rising-harmonic-test) nil)
 
 (defun test-lpc ()
-"Tests local phase congruency"
-  (let ((fm-scaleogram (cwt (fm-test) 8)))
-    ;; (plot-cwt fm-scaleogram :title "fm")
-    (plot-image #'magnitude-image "-lpc" 
-		(list (local-phase-congruency (scaleogram-magnitude fm-scaleogram)
-					      (scaleogram-phase fm-scaleogram))) 
-		:title "fm")))
-  
+  "Tests local phase congruency"
+  (let* ((fm-scaleogram (cwt (fm-test) 8))
+	 (local-pc (local-phase-congruency (scaleogram-magnitude fm-scaleogram)
+					   (scaleogram-phase fm-scaleogram))))
+    (plot-cwt fm-scaleogram :title "fm")
+    (plot-image #'magnitude-image
+		(list local-pc)
+		'((1.0 1.0) (0.0 0.0))
+		(axes-labelled-in-samples fm-scaleogram 4)
+		:title "fm")
+    (plot (.subarray local-pc '(t 200)) nil)))
+
 ;; (test-lpc)
 
-(defun scaleogram-of-grid (rhythm-grid)
-  (let* ((rhythm (rhythm-of-grid "test-rhythm" rhythm-grid :shortest-ioi 256))
+
+(defun scaleogram-of-grid (rhythm-grid &key (shortest-ioi 256))
+  (let* ((rhythm (rhythm-of-grid "test-rhythm" rhythm-grid :shortest-ioi shortest-ioi))
 	 (rhythm-scaleogram (scaleogram-of-rhythm rhythm :voices-per-octave 12)))
     (plot-cwt-of-rhythm rhythm-scaleogram rhythm :title "test-rhythm")
     rhythm-scaleogram))
 
 ;; (setf rhythm-scaleogram (scaleogram-of-grid '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0)))
+;; (setf local-pc (local-phase-congruency (scaleogram-magnitude rhythm-scaleogram) (scaleogram-phase rhythm-scaleogram)))
+;; (setf pc (./ (.partial-sum local-pc) (.array-dimension local-pc 0)))
 ;; (scaleogram-of-grid '(1 1 1 1 1 1 1 1 1 1))
 ;; (scaleogram-of-grid '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1))
-;; (plot-scale-energy-at-time (scaleogram-of-grid '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)) 650)
+;; (plot-scale-energy-at-times (scaleogram-of-grid '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)) '(650))
 ;; (setf b (rhythm-of-grid '(1 1 1 1) :tempo 60))
+
+;; Comparison of scaled vs. padded rhythms.
+;; Dyadic (4096 samples) input signal, no padding.
+;; (setf rhythm-scaleogram (scaleogram-of-grid '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 1) :shortest-ioi 256))
+;; Non-dyadic signal (2400 samples), causes padding.
+;; (setf rhythm-scaleogram (scaleogram-of-grid '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 1) :shortest-ioi 150))
 
 (defun tactus-for-rhythm-grid (name rhythm-grid)
   (clap-to-rhythm (rhythm-of-grid name rhythm-grid :sample-rate 200 :tempo 80)))
@@ -257,7 +270,7 @@
 ;;;	                        (iois-to-rhythm "triple" (repeat-rhythm '(67 67 66 67 67 66) 4) :sample-rate 200)))
 ;;;
 ;;; (multiple-value-bind (tactus rhythm-scaleogram) (tactus-for-rhythm polyrhythm)
-;;;		   (plot-scale-energy-at-time rhythm-scaleogram 236))
+;;;		   (plot-scale-energy-at-times rhythm-scaleogram '(236)))
 ;;;
 ;;; TODO need to increase tempo by 5% every eight beats. Should result in an increase in
 ;;; tempo of more than 25% over 15 seconds.

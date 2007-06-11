@@ -194,42 +194,76 @@ This is weighted by absolute constraints, look in the 600ms period range."
 	 ;; phase most closely match between adjacent scales, most indicative
 	 ;; of a frequency. 
 	 (local-phase-diff (.+ (.* (.not which-wrapped) abs-ds-phase) (.* which-wrapped phase-wrap)))
-	 (congruency (make-double-array time-frequency-dimensions))
-	 (maximal-local-pc)
-	 ;; (no-outliers)
-	 (local-pc-for-mag))
-    ;; Since we produce the derivative from the difference, local-phase-diff is one element less.
+	 ;; The local phase congruency measure should be maximal at points of minimal
+	 ;; difference between scales, so we normalise it, then subtract from 1.
+	 ;; (maximal-local-pc (.- 1d0 (.normalise local-phase-diff)))
+	 (maximal-local-pc (.- 1d0 (./ local-phase-diff pi)))
+	 (congruency (make-double-array time-frequency-dimensions))) ; what we will return.
+    ;; Since we produce the derivative from the difference, maximal-local-pc is one element less.
+    ;; Alternative would be to interpolate the result to produce the correct value for each scale.
+    ;; (congruency (./ (.abs (.+ (.concatenate local-phase-diff scale-pad) 
+    ;; (.concatenate scale-pad local-phase-diff)))) 2)
+    ;; or
+    ;; (congruency (.transpose local-phase-diff))
+    ;; (format t "local-phase-diff range (~a ~a)~%" (.min local-phase-diff) (.max local-phase-diff))
+    (format t "maximal-local-pc range (~a ~a)~%" (.min maximal-local-pc) (.max maximal-local-pc))
     (setf (.subarray congruency (list (list 1 (1- number-of-scales)) t))
-	  (.transpose local-phase-diff))
-
-#|
-    ;; so we need to interpolate the result to
-	 ;; produce the correct value for each scale.
-	 (congruency (./ (.abs (.+ (.concatenate local-phase-diff scale-pad) 
-	 (.concatenate scale-pad local-phase-diff)))) 2)
-;; or
-	 (congruency (.transpose local-phase-diff))
-|#
-
-    ;; The local phase congruency measure should be maximal at points of minimal
-    ;; difference between scales, so we normalise it, then subtract from 1.
-    ;; (setf maximal-local-pc (.- 1d0 (normalise-by-scale congruency)))
-    (setf maximal-local-pc (.- 1d0 (.normalise congruency)))
+	  (.transpose maximal-local-pc))
 
     ;; There must be some magnitude at the half-plane points of local phase congruency for
     ;; the ridge to be valid.  
-    (setf local-pc-for-mag (clamp-to-bounds maximal-local-pc magnitude :low-bound magnitude-minimum :clamp-low 0))
-    local-pc-for-mag))
-#|
-    (plot-image #'magnitude-image "-clampedpc" (list local-pc-for-mag))
-    (plot (.subarray local-pc-for-mag '(t 182)) nil)
+    (clamp-to-bounds congruency magnitude :low-bound magnitude-minimum :clamp-low 0)))
 
+#|
     ;; determine outliers: those troughs greater in difference than threshold.
     (setf no-outliers (.< congruency congruency-threshold))
 
     ;; Remove outliers.
     (.* local-pc-for-mag no-outliers)))
 |#
+
+
+(defun local-phase-congruency-new (magnitude phase &key (magnitude-minimum 0.01))
+  "Compute points of local phase congruency.
+   Determines the points of phase with least deviation between adjacent scales.
+
+  Inputs
+    magnitude Magnitude output of CWT.
+    phase  Phase output of CWT
+    magnitude-minimum is the minimum magnitude to accept phase as valid.
+  Outputs
+    matrix indicating presence of congruency."
+  (let* ((time-frequency-dimensions (.array-dimensions phase))
+	 (number-of-scales (first time-frequency-dimensions))
+	 ;; Transposes phase so that diffence is across rows (i.e scales).
+	 (phase-transpose (.transpose phase))
+	 ;; polar derivative with respect to scale s. 
+	 (ds-diff (.+ (.abs (.diff (.sin phase-transpose))) (.abs (.diff (.cos phase-transpose)))))
+	 ;; normalise the difference, trancendental functions will never be simultaneously
+	 ;; larger than 1.0 on the sin and cos axes. Max diff on the projections is
+	 ;; therefore +/- 2.0.
+	 (norm-ds-diff (./ (.+ ds-diff 2.0d0) 4.0d0))
+	 ;; invert, so that minimal difference between scales is maximum local phase congruency.
+	 (maximal-local-pc (.- 1d0 (.transpose norm-ds-diff)))
+	 (congruency (make-double-array time-frequency-dimensions))) ; what we will return.
+    (format t "ds-diff range (~a ~a)~%" (.min ds-diff) (.max ds-diff))
+    (format t "norm-ds-diff range (~a ~a)~%" (.min norm-ds-diff) (.max norm-ds-diff))
+    (format t "maximal-local-pc range (~a ~a)~%" (.min maximal-local-pc) (.max maximal-local-pc))
+    ;; Since we produce the derivative from the difference, local-phase-diff is one element less.
+    (setf (.subarray congruency (list (list 1 (1- number-of-scales)) t)) maximal-local-pc)
+    ;; There must be some magnitude at the half-plane points of local phase congruency for
+    ;; the ridge to be valid.
+    (clamp-to-bounds congruency magnitude :low-bound magnitude-minimum :clamp-low 0)))
+
+(defun phase-congruency (magnitude phase)
+  "Calculate a dimensionless measure of local energy at each time point,
+given magnitude and phase components of the wavelet coefficients. 
+Phase is assumed to be -pi to pi."
+  (let* ((real-bit (.* magnitude (.cos phase)))
+	 (imag-bit (.* magnitude (.sin phase)))
+	 (local-energy (.sqrt (.+ (.expt (.partial-sum real-bit) 2) (.expt (.partial-sum imag-bit) 2))))
+	 (local-magnitude (.sum magnitude)))
+    (./ local-energy local-magnitude)))
 
 ;;; TODO alternatively return normalised-magnitude, stationary-phase or
 ;;; local-phase-congruency individually.
