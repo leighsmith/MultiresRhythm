@@ -55,4 +55,5 @@
 	       (:file "multires_rhythm" :depends-on ("cwt" "skeleton" "plotting" "rhythm" "signalprocessing"))
 	       (:file "test-examples" :depends-on ("rhythm" "multires_rhythm"))
 	       (:file "national anthems")
-	       (:file "test-anthems" :depends-on ("multires_rhythm" "national anthems"))))
+	       (:file "test-anthems" :depends-on ("multires_rhythm" "national anthems"))
+	       (:file "downbeat" :depends-on ("test-anthems"))))
