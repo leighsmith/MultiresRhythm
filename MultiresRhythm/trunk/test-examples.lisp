@@ -54,12 +54,16 @@
 	 (rising-harmonic-signal (.+ (.* 0.33 (.cos (.* norm-signal 2.0 pi periodicity)))
 				     (.* 0.33 (.cos (.* norm-signal 2.0 pi periodicity2)))
 				     (.* 0.33 (.cos (.* norm-signal 2.0 pi periodicity3))))))
-    ;; (plot rising-harmonic-signal nil)
     rising-harmonic-signal))
 
-;; (plot-cwt (cwt (rising-harmonic-test :signal-length 4096) 8) :title "rising-harmonic")
+(defun plot-rising-harmonic ()
+  (let* ((rising-harmonic-signal (rising-harmonic-test :signal-length 4096))
+	 (scaleogram (cwt rising-harmonic-signal 8)))
+    (plot rising-harmonic-signal nil :title "Rising Harmonic Signal" :xlabel "Time" :ylabel "Amplitude" :aspect-ratio 0.66)
+    (window)
+    (plot-cwt scaleogram :title "rising-harmonic")
+    (plot-highlighted-ridges scaleogram () (scale-peaks-of-scaleogram scaleogram 200))))
 ;; (time (cwt (rising-harmonic-test) 16))
-;; (plot (rising-harmonic-test) nil)
 
 (defun test-lpc ()
   "Tests local phase congruency"
@@ -77,10 +81,10 @@
 ;; (test-lpc)
 
 
-(defun scaleogram-of-grid (rhythm-grid &key (shortest-ioi 256))
+(defun scaleogram-of-grid (rhythm-grid &key (shortest-ioi 256) (title "test-rhythm"))
   (let* ((rhythm (rhythm-of-grid "test-rhythm" rhythm-grid :shortest-ioi shortest-ioi))
 	 (rhythm-scaleogram (scaleogram-of-rhythm rhythm :voices-per-octave 12)))
-    (plot-cwt-of-rhythm rhythm-scaleogram rhythm :title "test-rhythm")
+    (plot-cwt-of-rhythm rhythm-scaleogram rhythm :title title)
     rhythm-scaleogram))
 
 ;; (setf rhythm-scaleogram (scaleogram-of-grid '(1 1 1 1 1 0 0 1 1 0 1 0 1 0 0 0)))
@@ -88,6 +92,7 @@
 ;; (setf pc (./ (.partial-sum local-pc) (.array-dimension local-pc 0)))
 ;; (scaleogram-of-grid '(1 1 1 1 1 1 1 1 1 1))
 ;; (scaleogram-of-grid '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1))
+;; (scaleogram-of-grid '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1) :title "Isochronous Rhythm")
 ;; (plot-scale-energy-at-times (scaleogram-of-grid '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)) '(650))
 ;; (setf b (rhythm-of-grid '(1 1 1 1) :tempo 60))
 
