@@ -24,11 +24,12 @@
 
 (defun fm-test (&key (signal-length 2048))
   "Frequency modulating signal for wavelet analysis."
-  (let* ((carrierFreq 16)
-	 (modFreq 2.1)
+  (let* ((carrier-freq 16)
+	 (modulation-freq 2.1)
+	 (modulation-amount 3.0)
 	 (norm-signal (.rseq 0 1 signal-length))
-	 (mod (.* 3.0 (.cos (.* norm-signal 2.0 pi modFreq))))
-	 (fm-signal (.cos (.+ (.* 2 pi carrierFreq norm-signal) mod))))
+	 (mod (.* modulation-amount (.cos (.* norm-signal 2.0 pi modulation-freq))))
+	 (fm-signal (.cos (.+ (.* 2 pi carrier-freq norm-signal) mod))))
     ;; (plot mod nil)
     ;; (plot fm-signal nil)
     fm-signal))
@@ -37,6 +38,7 @@
 ;; (multiple-value-setq (fm-mag fm-phase) (dyadic-cwt (fm-test) 8 512))
 ;; (time (dyadic-cwt fm-sig 8 512)) ;; many cons!
 ;; (setf x (dyadic-cwt (fm-test :signal-length 256) 8 256)) ; magnitude only.
+;; (plot (fm-test) nil)
 ;; Test any length signals:
 ;; (setf fm-scaleogram (cwt (fm-test) 8))
 ;; (setf fm-scaleogram (cwt (fm-test) 16))
@@ -287,3 +289,36 @@
 ;; (setf cemgil-performance (iois-to-rhythm "cemgil-performance" '(1.77 0.29 0.34 0.44 0.34 0.99 0.63 0.3 0.28 0.3 0.35 1.19) :shortest-ioi 200))
 
 ;; (clap-to-rhythm (iois-to-rhythm "decelerating-rhythm" '(0.57 1.00 1.46 2.00 2.56 3.00 3.46 4.0 4.53 5.0)  :shortest-ioi 200))
+
+
+(defun peaks (signal)
+  "Currently returns signal 2 elements less than original"
+  (let* ((full-length (make-double-array (.array-dimensions signal)))
+	 (last-index (.length signal))
+	 (center (.subseq signal 1 (1- last-index)))
+	 (left (.subseq signal 2 last-index))
+	 (right (.subseq signal 0 (- last-index 2))))
+    (setf (.subarray full-length (list 0 (list 1 (- last-index 2)))) 
+	  (.and (.> center left) (.> center right)))))
+
+(defun fm-rhythm (&key (signal-length 2048))
+  "Frequency modulating signal for wavelet analysis."
+  (let* ((carrier-freq 32)
+	 (modulation-freq 3.0)
+	 (modulation-amount 3.0)
+	 (norm-signal (.rseq 0 1 signal-length))
+	 (mod (.* modulation-amount (.cos (.* norm-signal 2.0 pi modulation-freq))))
+	 (fm-signal (.cos (.+ (.* 2 pi carrier-freq norm-signal) mod))))
+    ;; (plot mod nil)
+    ;; (plot fm-signal nil)
+    (peaks fm-signal)))
+
+(defun modulated-rhythm-test ()
+  (let* ((modulated-rhythm (make-instance 'rhythm 
+					 :name "modulated rhythm"
+					 :description "modulated rhythm"
+					 :time-signal (fm-rhythm)
+					 :sample-rate 200))
+	(scaleogram (scaleogram-of-rhythm modulated-rhythm :voices-per-octave 16)))
+    (plot-rhythm modulated-rhythm)
+    (plot-cwt scaleogram :title (description modulated-rhythm))))
