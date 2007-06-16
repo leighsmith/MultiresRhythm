@@ -535,6 +535,9 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 	  :reset nil)))
 
 ;; (plot-ridge-persistency-for-anthems (anthems-of-meter "4/4") "in 4/4 Meter")
+;; (plot-ridge-persistency-for-anthems (anthems-of-meter "3/4") "in 3/4 Meter")
+;; (plot-ridge-persistency-for-anthems (anthems-of-meter "2/4") "in 2/4 Meter")
+;; (plot-ridge-persistency-for-anthems (anthems-of-meter "2/2") "in 2/2 Meter")
 
 (defun plot-histogram-of-anthems (anthems description &key (crochet-duration 100) (vpo 16))
   "Plots a comparison between the histogram of intervals and the multiresolution ridge presence"
