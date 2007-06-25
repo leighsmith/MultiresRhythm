@@ -206,7 +206,7 @@ This is weighted by absolute constraints, look in the 600ms period range."
     ;; or
     ;; (congruency (.transpose local-phase-diff))
     ;; (format t "local-phase-diff range (~a ~a)~%" (.min local-phase-diff) (.max local-phase-diff))
-    (format t "maximal-local-pc range (~a ~a)~%" (.min maximal-local-pc) (.max maximal-local-pc))
+    ;; (format t "maximal-local-pc range (~a ~a)~%" (.min maximal-local-pc) (.max maximal-local-pc))
     (setf (.subarray congruency (list (list 1 (1- number-of-scales)) t))
 	  (.transpose maximal-local-pc))
 
@@ -311,28 +311,32 @@ then can extract ridges."
 	      (.> correlated-profile correlation-minimum))
 	correlated-profile)))
 
-(defun scale-peaks-of-scaleogram (scaleogram sample-rate)
+(defun scale-peaks-of-scaleogram (scaleogram sample-rate &key (absolute-tempo-weighting nil))
+  "Return the peaks of the scaleogram by correlating the magnitude, local phase congruency
+and stationary phase measures, optionally weighed by absolute tempo preferences."
   (let* ((magnitude (scaleogram-magnitude scaleogram)) ; short-hand.
 	 (phase (scaleogram-phase scaleogram))
+	 (vpo (voices-per-octave scaleogram))
 	 ;; Correlate various ridges to produce a robust version.
-	 (correlated-ridges (correlate-ridges magnitude phase (voices-per-octave scaleogram)))
+	 (correlated-ridges (correlate-ridges magnitude phase vpo))
 	 ;; Scale index 1 is the highest frequency (smallest dilation) scale.
 	 (salient-scale (preferred-tempo scaleogram sample-rate))
 	 (tempo-weighting (tempo-salience-weighting salient-scale (.array-dimensions magnitude)))
 	 ;; Weight by the absolute tempo preference.
 	 (tempo-weighted-ridges (.* correlated-ridges tempo-weighting)))
-    (declare (ignore tempo-weighted-ridges))
-    (format t "Preferred tempo scale = ~d of ~d hierarchy~%" salient-scale (.array-dimension magnitude 0))
-    ;; (plot (.column tempo-weighting 0) nil :title "Preferred tempo weighting profile")
+    (if absolute-tempo-weighting
+	(progn 
+	  (format t "Preferred tempo scale = ~d of ~d hierarchy, ~f samples, ~f seconds duration.~%" 
+		  salient-scale (.array-dimension magnitude 0) (time-support salient-scale vpo)
+		  (time-support-seconds salient-scale vpo sample-rate))
+	  (plot (.column tempo-weighting 0) nil :title "Preferred tempo weighting profile")))
     ;; show what we got as an intensity plot
     ;; (setf *magnitude-colour-map* #'jet-colormap)
     ;; This tends to flatten everything out...
     ;; (plot-image #'magnitude-image (list correlated-ridges) :title "ridges") 
-    ;; (plot-image #'magnitude-image (list tempo-weighted-ridges) :title "tempo-ridges")
-    ;; :title (name analysis-rhythm))
-    ;; substituted tempo-weighted-ridges for correlated-ridges to enable tempo selectivity.
-    ;; (determine-scale-peaks tempo-weighted-ridges))) ; for tempo weighting
-    (determine-scale-peaks correlated-ridges))) ; for no tempo weighting
+    ;; (plot-image #'magnitude-image (list tempo-weighted-ridges) :title "tempo-ridges of " (name analysis-rhythm)))
+    ;; Substitutes tempo-weighted-ridges for correlated-ridges to enable tempo selectivity.
+    (determine-scale-peaks (if absolute-tempo-weighting tempo-weighted-ridges correlated-ridges))))
 
 (defmethod scaleogram-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
   (format t "Length of Rhythm ~f seconds~%" (duration analysis-rhythm))
