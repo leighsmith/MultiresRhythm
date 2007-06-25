@@ -263,7 +263,7 @@ colourmap, suitable for use by NLISP's palette-defined function."
     (set-colour-box plotable-ridges window-dimensions)
     (set-plot-palette palette)
     (image (.flip plotable-ridges) nil nil
-	   :title (format nil "Highlighted Ridges of ~a" title)
+	   :title (format nil "Skeleton of ~a" title)
 	   :xlabel xlabel
 	   :ylabel "Scale as IOI Range\\n(Seconds)"
 	   :reset nil
@@ -349,9 +349,6 @@ colourmap, suitable for use by NLISP's palette-defined function."
 ;; Alternative plot method if not using nplot.
 ;;  (let ((clap-intensity (make-double-array (.array-dimensions claps) :initial-element 2d0)))
 ;;  (plot clap-intensity claps :style "impulses"))
-
-
-
 
 (defgeneric make-plotable-ridges (tf-plane ridges &key time-axis-decimation maximum-colour-value)
   (:documentation "Downsamples the time-frequency plane and inserts the list of ridges into the plane"))
