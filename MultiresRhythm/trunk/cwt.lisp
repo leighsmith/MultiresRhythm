@@ -152,12 +152,15 @@
   ;; (.* voices-per-octave (.- (.floor (.log time-periods 2)) skip-initial-octaves)))
   (.* voices-per-octave (.- (.log time-periods 2) skip-initial-octaves)))
 
-;;; Given a sampling rate sampRate in Hz, the IOI can be determined in seconds.
 (defun time-support (scales wavelets-per-octave &key (skip-initial-octaves 2))
   "Function to return a vector of periods of time support (in samples) from scale numbers.
    The highest two octaves (time domain extent 0-1,1-2) don't tell us much, so we save
    computation time by skipping them."
   (.expt 2d0 (.+ (./ scales (.* wavelets-per-octave 1d0)) skip-initial-octaves)))
+
+(defun time-support-seconds (scales wavelets-per-octave sample-rate)
+  "Given a sampling rate in Hz, return the IOI in seconds."
+  (./ (time-support scales wavelets-per-octave) sample-rate))
 
 ;;; Dyadic version assumes the input data is a power of 2.
 (defun dyadic-cwt (input-data wavelets-per-octave maximum-time-period 
@@ -278,14 +281,15 @@
   (floor (scale-from-period (/ (dyadic-length period) 4) voices-per-octave)))
 
 ;;; The public interface to the continuous wavelet transform for non-dyadic signals
-(defun cwt (time-signal voices-per-octave 
-	    &key (max-wavelet-period (dyadic-length (./ (.array-dimension time-signal 0) 4))))
+(defun cwt (time-signal voices-per-octave &key
+	    (max-wavelet-period (dyadic-length (./ (.array-dimension time-signal 0) 4)))
+	    (silence-pad nil))
   "Pads the signal to a dyadic length, then performs the continuous wavelet transform,
    using dyadic-cwt, trimming off the returned result to match the original signal length.
    Returns a scaleogram instance containing magnitude and phase."
   ;; The wavelet transform operates on 1 x N vector
   (format t "CWT input signal length ~d samples~%" (.array-dimension time-signal 0))
-  (multiple-value-bind (pad-signal time-trim) (dyadic-pad time-signal)
+  (multiple-value-bind (pad-signal time-trim) (dyadic-pad time-signal :silence-pad silence-pad)
     (multiple-value-bind (padded-magnitude padded-phase)
 	(dyadic-cwt pad-signal voices-per-octave max-wavelet-period)
       (let* ((scale-rows (.array-dimension padded-magnitude 0))
