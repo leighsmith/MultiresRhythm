@@ -246,14 +246,18 @@
 		 :time-axis-decimation time-axis-decimation)))
 
 (defmethod plot-scale-energy-at-times ((scaleogram-to-plot scaleogram) times &key
-				       (description "unnamed"))
+				       (description "unnamed")
+				       (sample-rate nil))
   "Plot a cross-section of the magnitude at a given time point so we can spot the highest activated scales."
   ;; (reset-plot)
   (plot-command "set title font \"Times,20\"")
   (plot-command "set xlabel font \"Times,20\"")
   (plot-command "set ylabel font \"Times,20\"")
   ;; (plot-command "set key off")
-  (plot-command "set xtics (~{~{\"~a\" ~d~}~^, ~})~%" (label-scale-as-time-support scaleogram-to-plot))
+  (if (not sample-rate)
+      (plot-command "set xtics (~{~{\"~d\" ~5d~}~^, ~})~%" (label-scale-as-time-support scaleogram-to-plot))
+      (plot-command "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
+		    (label-scale-as-time-support-seconds scaleogram-to-plot sample-rate)))
   ;; We reverse the column so we plot in more intuitive lowest scale on the left orientation.
   (nplot (mapcar (lambda (time) (.reverse (.column (scaleogram-magnitude scaleogram-to-plot) time))) times)
 	 nil 
