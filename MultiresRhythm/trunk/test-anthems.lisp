@@ -310,7 +310,7 @@
      for anthem-index from 0 below (length anthems) by 5
      collect (list (string (anthem-name (anthem# anthem-index))) anthem-index)))
 
-;; (setf non-bar-ratios (nlisp::list-to-array (loop for anthem in *national-anthems* collect (assess-anthem-for-period anthem 7))))
+;; (setf non-bar-ratios (make-narray (loop for anthem in *national-anthems* collect (assess-anthem-for-period anthem 7))))
 ;; (mean non-bar-ratios)
 ;; (stddev non-bar-ratios)
 
@@ -343,14 +343,14 @@
     element-count-hash))
 
 (defun histogram-counts (histogram-hash-table intervals)
-  (nlisp::list-to-array (loop for interval across (val intervals)
+  (make-narray (loop for interval across (val intervals)
 			   collect (float (gethash interval histogram-hash-table)))))
 
 (defun histogram-intervals (histogram-hash-table)
   "Returns a sorted n-array of histogram intervals from the hash-table"
   (let ((all-keys '()))
     (maphash #'(lambda (key value) (push key all-keys)) histogram-hash-table)
-    (nlisp::list-to-array (sort all-keys #'<))))
+    (make-narray (sort all-keys #'<))))
 
 ;; (display-interval-counts (make-histogram-of-anthem-intervals :anthems (anthems-of-meter "3/4")))
 
@@ -364,7 +364,7 @@
 (defun check-integrity-of-anthems (anthems)
   "Returns any anthems which have intervals longer than more than 4 crochets.
 Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
-  (let* ((highest-intervals (nlisp::list-to-array (mapcar (lambda (x) (first (last x))) (crochets-of-anthems anthems))))
+  (let* ((highest-intervals (make-narray (mapcar (lambda (x) (first (last x))) (crochets-of-anthems anthems))))
 	 (suspicious (.find (.> highest-intervals 4))))
     (loop 
        for anthem-index across (val suspicious)
@@ -491,7 +491,7 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 ;; (plot-scaleogram-skeleton-of-anthem (anthem-named 'america))
 
 (defun plot-anthem-bar-presence (&key (anthems *national-anthems*))
-  (let ((bar-ratios (nlisp::list-to-array (bars-in-anthem-skeletons :anthems anthems))))
+  (let ((bar-ratios (make-narray (bars-in-anthem-skeletons :anthems anthems))))
     (format t "Average bar presence ratio ~4,3f (~4,3f) in ~a~%" 
 	    (mean bar-ratios) (stddev bar-ratios) *anthem-analysis-path*)
     (reset-plot)

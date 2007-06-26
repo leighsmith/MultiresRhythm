@@ -117,7 +117,7 @@
     (make-instance 'rhythm 
 		   :name name
 		   :description name ; TODO transliterate '-' for ' '.
-		   :time-signal (nlisp::list-to-array 
+		   :time-signal (make-narray 
 				 (butlast 
 				  (onsets-to-grid 
 				   (iois-to-onsets 
