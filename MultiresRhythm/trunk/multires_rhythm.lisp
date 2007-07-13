@@ -44,6 +44,13 @@ otherwise, generates them and writes to disk."))
 
 ;;;; Implementation
 
+;; Fastest scale for tactus 
+;; (scale-from-period (* 200 0.25) 16)
+;; Slowest scale for tactus
+;; (scale-from-period (* 200 2.0) 16)
+;; Slowest scale "accessible to the senses" (London 2004)
+;; (scale-from-period (* 200 5.0) 16)
+
 (defun preferred-tempo (rhythm-scaleogram rhythm-sample-rate 
 			;; Fraisse's "spontaneous tempo" interval in seconds
 			&key (tempo-salience-peak 0.600))
@@ -283,33 +290,13 @@ then can extract ridges."
     ;; conditioned on a minimal magnitude, we reduce false positives.
     (./ (.+ normalised-magnitude stat-phase local-pc) 3d0)))
 
-;;; TODO Candidate for moving to signalprocessing.lisp
-(defun shift-scales (scales direction)
-  "Shifts the rows (rotating) upwards (towards lower indices) if direction = :up, down if direction = :down"
-  (let* ((time-frequency-dimensions (.array-dimensions scales))
-	 (last-scale (1- (first time-frequency-dimensions)))
-	 (scales-shifted (make-double-array time-frequency-dimensions))
-	 (matrix-position (if (eql direction :up)
-			      (list (list (list 1 last-scale) t) (list (list 0 (1- last-scale)) t))
-			      (list (list (list 0 (1- last-scale)) t) (list (list 1 last-scale) t))))
-	 (rotated-row (if (eql direction :up) 
-			  (list (list 0 t) (list last-scale t)) 
-			  (list (list last-scale t) (list 0 t)))))
-    (setf (.subarray scales-shifted (second matrix-position)) (.subarray scales (first matrix-position)))
-    (setf (.subarray scales-shifted (second rotated-row)) (.subarray scales (first rotated-row)))
-    scales-shifted))
-
 (defun determine-scale-peaks (correlated-profile &key (correlation-minimum 0.01))
   "Finds the peaks in the combined correlation profile 
   (of energy modulus, stationary phase and local phase congruency)
    across the dilation scale axis at each time point."
-  (let* ((profile-shifted-up (shift-scales correlated-profile :up))
-	 (profile-shifted-down (shift-scales correlated-profile :down)))
-    ;; the multiplication retains the scale peak values, clamping non maxima to zero.
-    (.* (.and (.> correlated-profile profile-shifted-down) 
-	      (.> correlated-profile profile-shifted-up) 
-	      (.> correlated-profile correlation-minimum))
-	correlated-profile)))
+  (.* (.> correlated-profile correlation-minimum)
+      (extrema-points correlated-profile :rows) 
+      correlated-profile))
 
 (defun scale-peaks-of-scaleogram (scaleogram sample-rate &key (absolute-tempo-weighting nil))
   "Return the peaks of the scaleogram by correlating the magnitude, local phase congruency
@@ -366,7 +353,11 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
 		       ;; :phase-palette :greyscale
 		       ;; :magnitude-palette :jet
 		       :title (name analysis-rhythm))
-      (plot-highlighted-ridges scaleogram (list chosen-tactus) correlated-ridge-scale-peaks :title (name analysis-rhythm))
+      (plot-highlighted-ridges scaleogram 
+			       (list chosen-tactus)
+			       correlated-ridge-scale-peaks 
+			       :title (name analysis-rhythm)
+			       :sample-rate (sample-rate analysis-rhythm))
       (format t "Finished plotting scalograms~%")
       (values chosen-tactus scaleogram))))
 
