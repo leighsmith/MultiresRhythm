@@ -59,3 +59,23 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 	(declare (type fixnum i j))
 	(setf (aref r-val j) (+ (aref r-val j) (aref a-val i j))))) 
     r))
+
+;; TODO check GSL for maxima/minima finding routines.
+(defun extrema-points (matrix array-dimension)
+  (declare (optimize (speed 3) (space 0) (safety 1)))
+  (let* ((dims (.array-dimensions matrix))
+	 (rows (first dims))
+	 (r (make-double-array dims)) ; (make-ninstance a result-length)
+	 (a-val (val matrix))
+	 (r-val (val r)))
+    (declare (type fixnum rows))
+    ;; (type double * r-val)
+    (dotimes (c (.array-dimension matrix 1))
+      (dotimes (r (- rows 3))
+	(declare (type fixnum c r))
+	(let* ((r+1 (1+ r))
+	       (center (aref a-val r+1 c)))
+	  (setf (aref r-val r+1 c) (if (and (< (aref a-val r c) center) 
+					    (> center (aref a-val (+ r 2) c))) 1d0 0d0)))))
+    r))
+
