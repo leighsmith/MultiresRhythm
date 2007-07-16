@@ -34,7 +34,8 @@
 (defgeneric plot-scale-energy-at-times (scaleogram times &key description)
   (:documentation "Plot a cross-section of the magnitude at a given time point so we can spot the highest activated scales."))
 
-(defgeneric plot-highlighted-ridges (scaleogram highlighted-ridges ridge-peaks &key title time-axis-decimation)
+(defgeneric plot-highlighted-ridges (scaleogram highlighted-ridges ridge-peaks 
+						&key title time-axis-decimation sample-rate)
   (:documentation "Plot all ridges in greyscale and the highlighted ridges in red."))
 
 (defgeneric plot-highlighted-ridges-of-rhythm (scaleogram-to-plot highlighted-ridges ridge-peaks analysis-rhythm 
@@ -202,6 +203,7 @@
 				    (highlighted-ridges list)
 				    (tf-plane n-double-array) 
 				    &key 
+				    (sample-rate nil)
 				    (title "unnamed")
 				    (time-axis-decimation 4))
   "Plot the ridges in greyscale and the highlighted ridges in red."
@@ -209,7 +211,9 @@
   (plot-image #'highlighted-ridges-image 
 	      (list (mapcar #'copy-object highlighted-ridges) tf-plane)
 	      '((1.0 0.5) (0.0 0.0))
-	      (axes-labelled-in-samples scaleogram-to-plot time-axis-decimation) 
+	      (if sample-rate 
+		  (axes-labelled-in-seconds scaleogram-to-plot sample-rate time-axis-decimation)
+		  (axes-labelled-in-samples scaleogram-to-plot time-axis-decimation) )
 	      :title title
 	      :time-axis-decimation time-axis-decimation))
 
