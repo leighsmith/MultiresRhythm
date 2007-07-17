@@ -102,7 +102,19 @@ This is weighted by absolute constraints, look in the 600ms period range."
 	      (.reshape normalised-time-slice (list number-of-scales 1)))))
     normalised-values))
 
-(defun stationary-phase (magnitude phase voices-per-octave &key (magnitude-minimum 0.01))
+(defun phase-diff (phase)
+  "Compute the first order differences of a phase signal, such that we take into account
+  wrap around at the pi and -pi boundaries."
+  (let* ((dt-phase (.diff phase))
+	 ;; Phase is -pi -> pi.
+	 ;; We need to add back 2 pi to compensate for the phase wrap-around from pi to -pi. 
+	 ;; This wraparound will create a dt-phase close to 2 pi.
+	 (which-wrapped (.> (.abs dt-phase) pi)) ; anything > pi is a wrap-around
+	 (phase-wrap (.- (* 2 pi) (.abs dt-phase))))
+    (.+ (.* (.not which-wrapped) dt-phase) (.* phase-wrap which-wrapped))))
+
+(defun stationary-phase (magnitude phase voices-per-octave &key (magnitude-minimum 0.005)
+			 (phase-match-threshold 4d0))
   "Compute points of stationary phase. Implementation of Delprat
    et. al's ridges from points of stationary phase convergent
    algorithm. See: delprat:asymptotic
@@ -110,32 +122,26 @@ This is weighted by absolute constraints, look in the 600ms period range."
    Inputs
      magnitude    Magnitude output of CWT
      phase        Phase output of CWT
+     voices-per-octave Dilation resolution.
      magnitude-minimum is the minimum magnitude to accept phase as valid
    Outputs
      binary array indicating presence of ridge."
   ;; the scale is the central frequency of the mother wavelet divided by
-  ;; the central frequency of the dilated wavelet
+  ;; the central frequency of the dilated wavelet.
   (let* ((time-frequency-dimensions (.array-dimensions phase))
 	 (number-of-scales (first time-frequency-dimensions))
 	 (time-in-samples (second time-frequency-dimensions))
-	 ;; (ridges (make-double-array time-frequency-dimensions))
+	 (last-time (- time-in-samples 2)) ; phase-diff will reduce the length by 1.
 	 (signal-phase-diff (make-double-array time-frequency-dimensions))
 
 	 ;; Compute a discrete approximation to the partial derivative of the
 	 ;; phase with respect to translation (time) t.
-	 (dt-phase (.diff phase))
-
-	 ;; Phase is -pi -> pi.
-	 ;; We need to add back 2 pi to compensate for the phase wraparound
-	 ;; from pi to -pi. This wraparound will create a dt-phase close to 2 pi.
-	 (which-wrapped (.> (.abs dt-phase) (* pi 1.5))) ; anything > pi is a wraparound
-	 (phase-wrap (.- (* 2 pi) (.abs dt-phase)))
-	 (wrapped-dt-phase (.+ (.* (.not which-wrapped) dt-phase) (.* phase-wrap which-wrapped)))
+	 (wrapped-dt-phase (phase-diff phase))
 
 	 ;; The acceleration of phase difference should be non-zero (Tchamitchian and
 	 ;; Torresani Eq. III-7 pp128) phase-diff-acceleration will therefore be two time
 	 ;; sample points less than the original phase time extent.
-	 ;; phase-diff-acceleration = (.diff wrapped-dt-phase)
+	 ;; (phase-diff-acceleration (.diff wrapped-dt-phase))
 	 ;;
 	 ;; Doing this will still produce NaN since the division already
 	 ;; creates Inf and the clamping uses multiplication.
@@ -143,9 +149,8 @@ This is weighted by absolute constraints, look in the 600ms period range."
 
 	 ;; convert the phase derivative into periods in time
 	 (signal-period (./ (* 2 pi) wrapped-dt-phase))
-	 (scale-time-support (time-support (.iseq 0 (1- number-of-scales)) voices-per-octave))
-	 ;; (normalised-signal-phase-diff)
-	 (maximal-stationary-phase))
+	 ;; Calculate the time support of each dilated wavelet.
+	 (scale-time-support (time-support (.iseq 0 (1- number-of-scales)) voices-per-octave)))
 
     ;; When we have neglible magnitude, phase is meaningless, but can oscillate so rapidly
     ;; we have two adjacent phase values which are equal (typically pi, pi/2, or 0). This
@@ -157,19 +162,15 @@ This is weighted by absolute constraints, look in the 600ms period range."
     ;; before setting these zero dt-phase values.
     ;; (setf (.aref signal-period (find (.not dt-phase))) 0.0)
 
-    (dotimes (i number-of-scales)
-      ;; Accept if the signal period (from its phase derivatives) and the time support of
-      ;; the wavelet at each dilation scale are within 1.5 sample of one another.
-      (setf (.subarray signal-phase-diff (list i (1- time-in-samples)))
-	    (.abs (.- (.subarray signal-period (list i t)) (.aref scale-time-support i)))))
+    ;; Should accept if the signal period (from its phase derivatives) and the time support of
+    ;; the wavelet at each dilation scale are within 4 samples of one another.
+    (dotimes (scale-index number-of-scales)
+      (setf (.subarray signal-phase-diff (list scale-index (list 0 last-time)))
+	    (.< (.abs (.- (.row signal-period scale-index) (.aref scale-time-support scale-index)))
+		phase-match-threshold)))
 
-    ;; We invert the normalised phase difference so that maximum values indicate
-    ;; stationary phase -> ridges.
-    (setf maximal-stationary-phase (.- 1d0 (normalise-by-scale signal-phase-diff)))
-
-    ;; There must be some magnitude at the half-plane points of stationary phase for the
-    ;; ridge to be valid.
-    (clamp-to-bounds maximal-stationary-phase magnitude :low-bound magnitude-minimum :clamp-low 0)))
+    ;; There must be some magnitude at the half-plane points of stationary phase for the ridge to be valid.
+    (clamp-to-bounds signal-phase-diff magnitude :low-bound magnitude-minimum :clamp-low 0)))
 
 (defun local-phase-congruency (magnitude phase 
 			       &key (magnitude-minimum 0.01)
@@ -285,6 +286,10 @@ then can extract ridges."
 	(local-pc (local-phase-congruency magnitude phase))
 	;; (normalised-magnitude (.normalise magnitude))
 	(normalised-magnitude (normalise-by-scale magnitude)))
+    (window)
+    (plot-image #'magnitude-image (list stat-phase) '((1.0 0.5) (0.0 0.3)) "" :title "stationary phase") 
+    (window)
+    (plot (.subarray stat-phase '(t 500)) nil)
     ;; correlate (by averaging) the energy modulus, stationary phase and
     ;; local phase congruency. Since stationary phase and local phase congruency are both
     ;; conditioned on a minimal magnitude, we reduce false positives.
