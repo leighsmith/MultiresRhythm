@@ -106,11 +106,12 @@ This is weighted by absolute constraints, look in the 600ms period range."
   "Compute the first order differences of a phase signal, such that we take into account
   wrap around at the pi and -pi boundaries."
   (let* ((dt-phase (.diff phase))
+	 (abs-dt-phase (.abs dt-phase))
 	 ;; Phase is -pi -> pi.
 	 ;; We need to add back 2 pi to compensate for the phase wrap-around from pi to -pi. 
-	 ;; This wraparound will create a dt-phase close to 2 pi.
-	 (which-wrapped (.> (.abs dt-phase) pi)) ; anything > pi is a wrap-around
-	 (phase-wrap (.- (* 2 pi) (.abs dt-phase))))
+	 ;; This wrap-around will create a dt-phase close to 2 pi.
+	 (which-wrapped (.> abs-dt-phase pi)) ; anything > pi is a wrap-around
+	 (phase-wrap (.- (* 2 pi) abs-dt-phase)))
     (.+ (.* (.not which-wrapped) dt-phase) (.* phase-wrap which-wrapped))))
 
 (defun stationary-phase (magnitude phase voices-per-octave &key (magnitude-minimum 0.005)
@@ -150,7 +151,9 @@ This is weighted by absolute constraints, look in the 600ms period range."
 	 ;; convert the phase derivative into periods in time
 	 (signal-period (./ (* 2 pi) wrapped-dt-phase))
 	 ;; Calculate the time support of each dilated wavelet.
-	 (scale-time-support (time-support (.iseq 0 (1- number-of-scales)) voices-per-octave)))
+	 (scale-time-support (time-support (.iseq 0 (1- number-of-scales)) voices-per-octave))
+	 (maximal-phase-diff)
+	 (clipped-phase-diff))
 
     ;; When we have neglible magnitude, phase is meaningless, but can oscillate so rapidly
     ;; we have two adjacent phase values which are equal (typically pi, pi/2, or 0). This
@@ -166,11 +169,13 @@ This is weighted by absolute constraints, look in the 600ms period range."
     ;; the wavelet at each dilation scale are within 4 samples of one another.
     (dotimes (scale-index number-of-scales)
       (setf (.subarray signal-phase-diff (list scale-index (list 0 last-time)))
-	    (.< (.abs (.- (.row signal-period scale-index) (.aref scale-time-support scale-index)))
-		phase-match-threshold)))
+	    (.abs (.- (.row signal-period scale-index) (.aref scale-time-support scale-index)))))
+
+    (setf maximal-phase-diff (.- 1d0 (./ signal-phase-diff phase-match-threshold)))
+    (setf clipped-phase-diff (clamp-to-bounds maximal-phase-diff maximal-phase-diff :low-bound 0d0 :clamp-low 0d0))
 
     ;; There must be some magnitude at the half-plane points of stationary phase for the ridge to be valid.
-    (clamp-to-bounds signal-phase-diff magnitude :low-bound magnitude-minimum :clamp-low 0)))
+    (clamp-to-bounds clipped-phase-diff magnitude :low-bound magnitude-minimum :clamp-low 0d0)))
 
 (defun local-phase-congruency (magnitude phase 
 			       &key (magnitude-minimum 0.01)
@@ -202,6 +207,8 @@ This is weighted by absolute constraints, look in the 600ms period range."
 	 ;; phase most closely match between adjacent scales, most indicative
 	 ;; of a frequency. 
 	 (local-phase-diff (.+ (.* (.not which-wrapped) abs-ds-phase) (.* which-wrapped phase-wrap)))
+	 ;; TODO (local-phase-diff (.abs (phase-diff (.transpose phase))))
+
 	 ;; The local phase congruency measure should be maximal at points of minimal
 	 ;; difference between scales, so we normalise it, then subtract from 1.
 	 ;; (maximal-local-pc (.- 1d0 (.normalise local-phase-diff)))
