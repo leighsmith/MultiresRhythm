@@ -39,8 +39,7 @@
     :accessor scaleogram-phase)
    (dyadic-padded-magnitude 
     :documentation "Dyadic (padded) magnitude component of the complex CWT result"
-    :initarg 
-    :dyadic-padded-magnitude 
+    :initarg :dyadic-padded-magnitude 
     :accessor dyadic-padded-magnitude)
    (dyadic-padded-phase 
     :documentation "Dyadic (padded) phase component of the complex CWT result"
@@ -48,6 +47,7 @@
     :accessor dyadic-padded-phase)
    (time-trim
     :documentation "Parameter to .subarray to trim the padded back to unpadded versions"
+    :initarg :time-trim
     :accessor time-trim)
    ;; TODO should be octaves-analysed-range from skip-initial-octaves to maximum-time-support
    (skip-highest-octaves
@@ -294,13 +294,13 @@
 	(dyadic-cwt pad-signal voices-per-octave max-wavelet-period)
       (let* ((scale-rows (.array-dimension padded-magnitude 0))
 	     (trim (list (list 0 (1- scale-rows)) (second time-trim)))
-	     (scaleogram-result (make-instance 'scaleogram 
+	     (scaleogram-result (make-instance 'scaleogram
+					       :time-trim trim
+					       :magnitude (.subarray padded-magnitude trim)
+					       :phase (.subarray padded-phase trim)
+					       :dyadic-padded-magnitude padded-magnitude
+					       :dyadic-padded-phase padded-phase
 					       :voices-per-octave voices-per-octave)))
-	(setf (time-trim scaleogram-result) trim)
-	(setf (dyadic-padded-magnitude scaleogram-result) padded-magnitude)
-	(setf (dyadic-padded-phase scaleogram-result) padded-phase)
-	(setf (scaleogram-magnitude scaleogram-result) (.subarray padded-magnitude trim))
-	(setf (scaleogram-phase scaleogram-result) (.subarray padded-phase trim))
 	scaleogram-result))))
 
 ;;; For inverse CWT.
