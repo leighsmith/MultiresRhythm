@@ -38,11 +38,20 @@
 
 ;; (plot-anacrusis-profiles (anthem-rhythm (anthem-named 'netherlands)) (downbeat-number (anthem-named 'netherlands))
 
+(defun ridge-ratios-at-time (ridges datum-ridge note-time &key (voices-per-octave 16))
+  "Return the ratios of ridges to some datum ridge at each given time point"
+  (let* ((datum-time-support (time-support (scale-at-time datum-ridge note-time) voices-per-octave))
+	 (ratios-to-datum (mapcar (lambda (ridge-of-note) 
+				    (/ (time-support (scale-at-time ridge-of-note note-time) voices-per-octave) datum-time-support))
+				  ridges)))
+    (format t "datum-time-support ~f~%" datum-time-support)
+    (sort ratios-to-datum #'<)))
+
 (defun anthem-anacrusis (anthem &key (length-limit 16384))
   "Plots the profiles of the first first-notes number of notes in the rhythm"
   ;; retrieve the first set of onset times of the anacrusis.
   (multiple-value-bind (skeleton scaleogram ridge-scale-peaks)
-      (skeleton-of-rhythm-cached (limit-rhythm (anthem-rhythm anthem) :maximum-samples length-limit))
+      (skeleton-of-rhythm (limit-rhythm (anthem-rhythm anthem) :maximum-samples length-limit))
     (let* ((description (anthem-name anthem))
 	   (anacrusis-note-times (anacrusis-notes anthem))
 	   (times-in-samples (nlisp::array-to-list anacrusis-note-times))
@@ -54,6 +63,7 @@
       (format t "number of ridges at notes ~a~%" (mapcar #'length ridges-on-notes))
       (format t "phase congruency at notes ~a~%" (.arefs pc anacrusis-note-times))
       (format t "summed local phase congruency at notes ~a~%" (.arefs lpc-at-time anacrusis-note-times))
+      (format t "ridge ratios ~a~%" (ridge-ratios-at-time (first ridges-on-notes) (caar ridges-on-notes) (first times-in-samples)))
       (plot-highlighted-ridges scaleogram '() ridge-scale-peaks :title description)
       (window)
       (nplot (list pc) nil :title (format nil "phase congruency of ~a" description) :aspect-ratio 0.66)
@@ -72,8 +82,8 @@
 	(plot-scale-energy-at-times scaleogram times-in-samples :description description))
       ridges-on-notes)))
 
-;; (anthem-anacrusis (anthem-named 'america))
-;; (anthem-anacrusis (anthem-named 'australia))
+;; (setf american-ridges (anthem-anacrusis (anthem-named 'america)))
+;; (setf australian-ridges (anthem-anacrusis (anthem-named 'australia)))
 ;; (anthem-anacrusis (anthem-named 'vietnam))
 ;; (anthem-anacrusis (anthem-named 'finland))
 
@@ -123,3 +133,28 @@ start-onset, these measures are in samples"
 		   :time-axis-decimation time-axis-decimation)))))
 
 ;; (plot-scaleogram-skeleton-of-anthem-accented (anthem-named 'america))
+
+(defun long-silence-dyadic-pad (signal &key (silence-pad t))
+  "Pad at double the dyadic length"
+  (pad-signal signal (dyadic-length (1+ (dyadic-length (.length signal)))) :silence-pad silence-pad))
+
+;; Retrieve the first region of rhythm (or do we have to do the whole thing to get
+;; sufficient lower frequency regions?) this would seem problematic for inducing an
+;; anacrusis. We should be able to set a maximum time region covering beat or bar period.
+(defmethod scaleogram-of-rhythm-silence ((analysis-rhythm rhythm) &key (voices-per-octave 16))
+  (format t "Length of Rhythm ~f seconds~%" (duration analysis-rhythm))
+  (let ((silence-padded-rhythm (long-silence-dyadic-pad (time-signal analysis-rhythm) :silence-pad t)))
+    (cwt silence-padded-rhythm voices-per-octave)))
+
+;; (setf scaleogram (scaleogram-of-rhythm-silence (anthem-rhythm (anthem-named 'america))))
+;; (setf scaleogram (scaleogram-of-rhythm-silence (anthem-rhythm (anthem-named 'australia))))
+;; (plot-cwt scaleogram)
+
+;; (setf correlated-ridge-scale-peaks (scale-peaks-of-scaleogram scaleogram (sample-rate analysis-rhythm)))
+;;        	 (skeleton (make-instance 'skeleton 
+;; 				  :ridges (extract-ridges correlated-ridge-scale-peaks)
+;; 				  :duration (duration-in-samples scaleogram)
+;; 				  :scales (number-of-scales scaleogram)
+;; 				  :voices-per-octave (voices-per-octave scaleogram)
+;; 				  :skip-highest-octaves (skip-highest-octaves scaleogram))))
+;;     (values skeleton scaleogram correlated-ridge-scale-peaks)))

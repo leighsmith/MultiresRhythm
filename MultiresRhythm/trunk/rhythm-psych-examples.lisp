@@ -335,6 +335,7 @@ XXO-OXO-XOX-XOO-XOX-OXX-OOX-OXO-XXO-
 ;;; *___+___+___*___+___+___*___+___+___*___+___+___*
 ;;; with every line being a 16th note and every dot a 16th rest
 (setf honing-web-rhythm '(e. s q. e e. s q. e  e. s q. e e e q q h.))
+(setf honing-web-rhythm '(3 1 6 2 3 1 6 2 3 1 6 2 2 2 4 4 12))
 
 ;; rubato perturbation to apply to Desain and Honings rhythm
 (setf short-rubato-tempo-curve

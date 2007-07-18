@@ -31,14 +31,14 @@
 	 (mod (.* modulation-amount (.cos (.* norm-signal 2.0 pi modulation-freq))))
 	 (fm-signal (.cos (.+ (.* 2 pi carrier-freq norm-signal) mod))))
     ;; (plot mod nil)
-    ;; (plot fm-signal nil)
     fm-signal))
+
+;; (plot (fm-test) nil)
 
 ;; Test dyadic signals:
 ;; (multiple-value-setq (fm-mag fm-phase) (dyadic-cwt (fm-test) 8 512))
 ;; (time (dyadic-cwt fm-sig 8 512)) ;; many cons!
 ;; (setf x (dyadic-cwt (fm-test :signal-length 256) 8 256)) ; magnitude only.
-;; (plot (fm-test) nil)
 ;; Test any length signals:
 ;; (setf fm-scaleogram (cwt (fm-test) 8))
 ;; (setf fm-scaleogram (cwt (fm-test) 16))
@@ -65,11 +65,13 @@
     (window)
     (plot-cwt scaleogram :title "rising-harmonic")
     (plot-highlighted-ridges scaleogram () (scale-peaks-of-scaleogram scaleogram 200))))
+
+
 ;; (time (cwt (rising-harmonic-test) 16))
 
 (defun test-lpc ()
   "Tests local phase congruency"
-  (let* ((fm-scaleogram (cwt (fm-test) 8))
+  (let* ((fm-scaleogram (cwt (fm-test) 16))
 	 (local-pc (local-phase-congruency (scaleogram-magnitude fm-scaleogram)
 					   (scaleogram-phase fm-scaleogram))))
     (plot-cwt fm-scaleogram :title "fm")
@@ -77,10 +79,28 @@
 		(list local-pc)
 		'((1.0 1.0) (0.0 0.0))
 		(axes-labelled-in-samples fm-scaleogram 4)
-		:title "fm")
+		:title "local phase congruency of fm")
+    (window)
     (plot (.subarray local-pc '(t 200)) nil)))
 
 ;; (test-lpc)
+
+(defun test-stat-phase ()
+  "Tests stationary phase"
+  (let* ((fm-scaleogram (cwt (fm-test) 16))
+	 (stat-phase (stationary-phase (scaleogram-magnitude fm-scaleogram) (scaleogram-phase fm-scaleogram) 16)))
+    (plot-cwt fm-scaleogram :title "fm")
+    (plot-image #'magnitude-image
+		(list stat-phase)
+		'((1.0 1.0) (0.0 0.0))
+		(axes-labelled-in-samples fm-scaleogram 4)
+		:title "stationary phase of fm")
+    (window)
+    (plot (.subarray stat-phase '(t 200)) nil)))
+
+;; (test-stat-phase)
+;;     (plot-image #'magnitude-image (list stat-phase) '((1.0 0.5) (0.0 0.3)) "" :title "stationary phase") 
+
 
 
 (defun scaleogram-of-grid (rhythm-grid &key (shortest-ioi 256) (title "test-rhythm"))
@@ -95,6 +115,8 @@
 ;; (scaleogram-of-grid '(1 1 1 1 1 1 1 1 1 1))
 ;; (scaleogram-of-grid '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1))
 ;; (scaleogram-of-grid '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1) :title "Isochronous Rhythm")
+;; (plot-rhythm (rhythm-of-grid "Isochronous Rhythm" '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1) :shortest-ioi 256) :time-in-seconds t)
+
 ;; (plot-scale-energy-at-times (scaleogram-of-grid '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)) '(650))
 ;; (setf b (rhythm-of-grid '(1 1 1 1) :tempo 60))
 
@@ -160,13 +182,17 @@
 			 (tactus-selector #'select-longest-lowest-tactus))
   (let* ((loaded-rhythm (load-octave-rhythm-file filename :description description :sample-rate sample-rate))
 	 (clap-at (clap-to-rhythm loaded-rhythm :tactus-selector tactus-selector)))
+    (window)
+    (plot-rhythm loaded-rhythm :time-in-seconds t)
     (save-rhythm-and-claps loaded-rhythm clap-at)
     clap-at))
 
 ;; For decimating greensleeves to 200Hz.
-;;(setf x (load-octave-rhythm-file "greensleeves-perform-medium" :sample-rate 400))
+;;(setf x (load-octave-rhythm-file "greensleeves-perform-medium" :sample-rate 400 :description "Greensleeves performed"))
+;;(plot-rhythm x :time-in-seconds t)
 ;;(floor (.length (time-signal x)) 2)
 ;;(.floor (.find (time-signal x)) 2.0)
+;; (setf desain-unquantized (load-octave-rhythm-file "desain-unquantized" :sample-rate 200))
 
 ;; (clap-to-octave-file "longuet_cliche" :sample-rate 200)
 ;; (clap-to-octave-file "intensity34_to_44" :sample-rate 200)
@@ -321,4 +347,7 @@
 					 :sample-rate 200))
 	(scaleogram (scaleogram-of-rhythm modulated-rhythm :voices-per-octave 16)))
     (plot-rhythm modulated-rhythm)
-    (plot-cwt scaleogram :title (description modulated-rhythm))))
+    ;; (plot-cwt scaleogram :title (description modulated-rhythm))
+    (clap-to-rhythm modulated-rhythm)))
+
+;; (modulated-rhythm-test)

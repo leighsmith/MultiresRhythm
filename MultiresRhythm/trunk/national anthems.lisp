@@ -209,6 +209,7 @@ model were multiplied by 3, in the first case (America).
 ((ISRAEL "4/4" ("Hatikvah") :QUARTER-NOTE 4 :BAR-DURATION 16 :START-AT 0) 
 (2 2 2 2 4 4 2 2 2 2 8 4 2 2 4 4 2 2 2 2 6 2 2 2 2 2 4 4 2 2 2 2 8 4 2 2 4 4 2 2 2 2 8 4 4 4 4 2 2 2 2 8 4 4 4 4 2 2 2 2 8 4 2 2 4 4 2 2 2 2 4 2 2 4 4 4 3 1 2 2 2 2 8 4 2 2 4 4 2 2 2 2 4 2 2 4 4 4 3 1 2 2 2 2)) 
 
+;; Checked, has a 2 bar rest at bar 28 for 39 intervals.
 ((ITALY "4/4" ("Inno di Mameli") :QUARTER-NOTE 4 :BAR-DURATION 16 :START-AT 12) 
 (4 3 1 8 4 3 1 8 4 3 1 8 4 3 1 8 4 3 1 8 4 3 1 8 4 3 1 8 4 3 1 8 4 3 1 8 4 4 8 3 1 3 1 8 4 3 1 8 4 8 4 4 3 1 8 4 3 1 8 4 3 1 6 2 2 2 39 1 4 3 1 4 3 1 4 3 1 4 3 1 4 3 1 4 3 1 4 3 1 4 3 1 4 3 1 4 3 1 4 3 1 4 3 1 4 3 1 4 3 1 4 3 1 7 1 4 3 1 4 3 1 4 3 1 4 3 1 4 3 1 4 3 1 4 3 1 7 1 4 3 1 4 3 1 4 3 1 4 3 1 3 1 3 1 4 3 1 4 3 1 2)) 
 
@@ -238,6 +239,8 @@ model were multiplied by 3, in the first case (America).
 
 ((LEBANON "4/4" ("Hymne National") :QUARTER-NOTE 4 :BAR-DURATION 16 :START-AT 12) 
 (3 1 12 3 1 4 3 1 4 3 1 12 3 1 12 3 1 4 3 1 4 3 1 12 3 1 4 3 1 2 2 3 1 4 3 1 4 3 1 4 3 1 2 2 3 1 4 3 1 4 3 1 4 3 1 4 3 1 4 3 1 4 3 1 12 3 1))
+
+;; Checked, it has a long slur from bar 13-17
 ((LIBERIA "4/4" ("L'inno Nazionale") :QUARTER-NOTE 2 :BAR-DURATION 8 :START-AT 6) 
 (2 3 1 2 2 6 2 3 1 2 2 6 2 3 1 2 2 3 1 2 2 4 4 6 2 2 2 2 2 2 2 2 2 2 2 2 2 38 2 2 2 2 2)) 
 
@@ -372,8 +375,10 @@ model were multiplied by 3, in the first case (America).
 ((VIETNAM "4/4" ("Qu^oc Thi^e'u Vi^et-Nam") :QUARTER-NOTE 4 :BAR-DURATION 16 :START-AT 11) 
 (1 3 1 6 2 3 1 3 1 11 1 3 1 4 4 3 1 3 1 12 4 4 3 1 4 4 4 3 1 4 4 4 3 1 4 4 4 3 1 7 1 4 4 4 3 1 8 4 4 6 2 4 3 1 12 4 6 2 4 4 6 2 4 4 6 2 4 4 6 2 4 4 4 3 1 4 3 1 8 4 4 4 3 1 4 3 1 8 4 3 1 11 1 3 1 8 4 3 1 11 1 3 1 8 4 4 6 2 4 4 6 2 4 4 4 4 3 1 3 1)) 
 
+;; Corrected bar 20 and 21 are tied to be a duration of 12, followed by two dotted minims.
 ((WALES "3/4" ("Mae Hen Wlad fy Nhadau") :QUARTER-NOTE 2 :BAR-DURATION 6 :START-AT 4) 
-(2 2 2 2 2 2 2 2 2 1 1 4 2 2 2 2 2 2 2 2 2 2 4 2 2 2 1 1 2 2 2 2 2 1 1 4 2 2 2 2 2 2 2 12 12 2 2 2 2 2 2 4 2 4 1 1 4 2 4 1 1 4 2 2 2 2 2 2 2)) 
+(2 2 2 2 2 2 2 2 2 1 1 4 2 2 2 2 2 2 2 2 2 2 4 2 2 2 1 1 2 2 2 2 2 1 1 4 2 2 2 2 2 2 2 12
+ 6 6 2 2 2 2 2 2 4 2 4 1 1 4 2 4 1 1 4 2 2 2 2 2 2 2)) 
 
 ((YEMEN "2/4" ("Salimta Imaman" "removed gracenotes") :QUARTER-NOTE 12 :BAR-DURATION 24 :START-AT 18) 
 (3 3 9 3 9 3 12 6 3 3 9 3 9 3 12 6 3 3 9 3 9 3 12 6 3 3 6 3 3 3 3 3 3 24 12 12 12 6 6 9 3 9 3 9 3 12 6 3 3 9 3 9 3 4 4 4 9 3 3 3 3 3 24 6 3 3 6 6 3 3 3 3 9 3 6 12 6 3 3 3 3 12 12 6 6 6 6 3 3 3 3 6 3 3 6 6 6 6 12 12 12 12 6 6 12 9 3 24 12 6 6 6 6 6 6 12 6 6 24 12 12 12 6 6 12 6 6 24 12 6 6 6 6 6 6 12 6 6)) 

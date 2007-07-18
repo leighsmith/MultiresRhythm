@@ -12,18 +12,16 @@
 ;;;; See multiresrhythm.asd for further info.
 ;;;;
 
-(defmethod ratios-to-tactus ((rhythm-to-annotate rhythm) (rhythm-skeleton skeleton) (tactus ridge) &key (voices-per-octave 16))
+(in-package :multires-rhythm)
+(use-package :nlisp)
+
+(defmethod ratios-to-tactus ((rhythm-to-annotate rhythm) (rhythm-skeleton skeleton) (tactus ridge))
   "Given the rhythm, skeleton of ridges and tactus, produces the ratios to the tactus of each note."
   (let ((note-locations (onsets-in-samples rhythm-to-annotate))) ; Get sample indexes of each onset
     (loop		    ; We proceed causally thorough the rhythm, one note at a time.
        for note-time across (val note-locations)
        for ridges-for-note = (ridges-at-time rhythm-skeleton note-time)
-       for tactus-time-support = (time-support (scale-at-time tactus note-time) voices-per-octave)
-       for ratios-to-tactus = (mapcar (lambda (ridge-of-note) 
-					(/ (time-support (scale-at-time ridge-of-note note-time) voices-per-octave) tactus-time-support))
-				      ridges-for-note)
-       do (format t "note time ~d:~%~a~%tactus-time-support ~f~%" note-time ridges-for-note tactus-time-support)
-       collect (list note-time (sort ratios-to-tactus #'<)))))
+       collect (list note-time (ridge-ratios-at-time ridges-for-note tactus note-time)))))
 
 (defmethod annotate-rhythm ((rhythm-to-annotate rhythm) (rhythm-skeleton skeleton) (tactus ridge))
   "Given the rhythm and the skeleton of ridges, produce an annotation of each note with
@@ -38,3 +36,12 @@
   (let ((skeleton (skeleton-of-rhythm rhythm-to-annotate))
 	(tactus (select-longest-lowest-tactus skeleton))) ; This is the weak link in the chain...
     (annotate-rhythm rhythm-to-annotate skeleton tactus)))
+
+;;;; Austrian Folk song example of MTG
+;;; Has an implicit anacruisis of a dotted crochet.
+;;; TODO while we don't have a :tempo setting we calc it for 100bpm @ 200Hz sample rate.
+(setf folk-rhythm (iois-to-rhythm "austrian-folk-rhythm"
+				  '(2 2 2 4 3 1 2 2 3 1 2 2 2 2 3 1 2 2 2 2 3 1 2 2 2 2
+				    ;; Bar 6 below
+				    2 2 3 1 2 2 3 1 2 2 2 2 3 1 2 2 3 1 12) :shortest-ioi 120))
+

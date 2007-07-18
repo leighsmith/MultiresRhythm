@@ -313,10 +313,16 @@ colourmap, suitable for use by NLISP's palette-defined function."
 ;; (plot-image #'highted-ridges-image (list ridges magnitude) '((1.0 0.5) (0.0 0.0)) "")
 ;; (apply #'plot-image (list #'magnitude-image (list magnitude) "" :title "blah")) 
 
+(defun plot-grey-data (data &key (title "blah"))
+  (plot-image #'magnitude-image (list data) '((1.0 0.5) (0.0 0.3)) "" :title title))
+
 (defun plot-images (image-list &key (title "unnamed") (time-axis-decimation 4))
   "Plot a number of images as supplied in image-list in the same window"
   (window)
   (plot-command "set multiplot")
+  (plot-command "set title font \"Times,20\"")
+  (plot-command "set xlabel font \"Times,20\"")
+  (plot-command "set ylabel font \"Times,20\"")
   (mapcar 
    (lambda (x) (apply #'plot-image (append x (list :title title :time-axis-decimation time-axis-decimation))))
    image-list)
