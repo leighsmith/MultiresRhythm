@@ -114,7 +114,7 @@ This is weighted by absolute constraints, look in the 600ms period range."
 	 (phase-wrap (.- (* 2 pi) abs-dt-phase)))
     (.+ (.* (.not which-wrapped) dt-phase) (.* phase-wrap which-wrapped))))
 
-(defun stationary-phase (magnitude phase voices-per-octave &key (magnitude-minimum 0.005)
+(defun stationary-phase (magnitude phase voices-per-octave &key (magnitude-minimum 0.01)
 			 (phase-match-threshold 4d0))
   "Compute points of stationary phase. Implementation of Delprat
    et. al's ridges from points of stationary phase convergent
@@ -139,38 +139,35 @@ This is weighted by absolute constraints, look in the 600ms period range."
 	 ;; phase with respect to translation (time) t.
 	 (wrapped-dt-phase (phase-diff phase))
 
+	 ;; When we have neglible magnitude, phase is meaningless, but can oscillate so
+	 ;; rapidly we have two adjacent phase values which are equal (typically pi, pi/2,
+	 ;; or 0). This can cause wrapped-dt-phase to be zero and therefore make
+	 ;; signal-period NaN.  Our kludge is to set those dt-phase values to 2pi so
+	 ;; signal-period will be 1 and they will be zeroed out of the final result with
+	 ;; the magnitude-minimum clamp-to-bounds. Strictly speaking, we should verify mag
+	 ;; is below magnitude-minimum before changing these zero wrapped-dt-phase values.
+	 (protected-dt-phase (.+ wrapped-dt-phase (.* (.not wrapped-dt-phase) (* 2 pi))))
+
 	 ;; The acceleration of phase difference should be non-zero (Tchamitchian and
 	 ;; Torresani Eq. III-7 pp128) phase-diff-acceleration will therefore be two time
 	 ;; sample points less than the original phase time extent.
 	 ;; (phase-diff-acceleration (.diff wrapped-dt-phase))
-	 ;;
-	 ;; Doing this will still produce NaN since the division already
-	 ;; creates Inf and the clamping uses multiplication.
-	 ;; wrapped-dt-phase = (clamp-to-bounds wrapped-dt-phase magnitude magnitude-minimum 1)
 
-	 ;; convert the phase derivative into periods in time
-	 (signal-period (./ (* 2 pi) wrapped-dt-phase))
+	 ;; Convert the phase derivative into periods in time.
+	 (signal-period (./ (* 2 pi) protected-dt-phase))
 	 ;; Calculate the time support of each dilated wavelet.
 	 (scale-time-support (time-support (.iseq 0 (1- number-of-scales)) voices-per-octave))
 	 (maximal-phase-diff)
 	 (clipped-phase-diff))
 
-    ;; When we have neglible magnitude, phase is meaningless, but can oscillate so rapidly
-    ;; we have two adjacent phase values which are equal (typically pi, pi/2, or 0). This
-    ;; can cause dt-phase to be zero and therefore make signal-period NaN. This then
-    ;; causes normalise-by-scale to freak out because NaN is considered a maximum.  Our
-    ;; kludge is to set those NaN signal-periods to 0.0 so they don't cause excessive
-    ;; extrema and they will be zeroed out of the final result using
-    ;; clamp-to-bounds. Strictly speaking, we should verify mag is below magnitude-minimum
-    ;; before setting these zero dt-phase values.
-    ;; (setf (.aref signal-period (find (.not dt-phase))) 0.0)
-
-    ;; Should accept if the signal period (from its phase derivatives) and the time support of
-    ;; the wavelet at each dilation scale are within 4 samples of one another.
+    ;; Compute the difference between the signal period (from its phase derivatives) and the time support of
+    ;; the wavelet at each dilation scale.
     (dotimes (scale-index number-of-scales)
       (setf (.subarray signal-phase-diff (list scale-index (list 0 last-time)))
 	    (.abs (.- (.row signal-period scale-index) (.aref scale-time-support scale-index)))))
 
+    ;; Should accept if the signal period (from its phase derivatives) and the time support of
+    ;; the wavelet at each dilation scale are within phase-match-threshold samples of one another.
     (setf maximal-phase-diff (.- 1d0 (./ signal-phase-diff phase-match-threshold)))
     (setf clipped-phase-diff (clamp-to-bounds maximal-phase-diff maximal-phase-diff :low-bound 0d0 :clamp-low 0d0))
 
@@ -207,7 +204,8 @@ This is weighted by absolute constraints, look in the 600ms period range."
 	 ;; phase most closely match between adjacent scales, most indicative
 	 ;; of a frequency. 
 	 (local-phase-diff (.+ (.* (.not which-wrapped) abs-ds-phase) (.* which-wrapped phase-wrap)))
-	 ;; TODO (local-phase-diff (.abs (phase-diff (.transpose phase))))
+	 ;; TODO replace all above with: 
+	 ;; (local-phase-diff (.abs (phase-diff (.transpose phase))))
 
 	 ;; The local phase congruency measure should be maximal at points of minimal
 	 ;; difference between scales, so we normalise it, then subtract from 1.
@@ -289,18 +287,13 @@ Phase is assumed to be -pi to pi."
 which are then combined to form an analytic surface from which we
 then can extract ridges."
   ;; ahh, parallel machine anyone??
-  (let ((stat-phase (stationary-phase magnitude phase voices-per-octave))
-	(local-pc (local-phase-congruency magnitude phase))
-	;; (normalised-magnitude (.normalise magnitude))
+  (let ((local-pc (local-phase-congruency magnitude phase))
 	(normalised-magnitude (normalise-by-scale magnitude)))
-    (window)
-    (plot-image #'magnitude-image (list stat-phase) '((1.0 0.5) (0.0 0.3)) "" :title "stationary phase") 
-    (window)
-    (plot (.subarray stat-phase '(t 500)) nil)
-    ;; correlate (by averaging) the energy modulus, stationary phase and
-    ;; local phase congruency. Since stationary phase and local phase congruency are both
-    ;; conditioned on a minimal magnitude, we reduce false positives.
-    (./ (.+ normalised-magnitude stat-phase local-pc) 3d0)))
+    ;; Correlate (by averaging) the energy modulus and local phase congruency. 
+    ;; Since local phase congruency is conditioned on a minimal magnitude, we reduce false positives.
+    ;; Stationary phase has been dropped for rhythm data since it mostly introduces
+    ;; spurious ridges, not really improving discrimination of ridges.
+    (./ (.+ normalised-magnitude local-pc) 2d0)))
 
 (defun determine-scale-peaks (correlated-profile &key (correlation-minimum 0.01))
   "Finds the peaks in the combined correlation profile 
@@ -448,20 +441,6 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
 		  :midi-channel 10
 		  :key-numbers (list *low-woodblock* *closed-hi-hat*)
 		  :description (format nil "Handclapping to ~a" (description original-rhythm))))
-
-;; Approaches:
-;; 1. Count the number of ridges.
-;; 2. Each ridge is tempo weighted by each of it's scales. Therefore 1 long ridge would be more complex than shorter ridges.
-;; 3. Weight the entire scale peaks or magnitude measure by tempo.
-;; 4. Ease of handclapping as a measure of complexity?
-
-;;; Could use a weighted bitmap of the ridges as a general density measure. This is
-;;; weighted by absolute tempo. It should also be weighted by the number of ridges (a
-;;; dense single ridge is less complex than one which is composed of many small ridges.
-(defmethod rhythm-complexity ((rhythm-to-analyse rhythm))
-  "Returns a normalised measure of the complexity of the rhythm, where 0 = impossibly simple -> 1 = impossibly hard."
-  (let ((skeleton (skeleton-of-rhythm rhythm-to-analyse)))
-    (length (ridges skeleton))))
 
 ;;; File I/O
 
