@@ -31,12 +31,11 @@
 (defgeneric scaleogram-of-rhythm (rhythm-to-analyse &key voices-per-octave)
   (:documentation "Returns the scaleogram for the rhythm."))
 
+(defgeneric skeleton-of-scaleogram (scaleogram sample-rate)
+  (:documentation "Returns the skeleton given the scaleogram and sample-rate."))
+
 (defgeneric skeleton-of-rhythm (rhythm-to-analyse &key voices-per-octave)
   (:documentation "Returns a skeleton (holds a list of ridges) for the given rhythm."))
-
-(defgeneric rhythm-complexity (rhythm-to-analyse)
-  (:documentation "Returns a normalised measure of the complexity of the rhythm,
-   where 0 = impossibly simple -> 1 = impossibly hard."))
 
 (defgeneric skeleton-of-rhythm-cached (rhythm-to-analyse &key voices-per-octave cache-directory)
   (:documentation "Reads the skeleton, scaleogram and ridge-scale-peaks from disk if they have been cached,
@@ -334,6 +333,18 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
   (format t "Length of Rhythm ~f seconds~%" (duration analysis-rhythm))
   (cwt (time-signal analysis-rhythm) voices-per-octave))
 
+(defmethod skeleton-of-scaleogram ((analysis-scaleogram scaleogram) sample-rate)
+  "Returns the skeleton given the scaleogram and sample-rate."
+  (let* ((correlated-ridge-scale-peaks (scale-peaks-of-scaleogram analysis-scaleogram sample-rate))
+       	 (skeleton (make-instance 'skeleton 
+				  :ridges (extract-ridges correlated-ridge-scale-peaks)
+				  :duration (duration-in-samples analysis-scaleogram)
+				  :scales (number-of-scales analysis-scaleogram)
+				  :voices-per-octave (voices-per-octave analysis-scaleogram)
+				  :skip-highest-octaves (skip-highest-octaves analysis-scaleogram))))
+    (values skeleton correlated-ridge-scale-peaks)))
+
+#|
 (defmethod skeleton-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
   "Returns the skeleton given the rhythm."
   (let* ((scaleogram (scaleogram-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave))
@@ -345,6 +356,14 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
 				  :voices-per-octave (voices-per-octave scaleogram)
 				  :skip-highest-octaves (skip-highest-octaves scaleogram))))
     (values skeleton scaleogram correlated-ridge-scale-peaks)))
+|#
+
+(defmethod skeleton-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
+  "Returns the skeleton given the rhythm."
+  (let* ((scaleogram (scaleogram-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave)))
+    (multiple-value-bind (skeleton correlated-ridge-scale-peaks) 
+	(skeleton-of-scaleogram scaleogram (sample-rate analysis-rhythm))
+    (values skeleton scaleogram correlated-ridge-scale-peaks))))
 
 (defmethod tactus-for-rhythm ((analysis-rhythm rhythm) 
 			      &key (voices-per-octave 16)
