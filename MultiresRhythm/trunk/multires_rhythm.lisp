@@ -344,20 +344,6 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
 				  :skip-highest-octaves (skip-highest-octaves analysis-scaleogram))))
     (values skeleton correlated-ridge-scale-peaks)))
 
-#|
-(defmethod skeleton-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
-  "Returns the skeleton given the rhythm."
-  (let* ((scaleogram (scaleogram-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave))
-	 (correlated-ridge-scale-peaks (scale-peaks-of-scaleogram scaleogram (sample-rate analysis-rhythm)))
-       	 (skeleton (make-instance 'skeleton 
-				  :ridges (extract-ridges correlated-ridge-scale-peaks)
-				  :duration (duration-in-samples scaleogram)
-				  :scales (number-of-scales scaleogram)
-				  :voices-per-octave (voices-per-octave scaleogram)
-				  :skip-highest-octaves (skip-highest-octaves scaleogram))))
-    (values skeleton scaleogram correlated-ridge-scale-peaks)))
-|#
-
 (defmethod skeleton-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
   "Returns the skeleton given the rhythm."
   (let* ((scaleogram (scaleogram-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave)))
@@ -371,19 +357,20 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
   "Returns the selected tactus given the rhythm."
   (multiple-value-bind (skeleton scaleogram correlated-ridge-scale-peaks)
       (skeleton-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave)
-    (let ((chosen-tactus (funcall tactus-selector skeleton)))   ; select out the tactus from all ridge candidates.
-      (format t "Computed skeleton and chosen tactus ~a~%" chosen-tactus)
-      (plot-cwt+ridges scaleogram (list chosen-tactus) analysis-rhythm
+    (let* ((chosen-tactus (funcall tactus-selector skeleton))   ; select out the tactus from all ridge candidates.
+	   (chosen-tactus-list (if (listp chosen-tactus) chosen-tactus (list chosen-tactus))))
+      (format t "Computed skeleton and chosen tactus ~a~%" chosen-tactus-list)
+      (plot-cwt+ridges scaleogram chosen-tactus-list analysis-rhythm
 		       ;; :phase-palette :greyscale
 		       ;; :magnitude-palette :jet
 		       :title (name analysis-rhythm))
       (plot-highlighted-ridges scaleogram 
-			       (list chosen-tactus)
+			       chosen-tactus-list
 			       correlated-ridge-scale-peaks 
 			       :title (name analysis-rhythm)
 			       :sample-rate (sample-rate analysis-rhythm))
       (format t "Finished plotting scalograms~%")
-      (values chosen-tactus scaleogram))))
+      (values chosen-tactus-list scaleogram))))
 
 ;;; To verify the ridge extraction accuracy:
 ;;; (plot-highlighted-ridges-of-rhythm scaleogram (ridges skeleton) correlated-ridge-scale-peaks analysis-rhythm)
@@ -409,8 +396,10 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
 	 ;; Gaussian envelope over it.
 	 ;; tactus-mag (gaussian-envelope tactus voices-per-octave)
 	 ;; But just a single voice alone produces the correct oscillation, with lower amplitude:
-	 (tactus-mag (insert-ridge tactus (make-double-array time-frequency-dimensions) :constant-value 1d0))
-  
+	 (empty-magnitude (make-double-array time-frequency-dimensions))
+	 (tactus-mag (dolist (tactus-ridge (if (listp tactus) tactus (list tactus)) empty-magnitude)
+			     (insert-ridge tactus-ridge empty-magnitude :constant-value 1d0)))
+
 	 ;; TODO To be completely correct the original padded output from dyadic-cwt should be used
 	 ;; for input to the dyadic-icwt.
 	 ;; TODO create a scalogram
