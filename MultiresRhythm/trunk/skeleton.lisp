@@ -73,10 +73,14 @@
 	  (length (ridges skeleton-to-print))))
 
 ;; Sorting the entire table gives us a graded set of good alternatives. 
-;; (defmethod select-longest-tactus ((skeleton-to-analyse skeleton))
-;;   "Returns a time sequence of scales."
-;;   (let ((searchable-skeleton (ridges skeleton-to-analyse)))
-;;     (first (sort searchable-skeleton #'>= :key #'duration-in-samples))))
+(defmethod longest-tactus-candidates ((skeleton-to-analyse skeleton))
+   "Returns a time sequence of scales."
+   (let ((searchable-skeleton (copy-seq (ridges skeleton-to-analyse))))
+     (sort searchable-skeleton #'>= :key #'duration-in-samples)))
+;; TODO get range of durations, determine when the first duration falls a certain amount
+;; below the top value.
+
+;; (first (longest-tactus-candidates skeleton))
 
 (defmethod select-longest-lowest-tactus ((skeleton-to-analyse skeleton))
   "Returns the longest duration and lowest scale ridge."
@@ -87,7 +91,7 @@
 	      (and (eql (duration-in-samples ridge) (duration-in-samples max-ridge))
 		   (> (average-scale ridge) (average-scale max-ridge))))
 	  (setf max-ridge ridge)))
-    max-ridge))
+    (list max-ridge)))
 
 (defmethod ridge-containing-scale-and-time ((skeleton-to-analyse skeleton) scale time-sample)
   "Returns the ridge containing the given scale and time element."
