@@ -146,15 +146,59 @@ start-onset, these measures are in samples"
   (let ((silence-padded-rhythm (long-silence-dyadic-pad (time-signal analysis-rhythm) :silence-pad t)))
     (cwt silence-padded-rhythm voices-per-octave)))
 
-;; (setf scaleogram (scaleogram-of-rhythm-silence (anthem-rhythm (anthem-named 'america))))
-;; (setf scaleogram (scaleogram-of-rhythm-silence (anthem-rhythm (anthem-named 'australia))))
+;; (setf rhythm (anthem-rhythm (anthem-named 'america)))
+;; (setf rhythm (anthem-rhythm (anthem-named 'australia)))
+;; (setf scaleogram (scaleogram-of-rhythm-silence rhythm))
 ;; (plot-cwt scaleogram)
+;; (multiple-value-setq (skeleton ridge-peaks) (skeleton-of-scaleogram scaleogram (sample-rate rhythm)))
+;; (plot-highlighted-ridges scaleogram nil ridge-peaks :sample-rate (sample-rate rhythm))
+;; (plot-highlighted-ridges scaleogram (subseq (longest-tactus-candidates skeleton) 0 9) ridge-peaks :sample-rate (sample-rate rhythm))
 
-;; (setf correlated-ridge-scale-peaks (scale-peaks-of-scaleogram scaleogram (sample-rate analysis-rhythm)))
-;;        	 (skeleton (make-instance 'skeleton 
-;; 				  :ridges (extract-ridges correlated-ridge-scale-peaks)
-;; 				  :duration (duration-in-samples scaleogram)
-;; 				  :scales (number-of-scales scaleogram)
-;; 				  :voices-per-octave (voices-per-octave scaleogram)
-;; 				  :skip-highest-octaves (skip-highest-octaves scaleogram))))
-;;     (values skeleton scaleogram correlated-ridge-scale-peaks)))
+;; (setf scaleogram (scaleogram-of-rhythm rhythm))
+;; (multiple-value-setq (skeleton ridge-peaks) (skeleton-of-scaleogram scaleogram (sample-rate rhythm)))
+;; (plot-highlighted-ridges scaleogram 
+;; 			 (list (ridge-containing-scale-and-time skeleton 120 0)
+;; 			       (ridge-containing-scale-and-time skeleton 122 6104))
+;; 			 ridge-peaks 
+;; 			 :sample-rate (sample-rate rhythm))
+
+
+;; (clap-to-rhythm rhythm :tactus-selector (lambda (skeleton) 
+;; 					  (list (ridge-containing-scale-and-time skeleton 120 0)
+;; 						(ridge-containing-scale-and-time skeleton 122 6104))))
+
+;; (ridges-containing-scale skeleton 120)
+;; (ridges-containing-scale skeleton 122)
+
+;; Little difference between a complete ridge list and the first major ridge alone.
+;; (clap-to-rhythm rhythm :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time skeleton 120 0)))
+
+
+;;; TODO needs to be independent of anthems, should accept a rhythm instead.
+(defun make-beat-period (anthem)
+  "Find the beat level as the highest peak in the ridge persistency profile weighted by absolute tempo."
+  (let* ((ridge-persistency-profile (ridge-persistency-of-anthem anthem))
+	 (vpo 16)			; TODO needs to be based on the scaleogram.
+	 (sample-rate 200)		; TODO needs to be based on the rhythm
+	 (salient-scale (preferred-tempo-scale vpo sample-rate))
+	 (tempo-beat-preference (.column (tempo-salience-weighting salient-scale 
+								   (list (.length ridge-persistency-profile) 1)) 0))
+	 (weighted-persistency-profile (.* ridge-persistency-profile tempo-beat-preference))
+	 (beat-scale (position (.max weighted-persistency-profile) (val weighted-persistency-profile)))
+	 (beat-period (time-support beat-scale vpo))
+	 (official-beat-scale (beat-scale anthem vpo)))
+    (nplot (list ridge-persistency-profile tempo-beat-preference weighted-persistency-profile) nil
+	   :legends '("Original ridge persistency" "absolute tempo preference profile" "weighted persistency profile"))
+    (format t "beat-scale ~a, beat-period ~a~%" beat-scale beat-period)
+    (format t "official beat-scale ~a, official beat period ~a~%" 
+	    official-beat-scale (time-support official-beat-scale vpo))))
+
+;; (make-beat-period (anthem-named 'australia))
+;; (make-beat-period (anthem-named 'america))
+;; (make-beat-period (anthem-named 'vietnam))
+;; (make-beat-period (anthem-named 'ghana))
+;; (make-beat-period (anthem-named 'tunisia))
+
+;;; 2. Starting from the beginning of the piece, look for the first duration longer than
+;;; the beat duration.
+;;; 3. The beat before this longer duration is the downbeat.
