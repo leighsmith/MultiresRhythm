@@ -55,13 +55,13 @@
 ;; correlate-ridges is pretty damn slow.
 (setf correlated-ridges (time (correlate-ridges (scaleogram-magnitude x) (scaleogram-phase x) 16)))
 ;; Evaluation took:
-;;   81.474 seconds of real time
-;;   59.448395 seconds of user run time
-;;   15.602744 seconds of system run time
-;;   [Run times include 3.608 seconds GC run time.]
+;;   32.174 seconds of real time
+;;   23.3521 seconds of user run time
+;;   6.342904 seconds of system run time
+;;   [Run times include 1.506 seconds GC run time.]
 ;;   0 calls to %EVAL
 ;;   0 page faults and
-;;   4,761,723,144 bytes consed.
+;;   1,933,765,160 bytes consed.
 
 (setf stat-phase (time (stationary-phase (scaleogram-magnitude x) (scaleogram-phase x) 16)))
 ;; Evaluation took:
@@ -75,13 +75,13 @@
 
 (setf local-pc (time (local-phase-congruency (scaleogram-magnitude x) (scaleogram-phase x))))
 ;; Evaluation took:
-;;   28.22 seconds of real time
-;;   18.721403 seconds of user run time
-;;   5.898597 seconds of system run time
-;;   [Run times include 1.564 seconds GC run time.]
+;;   16.926 seconds of real time
+;;   11.769458 seconds of user run time
+;;   3.805137 seconds of system run time
+;;   [Run times include 0.968 seconds GC run time.]
 ;;   0 calls to %EVAL
 ;;   0 page faults and
-;;   1,552,663,616 bytes consed.
+;;   1,129,833,456 bytes consed.
 
 (setf normalised-magnitude (time (normalise-by-scale (scaleogram-magnitude x))))
 ;; Evaluation took:
@@ -106,6 +106,9 @@
 
 ;; .subarray is slow and would greatly benefit the whole system by improvement since it's
 ;; used so often. In particular, setf-subarray is used more often than the retrieval function.
+(let ((to-write (.rseq 0 (1- (.array-dimension crsp 1)) (.array-dimension crsp 1))))
+  (time (dotimes (i 500)
+	(setf (.subarray crsp '(3 t)) to-write))))
 
 ;; This is too slow and would improve performance dramatically (since it's used so often).
 (time (.diff (scaleogram-phase x)))
@@ -123,7 +126,8 @@
   (stationary-phase (scaleogram-magnitude x) (scaleogram-phase x) 16))
 
 ;; Using deterministic profiler
-(sb-profile:profile STATIONARY-PHASE .SUBARRAY nlisp::setf-subarray .DIFF .ABS .* .- ./ .+)
+(sb-profile:profile STATIONARY-PHASE .SUBARRAY nlisp::setf-subarray .DIFF .ABS .* .- ./ .+ .not)
 (sb-profile:report)
-(sb-profile:unprofile STATIONARY-PHASE .SUBARRAY nlisp::setf-subarray .DIFF .ABS .* .- ./ .+)
+(sb-profile:unprofile STATIONARY-PHASE .SUBARRAY nlisp::setf-subarray .DIFF .ABS .* .- ./ .+ .not)
 
+;; .+ .* .not seem to be relatively slow but are executed infrequently.
