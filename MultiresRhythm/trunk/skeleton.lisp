@@ -59,6 +59,9 @@
 (defgeneric ridges-containing-scale (skeleton scale)
   (:documentation "Returns a list of ridges which have energy in a given scale."))
 
+(defgeneric ridge-persistency-of-skeleton (skeleton)
+  (:documentation "Returns the normalised scale profile of the ridges found in the skeleton."))
+
 (defgeneric read-skeleton-from-file (file-stream-or-name)
   (:documentation "Read the ridge or skeleton contained in the named file or given stream"))
 
@@ -118,6 +121,9 @@ correlated-ridge-scale-peaks, but without variation in value."
 					   (duration-in-samples skeleton-to-analyse)))))
     (dolist (ridge (ridges skeleton-to-analyse) tf-plane)
       (insert-ridge ridge tf-plane :constant-value 1d0))))
+
+(defmethod ridge-persistency-of-skeleton ((skeleton-to-analyse skeleton))
+    (scale-persistency (make-ridge-plane skeleton-to-analyse)))
 
 ;;; File I/O
 

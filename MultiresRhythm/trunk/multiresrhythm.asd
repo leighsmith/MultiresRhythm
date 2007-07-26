@@ -53,7 +53,8 @@
 	       (:file "cwt" :depends-on ("plotting" "ridges" "rhythm"))
 	       (:file "scaleogram_plotting" :depends-on ("cwt"))
 	       (:file "multires_rhythm" :depends-on ("cwt" "skeleton" "plotting" "rhythm" "signalprocessing"))
+	       (:file "clapping" :depends-on ("multires_rhythm"))
 	       (:file "test-examples" :depends-on ("rhythm" "multires_rhythm"))
 	       (:file "national anthems")
 	       (:file "test-anthems" :depends-on ("multires_rhythm" "national anthems"))
-	       (:file "downbeat" :depends-on ("test-anthems"))))
+	       (:file "downbeat" :depends-on ("test-anthems")))) ; should be before test-examples.

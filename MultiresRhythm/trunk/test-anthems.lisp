@@ -173,7 +173,7 @@
 
 
 (defun error-span (scale vpo)
-  "Returns the error in duration from neighbour scales"
+  "Returns the error (i.e. difference) in duration from neighbour scales"
   (let ((scale-index (round scale)))
     (- (time-support (1+ scale-index) vpo) (time-support (1- scale-index) vpo))))
 
@@ -209,33 +209,26 @@
 ;; 	    (count-scale-in-skeleton skeleton (1- bar-scale-index)))
 ;;     (/ (count-scale-in-skeleton skeleton bar-scale-index) (duration-in-samples skeleton))))
 
-;;; Just sum over all scales, across time, either the magnitude or correlated ridge peaks.
-;;; TODO This is pretty slow, due to the n^2 .partial-sum function and the .transpose.
-(defun ridge-persistency (scale-peaks)
-  "Returns the normalised measure of contribution of each scale in the correlated scale peaks"
-  (if scale-peaks
-      (./ (.partial-sum (.transpose scale-peaks) :dimension 1)
-	  (.array-dimension scale-peaks 1))
-      nil))
-
-(defun ridge-persistency-of-anthem (anthem &key (anthem-path *anthem-analysis-path*))
+(defun skeleton-of-anthem (anthem &key (anthem-path *anthem-analysis-path*))
   (format t "Reading ~a~%" (anthem-name anthem))
   (let* ((anthem-rhythm (anthem-rhythm anthem))
-	 (skeleton-pathname (make-pathname :directory anthem-path :name (name anthem-rhythm) :type "skeleton"))
-	 (skeleton (read-skeleton-from-file skeleton-pathname)))
-    (ridge-persistency (make-ridge-plane skeleton))))
+	 (skeleton-pathname (make-pathname :directory anthem-path :name (name anthem-rhythm) :type "skeleton")))
+    (read-skeleton-from-file skeleton-pathname)))
+
+(defun ridge-persistency-of-anthem (anthem &key (anthem-path *anthem-analysis-path*))
+  (ridge-persistency-of-skeleton (skeleton-of-anthem anthem :anthem-path anthem-path)))
 
 ;; (bar-scale (anthem-named 'america) 16)
 ;; (.aref america-ridge-persistency 99)
 ;; (.* x ridge-persistence)
 ;; (plot-image #'magnitude-image (list correlated-ridge-scale-peaks) '((1.0 0.5) (0.0 0.6))
 ;;	    (axes-labelled-in-seconds rhythm-scaleogram 200 4))
-;; (nplot (list (ridge-persistency correlated-ridge-scale-peaks) x) nil)
+;; (nplot (list (scale-persistency correlated-ridge-scale-peaks) x) nil)
 
 ;; (defun persistency-of-period-in-skeleton (anthem skeleton period)
 ;;   "Returns the proportion of the degree to which the given period duration is present in the skeleton for the given anthem."
 ;;   (let* ((period-scale (round (anthem-interval-scale anthem (voices-per-octave skeleton) period)))
-;; 	 (ridge-persistence (ridge-persistency (make-ridge-plane skeleton))))
+;; 	 (ridge-persistence (ridge-persistency-of-skeleton skeleton))))
 ;;     (format t "anthem interval ~a, scaleogram scale = ~a, duration ~a samples~%" 
 ;; 	    period period-scale (time-support period-scale (voices-per-octave skeleton)))
 ;;     (.aref ridge-persistence (1- period-scale))))
@@ -254,8 +247,7 @@
 
 (defun skeleton-has-prominent-scale (skeleton scale-index &key (threshold 0.25))
   "Returns T or NIL if the bar duration is strongly present in the scaleogram for the given rhythm."
-  (let* ((ridge-plane (make-ridge-plane skeleton))
-	 (ridge-persistence (ridge-persistency ridge-plane))
+  (let* ((ridge-persistence (ridge-persistency-of-skeleton skeleton))
 	 ;; The threshold below should be calculated using a variance measure.
 	 (prominent-ridge-profiles (.> ridge-persistence threshold))
 	 ;; (nplot (list ridge-persistence prominent-ridge-profiles) nil)
@@ -437,7 +429,7 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
   "Returns an narray of scales based on histogram counts"
   (loop
      for anthem in anthems
-     ;; Since some rhythms are shorter than the maximum, we need to pad the ridge-persistency responses.
+     ;; Since some rhythms are shorter than the maximum, we need to pad the scale-persistency responses.
      with scale-histogram = (make-double-array (number-of-scales-for-period max-time-limit :voices-per-octave vpo))
      do (setf scale-histogram (.+ scale-histogram (relative-interval-occurrence-for-anthem anthem)))
      finally (return (./ scale-histogram (length anthems)))))
@@ -489,6 +481,7 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 ;; (plot-scaleogram-skeleton-of-anthem (anthem-named 'tunisia))
 ;; (plot-scaleogram-skeleton-of-anthem (anthem-named 'vietnam))
 ;; (plot-scaleogram-skeleton-of-anthem (anthem-named 'america))
+;; (plot-scaleogram-skeleton-of-anthem (anthem-named 'australia))
 
 (defun plot-anthem-bar-presence (&key (anthems *national-anthems*))
   (let ((bar-ratios (make-narray (bars-in-anthem-skeletons :anthems anthems))))
@@ -579,9 +572,9 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
       (plot-command "set arrow 2 from ~d,0.3 to ~d,0.2" beat-scale-index beat-scale-index)
       (plot-command "show arrow 1")
       (plot-command "show arrow 2")
-      (nplot (list (ridge-persistency (scaleogram-magnitude rhythm-scaleogram))
-		   ;; (ridge-persistency correlated-ridge-scale-peaks) 
-		   (ridge-persistency (make-ridge-plane rhythm-skeleton)))
+      (nplot (list (scale-persistency (scaleogram-magnitude rhythm-scaleogram))
+		   ;; (scale-persistency correlated-ridge-scale-peaks) 
+		   (ridge-persistency-of-skeleton rhythm-skeleton))
 	     nil
 	     :reset nil
 	     :aspect-ratio 0.66

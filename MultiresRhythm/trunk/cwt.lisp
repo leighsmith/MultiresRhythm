@@ -359,6 +359,16 @@
       (.subarray (apply #'dyadic-icwt padded-magnitude padded-phase wavelets-per-octave parameters)
 		 (list 0 (second time-trim))))))
 
+;;; Just sum over all scales, across time, either the magnitude or correlated ridge peaks,
+;;; or other time-frequency planes.
+;;; TODO This is pretty slow, due to the n^2 .partial-sum function and the .transpose.
+(defun scale-persistency (scale-peaks)
+  "Returns the normalised measure of contribution of each scale in the time-frequency plane"
+  (if scale-peaks
+      (./ (.partial-sum (.transpose scale-peaks) :dimension 1)
+	  (.array-dimension scale-peaks 1))
+      nil))
+
 ;;; File I/O
 
 ;;; For now just write these as S-expr text files. Eventually they should be replaced with
