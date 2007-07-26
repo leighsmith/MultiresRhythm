@@ -56,6 +56,9 @@
 (defgeneric average-scale (ridge)
   (:documentation "Returns the average scale number of a ridge"))
 
+(defgeneric scale-range (ridge)
+  (:documentation "Returns the range of scales of a ridge"))
+
 (defgeneric scales-as-array (ridge)
   (:documentation "Returns the scales list as an nlisp array"))
 
@@ -104,13 +107,20 @@
   (find scale (scales the-ridge)))
 
 (defmethod count-contains-scale ((the-ridge ridge) scale)
-  "Returns the number of the given scale in this ridge"
+  "Returns the number of occurances of the given scale in this ridge"
   (count scale (scales the-ridge)))
 
+;;; duration-in-samples and the number of elements in scales-as-array will match, but we
+;;; could just do (floor (mean (.* (scales-as-array the-ridge) 1d0)))
 (defmethod average-scale ((the-ridge ridge))
-  "Returns the mean average of the scale numbers"
-  (floor (.sum (scales-as-array the-ridge)) (duration-in-samples the-ridge)))
+  "Returns the mean (average) of the scale numbers"
+  (floor (.sum (scales-as-array the-ridge)) (duration-in-samples the-ridge))) 
 
+(defmethod scale-range ((the-ridge ridge))
+  "Returns the range of the scales a ridge spans"
+  (let* ((scales (scales-as-array the-ridge)))
+    (- (.max scales) (.min scales))))
+    
 (defmethod .decimate ((the-ridge ridge) reduce-list &key (start-indices '(0 0)))
   "Returns the ridge instance with it's data decimated using the decimation-parameter-list"
   (declare (ignore start-indices))
@@ -343,3 +353,8 @@
 	(make-instance 'ridge :scales scales-list :start-sample start-sample)
 	nil)))
 
+;;; Plotting
+(defun plot-ridge (ridge-to-plot)
+  (let* ((start (start-sample ridge-to-plot))
+	 (time (.iseq start (+ start (duration-in-samples ridge-to-plot) -1))))
+    (plot (scales-as-array ridge-to-plot) time :aspect-ratio 0.15)))
