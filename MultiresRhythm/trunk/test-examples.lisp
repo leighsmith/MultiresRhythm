@@ -69,39 +69,38 @@
 
 ;; (time (cwt (rising-harmonic-test) 16))
 
-(defun test-lpc ()
+(defun test-lpc (test-scaleogram)
   "Tests local phase congruency"
-  (let* ((fm-scaleogram (cwt (fm-test) 16))
-	 (local-pc (local-phase-congruency (scaleogram-magnitude fm-scaleogram)
-					   (scaleogram-phase fm-scaleogram))))
-    (plot-cwt fm-scaleogram :title "fm")
+  (let* ((local-pc (local-phase-congruency (scaleogram-magnitude test-scaleogram)
+					   (scaleogram-phase test-scaleogram))))
+    (plot-cwt test-scaleogram :title "test")
+    (window)
     (plot-image #'magnitude-image
 		(list local-pc)
 		'((1.0 1.0) (0.0 0.0))
-		(axes-labelled-in-samples fm-scaleogram 4)
-		:title "local phase congruency of fm")
+		(axes-labelled-in-samples test-scaleogram 4)
+		:title "local phase congruency of test")
     (window)
     (plot (.subarray local-pc '(t 200)) nil)))
 
-;; (test-lpc)
+;; (test-lpc (cwt (fm-test) 16))
 
-(defun test-stat-phase ()
+(defun test-stat-phase (test-scaleogram)
   "Tests stationary phase"
-  (let* ((fm-scaleogram (cwt (fm-test) 16))
-	 (stat-phase (stationary-phase (scaleogram-magnitude fm-scaleogram) (scaleogram-phase fm-scaleogram) 16)))
-    (plot-cwt fm-scaleogram :title "fm")
+  (let* ((stat-phase (stationary-phase (scaleogram-magnitude test-scaleogram) 
+				       (scaleogram-phase test-scaleogram) 
+				       (voices-per-octave test-scaleogram))))
+    (plot-cwt test-scaleogram :title "test")
     (plot-image #'magnitude-image
-		(list stat-phase)
-		'((1.0 1.0) (0.0 0.0))
-		(axes-labelled-in-samples fm-scaleogram 4)
-		:title "stationary phase of fm")
+ 		(list stat-phase)
+ 		'((1.0 1.0) (0.0 0.0))
+ 		(axes-labelled-in-samples test-scaleogram 4)
+ 		:title "stationary phase of test")
+    (format t "stat-phase ~a~%" (.flip stat-phase))
     (window)
     (plot (.subarray stat-phase '(t 200)) nil)))
 
-;; (test-stat-phase)
-;;     (plot-image #'magnitude-image (list stat-phase) '((1.0 0.5) (0.0 0.3)) "" :title "stationary phase") 
-
-
+;; (test-stat-phase (cwt (fm-test) 16))
 
 (defun scaleogram-of-grid (rhythm-grid &key (shortest-ioi 256) (title "test-rhythm"))
   (let* ((rhythm (rhythm-of-grid "test-rhythm" rhythm-grid :shortest-ioi shortest-ioi))
@@ -115,6 +114,8 @@
 ;; (scaleogram-of-grid '(1 1 1 1 1 1 1 1 1 1))
 ;; (scaleogram-of-grid '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1))
 ;; (scaleogram-of-grid '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1) :title "Isochronous Rhythm")
+;; (test-lpc (scaleogram-of-grid '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1) :title "Isochronous Rhythm"))
+;; (test-stat-phase (scaleogram-of-grid '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1) :title "Isochronous Rhythm"))
 ;; (plot-rhythm (rhythm-of-grid "Isochronous Rhythm" '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1) :shortest-ioi 256) :time-in-seconds t)
 
 ;; (plot-scale-energy-at-times (scaleogram-of-grid '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1)) '(650))
@@ -344,10 +345,8 @@
 					 :name "modulated rhythm"
 					 :description "modulated rhythm"
 					 :time-signal (fm-rhythm)
-					 :sample-rate 200))
-	(scaleogram (scaleogram-of-rhythm modulated-rhythm :voices-per-octave 16)))
+					 :sample-rate 200)))
     (plot-rhythm modulated-rhythm)
-    ;; (plot-cwt scaleogram :title (description modulated-rhythm))
     (clap-to-rhythm modulated-rhythm)))
 
 ;; (modulated-rhythm-test)
