@@ -66,7 +66,7 @@
 	 )
 
     (format t "Handclapping from beat ~d of original rhythm, sample ~d~%" start-from-beat down-beat-sample)
-    (plot-claps original-rhythm clap-at :foot-tap-AM foot-tap-phase)
+    (plot-claps original-rhythm clap-at :beat-phase foot-tap-phase)
     clap-at))
 
 (defmethod clap-to-rhythm ((performed-rhythm rhythm) &key 

@@ -330,8 +330,7 @@ colourmap, suitable for use by NLISP's palette-defined function."
   (close-window)
   (reset-plot))
 
-(defun plot-claps (original-rhythm claps &key foot-tap-AM (max-computed-scale 1.2d0)
-		   (comment "")
+(defun plot-claps (original-rhythm claps &key beat-phase (max-computed-scale 1.2d0)
 		   (signal-name (name original-rhythm)))
   "Plot locations of original beats, computed claps, the foot tap
    amplitude modulation/phase and reference expected clap points."
@@ -342,12 +341,12 @@ colourmap, suitable for use by NLISP's palette-defined function."
     (plot-command "set yrange [0:~f]" (+ max-computed-scale 0.2))
     (plot-command "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
 		  (label-samples-as-seconds (duration-in-samples original-rhythm) (sample-rate original-rhythm)))
-    (nplot (list rhythm-signal clap-signal (.+ (./ foot-tap-AM pi 2.0d0) 0.5d0)) nil
-	   :legends '("Original Rhythm" "Computed foot-taps" "Normalised Foot-tap AM")
+    (nplot (list rhythm-signal clap-signal (.+ (./ beat-phase pi 2.0d0) 0.5d0)) nil
+	   :legends '("Original Rhythm" "Computed Beats" "Normalised Beat Phase")
 	   :styles '("impulses linetype 6 linewidth 3" "impulses linetype 4" "dots 3")
 	   :xlabel "Time in Seconds"
 	   :ylabel "Scaled Intensity/Phase"
-	   :title (format nil "Computed foot-tap ~a of ~a" comment signal-name)
+	   :title (format nil "Computed beat track of ~a" signal-name)
 	   :reset nil
 	   :aspect-ratio 0.66)
     (close-window)))
