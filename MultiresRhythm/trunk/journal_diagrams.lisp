@@ -9,15 +9,15 @@
 (use-package :nlisp)
 
 ;;; Figure 2 isochronous
-;;; (clap-to-rhythm (rhythm-of-grid "isochronous-rhythm" '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1) :shortest-ioi 256 :sample-rate 200))
+(clap-to-rhythm (rhythm-of-grid "isochronous-rhythm" '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1) :shortest-ioi 256 :sample-rate 200))
 ;;; Figure 4 
-;;; (clap-to-octave-file "longuet_cliche" :sample-rate 200)
+(clap-to-octave-file "longuet_cliche" :sample-rate 200)
 ;;; Figure 5
-;;; (clap-to-octave-file "intensity34_to_44" :sample-rate 200)
+(clap-to-octave-file "intensity34_to_44" :sample-rate 200)
 ;;; Figure 6 Agogic phrasing.
-;;; (clap-to-rhythm (iois-to-rhythm "4-beat-lengthen-corr" (repeat-rhythm '(61 75 75 89) 12)))
+(clap-to-rhythm (iois-to-rhythm "4-beat-lengthen-corr" (repeat-rhythm '(61 75 75 89) 12)))
 ;;; Figure 7 Agogic phrasing.
-;;; (clap-to-rhythm (iois-to-rhythm "3-beat-lengthen-corr" (repeat-rhythm '(61 75 89) 16)))
+(clap-to-rhythm (iois-to-rhythm "3-beat-lengthen-corr" (repeat-rhythm '(61 75 89) 16)))
 
 ;;; Until we fix the over long ridge bug, this is a work around to select the right ridge.
 ;;; (clap-to-rhythm (iois-to-rhythm "3-beat-lengthen-corr" (repeat-rhythm '(61 75 89) 16)) :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time skeleton 94 0)))
@@ -29,7 +29,7 @@
 ;;; (duration-in-samples longest-ridge) ; This seems wrong.
 
 ;;; Figure 8
-;;; (clap-to-octave-file "greensleeves-perform-medium" :sample-rate 400 :description "Greensleeves performed")
+(clap-to-octave-file "greensleeves-perform-medium" :sample-rate 400 :description "Greensleeves performed")
 
 ;;; How we get the locations of the semi-quavers:
 ;;; (setf greensleeves-rhythm (load-rhythm-file "greensleeves-perform-medium" :description "greensleeves" :sample-rate 400))
