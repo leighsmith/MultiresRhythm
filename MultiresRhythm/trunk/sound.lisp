@@ -49,7 +49,7 @@
 	    (.column-count sound-array) (sample-rate sound-to-print) (.row-count sound-array))))
 
 (defmethod sound-from-file ((path pathname))
-  (multiple-value-bind (sound-signal sample-rate) (load-audio (namestring path))
+  (multiple-value-bind (sound-signal sample-rate) (load-audio path)
     (make-instance 'sound 
 		   :sound-signal sound-signal
 		   :sample-rate sample-rate)))
@@ -57,7 +57,16 @@
 (defmethod onset-times ((sound-to-analyse sound))
   (./ (.* (.find (sound-signal sound-to-analyse)) 1d0) (sample-rate sound-to-analyse)))
 
-;; (setf noisy-dialog (load-audio "/Users/leigh/Research/Data/RoomTone/noisy_dialog.aiff"))
+;; (setf down-sampled (.floor (.* (onset-times jw-clicks) 200)))
+;; (setf down-sampled-length (floor (* (.length (sound-signal jw-clicks)) (/ 200.0 44100.0))))
+;; (setf down-sampled-rhythm (make-double-array down-sampled-length))
+;; (setf (.arefs down-sampled-rhythm down-sampled) (make-double-array (.length down-sampled) :initial-element 1d0))
+;; (plot down-sampled-rhythm nil)
+(setf jw-prelude-3 (make-instance 'rhythm :time-signal down-sampled-rhythm :name "jw prelude 3"))
+
+
+
+;; (setf noisy-dialog (load-audio #P"/Users/leigh/Research/Data/RoomTone/noisy_dialog.aiff"))
 ;; (setf noisy-dialog-initial (.subarray noisy-dialog '(0 (0 32767))))
 ;; (plot noisy-dialog-initial nil :aspect-ratio 0.2)
 ;; (setf noisy-dialog-scaleogram (cwt noisy-dialog-initial 8))
