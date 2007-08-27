@@ -18,8 +18,16 @@
 
 (defparameter *mra-cache-path* "/Users/leigh/Data/")
 
-;;;; TODO should we be declaring a MRA class that holds a skeleton, scaleogram and
-;;;; correlated-ridge-scale-peaks frames?
+;;;; TODO should we be declaring a MRA class that holds ?
+
+;;; An analysis includes a textual description, skeleton, scaleogram and
+;;; correlated-ridge-scale-peaks instances. 
+(defclass multires-analysis ()
+  ((description :initarg :description :accessor description :initform "")
+   (skeleton    :initarg :skeleton    :accessor skeleton)
+   (scaleogram  :initarg :scaleogram  :accessor scaleogram)
+   (ridge-peaks :initarg :ridge-peaks :accessor ridge-peaks)))
+
 ;;;; Declarations (see rhythm.lisp for the class definition)
 
 (defgeneric tactus-for-rhythm (rhythm-to-analyse &key voices-per-octave tactus-selector)
@@ -31,12 +39,12 @@
 (defgeneric skeleton-of-scaleogram (scaleogram sample-rate)
   (:documentation "Returns the skeleton given the scaleogram and sample-rate."))
 
-(defgeneric skeleton-of-rhythm (rhythm-to-analyse &key voices-per-octave)
-  (:documentation "Returns a skeleton (holds a list of ridges) for the given rhythm."))
+(defgeneric analysis-of-rhythm (rhythm-to-analyse &key voices-per-octave)
+  (:documentation "Returns a multires-analysis instance for the given rhythm."))
 
-(defgeneric skeleton-of-rhythm-cached (rhythm-to-analyse &key voices-per-octave cache-directory)
+(defgeneric analysis-of-rhythm-cached (rhythm-to-analyse &key voices-per-octave cache-directory)
   (:documentation "Reads the skeleton, scaleogram and ridge-scale-peaks from disk if they have been cached,
-otherwise, generates them and writes to disk."))
+otherwise, generates them and writes to disk, and returns a multires-analysis instance."))
 
 ;;;; Implementation
 
@@ -58,17 +66,19 @@ This is weighted by absolute constraints, look in the 600ms period range."
     ;; is index 0, lowest frequency (longest time support) is number-of-scales.
     (floor (scale-from-period salient-IOI voices-per-octave))))
 
-;; Scale index 0 is the highest frequency (smallest dilation) scale.
-(defun tempo-salience-weighting (salient-scale time-frequency-dimensions)
+;;; Scale index 0 is the highest frequency (smallest dilation) scale.
+;;; TODO this should be weighted by the log scale character, rather than symmetrical.
+(defun tempo-salience-weighting (salient-scale time-frequency-dimensions &key (voices-per-octave 16))
   "Produce a weighting matching the analysis window using tempo preference."
   (let* ((number-of-scales (first time-frequency-dimensions))
 	 (time-in-samples (second time-frequency-dimensions))
 	 (tempo-weighting-over-time (make-double-array time-frequency-dimensions))
 	 ;; Create a Gaussian envelope spanning the number of scales.
 	 ;; Match the mean to a span across -5 < mean < 5 standard deviations.
+	 ;; Define a doubling in frequency as 1 stddev.
 	 (tempo-scale-weighting (gaussian-envelope number-of-scales 
 						   :mean (- (/ (* 10.0 salient-scale) number-of-scales) 5.0)
-						   :stddev 2.0d0 ; keeps the weighting broad
+						   :stddev (/ (* voices-per-octave 10.0) number-of-scales)
 						   :scaling 1d0)))
     (dotimes (time time-in-samples)
       (setf (.subarray tempo-weighting-over-time (list t time))
@@ -278,6 +288,12 @@ Phase is assumed to be -pi to pi."
 ;;; local-phase-congruency individually.
 ;;; Should use a functional approach, passing the functions applicable as a list:
 ;;; (&key analyzers '(#'stationary-phase #'local-phase-congruency #'.normalise))
+;;; TODO Should use parabolic interpolation to pick the maximum point of the modulus.
+;;; However this may not improve things if the magnitude itself wanders due to interaction
+;;; between voices.
+;;; "Degree-two polynomial interpolation, i.e. parabolic interpolation, is particularly convenient as it uses
+;;; only three bins of the magnitude spectrum."
+
 (defun correlate-ridges (magnitude phase voices-per-octave)
   "Computes independent surfaces analysing the magnitude and phase
 which are then combined to form an analytic surface from which we
@@ -341,33 +357,36 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
 				  :skip-highest-octaves (skip-highest-octaves analysis-scaleogram))))
     (values skeleton correlated-ridge-scale-peaks)))
 
-(defmethod skeleton-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
-  "Returns the skeleton given the rhythm."
+(defmethod analysis-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
+  "Returns the multires analysis of the given rhythm."
   (let* ((scaleogram (scaleogram-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave)))
     (multiple-value-bind (skeleton correlated-ridge-scale-peaks) 
 	(skeleton-of-scaleogram scaleogram (sample-rate analysis-rhythm))
-    (values skeleton scaleogram correlated-ridge-scale-peaks))))
+      (make-instance 'multires-analysis 
+		     :description (description analysis-rhythm)
+		     :scaleogram scaleogram
+		     :skeleton skeleton
+		     :ridge-peaks correlated-ridge-scale-peaks))))
 
 (defmethod tactus-for-rhythm ((analysis-rhythm rhythm) 
 			      &key (voices-per-octave 16)
 			      (tactus-selector #'select-longest-lowest-tactus))
   "Returns the selected tactus given the rhythm."
-  (multiple-value-bind (skeleton scaleogram correlated-ridge-scale-peaks)
-      (skeleton-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave)
-    (let* ((chosen-tactus (funcall tactus-selector skeleton))   ; select out the tactus from all ridge candidates.
-	   (chosen-tactus-list (if (listp chosen-tactus) chosen-tactus (list chosen-tactus))))
-      (format t "Computed skeleton and chosen tactus ~a~%" chosen-tactus-list)
-      (plot-cwt+ridges scaleogram chosen-tactus-list analysis-rhythm
-		       ;; :phase-palette :greyscale
-		       ;; :magnitude-palette :jet
-		       :title (name analysis-rhythm))
-      (plot-highlighted-ridges scaleogram 
-			       chosen-tactus-list
-			       correlated-ridge-scale-peaks 
-			       :title (name analysis-rhythm)
-			       :sample-rate (sample-rate analysis-rhythm))
-      (format t "Finished plotting scalograms~%")
-      (values chosen-tactus-list scaleogram))))
+  (let* ((analysis (analysis-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave))
+	 (chosen-tactus (funcall tactus-selector (skeleton analysis)))   ; select out the tactus from all ridge candidates.
+	 (chosen-tactus-list (if (listp chosen-tactus) chosen-tactus (list chosen-tactus))))
+    (format t "Computed skeleton and chosen tactus ~a~%" chosen-tactus-list)
+    (plot-cwt+ridges (scaleogram analysis) chosen-tactus-list analysis-rhythm
+		     ;; :phase-palette :greyscale
+		     ;; :magnitude-palette :jet
+		     :title (name analysis-rhythm))
+    ;; (plot-highlighted-ridges scaleogram 
+    ;; chosen-tactus-list
+    ;; (ridge-peaks analysis)
+    ;; :title (name analysis-rhythm)
+    ;; :sample-rate (sample-rate analysis-rhythm))
+    (format t "Finished plotting scalograms~%")
+    (values chosen-tactus-list analysis)))
 
 ;;; To verify the ridge extraction accuracy:
 ;;; (plot-highlighted-ridges-of-rhythm scaleogram (ridges skeleton) correlated-ridge-scale-peaks analysis-rhythm)
@@ -382,33 +401,32 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
 
 ;;; File I/O
 
-(defmethod save-mra-to-file ((skeleton-to-write skeleton) 
-			 (scaleogram-to-write scaleogram)
-			 ridge-peaks-to-write
-			 (path-to-write pathname))
+(defmethod save-mra-to-file ((analysis-to-write multires-analysis) 
+			     (path-to-write pathname))
   (let* ((skeleton-filename (make-pathname :defaults path-to-write :type "skeleton"))
 	 (scaleogram-filename (make-pathname :defaults path-to-write :type "scaleogram"))
 	 (ridge-peaks-filename (make-pathname :defaults path-to-write :type "peaks")))
       (format t "Writing ~a~%" skeleton-filename) 
-      (save-to-file skeleton-to-write skeleton-filename)
+      (save-to-file (skeleton analysis-to-write) skeleton-filename)
       (format t "Writing ~a~%" scaleogram-filename) 
-      (save-to-file scaleogram-to-write scaleogram-filename)
+      (save-to-file (scaleogram analysis-to-write) scaleogram-filename)
       (format t "Writing ~a~%" ridge-peaks-filename)
-      (.save-to-octave-file ridge-peaks-to-write ridge-peaks-filename)))
+      (.save-to-octave-file (ridge-peaks analysis-to-write) ridge-peaks-filename)))x
 
 (defmethod read-mra-from-file ((path-to-read pathname))
-  "Reads and returns skeleton and scaleogram instances, returns nil when EOF"
-  (values (read-skeleton-from-file (make-pathname :defaults path-to-read :type "skeleton"))
-	  (read-scaleogram-from-file (make-pathname :defaults path-to-read :type "scaleogram"))
-	  (.load-octave-file (make-pathname :defaults path-to-read :type "peaks"))))
+  "Reads and returns a multires-analysis instance, returns nil when EOF"
+  (make-instance 'multires-rhythm
+		 :skeleton (read-skeleton-from-file (make-pathname :defaults path-to-read :type "skeleton"))
+		 :scaleogram (read-scaleogram-from-file (make-pathname :defaults path-to-read :type "scaleogram"))
+		 :ridge-peaks (.load-octave-file (make-pathname :defaults path-to-read :type "peaks"))))
 
-(defmethod skeleton-of-rhythm-cached ((analysis-rhythm rhythm) &key (voices-per-octave 16)
+(defmethod analysis-of-rhythm-cached ((analysis-rhythm rhythm) &key (voices-per-octave 16)
 				      (cache-directory *mra-cache-path*))
   "Reads the skeleton, scaleogram and ridge-scale-peaks from disk if they have been cached,
 otherwise, generates them and writes to disk."
   (let ((cache-root-pathname (make-pathname :directory cache-directory :name (name analysis-rhythm))))
     (if (probe-file (make-pathname :defaults cache-root-pathname :type "skeleton"))
 	(read-mra-from-file cache-root-pathname)
-	(let ((mra (multiple-value-list (skeleton-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave))))
-	  (apply #'save-mra-to-file (append mra (list cache-root-pathname)))
-	  (values-list mra)))))
+	(let ((mra (analysis-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave)))
+	  (save-mra-to-file mra (list cache-root-pathname))
+	  mra))))

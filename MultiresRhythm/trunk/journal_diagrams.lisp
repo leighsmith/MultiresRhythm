@@ -23,8 +23,8 @@
 ;;; (clap-to-rhythm (iois-to-rhythm "3-beat-lengthen-corr" (repeat-rhythm '(61 75 89) 16)) :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time skeleton 94 0)))
 ;;;
 ;;; (setf 3-beat-rhythm (iois-to-rhythm "3-beat-lengthen-corr" (repeat-rhythm '(61 75 89) 16)))
-;;; (setf skeleton (skeleton-of-rhythm 3-beat-rhythm :voices-per-octave 16))
-;;; (setf longest-ridge (select-longest-lowest-tactus skeleton))
+;;; (setf analysis (analysis-of-rhythm 3-beat-rhythm :voices-per-octave 16))
+;;; (setf longest-ridge (select-longest-lowest-tactus (skeleton analysis)))
 ;;; (duration-in-samples 3-beat-rhythm)
 ;;; (duration-in-samples longest-ridge) ; This seems wrong.
 

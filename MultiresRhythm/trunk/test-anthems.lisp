@@ -32,8 +32,9 @@
   "Retrieves the anthem by number"
   `(nth ,anthem-number *national-anthems*))
 
-(defmacro anthem-named (anthem-symbol)
-  `(find ,anthem-symbol *national-anthems* :key #'caar :test #'eq))
+;;; Made this a function so it can be exported and used
+(defun anthem-named (anthem-symbol)
+  (find anthem-symbol *national-anthems* :key #'caar :test #'eq))
 
 (defmacro anthem-name (anthem)
   `(caar ,anthem))
@@ -68,7 +69,9 @@
 
 (defun anthem-anacrusis-duration (anthem)
   "Returns the number of grid units of time (not the number of notes), before the downbeat"
-  (- (anthem-bar-duration anthem) (anthem-start-at anthem)))
+  (if (> (anthem-start-at anthem) 0)
+      (- (anthem-bar-duration anthem) (anthem-start-at anthem))
+      0))
 
 (defun anthem-interval-scale (anthem voices-per-octave interval)
   "Compute the scale index that the interval in the given anthem would activate on its scaleogram"
@@ -97,19 +100,18 @@
 (defun bar-ridges-for-anthem (anthem &key (voices-per-octave 16) (anthem-path *anthem-analysis-path*))
   "Returns the ridges of the given anthem matching the bar duration"
   (let* ((anthem-rhythm (anthem-rhythm anthem))
-	 (bar-scale-index))
-    (multiple-value-bind (rhythm-skeleton rhythm-scaleogram correlated-ridge-scale-peaks) 
-	(skeleton-of-rhythm-cached anthem-rhythm 
-				   :voices-per-octave voices-per-octave 
-				   :cache-directory anthem-path)
-      (declare (ignore correlated-ridge-scale-peaks))
-      (setf bar-scale-index (round (bar-scale anthem (voices-per-octave rhythm-skeleton))))
-      (format t "bar scale index ~a time-support ~a samples~%" 
-	      bar-scale-index 
-	      (time-support bar-scale-index (voices-per-octave rhythm-skeleton)))
-      (values (ridges-containing-scale rhythm-skeleton bar-scale-index)
-	      rhythm-scaleogram
-	      correlated-ridge-scale-peaks))))
+	 (bar-scale-index)
+	 (analysis (analysis-of-rhythm-cached anthem-rhythm 
+					      :voices-per-octave voices-per-octave 
+					      :cache-directory anthem-path))
+	 (rhythm-skeleton (skeleton analysis)))
+    (setf bar-scale-index (round (bar-scale anthem (voices-per-octave rhythm-skeleton))))
+    (format t "bar scale index ~a time-support ~a samples~%" 
+	    bar-scale-index 
+	    (time-support bar-scale-index (voices-per-octave rhythm-skeleton)))
+    (values (ridges-containing-scale rhythm-skeleton bar-scale-index)
+	    (scaleogram analysis)
+	    (ridge-peaks analysis))))
 
 ;; (bar-ridges-for-anthem (anthem-named 'australia))
 ;; (bar-ridges-for-anthem (anthem-named 'america))
@@ -139,13 +141,22 @@
 
 (defun anacrusis-notes (anthem)
   "Return the sample times of notes of the anacrusis, prior to the downbeat"
-  (onsets-in-samples (subset-of-rhythm (anthem-rhythm anthem)
-				       (list t (* (anthem-anacrusis-duration anthem)
-						  (anthem-minimum-duration anthem))))))
+  (let ((anacrusis-duration (anthem-anacrusis-duration anthem)))
+    (if (zerop anacrusis-duration)
+	(make-fixnum-array '(0))
+	(onsets-in-samples (subset-of-rhythm (anthem-rhythm anthem)
+					     (list t (1- (* anacrusis-duration
+							    (anthem-minimum-duration anthem)))))))))
 
-(defun downbeat-number (anthem)
+(defun anacrusis-count (anthem)
   "Return the number of notes of the anacrusis, prior to the downbeat"
   (.length (anacrusis-notes anthem)))
+
+(defun downbeat-number (anthem)
+  "Return the 0-base index of the note in the anthem rhythm that the downbeat begins on"
+  ;; The downbeat is the next beat after the anacrusis, but we are 0 based, so returning
+  ;; the count alone is sufficient.
+  (anacrusis-count anthem))
 
 (defun clap-to-anthem (anthem)
   (clap-to-rhythm (anthem-rhythm anthem) :start-from-beat (downbeat-number anthem)))
@@ -163,7 +174,7 @@
 					:maximum-samples length-limit)))
       (format t "Processing ~a~%" (name anthem-rhythm))
       (if (not (probe-file (make-pathname :directory anthem-path :name (name anthem-rhythm) :type "skeleton")))
-	  (skeleton-of-rhythm-cached anthem-rhythm :cache-directory anthem-path)))))
+	  (analysis-of-rhythm-cached anthem-rhythm :cache-directory anthem-path)))))
 
 ;;; (generate-anthem-skeletons :anthem-path "/Users/leigh/Data/Anthems" :length-limit 16384)
 ;;; Limits to the first 48 semi-quavers, matching Zaanen
@@ -560,27 +571,27 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 (defun plot-ridge-persistency-for-anthem (anthem &key (voices-per-octave 16) (anthem-path *anthem-analysis-path*))
   (let* ((anthem-rhythm (anthem-rhythm anthem))
 	 (bar-scale-index)
-	 (beat-scale-index)) 
+	 (beat-scale-index)
+	 (analysis (analysis-of-rhythm-cached anthem-rhythm 
+					      :voices-per-octave voices-per-octave 
+					      :cache-directory anthem-path))
+	 (rhythm-skeleton (skeleton analysis)))
     (reset-plot)
-    (multiple-value-bind (rhythm-skeleton rhythm-scaleogram) ;  correlated-ridge-scale-peaks
-	(skeleton-of-rhythm-cached anthem-rhythm 
-				   :voices-per-octave voices-per-octave 
-				   :cache-directory anthem-path)
-      (setf bar-scale-index (round (bar-scale anthem (voices-per-octave rhythm-skeleton))))
-      (setf beat-scale-index (round (beat-scale anthem (voices-per-octave rhythm-skeleton))))
-      (plot-command "set arrow 1 from ~d,0.3 to ~d,0.2" bar-scale-index bar-scale-index)
-      (plot-command "set arrow 2 from ~d,0.3 to ~d,0.2" beat-scale-index beat-scale-index)
-      (plot-command "show arrow 1")
-      (plot-command "show arrow 2")
-      (nplot (list (scale-persistency (scaleogram-magnitude rhythm-scaleogram))
-		   ;; (scale-persistency correlated-ridge-scale-peaks) 
-		   (ridge-persistency-of-skeleton rhythm-skeleton))
-	     nil
-	     :reset nil
-	     :aspect-ratio 0.66
-	     :legends '("magnitude persistency" "skeleton persistency") ; "ridge persistency"
-	  ;   :styles '("lines linestyle 1" "lines linestyle 3")
-	     :title (format nil "Ridge persistency for ~a" (name anthem-rhythm))))))
+    (setf bar-scale-index (round (bar-scale anthem (voices-per-octave rhythm-skeleton))))
+    (setf beat-scale-index (round (beat-scale anthem (voices-per-octave rhythm-skeleton))))
+    (plot-command "set arrow 1 from ~d,0.3 to ~d,0.2" bar-scale-index bar-scale-index)
+    (plot-command "set arrow 2 from ~d,0.3 to ~d,0.2" beat-scale-index beat-scale-index)
+    (plot-command "show arrow 1")
+    (plot-command "show arrow 2")
+    (nplot (list (scale-persistency (scaleogram-magnitude (scaleogram analysis)))
+		 ;; (scale-persistency correlated-ridge-scale-peaks) 
+		 (ridge-persistency-of-skeleton rhythm-skeleton))
+		 nil
+		 :reset nil
+		 :aspect-ratio 0.66
+		 :legends '("magnitude persistency" "skeleton persistency") ; "ridge persistency"
+		 ;; :styles '("lines linestyle 1" "lines linestyle 3")
+		 :title (format nil "Ridge persistency for ~a" (name anthem-rhythm)))))
 
 ;; (plot-ridge-persistency-for-anthem (anthem-named 'america))
 ;; (plot-ridge-persistency-for-anthem (anthem-named 'netherlands))
@@ -591,6 +602,75 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 ;; (plot-ridge-persistency-for-anthem (anthem-named 'jordan))
 ;; (plot-ridge-persistency-for-anthem (anthem-named 'vatican))
 ;; (plot-ridge-persistency-for-anthem (anthem-named 'luxembourg))
+
+(defun plot-anthem-anacrusis-profiles (anthem &key (length-limit 16384))
+  "Plots the profiles of the first first-notes number of notes in the rhythm"
+  ;; retrieve the first set of onset times of the anacrusis.
+  (let* ((analysis (analysis-of-rhythm (limit-rhythm (anthem-rhythm anthem) :maximum-samples length-limit)))
+	 (scaleogram (scaleogram analysis))
+	 (description (anthem-name anthem))
+	 (anacrusis-note-times (anacrusis-notes anthem))
+	 (times-in-samples (nlisp::array-to-list anacrusis-note-times))
+	 (local-pc (local-phase-congruency (scaleogram-magnitude scaleogram) (scaleogram-phase scaleogram)))
+	 (lpc-at-time (./ (.partial-sum local-pc) (.array-dimension local-pc 0)))
+	 (pc (phase-congruency (scaleogram-magnitude scaleogram) (scaleogram-phase scaleogram)))
+	 (ridges-on-notes (mapcar (lambda (time) (ridges-at-time (skeleton analysis) time)) times-in-samples)))
+    (format t "times-in-samples ~a~%" times-in-samples)
+    (format t "number of ridges at notes ~a~%" (mapcar #'length ridges-on-notes))
+    (format t "phase congruency at notes ~a~%" (.arefs pc anacrusis-note-times))
+    (format t "summed local phase congruency at notes ~a~%" (.arefs lpc-at-time anacrusis-note-times))
+    (format t "ridge ratios ~a~%" (ridge-ratios-at-time (first ridges-on-notes) (caar ridges-on-notes) (first times-in-samples)))
+    (plot-highlighted-ridges scaleogram '() (ridge-peaks analysis) :title description)
+    (window)
+    (nplot (list pc) nil :title (format nil "phase congruency of ~a" description) :aspect-ratio 0.66)
+    (window)
+    (let ((bar-scale-index (- (number-of-scales scaleogram)
+			      (round (bar-scale anthem (voices-per-octave scaleogram)))))
+	  (beat-scale-index (- (number-of-scales scaleogram)
+			       (round (beat-scale anthem (voices-per-octave
+							  scaleogram))))))
+      (format t "beat scale index ~a, bar scale index ~a~%" beat-scale-index bar-scale-index)
+      (reset-plot)
+      (plot-command "set arrow 1 from ~d,0.2 to ~d,0.15" bar-scale-index bar-scale-index)
+      (plot-command "set arrow 2 from ~d,0.2 to ~d,0.15" beat-scale-index beat-scale-index)
+      (plot-command "show arrow 1")
+      (plot-command "show arrow 2")
+      (plot-scale-energy-at-times scaleogram times-in-samples :description description))
+    ridges-on-notes))
+
+;; (setf american-ridges (plot-anthem-anacrusis-profiles (anthem-named 'america)))
+;; (setf australian-ridges (plot-anthem-anacrusis-profiles (anthem-named 'australia)))
+;; (anthem-anacrusis (plot-anthem-named-profiles 'vietnam))
+;; (anthem-anacrusis (plot-anthem-named-profiles 'finland))
+
+(defun accented-anthem-rhythm (anthem)
+  "Accents the anthem rhythm according to the transcribed anacrusis and measure"
+  (accent-rhythm (anthem-rhythm anthem) 
+		 (anthem-duration-in-samples anthem (anthem-anacrusis-duration anthem))
+		 (anthem-duration-in-samples anthem (anthem-bar-duration anthem))))
+
+(defun plot-scaleogram-skeleton-of-anthem-accented (anthem &key (voices-per-octave 16))
+  "Plot the ridges in greyscale and the highlighted ridges in red."
+  (let* ((anthem-rhythm (accented-anthem-rhythm anthem))
+	 (analysis (analysis-of-rhythm anthem-rhythm :voices-per-octave voices-per-octave))
+	 (rhythm-scaleogram (scaleogram analysis))
+	 (time-axis-decimation 4)
+	 (formatting "set title font \"Times,20\"~%set xlabel font \"Times,20\"~%set ylabel font \"Times,20\"")
+	 (axes-labels (axes-labelled-in-seconds rhythm-scaleogram (sample-rate anthem-rhythm) time-axis-decimation))
+	 (highlighted-ridges (list (canonical-bar-ridge anthem rhythm-scaleogram))))
+    (format t "Plotting images~%")
+    (plot-images (list (list #'magnitude-image 
+			     (list (scaleogram-magnitude rhythm-scaleogram))
+			     '((1.0 1.0) (0.0 0.3))
+			     (concatenate 'string axes-labels formatting))
+		       (list #'highlighted-ridges-image
+			     (list (mapcar #'copy-object highlighted-ridges) (ridge-peaks analysis))
+			     '((1.0 1.0) (0.0 0.0))
+			     (concatenate 'string axes-labels formatting))) ; ':xlabel "Time (Seconds)"
+		 :title (name anthem-rhythm)
+		 :time-axis-decimation time-axis-decimation)))
+
+;; (plot-scaleogram-skeleton-of-anthem-accented (anthem-named 'america))
 
 (defun inspect-anthem (anthem)
   (assess-anthem anthem :anthem-path "/Users/leigh/Data/Anthems")
@@ -603,3 +683,91 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 
 ;;; Low combined value for beat and bar values.
 ;;; (inspect-anthem (anthem-named 'ghana))
+
+;;; TODO  :anthem-path "/Users/leigh/Data/ShortAnthems"
+(defun evaluation-of-anthems (evaluation-function &key (anthems *national-anthems*))
+  (let* ((failing-anthems (loop
+			    for anthem in anthems
+			    do (format t "Evaluating ~a~%" (anthem-name anthem))
+			    when (not (funcall evaluation-function anthem))
+			    collect anthem))
+	 (number-failed (length failing-anthems)))
+    (format t "~a ~d failed, correct ~f%~%" 
+	    evaluation-function 
+	    number-failed
+	    (* (- 1.0 (/ (float number-failed) (length anthems))) 100.0))))
+
+;; (beat-period-of-rhythm (anthem-rhythm (anthem-named 'australia)) (skeleton-of-anthem (anthem-named 'australia)))
+
+(defun evaluate-beat-period-of-anthem (anthem &key (anthem-path *anthem-analysis-path*))
+  "Compare the computed beat level against the transcribed anthem beat period."
+  (let* ((skeleton (skeleton-of-anthem anthem :anthem-path anthem-path))
+	 (vpo (voices-per-octave skeleton))
+	 (beat-period (beat-period-of-rhythm (anthem-rhythm anthem) skeleton))
+	 (beat-scale (scale-from-period beat-period vpo))
+	 (official-beat-scale (beat-scale anthem vpo))
+	 (official-beat-period (time-support official-beat-scale vpo)))
+    (format t "beat-scale ~a, beat-period ~a~%" beat-scale beat-period)
+    (format t "official beat-scale ~a, official beat period ~a~%" 
+	    official-beat-scale official-beat-period)
+    (format t "ratio of beat period to official beat period ~a~%" (/ beat-period official-beat-period))
+    (<= (abs (- (round beat-scale) (round official-beat-scale))) 1))) ; within +/- 1 scale of the official beat scale.
+
+;; (evaluate-beat-period-of-anthem (anthem-named 'australia))
+;; (evaluate-beat-period-of-anthem (anthem-named 'australia) :anthem-path "/Users/leigh/Data/ShortAnthems")
+;; (evaluate-beat-period-of-anthem (anthem-named 'america))
+;; (evaluate-beat-period-of-anthem (anthem-named 'vietnam))
+;; (evaluate-beat-period-of-anthem (anthem-named 'ghana))
+;; (evaluate-beat-period-of-anthem (anthem-named 'tunisia))
+;; (evaluate-beat-period-of-anthem (anthem-named 'italy))
+
+;;; Conservative doesn't work for Tunisia. Opportune does.
+
+;; (let ((r (anthem-rhythm (anthem-rhythm anthem)))
+;;       (beat-period (beat-period-of-rhythm r (skeleton-of-anthem anthem :anthem-path anthem-path))))
+;;   (find-downbeat r beat-period)
+
+;;; This assumes that no meter changes occur in the intervening period, so the Netherlands
+;;; is wrongly evaluated, for example.
+(defun evaluate-downbeat-of-anthem (anthem)
+  (let* ((official-downbeat (downbeat-number anthem))
+	 (vpo 16)
+	 (official-beat-period (time-support (beat-scale anthem vpo) vpo))
+	 (beat-period (beat-period-of-rhythm (anthem-rhythm anthem) (skeleton-of-anthem anthem)))
+	 ;; (found-downbeat (find-downbeat (anthem-rhythm anthem) beat-period :strategy #'<))
+	 (found-downbeat (find-downbeat (anthem-rhythm anthem) official-beat-period :strategy #'<))
+	 (bar-duration (anthem-bar-duration anthem))
+	 (total-duration-between)	; between official & found downbeats.
+	 (position-within-bar))
+    (format t "official downbeat ~a found downbeat ~a~%" official-downbeat found-downbeat)
+    (format t "official beat period ~a computed beat period ~a~%" official-beat-period beat-period)
+    (cond ((not found-downbeat)
+	   (progn
+	     (format t "Early exit, found downbeat is nil, couldn't find beat period~%")
+	     nil))
+	  ((< found-downbeat official-downbeat)
+	   (progn
+	     (format t "Early exit, found downbeat before official downbeat~%")
+	     nil))
+	  (t 
+	   (progn
+	     (setf total-duration-between (reduce #'+ (second anthem) :start official-downbeat :end found-downbeat))
+	     (setf position-within-bar (mod total-duration-between bar-duration))
+	     (format t "bar-duration ~a total-duration-between ~a position within bar ~a~%" 
+		     bar-duration total-duration-between position-within-bar)
+	     (zerop position-within-bar))))))
+
+;; (evaluate-beat-period-of-anthem (anthem-named 'vietnam))
+;; (evaluate-beat-period-of-anthem (anthem-named 'faroe-islands))
+;; (evaluate-beat-period-of-anthem (anthem-named 'albania))
+;; (evaluate-beat-period-of-anthem (anthem-named 'portugal))
+
+;;; Only produces a 62% successful identification of the beat level. Much better than 22%
+;;; without tempo weighting. Probably could tune (tighten or skew) the tempo weighting envelope.
+;;; (setf bad-beat-periods (evaluation-of-anthems #'evaluate-beat-period-of-anthem))
+;;;
+;;; However many anthems which are not correct are producing beat estimates which are half the length.
+;;; Perhaps try shorter time periods that ShortAnthems?
+
+;;; (setf bad-downbeats-conservative (evaluation-of-anthems #'evaluate-downbeat-of-anthem))
+;;; (setf bad-downbeats-opportune (evaluation-of-anthems #'evaluate-downbeat-of-anthem))

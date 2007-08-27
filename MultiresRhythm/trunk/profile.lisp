@@ -1,10 +1,10 @@
-;;;; Profile skeleton-of-rhythm
+;;;; Profile analysis-of-rhythm
 
 (in-package :multires-rhythm)
 (use-package :nlisp)
 ;; (require 'sb-sprof)
 
-(time (skeleton-of-rhythm (anthem-rhythm (anthem-named 'australia))))
+(time (analysis-of-rhythm (anthem-rhythm (anthem-named 'australia))))
 ;; Length of Rhythm 38.5 seconds
 ;; CWT input signal length 7700 samples
 ;; Maximum time period analysed = 2048 samples, dyadic length = 8192 samples

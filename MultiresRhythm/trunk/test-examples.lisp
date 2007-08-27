@@ -219,9 +219,9 @@
 
 
 ;; (setf cliche-rhythm (load-octave-rhythm-file "longuet_cliche"))
-;; (multiple-value-setq (cliche-tactus cliche-scaleogram) (tactus-for-rhythm cliche-rhythm))
-;; (multiple-value-setq (cliche-skeleton cliche-scaleogram) (skeleton-of-rhythm cliche-rhythm))
-;; (plot-cwt cliche-scaleogram)
+;; (multiple-value-setq (cliche-tactus cliche-analysis) (tactus-for-rhythm cliche-rhythm))
+;; (setf cliche-analysis (analysis-of-rhythm cliche-rhythm))
+;; (plot-cwt (scaleogram cliche-analysis))
 
 ;;; Needs to have remaining time 
 (defun clap-to-iois (name iois &key (shortest-ioi (/ 120 17)))

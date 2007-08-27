@@ -33,8 +33,9 @@
 
 (defmethod annotate-rhythm ((rhythm-to-annotate rhythm))
   "Given the rhythm, produce an annotation of each note with respect to the tactus"
-  (let ((skeleton (skeleton-of-rhythm rhythm-to-annotate))
-	(tactus (select-longest-lowest-tactus skeleton))) ; This is the weak link in the chain...
+  (let* ((analysis (analysis-of-rhythm rhythm-to-annotate))
+	 (skeleton (skeleton analysis))
+	 (tactus (select-longest-lowest-tactus skeleton))) ; This is the weak link in the chain...
     (annotate-rhythm rhythm-to-annotate skeleton tactus)))
 
 ;;;; Austrian Folk song example of MTG
