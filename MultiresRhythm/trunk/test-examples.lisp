@@ -295,16 +295,16 @@
 
 ;;; For testing plotting
 ;; (setf plot-test-rhythm (load-octave-rhythm-file "intensity34_to_44" :description "intensity" :sample-rate 200))
-;; (multiple-value-setq (plot-test-tactus plot-test-scaleogram) (tactus-for-rhythm plot-test-rhythm))
-;; (plot-cwt+tactus-labelled plot-test-scaleogram plot-test-tactus plot-test-rhythm :magnitude-palette #'jet-colormap :phase-palette :greyscale)
+;; (multiple-value-setq (plot-test-tactus plot-test-analysis) (tactus-for-rhythm plot-test-rhythm))
+;; (plot-cwt+tactus-labelled (scaleogram plot-test-analysis) plot-test-tactus plot-test-rhythm :magnitude-palette #'jet-colormap :phase-palette :greyscale)
 
 ;;; Polyrhythms
 ;;; Sethares & Staley 2001 3 against 2 polyrhythm example.
 ;;; (clap-to-rhythm (add-rhythm (iois-to-rhythm "duple" (repeat-rhythm '(100 100 100 100) 4) :sample-rate 200)
 ;;;	                        (iois-to-rhythm "triple" (repeat-rhythm '(67 67 66 67 67 66) 4) :sample-rate 200)))
 ;;;
-;;; (multiple-value-bind (tactus rhythm-scaleogram) (tactus-for-rhythm polyrhythm)
-;;;		   (plot-scale-energy-at-times rhythm-scaleogram '(236)))
+;;; (multiple-value-bind (tactus rhythm-analysis) (tactus-for-rhythm polyrhythm)
+;;;		   (plot-scale-energy-at-times (scaleogram rhythm-analysis) '(236)))
 ;;;
 ;;; TODO need to increase tempo by 5% every eight beats. Should result in an increase in
 ;;; tempo of more than 25% over 15 seconds.

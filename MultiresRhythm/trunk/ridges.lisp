@@ -245,13 +245,6 @@
   			    :scales (list new-ridge-scale)
  			    :set-active t)))
 
-(defun make-monotone-ridge (constant-ridge-scale duration-in-samples &key (start 0))
-  "Creates a new ridge instance with a single scale spanning the given duration"
-  (make-instance 'ridge
-		 :start-sample start
-		 :scales (make-sequence 'list duration-in-samples :initial-element constant-ridge-scale)
-		 :set-active nil))
-
 ;;; TODO can we do it more functionally using substitute? Probably not because what we
 ;;; want to substitute is a modification of the data already there.
 (defun add-ridge-scale (prev-matching-scale new-scale active-ridges)
@@ -312,6 +305,13 @@
        finally (return (mapcar #'reverse-time all-ridges))))
 
 ;; TODO Or should the tempo preferencing influence the selection rather than the ridge height?
+
+(defun make-monotone-ridge (constant-ridge-scale duration-in-samples &key (start 0))
+  "Creates a new ridge instance with a single scale spanning the given duration"
+  (make-instance 'ridge
+		 :start-sample start
+		 :scales (make-sequence 'list duration-in-samples :initial-element constant-ridge-scale)
+		 :set-active nil))
 
 (defmethod scales-as-array ((the-ridge ridge))
   "Returns the scales list as an nlisp array"

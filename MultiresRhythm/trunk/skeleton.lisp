@@ -122,6 +122,7 @@ correlated-ridge-scale-peaks, but without variation in value."
     (dolist (ridge (ridges skeleton-to-analyse) tf-plane)
       (insert-ridge ridge tf-plane :constant-value 1d0))))
 
+;;; TODO perhaps I should be using the correlated ridge scale peaks, using the weighting?
 (defmethod ridge-persistency-of-skeleton ((skeleton-to-analyse skeleton))
     (scale-persistency (make-ridge-plane skeleton-to-analyse)))
 

@@ -45,6 +45,9 @@
 (defgeneric rhythm-iois (rhythm-to-analyse)
   (:documentation "Given a rhythm, returns IOIs specified in seconds."))
 
+(defgeneric rhythm-iois-samples (rhythm-to-analyse)
+  (:documentation "Given a rhythm, returns IOIs specified in samples."))
+
 (defgeneric save-rhythm (rhythm-to-save)
   (:documentation "Writes the rhythm to a MusicKit scorefile."))
 
@@ -157,6 +160,9 @@
 (defmethod rhythm-iois ((rhythm-to-analyse rhythm))
   (.diff (onsets-in-seconds rhythm-to-analyse)))
 
+(defmethod rhythm-iois-samples ((rhythm-to-analyse rhythm))
+  (.diff (onsets-in-samples rhythm-to-analyse)))
+
 ;;; Old plot-rhythm: (plot-rhythm :reset t :aspect-ratio 0.66
 ;;; :maximum-indices 10
 (defmethod plot-rhythm ((rhythm-to-plot rhythm) &key 
@@ -186,6 +192,24 @@
 		    (format nil "Time in samples (~dHz sample rate)" (sample-rate rhythm-to-plot)))
 	:ylabel "Normalised Intensity"
 	:title (format nil "Rhythm of ~a" (name rhythm-to-plot))
+	:aspect-ratio aspect-ratio
+	:reset nil))
+
+(defun rhythm-plot (rhythm-to-plot window-dimensions title &key 
+		    (time-in-seconds nil)
+		    (aspect-ratio 0.1))
+  (plot-command "set xrange [0:~d]" (duration-in-samples rhythm-to-plot)) ; ensures last label plotted
+  (plot-command "set yrange [0:1.2]")	; Gives some height for the key.
+  (plot-command "set format y \"%3.1f\"")
+  (plot-command "set ytics 0.0, 0.20, 1.0")
+  (plot-command "unset key")
+  (plot (time-signal rhythm-to-plot) nil
+	;; :label (format nil "Rhythm onsets of ~a" (description rhythm-to-plot))
+	:style "impulses linetype 6"
+	:xlabel (if time-in-seconds "Time in seconds"
+		    (format nil "Time in samples (~dHz sample rate)" (sample-rate rhythm-to-plot)))
+	:ylabel "Normalised Intensity"
+	:title (format nil "Rhythm of ~a" title)
 	:aspect-ratio aspect-ratio
 	:reset nil))
 

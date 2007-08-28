@@ -183,7 +183,11 @@
   "Plot the magnitude in greyscale overlaid with the computed tactus in red, the phase
    overlaid with the tactus in black."
   (let ((axes-labels (axes-labelled-in-seconds scaleogram-to-plot (sample-rate analysis-rhythm) time-axis-decimation)))
-    (plot-images (list (list #'magnitude-image 
+    (plot-images (list ;; (list #'rhythm-plot
+;; 			     (list analysis-rhythm)
+;; 			     '((1.0 0.25) (0.0 0.3))
+;; 			     axes-labels)
+		       (list #'magnitude-image 
 			     (list (scaleogram-magnitude scaleogram-to-plot))
 			     '((1.0 0.5) (0.0 0.3))
 			     axes-labels)

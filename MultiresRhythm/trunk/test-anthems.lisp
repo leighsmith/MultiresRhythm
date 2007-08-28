@@ -134,10 +134,10 @@
 
 ;; (defun bar-scale-for-anthem (anthem &key (tactus-selector #'select-longest-lowest-tactus))
 ;;   "Returns the scale of the given anthem matching the bar duration"
-;;   (multiple-value-bind (computed-tactus rhythm-scaleogram)
+;;   (multiple-value-bind (computed-tactus rhythm-analysis)
 ;;       (tactus-for-rhythm (anthem-rhythm anthem) :tactus-selector tactus-selector)
 ;;     (format t "computed tactus ~a~%" computed-tactus)
-;;     (bar-scale-number (bar-scale anthem (voices-per-octave rhythm-scaleogram)))))
+;;     (bar-scale-number (bar-scale anthem (voices-per-octave (scaleogram rhythm-analysis))))))
 
 (defun anacrusis-notes (anthem)
   "Return the sample times of notes of the anacrusis, prior to the downbeat"
@@ -161,7 +161,7 @@
 (defun clap-to-anthem (anthem)
   (clap-to-rhythm (anthem-rhythm anthem) :start-from-beat (downbeat-number anthem)))
 
-;; (time (clap-to-anthem (anthem# 32))
+;; (time (clap-to-anthem (anthem-named 'america)))
 ;; (save-rhythm-and-claps (anthem-rhythm (anthem-named 'america)) (clap-to-anthem (anthem-named 'america)))
 
 (defun generate-anthem-skeletons (&key (count (length *national-anthems*)) 

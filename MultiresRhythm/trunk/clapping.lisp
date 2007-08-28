@@ -73,9 +73,12 @@
 			   (start-from-beat 1)
 			   (tactus-selector #'select-longest-lowest-tactus))
   "Returns a set of sample times to clap to given the supplied rhythm"
-  (multiple-value-bind (computed-tactus rhythm-scaleogram)
+  (multiple-value-bind (computed-tactus rhythm-analysis)
       (tactus-for-rhythm performed-rhythm :tactus-selector tactus-selector)
-    (clap-to-tactus-phase performed-rhythm rhythm-scaleogram computed-tactus :start-from-beat start-from-beat)))
+    (let* ((beat-period (beat-period-of-rhythm performed-rhythm (skeleton rhythm-analysis)))
+	   (start-from-beat (find-downbeat performed-rhythm beat-period)))
+      (clap-to-tactus-phase performed-rhythm (scaleogram rhythm-analysis) computed-tactus
+			   :start-from-beat start-from-beat))))
 
 (defun save-rhythm-and-claps (original-rhythm clap-at)
   "Writes out the rhythm and the handclaps to a scorefile"

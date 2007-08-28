@@ -47,46 +47,6 @@
     (format t "datum-time-support ~f~%" datum-time-support)
     (sort ratios-to-datum #'<)))
 
-(defun anthem-anacrusis (anthem &key (length-limit 16384))
-  "Plots the profiles of the first first-notes number of notes in the rhythm"
-  ;; retrieve the first set of onset times of the anacrusis.
-  (multiple-value-bind (skeleton scaleogram ridge-scale-peaks)
-      (skeleton-of-rhythm (limit-rhythm (anthem-rhythm anthem) :maximum-samples length-limit))
-    (let* ((description (anthem-name anthem))
-	   (anacrusis-note-times (anacrusis-notes anthem))
-	   (times-in-samples (nlisp::array-to-list anacrusis-note-times))
-	   (local-pc (local-phase-congruency (scaleogram-magnitude scaleogram) (scaleogram-phase scaleogram)))
-	   (lpc-at-time (./ (.partial-sum local-pc) (.array-dimension local-pc 0)))
-	   (pc (phase-congruency (scaleogram-magnitude scaleogram) (scaleogram-phase scaleogram)))
-	   (ridges-on-notes (mapcar (lambda (time) (ridges-at-time skeleton time)) times-in-samples)))
-      (format t "times-in-samples ~a~%" times-in-samples)
-      (format t "number of ridges at notes ~a~%" (mapcar #'length ridges-on-notes))
-      (format t "phase congruency at notes ~a~%" (.arefs pc anacrusis-note-times))
-      (format t "summed local phase congruency at notes ~a~%" (.arefs lpc-at-time anacrusis-note-times))
-      (format t "ridge ratios ~a~%" (ridge-ratios-at-time (first ridges-on-notes) (caar ridges-on-notes) (first times-in-samples)))
-      (plot-highlighted-ridges scaleogram '() ridge-scale-peaks :title description)
-      (window)
-      (nplot (list pc) nil :title (format nil "phase congruency of ~a" description) :aspect-ratio 0.66)
-      (window)
-      (let ((bar-scale-index (- (number-of-scales scaleogram)
-				(round (bar-scale anthem (voices-per-octave scaleogram)))))
-	    (beat-scale-index (- (number-of-scales scaleogram)
-				 (round (beat-scale anthem (voices-per-octave
-							    scaleogram))))))
-	(format t "beat scale index ~a, bar scale index ~a~%" beat-scale-index bar-scale-index)
-	(reset-plot)
-	(plot-command "set arrow 1 from ~d,0.2 to ~d,0.15" bar-scale-index bar-scale-index)
-	(plot-command "set arrow 2 from ~d,0.2 to ~d,0.15" beat-scale-index beat-scale-index)
-	(plot-command "show arrow 1")
-	(plot-command "show arrow 2")
-	(plot-scale-energy-at-times scaleogram times-in-samples :description description))
-      ridges-on-notes)))
-
-;; (setf american-ridges (anthem-anacrusis (anthem-named 'america)))
-;; (setf australian-ridges (anthem-anacrusis (anthem-named 'australia)))
-;; (anthem-anacrusis (anthem-named 'vietnam))
-;; (anthem-anacrusis (anthem-named 'finland))
-
 (defgeneric accent-rhythm (rhythm-to-accent start-onset period &key accent))
 
 (defmethod accent-rhythm ((rhythm-to-accent rhythm) start-onset period &key (accent 1.25d0))
@@ -104,35 +64,6 @@ start-onset, these measures are in samples"
     (setf (.arefs scaled-time-signal onset-times) scaled-notes)
     (setf (time-signal rhythm-to-accent) scaled-time-signal)
     rhythm-to-accent))
-
-(defun accented-anthem-rhythm (anthem)
-  "Accents the anthem rhythm according to the transcribed anacrusis and measure"
-  (accent-rhythm (anthem-rhythm anthem) 
-		 (anthem-duration-in-samples anthem (anthem-anacrusis-duration anthem))
-		 (anthem-duration-in-samples anthem (anthem-bar-duration anthem))))
-
-(defun plot-scaleogram-skeleton-of-anthem-accented (anthem &key (voices-per-octave 16))
-  "Plot the ridges in greyscale and the highlighted ridges in red."
-  (let ((anthem-rhythm (accented-anthem-rhythm anthem)))
-    (multiple-value-bind (skeleton rhythm-scaleogram correlated-ridge-scale-peaks) 
-	(skeleton-of-rhythm anthem-rhythm :voices-per-octave voices-per-octave)
-      (let* ((time-axis-decimation 4)
-	     (formatting "set title font \"Times,20\"~%set xlabel font \"Times,20\"~%set ylabel font \"Times,20\"")
-	     (axes-labels (axes-labelled-in-seconds rhythm-scaleogram (sample-rate anthem-rhythm) time-axis-decimation))
-	     (highlighted-ridges (list (canonical-bar-ridge anthem rhythm-scaleogram))))
-      (format t "Plotting images~%")
-      (plot-images (list (list #'magnitude-image 
-			       (list (scaleogram-magnitude rhythm-scaleogram))
-			       '((1.0 1.0) (0.0 0.3))
-			       (concatenate 'string axes-labels formatting))
-			 (list #'highlighted-ridges-image
-			       (list (mapcar #'copy-object highlighted-ridges)  correlated-ridge-scale-peaks)
-			       '((1.0 1.0) (0.0 0.0))
-			       (concatenate 'string axes-labels formatting))) ; ':xlabel "Time (Seconds)"
-		   :title (name anthem-rhythm)
-		   :time-axis-decimation time-axis-decimation)))))
-
-;; (plot-scaleogram-skeleton-of-anthem-accented (anthem-named 'america))
 
 (defun long-silence-dyadic-pad (signal &key (silence-pad t))
   "Pad at double the dyadic length"
@@ -174,31 +105,51 @@ start-onset, these measures are in samples"
 ;; (clap-to-rhythm rhythm :tactus-selector (lambda (skeleton) (ridge-containing-scale-and-time skeleton 120 0)))
 
 
-;;; TODO needs to be independent of anthems, should accept a rhythm instead.
-(defun make-beat-period (anthem)
+;;; TODO could weight by the energy density value when creating the persistency profile.
+(defmethod beat-period-of-rhythm ((rhythm-to-analyse rhythm) (skeleton-to-analyse skeleton))
   "Find the beat level as the highest peak in the ridge persistency profile weighted by absolute tempo."
-  (let* ((ridge-persistency-profile (ridge-persistency-of-anthem anthem))
-	 (vpo 16)			; TODO needs to be based on the scaleogram.
-	 (sample-rate 200)		; TODO needs to be based on the rhythm
+  (let* ((ridge-persistency-profile (ridge-persistency-of-skeleton skeleton-to-analyse))
+	 (vpo (voices-per-octave skeleton-to-analyse))
+	 (sample-rate (sample-rate rhythm-to-analyse))
 	 (salient-scale (preferred-tempo-scale vpo sample-rate))
 	 (tempo-beat-preference (.column (tempo-salience-weighting salient-scale 
 								   (list (.length ridge-persistency-profile) 1)) 0))
-	 (weighted-persistency-profile (.* ridge-persistency-profile tempo-beat-preference))
+ 	 (weighted-persistency-profile (.* ridge-persistency-profile tempo-beat-preference))
 	 (beat-scale (position (.max weighted-persistency-profile) (val weighted-persistency-profile)))
-	 (beat-period (time-support beat-scale vpo))
-	 (official-beat-scale (beat-scale anthem vpo)))
+	 (beat-period (time-support beat-scale vpo)))
+    (format t "Computed beat as scale ~a, period ~a samples~%" beat-scale beat-period)
     (nplot (list ridge-persistency-profile tempo-beat-preference weighted-persistency-profile) nil
-	   :legends '("Original ridge persistency" "absolute tempo preference profile" "weighted persistency profile"))
-    (format t "beat-scale ~a, beat-period ~a~%" beat-scale beat-period)
-    (format t "official beat-scale ~a, official beat period ~a~%" 
-	    official-beat-scale (time-support official-beat-scale vpo))))
+	   :title (format nil "Ridge persistency profile for ~a" (name rhythm-to-analyse))
+	   :legends '("Original ridge persistency" "absolute tempo preference profile" "weighted persistency profile") 
+	   :aspect-ratio 0.66)
+    beat-period))
 
-;; (make-beat-period (anthem-named 'australia))
-;; (make-beat-period (anthem-named 'america))
-;; (make-beat-period (anthem-named 'vietnam))
-;; (make-beat-period (anthem-named 'ghana))
-;; (make-beat-period (anthem-named 'tunisia))
+;;; It is possible for  beat-period-of-rhythm to erroneously produce a beat-period which
+;;; is longer than any interval in the rhythm. This causes find-downbeat to return nil.
 
-;;; 2. Starting from the beginning of the piece, look for the first duration longer than
-;;; the beat duration.
-;;; 3. The beat before this longer duration is the downbeat.
+;;; We skip until we find truly the first longer interval (not equal to beat period) and
+;;; then count back from there, or more logically, not start clapping until after that
+;;; beat. So this is a conservative downbeat finder. The opportune finder uses #'<= and
+;;; accepts the first occurance of the current beat period or longer as the downbeat.
+;;; Alternatively if the longer interval is not within the starting beats, accept the beat
+;;; period as the next best bet. Starting beats need to be defined as a multiple of the
+;;; beat period.
+(defmethod find-downbeat ((rhythm-to-analyse rhythm) beat-period &key (strategy #'<))
+  "Given the beat period, returns the number of the downbeat, skipping any anacrusis"
+  (let* ((iois (rhythm-iois-samples rhythm-to-analyse)) ; Create the time intervals from the rhythm time signal.
+	 ;; Starting from the beginning of the piece, look for the first duration longer than the beat duration.
+	 (first-downbeat-interval (position (round beat-period) (val (.row iois 0)) :test strategy)))
+    ;; (format t "~a~%" strategy)
+    (if (not first-downbeat-interval)	; if unable to find an interval longer than the beat-period
+	(position (round beat-period) (val (.row iois 0)) :test #'=) ; use the first beat period.
+	;; The beat starting this longer duration is the downbeat.
+	first-downbeat-interval)))
+
+;;; Probably need to determine downbeat by assessing syncopation, not necessarily first
+;;; beat in bar? Downbeats are maximally non-syncopating positions. Syncopation occurs
+;;; from a phase change in a periodic rhythm signal. Alternatively, rather than accepting
+;;; the first longer period than the beat period, perhaps we need to rate longer periods
+;;; as more likely to be the downbeat, i.e if there's a long period, but an even longer
+;;; period out of phase, accept the longest period as the more likely.
+
+
