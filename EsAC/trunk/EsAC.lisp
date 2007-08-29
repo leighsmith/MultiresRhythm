@@ -5,23 +5,19 @@
 ;;;; Essen folksong database decoder to anthems internal notation format.
 ;;;; 03/03/2003 Henkjan Honing
 ;;;; Updated by Leigh M. Smith <lsmith@science.uva.nl>
+;;;;
+;;;; TODO:
+;;;; meter decoding, currently all "Frei" meter are skipped.
+;;;; extendibility, keyword for anthems slots
 
 (defpackage #:esac (:use #:cl #:asdf)
 	    (:export :read-esac-file))
 
 (in-package :esac)
 
-;; ;evaluate whole file, and code in red here:
+;;; test:
+;; (setf essen-folksongs (read-esac-file #P"/Users/leigh/Research/Data/EsAC/Essen Folksongs_utf8.txt"))
 ;;
-;; (def-logical-directory "DATABASES"   "Honing HD:HH:PROJECTS:DOP-BEAT [master]:database:")
-;; (def-logical-directory "CONVERSIONS" "Honing HD:HH:PROJECTS:DOP-BEAT [master]:conversions:")
-;;
-;; (def-logical-directory "DATABASES"   "Projects:Essen Folksong collection:database:")
-;; (def-logical-directory "CONVERSIONS" "Projects:Essen Folksong collection:conversions:")
-;;
-;; ;(choose-file-dialog)
-;;
-;; ;test
 ;; (read-records-from-file :in-file  "DATABASES;Ani:Han1.sm"
 ;;                         :out-file "Honing HD:Users:honing:Desktop:test.txt")
 ;;
@@ -44,10 +40,6 @@
 ;;                         :ensure-meter nil)
 
 
-;; TODO:
-;; meter decoding, now all "Frei" meter are skipped
-;; extendibility, keyword for anthems slots
-;; module in poco
 
 
 ;**************************************************************************************
@@ -56,38 +48,34 @@
 
 (defmethod read-esac-file ((in-pathname pathname) &key (ensure-meter t))
   (with-open-file (in-stream in-pathname :direction :input)
-    (read-melodies in-stream t ensure-meter)))
+    (read-melodies in-stream ensure-meter)))
 
-(defun read-melodies (in out &optional (ensure-meter t))
-  (loop with skipped = 0
-        with count = 0
-        for pos from 0 
-        as new = (read-record in (file-position in))
-        when (null new)
-        do (progn (format t "~%; N=~A, skipped=~A" count skipped) (return))
-        else  
-        do (let* ((key (select-ID-info new))
-                  (object (convert-to-anthems-format 
-                           (list key  (convert-melody-to-onset-pattern (select-mel new)))
-                           :region (select-slot 'reg new)
-                           :title (or (select-slot 'cut new) 
-                                   (string (car key)))
-                           :ensure-meter ensure-meter
-                           )))
-             (if object 
-               (progn 
-                 (incf count)
-                 (print object out))
-               (progn 
-                 (incf skipped))))))
+(defun anthem-from-esac (esac-record &optional (ensure-meter t))
+  (let ((key (select-ID-info esac-record)))
+    (convert-to-anthems-format 
+     (list key  (convert-melody-to-onset-pattern (select-mel esac-record)))
+     :region (select-slot 'reg esac-record)
+     :title (or (select-slot 'cut esac-record) (string (car key)))
+     :ensure-meter ensure-meter)))
 
+(defun read-melodies (in &optional (ensure-meter t))
+  (loop  
+     with skipped = 0
+     for pos from 0 
+     as new-esac-record = (read-record in (file-position in))
+     until (null new-esac-record)
+     for anthem-record = (anthem-from-esac new-esac-record ensure-meter)
+     when anthem-record
+     collect anthem-record into all-records
+     else do (incf skipped)
+     finally (progn (format t "~%; skipped=~A" skipped) (return all-records))))
 
 (defun read-records (stream)
   (loop for pos from 0 
-        as new = (read-record stream (file-position stream))
-        collect new into result
-        ;do (print new)
-        when (null new)
+        as new-esac-record = (read-record stream (file-position stream))
+        collect new-esac-record into result
+        ;do (print new-esac-record)
+        when (null new-esac-record)
         do (return result)))
 
 (defun read-record (stream &optional (position 0))
