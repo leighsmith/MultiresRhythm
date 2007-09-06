@@ -11,7 +11,9 @@
 ;;;; In nlisp (Matlab-alike Common Lisp library www.nlisp.info)
 ;;;;
 
-(defpackage #:shoe (:use #:cl #:asdf))
+(require 'multiresrhythm)
+
+(defpackage #:shoe (:use #:cl #:asdf #:multires-rhythm))
 
 (in-package :shoe)
 
@@ -24,12 +26,13 @@
 	       (:file "02 tap functions")
 	       (:file "04 trace printer")
 	       (:file "10 LHL82 microversion")
+	       (:file "correct_fraction")
+	       (:file "random_generators")
 	       (:file "anthem-evaluation")))
 
 ;;; Original files:
 ;; "00 shoe-graphics"
 ;;  "03 foot tapper"
-;;  "10 LHL82 microversion" 
 ;;  "11 LH shoe micro version" 
 ;;  "12 LEE85 microversion"))
 
