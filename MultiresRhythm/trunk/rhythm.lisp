@@ -160,8 +160,9 @@
 (defmethod rhythm-iois ((rhythm-to-analyse rhythm))
   (.diff (onsets-in-seconds rhythm-to-analyse)))
 
+;;; need to extract the first row while .diff is silly.
 (defmethod rhythm-iois-samples ((rhythm-to-analyse rhythm))
-  (.diff (onsets-in-samples rhythm-to-analyse)))
+  (.row (.diff (onsets-in-samples rhythm-to-analyse)) 0)) 
 
 ;;; Old plot-rhythm: (plot-rhythm :reset t :aspect-ratio 0.66
 ;;; :maximum-indices 10
