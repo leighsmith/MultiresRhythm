@@ -59,6 +59,9 @@
 (defgeneric scale-range (ridge)
   (:documentation "Returns the range of scales of a ridge"))
 
+(defgeneric scales-in-ridge (ridge)
+  (:documentation "Returns a list of the scales the ridge spans"))
+
 (defgeneric scales-as-array (ridge)
   (:documentation "Returns the scales list as an nlisp array"))
 
@@ -121,6 +124,10 @@
   (let* ((scales (scales-as-array the-ridge)))
     (- (.max scales) (.min scales))))
     
+(defmethod scales-in-ridge ((the-ridge ridge))
+  "Returns a list of the scales the ridge spans"
+  (remove-duplicates (scales the-ridge) :from-end t))
+
 (defmethod .decimate ((the-ridge ridge) reduce-list &key (start-indices '(0 0)))
   "Returns the ridge instance with it's data decimated using the decimation-parameter-list"
   (declare (ignore start-indices))
