@@ -106,6 +106,9 @@ start-onset, these measures are in samples"
 
 
 ;;; TODO could weight by the energy density value when creating the persistency profile.
+;;; We would do this by ridge-persistency-of-skeleton using the ridge-peaks rather than
+;;; computing a new binary valued set of peaks. This would be more efficient even if we
+;;; reverted to using the binary values as we would just use (.> ridge-peaks 0).
 (defmethod beat-period-of-rhythm ((rhythm-to-analyse rhythm) (skeleton-to-analyse skeleton))
   "Find the beat level as the highest peak in the ridge persistency profile weighted by absolute tempo."
   (let* ((ridge-persistency-profile (ridge-persistency-of-skeleton skeleton-to-analyse))
@@ -117,15 +120,30 @@ start-onset, these measures are in samples"
  	 (weighted-persistency-profile (.* ridge-persistency-profile tempo-beat-preference))
 	 (beat-scale (position (.max weighted-persistency-profile) (val weighted-persistency-profile)))
 	 (beat-period (time-support beat-scale vpo)))
-    (format t "Computed beat as scale ~a, period ~a samples~%" beat-scale beat-period)
-    (nplot (list ridge-persistency-profile tempo-beat-preference weighted-persistency-profile) nil
+    (format t "Computed beat as scale ~a, period ~a samples, ~a seconds~%" 
+	    beat-scale beat-period (/ beat-period sample-rate))
+    (window)
+    ;; (plot-command "set xtics (~{~{\"~d\" ~5d~}~^, ~})~%" (label-scale-as-time-support skeleton-to-analyse))
+    (plot-command "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
+		  (label-scale-as-time-support-seconds skeleton-to-analyse sample-rate))
+    (nplot (mapcar #'.reverse (list ridge-persistency-profile tempo-beat-preference weighted-persistency-profile))
+	   nil
 	   :title (format nil "Ridge persistency profile for ~a" (name rhythm-to-analyse))
 	   :legends '("Original ridge persistency" "absolute tempo preference profile" "weighted persistency profile") 
-	   :aspect-ratio 0.66)
+	   :aspect-ratio 0.66
+	   :reset nil)
+    (close-window)
     beat-period))
 
-;;; It is possible for  beat-period-of-rhythm to erroneously produce a beat-period which
-;;; is longer than any interval in the rhythm. This causes find-downbeat to return nil.
+;;(setf prob-distribution (./ weighted-persistency-profile (.sum weighted-persistency-profile)))
+;;(setf expected-beat-scale (.sum (.* (.iseq 0 (1- (.length weighted-persistency-profile))) prob-distribution)))
+
+(defun is-greater-rhythmic-period (original comparison &key (number-of-voices-different 2.0)
+				   (voices-per-octave 16) ;; TODO this is problematic, needs setting for each run.
+				   (minimum-differing-ratio (expt 2 (/ number-of-voices-different voices-per-octave))))
+  "Checks if the comparison is greater than the difference in period of number-of-voices-different voices"
+  ;; (format t "comparison-ratio ~f minimum-differing-ratio ~f~%" (/ comparison original) minimum-differing-ratio)
+  (> (- (/ comparison original) minimum-differing-ratio) 0.00001))
 
 ;;; We skip until we find truly the first longer interval (not equal to beat period) and
 ;;; then count back from there, or more logically, not start clapping until after that
@@ -134,14 +152,18 @@ start-onset, these measures are in samples"
 ;;; Alternatively if the longer interval is not within the starting beats, accept the beat
 ;;; period as the next best bet. Starting beats need to be defined as a multiple of the
 ;;; beat period.
+;;; It is possible for  beat-period-of-rhythm to erroneously produce a beat-period which
+;;; is longer than any interval in the rhythm. This causes find-downbeat to return nil.
 (defmethod find-downbeat ((rhythm-to-analyse rhythm) beat-period &key (strategy #'<))
   "Given the beat period, returns the number of the downbeat, skipping any anacrusis"
   (let* ((iois (rhythm-iois-samples rhythm-to-analyse)) ; Create the time intervals from the rhythm time signal.
 	 ;; Starting from the beginning of the piece, look for the first duration longer than the beat duration.
-	 (first-downbeat-interval (position (round beat-period) (val (.row iois 0)) :test strategy)))
+	 (first-downbeat-interval (position (round beat-period) (val iois) :test strategy)))
     ;; (format t "~a~%" strategy)
     (if (not first-downbeat-interval)	; if unable to find an interval longer than the beat-period
-	(position (round beat-period) (val (.row iois 0)) :test #'=) ; use the first beat period.
+	(progn (format t "Unable to find an interval longer than beat period in IOIs ~a~%" iois)
+	       (find-downbeat rhythm-to-analyse (/ beat-period 2d0) :strategy strategy)) ; use half the beat period.
+;;	       (position (round beat-period) (val iois) :test #'=)) ; use the first beat period.
 	;; The beat starting this longer duration is the downbeat.
 	first-downbeat-interval)))
 
