@@ -70,15 +70,15 @@
     clap-at))
 
 (defmethod clap-to-rhythm ((performed-rhythm rhythm) &key 
-			   (start-from-beat 1)
+			   (start-from-beat 1 downbeat-supplied-p)
 			   (tactus-selector #'select-longest-lowest-tactus))
   "Returns a set of sample times to clap to given the supplied rhythm"
   (multiple-value-bind (computed-tactus rhythm-analysis)
       (tactus-for-rhythm performed-rhythm :tactus-selector tactus-selector)
     (let* ((beat-period (beat-period-of-rhythm performed-rhythm (skeleton rhythm-analysis)))
-	   (start-from-beat (find-downbeat performed-rhythm beat-period)))
+	   (found-downbeat (find-downbeat performed-rhythm beat-period :strategy #'is-greater-rhythmic-period)))
       (clap-to-tactus-phase performed-rhythm (scaleogram rhythm-analysis) computed-tactus
-			   :start-from-beat start-from-beat))))
+			   :start-from-beat (if downbeat-supplied-p start-from-beat found-downbeat)))))
 
 (defun save-rhythm-and-claps (original-rhythm clap-at)
   "Writes out the rhythm and the handclaps to a scorefile"
