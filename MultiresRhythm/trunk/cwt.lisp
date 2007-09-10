@@ -70,7 +70,8 @@
 (defmethod number-of-scales ((scaleogram-to-analyse scaleogram))
   (.row-count (scaleogram-magnitude scaleogram-to-analyse)))
 
-(defmethod number-of-octaves ((scaleogram-to-analyse scaleogram))
+;;; could be a skeleton or a scaleogram. Perhaps this can be represented by (or scaleogram skeleton)?
+(defun number-of-octaves (scaleogram-to-analyse)
   (+ (/ (number-of-scales scaleogram-to-analyse) (voices-per-octave scaleogram-to-analyse))
      (skip-highest-octaves scaleogram-to-analyse)))
 

@@ -51,7 +51,7 @@
 ;;;; Methods
 
 ;; We reverse the labels so we plot in more intuitive lowest scale on the left orientation.
-(defmethod label-scale-as-time-support ((scaleogram-to-plot scaleogram))
+(defun label-scale-as-time-support (scaleogram-to-plot)
   "Generates a set of labels of the scales as time support interval"
   (let* ((vpo (voices-per-octave scaleogram-to-plot))
 	 (scale-number-per-octave (.* (.iseq 0 (number-of-octaves scaleogram-to-plot)) vpo))
@@ -61,7 +61,8 @@
        for position across (val scale-number-per-octave)
        collect (list label position)))) ; Should return label as a string.
 
-(defmethod label-scale-as-time-support-seconds ((scaleogram-to-plot scaleogram) sample-rate)
+;; Works with scaleogram or skeleton.
+(defun label-scale-as-time-support-seconds (scaleogram-to-plot sample-rate)
   "Generates a set of labels of the scales as time support intervals in seconds"
   (mapcar (lambda (label-and-index) 
 	    (cons (/ (first label-and-index) sample-rate) (rest label-and-index)))
