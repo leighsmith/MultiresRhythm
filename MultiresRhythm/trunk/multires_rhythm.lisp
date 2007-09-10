@@ -380,11 +380,11 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
 		     ;; :phase-palette :greyscale
 		     ;; :magnitude-palette :jet
 		     :title (name analysis-rhythm))
-    ;; (plot-highlighted-ridges scaleogram 
-    ;; chosen-tactus-list
-    ;; (ridge-peaks analysis)
-    ;; :title (name analysis-rhythm)
-    ;; :sample-rate (sample-rate analysis-rhythm))
+    (plot-highlighted-ridges (scaleogram analysis)
+			     chosen-tactus-list
+			     (ridge-peaks analysis)
+			     :title (name analysis-rhythm)
+			     :sample-rate (sample-rate analysis-rhythm))
     (format t "Finished plotting scalograms~%")
     (values chosen-tactus-list analysis)))
 
@@ -415,7 +415,7 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
 
 (defmethod read-mra-from-file ((path-to-read pathname))
   "Reads and returns a multires-analysis instance, returns nil when EOF"
-  (make-instance 'multires-rhythm
+  (make-instance 'multires-analysis
 		 :skeleton (read-skeleton-from-file (make-pathname :defaults path-to-read :type "skeleton"))
 		 :scaleogram (read-scaleogram-from-file (make-pathname :defaults path-to-read :type "scaleogram"))
 		 :ridge-peaks (.load-octave-file (make-pathname :defaults path-to-read :type "peaks"))))
@@ -428,5 +428,5 @@ otherwise, generates them and writes to disk."
     (if (probe-file (make-pathname :defaults cache-root-pathname :type "skeleton"))
 	(read-mra-from-file cache-root-pathname)
 	(let ((mra (analysis-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave)))
-	  (save-mra-to-file mra (list cache-root-pathname))
+	  (save-mra-to-file mra cache-root-pathname)
 	  mra))))
