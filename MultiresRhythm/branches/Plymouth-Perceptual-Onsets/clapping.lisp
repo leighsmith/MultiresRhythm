@@ -75,18 +75,21 @@
   "Returns a set of sample times to clap to given the supplied rhythm"
   (multiple-value-bind (computed-tactus rhythm-analysis)
       (tactus-for-rhythm performed-rhythm :tactus-selector tactus-selector)
-    (let* ((beat-period (beat-period-of-rhythm performed-rhythm (skeleton rhythm-analysis)))
-	   (found-downbeat (find-downbeat performed-rhythm beat-period :strategy #'is-greater-rhythmic-period)))
+;;    (let* ((beat-period (beat-period-of-rhythm performed-rhythm (skeleton rhythm-analysis)))
+    (let* ((beat-period (unweighted-beat-period-of-rhythm performed-rhythm (scaleogram rhythm-analysis)))
+	   (found-downbeat (if downbeat-supplied-p 
+			       start-from-beat 
+			       (find-downbeat performed-rhythm beat-period :strategy #'is-greater-rhythmic-period))))
       (clap-to-tactus-phase performed-rhythm (scaleogram rhythm-analysis) computed-tactus
-			   :start-from-beat (if downbeat-supplied-p start-from-beat found-downbeat)))))
+			   :start-from-beat found-downbeat))))
 
 (defun save-rhythm-and-claps (original-rhythm clap-at)
   "Writes out the rhythm and the handclaps to a scorefile"
-  (save-scorefile (format nil "/Users/leigh/~a.handclap.score" (name original-rhythm)) 
+  (save-scorefile (format nil "/Volumes/iDisk/Research/Data/Handclap Examples/~a.handclap.score" (name original-rhythm)) 
 		  (list (nlisp::array-to-list (onsets-in-seconds original-rhythm)) 
 			(nlisp::array-to-list (./ clap-at (* (sample-rate original-rhythm) 1d0))))
 		  :instrument "midi"
 		  :midi-channel 10
 		  :key-numbers (list *low-woodblock* *closed-hi-hat*)
-		  :description (format nil "Handclapping to ~a" (description original-rhythm))))
+		  :description (format nil "Handclapping to ~a" (name original-rhythm))))
 

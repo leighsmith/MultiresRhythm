@@ -107,10 +107,20 @@
   (if (> repeat 0)
       (append rhythm (repeat-rhythm rhythm (1- repeat)))))
 
-(defun time-of-beat (rhythm beat-number)
+;;; We use a threshold for non binary rhythms. With the threshold under 1, this will work
+;;; with binary rhythms also.
+(defun time-of-beat (rhythm beat-number &key (threshold 0.75d0))
   "Returns the sample number of the beat-number'th beat in the given rhythm"
-  (let* ((beat-positions (.find (time-signal rhythm))))
+  (let* ((beat-positions (.find (.> (time-signal rhythm) threshold))))
     (.aref beat-positions beat-number)))
+
+(defun threshold-rhythm (rhythm &key (threshold 0.75d0))
+  "Returns a binary valued rhythm based on the threshold"
+  (make-instance 'rhythm
+		 :name (name rhythm)
+		 :time-signal (.> (time-signal rhythm) threshold)
+		 :description ""
+		 :sample-rate (sample-rate rhythm)))
 
 (defun iois-to-rhythm (name iois &key 
 		       (shortest-ioi 1.0) 

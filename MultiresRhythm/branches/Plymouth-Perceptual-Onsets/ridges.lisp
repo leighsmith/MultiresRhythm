@@ -128,6 +128,10 @@
   "Returns a list of the scales the ridge spans"
   (remove-duplicates (scales the-ridge) :from-end t))
 
+;; (defmethod deviation-from-scale ((the-ridge ridge) scale)
+;; "Returns the sum-squared deviation of each scale along the ridge from the given scale"
+
+
 (defmethod .decimate ((the-ridge ridge) reduce-list &key (start-indices '(0 0)))
   "Returns the ridge instance with it's data decimated using the decimation-parameter-list"
   (declare (ignore start-indices))

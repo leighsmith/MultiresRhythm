@@ -57,12 +57,26 @@
 (defmethod onset-times ((sound-to-analyse sound))
   (./ (.* (.find (sound-signal sound-to-analyse)) 1d0) (sample-rate sound-to-analyse)))
 
+;;; Should be .length
+(defmethod sound-length ((sound-to-analyse sound))
+  (.length (sound-signal sound-to-analyse)))
+
+;; TODO SHould accept arbitary # of sounds.
+(defmethod sound-mix ((sound-to-mix1 sound) (sound-to-mix2 sound)) ; &rest sounds
+  (make-instance 'sound
+		 :sound-signal (.+ (sound-signal sound-to-mix1) (sound-signal sound-to-mix2))
+		 :sample-rate (sample-rate sound-to-mix1))) ; TODO should test SRs are all equal.
+
+		 
+(defmethod save-to-file ((sound-to-save sound) (path pathname))
+  (save-audio path (sound-signal sound-to-save) :sample-rate (sample-rate sound-to-save)))
+
 ;; (setf down-sampled (.floor (.* (onset-times jw-clicks) 200)))
 ;; (setf down-sampled-length (floor (* (.length (sound-signal jw-clicks)) (/ 200.0 44100.0))))
 ;; (setf down-sampled-rhythm (make-double-array down-sampled-length))
 ;; (setf (.arefs down-sampled-rhythm down-sampled) (make-double-array (.length down-sampled) :initial-element 1d0))
 ;; (plot down-sampled-rhythm nil)
-(setf jw-prelude-3 (make-instance 'rhythm :time-signal down-sampled-rhythm :name "jw prelude 3"))
+;; (setf jw-prelude-3 (make-instance 'rhythm :time-signal down-sampled-rhythm :name "jw prelude 3"))
 
 
 

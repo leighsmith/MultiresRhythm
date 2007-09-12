@@ -66,7 +66,7 @@
     (plot-cwt scaleogram :title "rising-harmonic")
     (plot-highlighted-ridges scaleogram () (scale-peaks-of-scaleogram scaleogram 200))))
 
-
+;; (plot-rising-harmonic)
 ;; (time (cwt (rising-harmonic-test) 16))
 
 (defun test-lpc (test-scaleogram)

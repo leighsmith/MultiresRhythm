@@ -47,9 +47,6 @@
     :initarg :scales
     :reader number-of-scales)))
 
-(defgeneric select-longest-lowest-tactus (skeleton)
-  (:documentation "Returns the longest duration and lowest scale ridge."))
-
 (defgeneric ridge-containing-scale-and-time (skeleton scale time-sample)
   (:documentation "Returns the ridge containing the given scale and time element."))
 
@@ -84,17 +81,6 @@
 ;; below the top value.
 
 ;; (first (longest-tactus-candidates skeleton))
-
-(defmethod select-longest-lowest-tactus ((skeleton-to-analyse skeleton))
-  "Returns the longest duration and lowest scale ridge."
-  (let ((max-ridge (make-instance 'ridge)))
-    (dolist (ridge (ridges skeleton-to-analyse))
-      (if (or (> (duration-in-samples ridge) (duration-in-samples max-ridge))
-	      ;; average-scale returns scale numbers indexed from the highest scales, so 
-	      (and (eql (duration-in-samples ridge) (duration-in-samples max-ridge))
-		   (> (average-scale ridge) (average-scale max-ridge))))
-	  (setf max-ridge ridge)))
-    (list max-ridge)))
 
 (defmethod ridge-containing-scale-and-time ((skeleton-to-analyse skeleton) scale time-sample)
   "Returns the ridge containing the given scale and time element."

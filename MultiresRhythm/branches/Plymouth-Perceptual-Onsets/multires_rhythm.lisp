@@ -46,6 +46,11 @@
   (:documentation "Reads the skeleton, scaleogram and ridge-scale-peaks from disk if they have been cached,
 otherwise, generates them and writes to disk, and returns a multires-analysis instance."))
 
+;;; Tactus selectors
+(defgeneric select-longest-lowest-tactus (rhythm-to-analyse multires-rhythm)
+  (:documentation "Returns the longest duration and lowest scale ridge."))
+
+
 ;;;; Implementation
 
 ;; Fastest scale for tactus 
@@ -368,12 +373,50 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
 		     :skeleton skeleton
 		     :ridge-peaks correlated-ridge-scale-peaks))))
 
+;;; Should all be in tactus-selection.lisp
+(defmethod select-tactus-by-beat-multiple ((performed-rhythm rhythm) (rhythm-analysis multires-analysis))
+  "Returns the ridges that are the most commonly occurring lowest integer multiples of the beat"
+  (let* ((skeleton (skeleton rhythm-analysis))
+	 (vpo (voices-per-octave skeleton))
+	 ;; TODO Try Gaussian weighting the scale-persistency?
+ 	 (beat-period (unweighted-beat-period-of-rhythm performed-rhythm (scaleogram rhythm-analysis)))
+ 	 ;; (beat-scale (scale-from-period beat-period vpo))
+ 	 (beat-multiples (.iseq 1 7))  ; determines the bar periods
+ 	 (candidate-bar-periods (.* beat-period beat-multiples))
+ 	 (candidate-bar-scales (scale-from-period candidate-bar-periods vpo)))
+    (format t "Checking multiples for beat period ~a, as ~a~%" beat-period (.round candidate-bar-scales))
+    (loop
+       for candidate-bar-scale across (val (.round candidate-bar-scales))
+       ;; Retrieve ridges possessing a candidate-bar-scale
+       for candidate-bar-scale-ridges = (ridges-containing-scale skeleton candidate-bar-scale)
+       ;; Measure total duration covered by all candidate bar scale ridges, 
+       for candidate-ridge-duration = (reduce #'+ (mapcar #'duration-in-samples candidate-bar-scale-ridges))
+       ;; TODO weight by distances of scales in ridge from the nominated scale.
+       ;; do (format t "For candidate-bar-scale ~a, period ~a~%" candidate-bar-scale (time-support candidate-bar-scale vpo))
+       ;; Longest total duration is the selected ridge.
+       maximizing candidate-ridge-duration into max-candidate-ridge-duration
+       collecting (list candidate-ridge-duration candidate-bar-scale-ridges) into ridge-totals
+       ;; finally (format t "candidate ridges and durations ~a~%" ridge-totals)
+       finally (return (second (find max-candidate-ridge-duration ridge-totals :key #'first))))))
+
+(defmethod select-longest-lowest-tactus ((performed-rhythm rhythm) (rhythm-analysis multires-analysis))
+  "Returns the longest duration and lowest scale ridge."
+  (let* ((skeleton-to-analyse (skeleton rhythm-analysis))
+	 (max-ridge (make-instance 'ridge)))
+    (dolist (ridge (ridges skeleton-to-analyse))
+      (if (or (> (duration-in-samples ridge) (duration-in-samples max-ridge))
+	      ;; average-scale returns scale numbers indexed from the highest scales, so 
+	      (and (eql (duration-in-samples ridge) (duration-in-samples max-ridge))
+		   (> (average-scale ridge) (average-scale max-ridge))))
+	  (setf max-ridge ridge)))
+    (list max-ridge)))
+
 (defmethod tactus-for-rhythm ((analysis-rhythm rhythm) 
 			      &key (voices-per-octave 16)
 			      (tactus-selector #'select-longest-lowest-tactus))
   "Returns the selected tactus given the rhythm."
   (let* ((analysis (analysis-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave))
-	 (chosen-tactus (funcall tactus-selector (skeleton analysis)))   ; select out the tactus from all ridge candidates.
+	 (chosen-tactus (funcall tactus-selector analysis-rhythm analysis))   ; select out the tactus from all ridge candidates.
 	 (chosen-tactus-list (if (listp chosen-tactus) chosen-tactus (list chosen-tactus))))
     (format t "Computed skeleton and chosen tactus ~a~%" chosen-tactus-list)
     (plot-cwt+ridges (scaleogram analysis) chosen-tactus-list analysis-rhythm
@@ -411,7 +454,7 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
       (format t "Writing ~a~%" scaleogram-filename) 
       (save-to-file (scaleogram analysis-to-write) scaleogram-filename)
       (format t "Writing ~a~%" ridge-peaks-filename)
-      (.save-to-octave-file (ridge-peaks analysis-to-write) ridge-peaks-filename)))x
+      (.save-to-octave-file (ridge-peaks analysis-to-write) ridge-peaks-filename)))
 
 (defmethod read-mra-from-file ((path-to-read pathname))
   "Reads and returns a multires-analysis instance, returns nil when EOF"

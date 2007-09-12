@@ -79,3 +79,16 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 					    (> center (aref a-val (+ r 2) c))) 1d0 0d0)))))
     r))
 
+;; Should be in signalprocessing.lisp
+(defun cumsum (a)
+  "Computes the cumulative summation across each row of the matrix"
+  (let* ((array-dimensions (.array-dimensions a))
+	 (a-val (val a))
+	 (cumsum (nlisp::narray-of-type a array-dimensions))
+	 (cumsum-val (val cumsum)))
+    (dotimes (r (first array-dimensions))
+      (setf (aref cumsum-val r 0) (aref a-val r 0))
+      (loop 
+	 for c from 1 below (second array-dimensions)
+	 do (setf (aref cumsum-val r c) (+ (aref cumsum-val r (1- c)) (aref a-val r c)))))
+    cumsum))

@@ -126,7 +126,8 @@
 	(.exp (.- (./ (.+ (.expt omega 2) (.expt omega0 2)) 2))))))
 
 ;;; Plot the gaussian envelope in the Fourier domain
-;;; (plot (.realpart (morlet-wavelet-fourier 1024 12)) nil)
+;;; (plot (.realpart (morlet-wavelet-fourier 1024 8)) nil)
+;;; (plot (.realpart (morlet-wavelet-fourier 1024 16)) nil)
 ;;; (plot (.realpart (morlet-wavelet-fourier 1024 128)) nil)
 
 (defun plot-time-domain-kernel (signal-time-period wavelet-scale &key (omega0 6.2))
@@ -145,7 +146,9 @@
 ;;; (plot-time-domain-kernel 1024 128 :omega0 5.3364)
 ;;; (plot-time-domain-kernel 1024 128 :omega0 5)
 ;;; (plot-time-domain-kernel 1024 128 :omega0 4)
-;;; (plot-time-domain-kernel 1024 12)
+;;; (plot-time-domain-kernel 1024 8)
+;;; (plot-time-domain-kernel 1024 16)
+;;; (plot-time-domain-kernel 1024 32)
 
 (defun scale-from-period (time-periods voices-per-octave &key (skip-initial-octaves 2))
   "Function to return a vector of scale numbers from periods of time support (in samples).
@@ -189,7 +192,7 @@
 	 ;; same as the mother wavelet. Scale the contribution of each voice by
 	 ;; its index as the coefficient has a representation 1/sqrt(a) * W(b,a).
 	 (voice-scaling (.sqrt period)))
-	 ;; voice-scaling = (.* voice-scaling (gauss number-of-scales))
+	 ;; (voice-scaling period))
 	 
     (format t "Maximum time period analysed = ~d samples, dyadic length = ~d samples~%" 
 	    maximum-time-period time-in-samples)
@@ -202,13 +205,13 @@
 		;; Construct the scaled wavelet in the frequency domain. It will be the same length
 		;; as the input-data, but mostly zero outside the Gaussian shape.
 		;; Multiply in the Fourier domain and take the inverse FFT, thereby producing the convolution.
-		(voice-response (ifft (.* input-data-FFT scaled-wavelet (.aref voice-scaling scale-index))))
+		(voice-response (ifft (.* input-data-FFT scaled-wavelet)))
 		;; Produce Magnitude/Phase components from Real/Imaginary values.
 		
 		;; TODO this is currently incorrectly scaled.
-		;; (magnitude-at-scale (./ (.abs voice-response) (.aref voice-scaling scale-index)))
+		(magnitude-at-scale (.* (.abs voice-response) (.aref voice-scaling scale-index)))
 		;; magnitude-at-scale = abs((voice-response .^ 2) ./ (.aref period scale-index)); 
-		(magnitude-at-scale (.abs voice-response))
+		;; (magnitude-at-scale (.abs voice-response))
 
 		(scale-row (list scale-index t)))
 
