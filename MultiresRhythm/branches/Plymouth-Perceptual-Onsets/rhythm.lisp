@@ -109,10 +109,17 @@
 
 ;;; We use a threshold for non binary rhythms. With the threshold under 1, this will work
 ;;; with binary rhythms also.
-(defun time-of-beat (rhythm beat-number &key (threshold 0.75d0))
+(defun time-of-beat (rhythm beat-numbers &key (threshold 0.9d0))
   "Returns the sample number of the beat-number'th beat in the given rhythm"
-  (let* ((beat-positions (.find (.> (time-signal rhythm) threshold))))
-    (.aref beat-positions beat-number)))
+  (let* ((time-signal (time-signal rhythm))
+	 (amplitude-range (.max time-signal))
+	 ;; we don't check the rectified-signal otherwise we will count beats twice.
+	 (beat-positions (.find (.> time-signal (* amplitude-range threshold)))))
+    (.aref beat-positions beat-numbers)))
+
+;; TODO This could be distinct, at the moment we are assuming the 'time' of the beat is the
+;; same as it's onset time.
+;; (defun onset-time-of-beat (rhythm beat-numbers)
 
 (defun threshold-rhythm (rhythm &key (threshold 0.75d0))
   "Returns a binary valued rhythm based on the threshold"

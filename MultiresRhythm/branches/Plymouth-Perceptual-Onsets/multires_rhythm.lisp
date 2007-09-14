@@ -30,6 +30,9 @@
 
 ;;;; Declarations (see rhythm.lisp for the class definition)
 
+(defgeneric choose-tactus (rhythm-to-analyse analysis &key tactus-selector)
+  (:documentation "Returns the selected tactus for the rhythm."))
+
 (defgeneric tactus-for-rhythm (rhythm-to-analyse &key voices-per-octave tactus-selector)
   (:documentation "Returns the selected tactus for the rhythm."))
 
@@ -49,7 +52,6 @@ otherwise, generates them and writes to disk, and returns a multires-analysis in
 ;;; Tactus selectors
 (defgeneric select-longest-lowest-tactus (rhythm-to-analyse multires-rhythm)
   (:documentation "Returns the longest duration and lowest scale ridge."))
-
 
 ;;;; Implementation
 
@@ -411,6 +413,32 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
 	  (setf max-ridge ridge)))
     (list max-ridge)))
 
+(defmethod choose-tactus ((analysis-rhythm rhythm) (analysis multires-analysis)
+			  &key (tactus-selector #'select-longest-lowest-tactus))
+  "Returns the selected tactus given the rhythm."
+  ;; select out the tactus from all ridge candidates.
+  (let* ((chosen-tactus (funcall tactus-selector analysis-rhythm analysis))
+	 (chosen-tactus-list (if (listp chosen-tactus) chosen-tactus (list chosen-tactus))))
+    (format t "Chosen tactus ~a using ~a~%" chosen-tactus-list tactus-selector)
+    (plot-cwt+ridges (scaleogram analysis) chosen-tactus-list analysis-rhythm
+		     ;; :phase-palette :greyscale
+		     ;; :magnitude-palette :jet
+		     :title (name analysis-rhythm))
+    (plot-highlighted-ridges (scaleogram analysis)
+			     chosen-tactus-list
+			     (ridge-peaks analysis)
+			     :title (name analysis-rhythm)
+			     :sample-rate (sample-rate analysis-rhythm))
+    (format t "Finished plotting scalograms~%")
+    chosen-tactus-list))
+
+(defmethod choose-tactus ((analysis-rhythm rhythm) &key (voices-per-octave 16)
+			  (tactus-selector #'select-longest-lowest-tactus))
+  "Returns the selected tactus given the rhythm."
+  (let* ((analysis (analysis-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave)))
+    (values (choose-tactus analysis-rhythm analysis :tactus-selector tactus-selector) analysis)))
+
+;;; TODO This can probably be replaced with choose-tactus above.
 (defmethod tactus-for-rhythm ((analysis-rhythm rhythm) 
 			      &key (voices-per-octave 16)
 			      (tactus-selector #'select-longest-lowest-tactus))
@@ -418,7 +446,7 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
   (let* ((analysis (analysis-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave))
 	 (chosen-tactus (funcall tactus-selector analysis-rhythm analysis))   ; select out the tactus from all ridge candidates.
 	 (chosen-tactus-list (if (listp chosen-tactus) chosen-tactus (list chosen-tactus))))
-    (format t "Computed skeleton and chosen tactus ~a~%" chosen-tactus-list)
+    (format t "Computed skeleton and chosen tactus ~a using ~a~%" chosen-tactus-list tactus-selector)
     (plot-cwt+ridges (scaleogram analysis) chosen-tactus-list analysis-rhythm
 		     ;; :phase-palette :greyscale
 		     ;; :magnitude-palette :jet

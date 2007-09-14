@@ -12,3 +12,19 @@ Sub-band filter, Rectify, LP smooth, differentiate, half-wave rectify & find the
 the signal region over a moving time limited window (use a DoG?)
 * Merge image writing Lisp code into nlisp to simplify distribution.
 * Generate labelled ridge plots using image.
+
+Perceptual Onsets:
+* Check unlimited cumulative sum vs. a windowed (leaky) integrating store.
+* Check Use of ridge persistency, instead of just scale persistency.
+* Check GSL for cumsum etc.
+* Fix print-object for (.rseq2 0 9 10)
+* Implement multiscale autocorrelation.
+* Gaussian weighting evaluation:
+res4_1 works
+res4_2 works
+res4_3 doesn't
+* Try picking local extrema regardless of how they relate to the beat.
+* Make find-downbeat more robust to non-impulse rhythms. Don't allow crashes!
+* Don't start clapping until the beat is strongly determined.
+* Need bass drum accompaniment of tactus. Probably use two different tactus?
+* Probably should subclass rhythm to rhythm-salience to manage both onsets and salience trace.

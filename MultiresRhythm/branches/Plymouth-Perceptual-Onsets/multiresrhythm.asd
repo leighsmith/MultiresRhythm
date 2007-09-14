@@ -47,6 +47,7 @@
   :components ((:file "signalprocessing")
 	       (:file "ridges")
 	       (:file "scorefile")
+	       (:file "sound")
 	       (:file "skeleton" :depends-on ("ridges"))
 	       (:file "plotting" :depends-on ("ridges" "signalprocessing"))
 	       (:file "rhythm" :depends-on ("scorefile" "plotting" "signalprocessing"))

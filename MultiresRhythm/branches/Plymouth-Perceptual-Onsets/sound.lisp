@@ -45,12 +45,16 @@
 (defmethod print-object ((sound-to-print sound) stream)
   (call-next-method sound-to-print stream) ;; to print the superclass.
   (let ((sound-array (sound-signal sound-to-print)))
-    (format stream " frames ~a sample-rate ~a channels ~a"
-	    (.column-count sound-array) (sample-rate sound-to-print) (.row-count sound-array))))
+    (format stream " ~a frames ~a sample-rate ~a channels ~a"
+	    (description sound-to-print) 
+	    (.column-count sound-array)
+	    (sample-rate sound-to-print)
+	    (.row-count sound-array))))
 
 (defmethod sound-from-file ((path pathname))
   (multiple-value-bind (sound-signal sample-rate) (load-audio path)
     (make-instance 'sound 
+		   :description (namestring path)
 		   :sound-signal sound-signal
 		   :sample-rate sample-rate)))
 
