@@ -27,4 +27,6 @@ res4_3 doesn't
 * Make find-downbeat more robust to non-impulse rhythms. Don't allow crashes!
 * Don't start clapping until the beat is strongly determined.
 * Need bass drum accompaniment of tactus. Probably use two different tactus?
-* Probably should subclass rhythm to rhythm-salience to manage both onsets and salience trace.
+* Probably should subclass rhythm to rhythm-salience to manage both onsets and salience
+trace.
+* Should tactus be incorporated into multires-analysis?

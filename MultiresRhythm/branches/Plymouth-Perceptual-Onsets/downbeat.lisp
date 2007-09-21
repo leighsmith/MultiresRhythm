@@ -190,6 +190,7 @@ start-onset, these measures are in samples"
     beat-period))
 |#
 
+;;; Use the scale persistency to identify the beat.
 (defmethod unweighted-beat-period-of-rhythm ((rhythm-to-analyse rhythm) (scaleogram-to-analyse scaleogram))
   "Find the beat level as the highest peak in the ridge persistency profile"
   (let* ((scale-persistency-profile (scale-persistency (scaleogram-magnitude scaleogram-to-analyse)))

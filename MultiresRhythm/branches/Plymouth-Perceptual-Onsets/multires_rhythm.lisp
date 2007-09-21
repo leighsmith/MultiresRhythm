@@ -28,8 +28,7 @@
    (scaleogram  :initarg :scaleogram  :accessor scaleogram)
    (ridge-peaks :initarg :ridge-peaks :accessor ridge-peaks)))
 
-;;;; Declarations (see rhythm.lisp for the class definition)
-
+;;;; Declarations
 (defgeneric choose-tactus (rhythm-to-analyse analysis &key tactus-selector)
   (:documentation "Returns the selected tactus for the rhythm."))
 
@@ -55,6 +54,10 @@ otherwise, generates them and writes to disk, and returns a multires-analysis in
 
 ;;;; Implementation
 
+(defmethod duration-in-samples ((analysis multires-analysis))
+  "Returns the duration of the skeleton, which should match the rhythm"
+  (duration-in-samples (scaleogram analysis)))
+
 ;; Fastest scale for tactus 
 ;; (scale-from-period (* 200 0.25) 16)
 ;; Slowest scale for tactus
@@ -75,24 +78,26 @@ This is weighted by absolute constraints, look in the 600ms period range."
 
 ;;; Scale index 0 is the highest frequency (smallest dilation) scale.
 ;;; TODO this should be weighted by the log scale character, rather than symmetrical.
-(defun tempo-salience-weighting (salient-scale time-frequency-dimensions &key (voices-per-octave 16))
+(defun tempo-salience-weighting (salient-scale time-frequency-dimensions &key (voices-per-octave 16)
+				 ;; Define a doubling in frequency, 1 octave as 1 stddev.
+				 (octaves-per-stddev 1.0))
   "Produce a weighting matching the analysis window using tempo preference."
   (let* ((number-of-scales (first time-frequency-dimensions))
 	 (time-in-samples (second time-frequency-dimensions))
 	 (tempo-weighting-over-time (make-double-array time-frequency-dimensions))
-	 ;; Create a Gaussian envelope spanning the number of scales.
 	 ;; Match the mean to a span across -5 < mean < 5 standard deviations.
-	 ;; Define a doubling in frequency as 1 stddev.
+	 (stddev-span 10.0)
+	 ;; Create a Gaussian envelope spanning the number of scales.
 	 (tempo-scale-weighting (gaussian-envelope number-of-scales 
-						   :mean (- (/ (* 10.0 salient-scale) number-of-scales) 5.0)
-						   :stddev (/ (* voices-per-octave 10.0) number-of-scales)
+						   :mean (- (/ (* stddev-span salient-scale) number-of-scales) (/ stddev-span 2.0))
+						   :stddev (/ (* voices-per-octave stddev-span octaves-per-stddev) number-of-scales)
 						   :scaling 1d0)))
     (dotimes (time time-in-samples)
       (setf (.subarray tempo-weighting-over-time (list t time))
 	    (.reshape tempo-scale-weighting (list number-of-scales 1))))
     tempo-weighting-over-time))
 
-;; (plot (.column (tempo-salience-weighting 78 '(144 1)) 0) nil :title "Preferred tempo weighting profile")
+;; (plot (.column (tempo-salience-weighting 78 '(144 1) :voices-per-octave 16.0) 0) nil :title "Preferred tempo weighting profile")
 
 (defun normalise-by-scale (magnitude)
   "Normalise a magnitude finding the maximum scale at each time point.
@@ -432,11 +437,12 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
     (format t "Finished plotting scalograms~%")
     chosen-tactus-list))
 
-(defmethod choose-tactus ((analysis-rhythm rhythm) &key (voices-per-octave 16)
+#|(defmethod choose-tactus ((analysis-rhythm rhythm) &key (voices-per-octave 16)
 			  (tactus-selector #'select-longest-lowest-tactus))
   "Returns the selected tactus given the rhythm."
   (let* ((analysis (analysis-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave)))
     (values (choose-tactus analysis-rhythm analysis :tactus-selector tactus-selector) analysis)))
+|#
 
 ;;; TODO This can probably be replaced with choose-tactus above.
 (defmethod tactus-for-rhythm ((analysis-rhythm rhythm) 
