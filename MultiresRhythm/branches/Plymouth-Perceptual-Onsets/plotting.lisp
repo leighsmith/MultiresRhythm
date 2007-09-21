@@ -330,7 +330,7 @@ colourmap, suitable for use by NLISP's palette-defined function."
   (close-window)
   (reset-plot))
 
-(defun plot-claps (original-rhythm claps &key beat-phase (signal-name (name original-rhythm)))
+(defun plot-claps (original-rhythm claps beat-phase &key (signal-name (name original-rhythm)))
   "Plot locations of original beats, computed claps, the foot tap
    amplitude modulation/phase and reference expected clap points."
   (let* ((rhythm-signal (time-signal original-rhythm))

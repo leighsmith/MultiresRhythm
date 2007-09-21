@@ -17,13 +17,16 @@
 (in-package :multires-rhythm)
 (use-package :nlisp)
 
+;;; TODO Should have a clapping behaviour class which specifies which beat to start clapping on
+;; and how often (it's a production task).
+
 (defgeneric clap-to-rhythm (rhythm-to-analyse &key tactus-selector start-from-beat)
   (:documentation "Returns a set of sample times to clap to given the supplied rhythm"))
 
 ;; TODO Return ((time intensity) (time intensity) ...)
 ;; use constant intensity claps but weight the amplitude for when we mix in Common Music.
 (defun clap-to-tactus-phase (original-rhythm rhythm-scaleogram tactus 
-			     &key (start-from-beat 0))
+			     &key (start-from-beat 0) (beat-multiple 1))
   "Function to compute times to clap and how hard from the extracted tactus.
    Returns a matrix where row 1 is the time to tap at, row 2 is the intensity."
   (let* ((time-frequency-dimensions (.array-dimensions (scaleogram-magnitude rhythm-scaleogram)))
@@ -61,13 +64,18 @@
 				     (.subarray foot-tap-phase (list 0 (list 0 (- time-in-samples 2))))) 
 				(.< clap-on-phase-datum 
 				    (.subarray foot-tap-phase (list 0 (list 1 (1- time-in-samples)))))))
-	 (clap-at (.find phase-reoccured))
+	 ;; Stops any clapping before the downbeat.
+	 (valid-phase (.and phase-reoccured 
+			    (.>= (.rseq 0d0 (1- (.length phase-reoccured)) (.length phase-reoccured)) down-beat-sample)))
+	 (valid-claps (.find valid-phase))
+	 (subdivided-beats (.* (.iseq 0 (1- (floor (.length valid-claps) beat-multiple))) beat-multiple))
+	 (clap-at (.arefs valid-claps subdivided-beats))
 	 ;; Create a clapping rhythm
 	 ;; (clap-rhythm (rhythm-of-onsets (name original-rhythm) clap-at))
 	 )
-
-    (format t "Handclapping from beat ~d of original rhythm, sample ~d~%" start-from-beat down-beat-sample)
-    (plot-claps original-rhythm clap-at :beat-phase foot-tap-phase)
+    (format t "Handclapping every ~d beat from beat ~d of original rhythm, sample ~d~%"
+	    beat-multiple start-from-beat down-beat-sample)
+    (plot-claps original-rhythm clap-at foot-tap-phase)
     clap-at))
 
 (defmethod clap-to-rhythm ((performed-rhythm rhythm) &key 
@@ -82,7 +90,8 @@
 			       start-from-beat 
 			       (find-downbeat performed-rhythm beat-period :strategy #'is-greater-rhythmic-period))))
       (clap-to-tactus-phase performed-rhythm (scaleogram rhythm-analysis) computed-tactus
-			   :start-from-beat found-downbeat))))
+			   :start-from-beat found-downbeat
+			   :beat-multiple 1))))
 
 (defun save-rhythm-and-claps (original-rhythm clap-at)
   "Writes out the rhythm and the handclaps to a scorefile"
