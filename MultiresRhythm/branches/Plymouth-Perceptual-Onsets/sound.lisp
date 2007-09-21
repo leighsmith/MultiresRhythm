@@ -75,6 +75,28 @@
 (defmethod save-to-file ((sound-to-save sound) (path pathname))
   (save-audio path (sound-signal sound-to-save) :sample-rate (sample-rate sound-to-save)))
 
+(defun sample-at-times (length-of-sound sample-sound times-in-seconds)
+  "Returns a sound with sample-sound placed beginning at each time specified in seconds. Uses the sample rate of the sample-sound."
+  (let* ((sample-rate (sample-rate sample-sound))
+	 (sample-length (sound-length sample-sound))
+	 (attack-times-in-frames (.floor (.* times-in-seconds sample-rate)))
+	 (full-duration (make-double-array length-of-sound)))
+    (loop
+       for attack-time across (val attack-times-in-frames)
+       for region-to-copy = (list attack-time (min (1- length-of-sound) (+ attack-time sample-length -1)))
+       do
+	 ;; (format t "region to copy ~a~%" region-to-copy)
+	 (setf (.subarray full-duration (list 0 region-to-copy)) (sound-signal sample-sound)))
+    (make-instance 'sound
+		   :description (format nil "~a duplications of ~a"
+					(.length times-in-seconds) (description sample-sound))
+		   :sound-signal full-duration
+		   :sample-rate sample-rate)))
+
+;; (setf hihat (sound-from-file #P"/Volumes/iDisk/Research/Data/Handclap Examples/hihat_closed.aiff"))
+;; (setf hats (sample-at-times 44100 hihat (make-narray '(0.0 0.33 0.66 0.8))))
+
+
 ;; (setf down-sampled (.floor (.* (onset-times jw-clicks) 200)))
 ;; (setf down-sampled-length (floor (* (.length (sound-signal jw-clicks)) (/ 200.0 44100.0))))
 ;; (setf down-sampled-rhythm (make-double-array down-sampled-length))
