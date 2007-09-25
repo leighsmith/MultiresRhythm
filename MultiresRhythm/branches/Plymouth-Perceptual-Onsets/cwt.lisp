@@ -154,7 +154,6 @@
   "Function to return a vector of scale numbers from periods of time support (in samples).
    The highest two octaves (time domain extent 0-1,1-2) don't tell us much, so we save
    computation time by skipping them."
-  ;; (.* voices-per-octave (.- (.floor (.log time-periods 2)) skip-initial-octaves)))
   (.* voices-per-octave (.- (.log time-periods 2) skip-initial-octaves)))
 
 (defun time-support (scales wavelets-per-octave &key (skip-initial-octaves 2))

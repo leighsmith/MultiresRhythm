@@ -106,3 +106,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 		  (+ (aref cumsum-val r (1- c)) (aref a-val r c)
 		     (if (> c width) (- (aref a-val r (- c width))) 0)))))
     cumsum))
+
+(defmacro argmax (y)
+  "Returns the argument (index) that is the maximum of y"
+  `(position (.max ,y) (val ,y)))
