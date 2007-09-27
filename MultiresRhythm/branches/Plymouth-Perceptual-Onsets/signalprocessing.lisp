@@ -24,6 +24,9 @@
 ;;(defun mean (a)
 ;;  (/ (.sum a) (.length a)))
 
+(defun prune-to-limit (a limit)
+  (make-instance (class-of a) :ival (remove-if-not (lambda (x) (<= x limit)) (val a))))
+
 ;;thresholdMag = magnitude > threshold;
 ;;newphase = (thresholdMag .* phase) + (!thresholdMag .* clamp);
 (defun clamp-to-bounds (signal test-signal 

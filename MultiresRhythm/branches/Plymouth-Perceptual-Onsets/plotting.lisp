@@ -22,6 +22,10 @@
 (in-package :multires-rhythm)
 (use-package :nlisp)
 
+;; Controls what we will plot. We can amend this as needed at the REPL with (push 'feature *plotting*)
+;; '(claps beat-period tactus)
+(defparameter *plotting* '(claps))
+
 ;;; Declaration of interface
 
 (defgeneric image-plotter (tf-plane window-dimensions title &key palette aspect-ratio)
@@ -333,9 +337,9 @@ colourmap, suitable for use by NLISP's palette-defined function."
 (defun plot-claps (original-rhythm claps beat-phase &key (signal-name (name original-rhythm)))
   "Plot locations of original beats, computed claps, the foot tap
    amplitude modulation/phase and reference expected clap points."
-  (let* ((rhythm-signal (time-signal original-rhythm))
+  (let* ((rhythm-signal (.* (time-signal original-rhythm) 1d0))
 	 (bipolar-rhythm (minusp (.min rhythm-signal)))
-	 (max-computed-scale (.max rhythm-signal))
+	 (max-computed-scale (* (.max rhythm-signal) 1.2d0)) ; to make claps visible.
 	 (clap-signal (make-double-array (.array-dimensions rhythm-signal) :initial-element 0d0))
 	 (scaled-phase (.* (.+ (./ beat-phase pi 2.0d0) (if bipolar-rhythm 0.0d0 0.5d0)) max-computed-scale)))
     (map nil (lambda (index) (setf (.aref clap-signal index) max-computed-scale)) (val claps))

@@ -42,6 +42,9 @@
 (defgeneric onsets-in-seconds (rhythm-to-analyse)
   (:documentation "Returns the location of each onset in seconds."))
 
+(defgeneric onset-time-of-beat (rhythm-to-analyse beat-numbers)
+  (:documentation "Returns the sample number of the beat-number'th beat in the given rhythm"))
+
 (defgeneric rhythm-iois (rhythm-to-analyse)
   (:documentation "Given a rhythm, returns IOIs specified in seconds."))
 
@@ -109,9 +112,10 @@
 
 ;;; We use a threshold for non binary rhythms. With the threshold under 1, this will work
 ;;; with binary rhythms also.
-(defun time-of-beat (rhythm beat-numbers &key (threshold 0.9d0))
+(defmethod onset-time-of-beat ((the-rhythm rhythm) beat-numbers)
   "Returns the sample number of the beat-number'th beat in the given rhythm"
-  (let* ((time-signal (time-signal rhythm))
+  (let* ((threshold 0.9d0)
+	 (time-signal (time-signal the-rhythm))
 	 (amplitude-range (.max time-signal))
 	 ;; we don't check the rectified-signal otherwise we will count beats twice.
 	 (beat-positions (.find (.> time-signal (* amplitude-range threshold)))))
@@ -146,7 +150,8 @@
 
 (defun rhythm-of-onsets (name onsets &key (sample-rate 200))
   "Given an narray of onsets, creates a rhythm instance"
-  (iois-to-rhythm name (nlisp::array-to-list (.diff onsets)) :sample-rate sample-rate))
+  (iois-to-rhythm name (nlisp::array-to-list (.row (.diff onsets) 0)) :shortest-ioi sample-rate))
+  ;;(iois-to-rhythm name (nlisp::array-to-list (.row (.diff onsets) 0)) :sample-rate sample-rate))
 
 (defun rhythm-of-grid (name grid &key (tempo 80 tempo-supplied-p)
 				(shortest-ioi 1.0)

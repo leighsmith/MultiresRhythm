@@ -125,8 +125,19 @@
     (- (.max scales) (.min scales))))
     
 (defmethod scales-in-ridge ((the-ridge ridge))
-  "Returns a list of the scales the ridge spans"
-  (remove-duplicates (scales the-ridge) :from-end t))
+  "Returns a list of the scales the ridge spans and the counts of each."
+  (let* ((scales (scales the-ridge))
+	 (unique-scales (remove-duplicates scales :from-end t)))
+    (mapcar (lambda (scale) (list scale (count scale scales))) unique-scales)))
+
+;; (reduce #'+ (scales-in-ridge ridge) :key #'cadr) == (duration-in-samples ridge)
+
+(defmethod scales-and-weights-in-ridge ((the-ridge ridge))
+  "Returns an narray of the scales the ridge spans and the relative weights of each."
+  (let ((ridge-scales-and-counts (scales-in-ridge the-ridge)))
+    (values (make-narray (map 'list #'first ridge-scales-and-counts))
+	    (./ (.* (make-narray (map 'list #'second ridge-scales-and-counts)) 1d0)
+			       (duration-in-samples the-ridge)))))
 
 ;; (defmethod deviation-from-scale ((the-ridge ridge) scale)
 ;; "Returns the sum-squared deviation of each scale along the ridge from the given scale"

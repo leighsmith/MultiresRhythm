@@ -56,7 +56,7 @@
 (defgeneric ridges-containing-scale (skeleton scale)
   (:documentation "Returns a list of ridges which have energy in a given scale."))
 
-(defgeneric ridge-persistency-of-skeleton (skeleton)
+(defgeneric ridge-persistency-of (skeleton)
   (:documentation "Returns the normalised scale profile of the ridges found in the skeleton."))
 
 (defgeneric read-skeleton-from-file (file-stream-or-name)
@@ -101,16 +101,35 @@
      collect ridge-candidate))
 
 (defmethod make-ridge-plane ((skeleton-to-analyse skeleton))
-  "Creates a time-frequency plane from the skeleton, similar to
-correlated-ridge-scale-peaks, but without variation in value."
+  "Creates a time-frequency plane from the skeleton, similar to correlated-ridge-scale-peaks, but without variation in value."
   (let ((tf-plane (make-double-array (list (number-of-scales skeleton-to-analyse)
 					   (duration-in-samples skeleton-to-analyse)))))
     (dolist (ridge (ridges skeleton-to-analyse) tf-plane)
       (insert-ridge ridge tf-plane :constant-value 1d0))))
 
 ;;; TODO perhaps I should be using the correlated ridge scale peaks, using the weighting?
-(defmethod ridge-persistency-of-skeleton ((skeleton-to-analyse skeleton))
-    (scale-persistency (make-ridge-plane skeleton-to-analyse)))
+(defmethod ridge-persistency-of ((skeleton-to-analyse skeleton))
+  (scale-persistency (make-ridge-plane skeleton-to-analyse)))
+
+(defun persistency-of-scale-in (ridge-plane period-scale)
+  "Returns the proportion that the given scale is present in the ridge plane for the given ridge plane"
+  (./ (.sum (.or (.row ridge-plane (1- period-scale))
+		 (.row ridge-plane period-scale)
+		 (.row ridge-plane (1+ period-scale))))
+      (.column-count ridge-plane)))
+
+(defun persistency-of-period-in (skeleton period)
+  "Returns the proportion of the degree to which the given period duration is present in the skeleton."
+  (let* ((period-scale (round (scale-from-period period (voices-per-octave skeleton))))
+	 (ridge-plane (make-ridge-plane skeleton)))
+    (format t "interval ~a, scaleogram scale = ~a, duration ~a samples~%" 
+	    period period-scale (time-support period-scale (voices-per-octave skeleton)))
+    ;; TODO persistency-of-scale-in-plane?
+    (./ (.sum (.or (.row ridge-plane (1- period-scale))
+		   (.row ridge-plane period-scale)
+		   (.row ridge-plane (1+ period-scale))))
+	(duration-in-samples skeleton))))
+
 
 ;;; File I/O
 

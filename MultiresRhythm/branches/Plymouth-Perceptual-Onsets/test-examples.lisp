@@ -223,10 +223,6 @@
 ;; (setf cliche-analysis (analysis-of-rhythm cliche-rhythm))
 ;; (plot-cwt (scaleogram cliche-analysis))
 
-;;; Needs to have remaining time 
-(defun clap-to-iois (name iois &key (shortest-ioi (/ 120 17)))
-  (clap-to-rhythm (iois-to-rhythm name iois :shortest-ioi shortest-ioi)))
-
 ;; (onsets-to-grid (iois-to-onsets (intervals-in-samples '(17 17 20.5 13.5) :ioi (/ 600 17))))
 ;; (onsets-to-grid (iois-to-onsets (intervals-in-samples '(17 17 20.5 13.5 17 17) :ioi 10)))
 ;; (iois-to-rhythm "test" '(17 17 20.5 13.5 17 17) :shortest-ioi (/ 120 17))

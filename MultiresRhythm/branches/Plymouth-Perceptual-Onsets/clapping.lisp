@@ -53,7 +53,6 @@
 				       (voices-per-octave rhythm-scaleogram))))
 
 	 ;; Note the phase of the oscillating sinusoid at the beat to start tapping from.
-	 ;; (down-beat-sample (time-of-beat original-rhythm start-from-beat))
 	 (down-beat-sample (onset-time-of-beat original-rhythm start-from-beat))
 	 (clap-on-phase-datum (.aref foot-tap-phase down-beat-sample))
 
@@ -75,20 +74,24 @@
 	 )
     (format t "Handclapping every ~d beats from beat ~d of original rhythm, sample ~d~%"
 	    beat-multiple start-from-beat down-beat-sample)
-    (plot-claps original-rhythm clap-at foot-tap-phase)
+    (if (find 'claps *plotting*) (plot-claps original-rhythm clap-at foot-tap-phase))
     clap-at))
 
-(defun beat-multiple (tactus vpo sample-rate)
+(defun beat-multiple-for-clapping (tactus vpo sample-rate)
   "Compute a beat multiple we should clap at, based on the chosen tactus beat period compared to the preferred tempo"
   (let* ((preferred-beat-period (time-support (preferred-tempo-scale vpo sample-rate) vpo))
 	 (tactus-beat-period (time-support (average-scale (first tactus)) vpo))) ; TODO using first is a hack
-    (format t "preferred-beat-period ~a tactus-beat-period ~a, ratio ~f~%" 
-	    preferred-beat-period tactus-beat-period (/ preferred-beat-period tactus-beat-period))
-    (round preferred-beat-period tactus-beat-period)))
+    (format t "Preferred clapping beat period ~f actual tactus beat period ~f seconds, ratio ~f~%" 
+	    (/ preferred-beat-period sample-rate)
+	    (/ tactus-beat-period sample-rate)
+	    (/ preferred-beat-period tactus-beat-period))
+    ;; Establish a minimum of 1.0, since crazy tactus selectors can have round return 0.0
+    ;; which freaks out division...
+    (max 1.0 (round preferred-beat-period tactus-beat-period))))
 
 (defmethod clap-to-rhythm ((performed-rhythm rhythm) &key 
 			   (beat-multiple 1 multiple-supplied-p)
-			   (start-from-beat 1 downbeat-supplied-p)
+			   (start-from-beat 0 downbeat-supplied-p)
 			   (tactus-selector #'select-longest-lowest-tactus))
   "Returns a set of sample times to clap to given the supplied rhythm"
   (multiple-value-bind (computed-tactus rhythm-analysis)
@@ -99,13 +102,20 @@
 	   (found-downbeat (if downbeat-supplied-p 
 			       start-from-beat 
 			       (find-downbeat performed-rhythm beat-period :strategy #'is-greater-rhythmic-period)))
-	   (clapping-beat-multiple (beat-multiple computed-tactus (voices-per-octave scaleogram) (sample-rate performed-rhythm))))
+	   (clapping-beat-multiple (beat-multiple-for-clapping computed-tactus 
+							       (voices-per-octave scaleogram) 
+							       (sample-rate performed-rhythm))))
       (format t "Suggested beat multiple ~f~%" clapping-beat-multiple)
-      ;; TODO find-downbeat is inclined to crash horribly - must fix.
+      (format t "Possible metrical divisor ~a~%" (meter-of-analysis rhythm-analysis computed-tactus))
+      ;; TODO find-downbeat is inclined to crash horribly because of the comparison - must fix.
       ;; (format t "Found downbeat is ~d~%" (find-downbeat performed-rhythm beat-period :strategy #'is-greater-rhythmic-period))
       (clap-to-tactus-phase performed-rhythm scaleogram computed-tactus
 			   :start-from-beat found-downbeat
 			   :beat-multiple (if multiple-supplied-p beat-multiple clapping-beat-multiple)))))
+
+;;; Needs to have remaining time 
+(defun clap-to-iois (name iois &key (shortest-ioi (/ 120 17)))
+  (clap-to-rhythm (iois-to-rhythm name iois :shortest-ioi shortest-ioi)))
 
 (defun save-rhythm-and-claps (original-rhythm clap-at)
   "Writes out the rhythm and the handclaps to a scorefile"

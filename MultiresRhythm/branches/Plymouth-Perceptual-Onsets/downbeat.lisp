@@ -106,12 +106,12 @@ start-onset, these measures are in samples"
 
 
 ;;; TODO could weight by the energy density value when creating the persistency profile.
-;;; We would do this by ridge-persistency-of-skeleton using the ridge-peaks rather than
+;;; We would do this by ridge-persistency-of using the ridge-peaks rather than
 ;;; computing a new binary valued set of peaks. This would be more efficient even if we
 ;;; reverted to using the binary values as we would just use (.> ridge-peaks 0).
 (defmethod beat-period-of-rhythm ((rhythm-to-analyse rhythm) (skeleton-to-analyse skeleton))
   "Find the beat level as the highest peak in the ridge persistency profile weighted by absolute tempo."
-  (let* ((ridge-persistency-profile (ridge-persistency-of-skeleton skeleton-to-analyse))
+  (let* ((ridge-persistency-profile (ridge-persistency-of skeleton-to-analyse))
 	 (vpo (voices-per-octave skeleton-to-analyse))
 	 (sample-rate (sample-rate rhythm-to-analyse))
 	 (salient-scale (preferred-tempo-scale vpo sample-rate))
@@ -138,7 +138,7 @@ start-onset, these measures are in samples"
 #|
 (defmethod beat-period-of-rhythm ((rhythm-to-analyse rhythm) (rhythm-analysis multires-analysis))
   "Find the beat level as the highest peak in the ridge persistency profile weighted by absolute tempo."
-  (let* ((ridge-persistency-profile (ridge-persistency-of-skeleton (skeleton rhythm-analysis)))
+  (let* ((ridge-persistency-profile (ridge-persistency-of (skeleton rhythm-analysis)))
 	 (vpo (voices-per-octave skeleton-to-analyse))
 	 (sample-rate (sample-rate rhythm-to-analyse))
 	 (salient-scale (preferred-tempo-scale vpo sample-rate))
@@ -169,7 +169,7 @@ start-onset, these measures are in samples"
 #|
 (defmethod unweighted-beat-period-of-rhythm ((rhythm-to-analyse rhythm) (skeleton-to-analyse skeleton))
   "Find the beat level as the highest peak in the ridge persistency profile"
-  (let* ((ridge-persistency-profile (ridge-persistency-of-skeleton skeleton-to-analyse))
+  (let* ((ridge-persistency-profile (ridge-persistency-of skeleton-to-analyse))
 	 (vpo (voices-per-octave skeleton-to-analyse))
 	 (sample-rate (sample-rate rhythm-to-analyse))
 	 (beat-scale (position (.max ridge-persistency-profile) (val ridge-persistency-profile)))
@@ -200,17 +200,19 @@ start-onset, these measures are in samples"
 	 (beat-period (time-support beat-scale vpo)))
     (format t "Computed beat (without tempo weighting) as scale ~a, period ~a samples, ~a seconds~%" 
 	    beat-scale beat-period (/ beat-period sample-rate))
-    (window)
-    ;; (plot-command "set xtics (~{~{\"~d\" ~5d~}~^, ~})~%" (label-scale-as-time-support skeleton-to-analyse))
-    (plot-command "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
-		  (label-scale-as-time-support-seconds scaleogram-to-analyse sample-rate))
-    (nplot (mapcar #'.reverse (list scale-persistency-profile))
-	   nil
-	   :title (format nil "Scale persistency profile for ~a" (name rhythm-to-analyse))
-	   :legends '("Original scale persistency" "absolute tempo preference profile" "weighted persistency profile") 
-	   :aspect-ratio 0.66
-	   :reset nil)
-    (close-window)
+    (if (find 'beat-period *plotting*)
+	(progn
+	  (window)
+	  ;; (plot-command "set xtics (~{~{\"~d\" ~5d~}~^, ~})~%" (label-scale-as-time-support skeleton-to-analyse))
+	  (plot-command "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
+			(label-scale-as-time-support-seconds scaleogram-to-analyse sample-rate))
+	  (nplot (mapcar #'.reverse (list scale-persistency-profile))
+		 nil
+		 :title (format nil "Scale persistency profile for ~a" (name rhythm-to-analyse))
+		 :legends '("Original scale persistency" "absolute tempo preference profile" "weighted persistency profile") 
+		 :aspect-ratio 0.66
+		 :reset nil)
+	  (close-window)))
     beat-period))
 
 ;;(setf prob-distribution (./ weighted-persistency-profile (.sum weighted-persistency-profile)))

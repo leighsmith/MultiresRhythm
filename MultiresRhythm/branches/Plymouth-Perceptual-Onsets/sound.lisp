@@ -96,6 +96,17 @@
 ;; (setf hihat (sound-from-file #P"/Volumes/iDisk/Research/Data/Handclap Examples/hihat_closed.aiff"))
 ;; (setf hats (sample-at-times 44100 hihat (make-narray '(0.0 0.33 0.66 0.8))))
 
+(defun save-rhythm-mix (filename-to-write original-rhythm-file clap-times 
+			&key (clap-sample-file #P"/Volumes/iDisk/Research/Data/Handclap Examples/hihat_closed.aiff"))
+  (let* ((original-rhythm-sound (sound-from-file original-rhythm-file)) ; load original file
+	 (clap-sample (sound-from-file clap-sample-file))
+	 ;; create an sound vector with our clap-sample
+	 (clapping-sound (sample-at-times (sound-length original-rhythm-sound) clap-sample clap-times))
+	 (clapping-mix (sound-mix original-rhythm-sound clapping-sound)))
+    (save-to-file clapping-mix filename-to-write)))
+
+;; (save-rhythm-mix #P"/Users/leigh/test-hats.wav" #P"/Volumes/iDisk/Research/Data/PerceptualOnsets/res1/res1_3.wav" (make-narray '(0.0 0.33 0.66 0.8)))
+
 
 ;; (setf down-sampled (.floor (.* (onset-times jw-clicks) 200)))
 ;; (setf down-sampled-length (floor (* (.length (sound-signal jw-clicks)) (/ 200.0 44100.0))))

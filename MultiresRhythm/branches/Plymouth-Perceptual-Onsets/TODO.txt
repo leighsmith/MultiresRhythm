@@ -30,3 +30,8 @@ res4_3 doesn't
 * Probably should subclass rhythm to rhythm-salience to manage both onsets and salience
 trace.
 * Should tactus be incorporated into multires-analysis?
+
+* Use ridge persistency for meter determination.
+* Build version of rhythmACF in lisp.
+* Use dyadic cwt and subdivide rhythm into dyadic chunks, say 2048 samples (10.24 seconds)
+* so it avoids the padding issue.
