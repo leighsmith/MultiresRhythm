@@ -138,20 +138,23 @@
 		       (sample-rate 200) 
 		       ((:tempo tempo-in-bpm) 60 tempo-supplied-p))
   "Returns a rhythm instance given a list of inter-onset intervals"
-    (make-instance 'rhythm 
-		   :name name
-		   :description name ; TODO transliterate '-' for ' '.
-		   :time-signal (make-narray 
-				 (butlast 
-				  (onsets-to-grid 
-				   (iois-to-onsets 
-				    (intervals-in-samples iois :ioi shortest-ioi)))))
-		   :sample-rate sample-rate))
+  (make-instance 'rhythm 
+		 :name name
+		 :description name ; TODO transliterate '-' for ' '.
+		 :time-signal (make-narray 
+			       (butlast 
+				(onsets-to-grid 
+				 (iois-to-onsets 
+				  (intervals-in-samples iois :ioi shortest-ioi)))))
+		 :sample-rate sample-rate))
 
 (defun rhythm-of-onsets (name onsets &key (sample-rate 200))
   "Given an narray of onsets, creates a rhythm instance"
-  (iois-to-rhythm name (nlisp::array-to-list (.row (.diff onsets) 0)) :shortest-ioi sample-rate))
-  ;;(iois-to-rhythm name (nlisp::array-to-list (.row (.diff onsets) 0)) :sample-rate sample-rate))
+  (make-instance 'rhythm 
+		 :name name
+		 :description name ; TODO transliterate '-' for ' '.
+		 :time-signal (make-narray (onsets-to-grid (nlisp::array-to-list (.round (.* onsets sample-rate)))))
+		 :sample-rate sample-rate))
 
 (defun rhythm-of-grid (name grid &key (tempo 80 tempo-supplied-p)
 				(shortest-ioi 1.0)
