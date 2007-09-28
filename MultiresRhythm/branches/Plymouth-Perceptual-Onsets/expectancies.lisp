@@ -1,8 +1,18 @@
 ;;;; -*- Lisp -*-
+;;;;
+;;;; $Id:$
+;;;;
+;;;; Functions for generating expectation points from a given set of event times.
+;;;;
+;;;; In nlisp (Matlab-alike Common Lisp library www.nlisp.info)
+;;;;
+;;;; By Leigh M. Smith <lsmith@science.uva.nl> 
+;;;;
+;;;; Copyright (c) 2007
+;;;;
 
 (in-package :multires-rhythm)
 (use-package :nlisp)
-
 
 ;;;; "Peter Seibels directory walking functions, to be drawn in using packages"
 

@@ -1,6 +1,6 @@
 ;;;; -*- Lisp -*-
 ;;;;
-;;;; $Id: test-examples.lisp 316 2007-09-12 18:06:11Z leigh $
+;;;; $Id$
 ;;;;
 ;;;; Functions for reading and processing the perceptual salience signals produced by the
 ;;;; Plymouth model.
@@ -9,15 +9,7 @@
 ;;;;
 ;;;; By Leigh M. Smith <lsmith@science.uva.nl> 
 ;;;;
-;;;; Copyright (c) 2006
-;;;;
-;;;; See 
-;;;;   author =  {Leigh M. Smith},
-;;;;   title =   {A Multiresolution Time-Frequency Analysis and Interpretation of Musical Rhythm},
-;;;;   school =  {Department of Computer Science, University of Western Australia},
-;;;;   year =    1999,
-;;;;   month =   {June},
-;;;;   annote =  {\url{http://www.leighsmith.com/Research/Papers/MultiresRhythm.pdf}}
+;;;; Copyright (c) 2007
 ;;;;
 
 (in-package :multires-rhythm)
