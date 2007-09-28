@@ -106,11 +106,13 @@
 	 (salient-scale (preferred-tempo-scale vpo sample-rate))
 	 (tempo-beat-preference (tempo-salience-weighting salient-scale (.array-dimensions cumulative-scale-persistency)))
  	 (weighted-persistency-profile (.* cumulative-scale-persistency tempo-beat-preference)))
-    (window)
-    (plot-image #'magnitude-image (list weighted-persistency-profile) '((1.0 0.5) (0.0 0.3))
-		(axes-labelled-in-seconds scaleogram sample-rate 4)
-		:title (format nil "weighted persistency profile of ~a" (name rhythm-to-analyse)))
-    (close-window)
+    (if (find 'weighted-beat-ridge *plotting*)
+	(progn
+	  (window)
+	  (plot-image #'magnitude-image (list weighted-persistency-profile) '((1.0 0.5) (0.0 0.3))
+		      (axes-labelled-in-seconds scaleogram sample-rate 4)
+		      :title (format nil "weighted persistency profile of ~a" (name rhythm-to-analyse)))
+	  (close-window)))
     (loop
        for time from 0 below (duration-in-samples scaleogram)
        for scale-persistency-profile = (.column weighted-persistency-profile time)

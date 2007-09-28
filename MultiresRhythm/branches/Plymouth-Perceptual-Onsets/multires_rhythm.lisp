@@ -354,7 +354,7 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
     (determine-scale-peaks (if absolute-tempo-weighting tempo-weighted-ridges correlated-ridges))))
 
 (defmethod scaleogram-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
-  (format t "Length of Rhythm ~f seconds~%" (duration analysis-rhythm))
+  (format t "Length of rhythm \"~a\" is ~f seconds~%" (name analysis-rhythm) (duration analysis-rhythm))
   (cwt (time-signal analysis-rhythm) voices-per-octave))
 
 (defmethod skeleton-of-scaleogram ((analysis-scaleogram scaleogram) sample-rate)

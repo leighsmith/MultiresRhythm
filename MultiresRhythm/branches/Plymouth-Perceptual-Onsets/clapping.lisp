@@ -81,13 +81,13 @@
   "Compute a beat multiple we should clap at, based on the chosen tactus beat period compared to the preferred tempo"
   (let* ((preferred-beat-period (time-support (preferred-tempo-scale vpo sample-rate) vpo))
 	 (tactus-beat-period (time-support (average-scale (first tactus)) vpo))) ; TODO using first is a hack
-    (format t "Preferred clapping beat period ~f actual tactus beat period ~f seconds, ratio ~f~%" 
+    (format t "Preferred clapping beat period ~f seconds actual tactus beat period ~f seconds, ratio ~f~%" 
 	    (/ preferred-beat-period sample-rate)
 	    (/ tactus-beat-period sample-rate)
 	    (/ preferred-beat-period tactus-beat-period))
-    ;; Establish a minimum of 1.0, since crazy tactus selectors can have round return 0.0
+    ;; Establish a minimum of 1, since crazy tactus selectors can have round return 0
     ;; which freaks out division...
-    (max 1.0 (round preferred-beat-period tactus-beat-period))))
+    (max 1 (round preferred-beat-period tactus-beat-period))))
 
 (defmethod clap-to-rhythm ((performed-rhythm rhythm) &key 
 			   (beat-multiple 1 multiple-supplied-p)

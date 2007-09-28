@@ -259,6 +259,10 @@
 	   (list matrix-or-vector (list (+ half-pad off-by-one) (- padded-length half-pad 1))))))))
 
 ;; (pad-signal (.rseq 1 10 10) 20)
+;; (pad-signal (.rseq 1 6 6) 8)
+;; (pad-signal (.rseq 1 7 7) 8)
+;; (pad-signal (.rseq 0 509 510) 512)
+;; (pad-signal (.rseq2 1 6 6) 8) ;; TODO needs to manage sequences promoted to column arrays.
 
 (defun dyadic-length (signal-length)
   "Returns the length of the signal if padded to a dyadic (power of two) length."
