@@ -167,7 +167,7 @@
 		     :directory (list :absolute "/Users/leigh/Research/Data/NewAnalysedRhythms/") 
 		     :name filename
 		     :type "octave"))
-	 (rhythm-signal (.load-octave-file file-path))
+	 (rhythm-signal (.load file-path :format :octave))
 	 ;; Signals can be read in as column or row vectors, so we align them all to a row
 	 ;; vector by transposing.
 	 (aligned-signal (if (> (.array-dimension rhythm-signal 0) 1)

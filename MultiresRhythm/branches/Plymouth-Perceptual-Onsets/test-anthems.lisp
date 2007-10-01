@@ -319,11 +319,11 @@
 
 ;; (setf bar-ratios (bars-in-anthem-skeletons :count count))
 ;; (mean bar-ratios)
-;; (.save-to-octave-file bar-ratios "/Users/leigh/Data/anthem-bar-ratios.octave")
+;; (.save bar-ratios "/Users/leigh/Data/anthem-bar-ratios.octave" :format :octave)
 ;;
 ;; (setf beat-ratios (bars-in-anthem-skeletons :count count))
 ;; (mean beat-ratios)
-;; (.save-to-octave-file beat-ratios "/Users/leigh/Data/anthem-beat-ratios.octave")
+;; (.save beat-ratios "/Users/leigh/Data/anthem-beat-ratios.octave" :format :octave)
 
 (defun make-histogram (data)
   "Returns each unique value in data along with the count of it's occurrence in a hash-table"

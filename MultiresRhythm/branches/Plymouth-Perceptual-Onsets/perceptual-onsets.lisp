@@ -25,7 +25,7 @@
 		     :directory (list :absolute "/Volumes/iDisk/Research/Data/PerceptualOnsets/") 
 		     :name filename
 		     :type "mat"))
-	 (perceptual-onsets (.load-octave-file file-path))
+	 (perceptual-onsets (.load file-path :format :octave))
 	 ;; Assumes onset times are in milliseconds
 	 (onset-times (.floor (.* (.column perceptual-onsets 0) sample-rate)))
 	 (binary-grid (make-narray (onsets-to-grid (nlisp::array-to-list onset-times))))
@@ -47,15 +47,13 @@
 (defun perceptual-salience-to-rhythm (salience-filename onsets-filename &key 
 				      (sample-rate 200) (description "") (weighted t))
   (let* ((data-directory "/Volumes/iDisk/Research/Data/PerceptualOnsets/")
-	 (perceptual-salience-matrix (.load-octave-file (make-pathname 
-							 :directory (list :absolute data-directory) 
-							 :name salience-filename
-							 :type "mat")))
+	 (perceptual-salience-matrix (.load (make-pathname :directory (list :absolute data-directory) 
+							   :name salience-filename
+							   :type "mat") :format :octave))
 	 (perceptual-salience (.row perceptual-salience-matrix 0))
-	 (perceptual-onsets (.load-octave-file (make-pathname 
-						:directory (list :absolute data-directory) 
-						:name onsets-filename
-						:type "mat")))
+	 (perceptual-onsets (.load (make-pathname :directory (list :absolute data-directory) 
+						  :name onsets-filename
+						  :type "mat") :format :octave))
 	 ;; Assumes onset times are in milliseconds
 	 (onset-times (.floor (.* (.column perceptual-onsets 0) sample-rate)))
 	 (binary-grid (make-narray (onsets-to-grid (nlisp::array-to-list onset-times))))
@@ -98,13 +96,12 @@
 	 (salient-scale (preferred-tempo-scale vpo sample-rate))
 	 (tempo-beat-preference (tempo-salience-weighting salient-scale (.array-dimensions cumulative-scale-persistency)))
  	 (weighted-persistency-profile (.* cumulative-scale-persistency tempo-beat-preference)))
-    (if (find 'weighted-beat-ridge *plotting*)
-	(progn
-	  (window)
-	  (plot-image #'magnitude-image (list weighted-persistency-profile) '((1.0 0.5) (0.0 0.3))
-		      (axes-labelled-in-seconds scaleogram sample-rate 4)
-		      :title (format nil "weighted persistency profile of ~a" (name rhythm-to-analyse)))
-	  (close-window)))
+    (cond ((find 'weighted-beat-ridge *plotting*)
+	   (window)
+	   (plot-image #'magnitude-image (list weighted-persistency-profile) '((1.0 0.5) (0.0 0.3))
+		       (axes-labelled-in-seconds scaleogram sample-rate 4)
+		       :title (format nil "weighted persistency profile of ~a" (name rhythm-to-analyse)))
+	   (close-window)))
     (loop
        for time from 0 below (duration-in-samples scaleogram)
        for scale-persistency-profile = (.column weighted-persistency-profile time)

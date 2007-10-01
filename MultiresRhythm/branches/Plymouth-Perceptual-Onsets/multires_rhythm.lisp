@@ -339,12 +339,11 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
 	 (tempo-weighting (tempo-salience-weighting salient-scale (.array-dimensions magnitude)))
 	 ;; Weight by the absolute tempo preference.
 	 (tempo-weighted-ridges (.* correlated-ridges tempo-weighting)))
-    (if absolute-tempo-weighting
-	(progn 
-	  (format t "Preferred tempo scale = ~d of ~d hierarchy, ~f samples, ~f seconds duration.~%" 
-		  salient-scale (.array-dimension magnitude 0) (time-support salient-scale vpo)
-		  (time-support-seconds salient-scale vpo sample-rate))
-	  (plot (.column tempo-weighting 0) nil :title "Preferred tempo weighting profile")))
+    (cond (absolute-tempo-weighting
+	   (format t "Preferred tempo scale = ~d of ~d hierarchy, ~f samples, ~f seconds duration.~%" 
+		   salient-scale (.array-dimension magnitude 0) (time-support salient-scale vpo)
+		   (time-support-seconds salient-scale vpo sample-rate))
+	   (plot (.column tempo-weighting 0) nil :title "Preferred tempo weighting profile")))
     ;; show what we got as an intensity plot
     ;; (setf *magnitude-colour-map* #'jet-colormap)
     ;; This tends to flatten everything out...
@@ -426,18 +425,17 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
   (let* ((chosen-tactus (funcall tactus-selector analysis-rhythm analysis))
 	 (chosen-tactus-list (if (listp chosen-tactus) chosen-tactus (list chosen-tactus))))
     (format t "Chosen tactus ~a using ~a~%" chosen-tactus-list tactus-selector)
-    (if (find 'tactus *plotting*)
-	(progn
-	  (plot-cwt+ridges (scaleogram analysis) chosen-tactus-list analysis-rhythm
-			   ;; :phase-palette :greyscale
-			   ;; :magnitude-palette :jet
-			   :title (name analysis-rhythm))
-	  (plot-highlighted-ridges (scaleogram analysis)
-				   chosen-tactus-list
-				   (ridge-peaks analysis)
-				   :title (name analysis-rhythm)
-				   :sample-rate (sample-rate analysis-rhythm))
-	  (format t "Finished plotting scalograms~%")))
+    (cond ((find 'tactus *plotting*)
+	   (plot-cwt+ridges (scaleogram analysis) chosen-tactus-list analysis-rhythm
+			    ;; :phase-palette :greyscale
+			    ;; :magnitude-palette :jet
+			    :title (name analysis-rhythm))
+	   (plot-highlighted-ridges (scaleogram analysis)
+				    chosen-tactus-list
+				    (ridge-peaks analysis)
+				    :title (name analysis-rhythm)
+				    :sample-rate (sample-rate analysis-rhythm))
+	   (format t "Finished plotting scalograms~%")))
     chosen-tactus-list))
 
 (defmethod tactus-for-rhythm ((analysis-rhythm rhythm) 
@@ -527,14 +525,14 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
       (format t "Writing ~a~%" scaleogram-filename) 
       (save-to-file (scaleogram analysis-to-write) scaleogram-filename)
       (format t "Writing ~a~%" ridge-peaks-filename)
-      (.save-to-octave-file (ridge-peaks analysis-to-write) ridge-peaks-filename)))
+      (.save (ridge-peaks analysis-to-write) ridge-peaks-filename :format :octave)))
 
 (defmethod read-mra-from-file ((path-to-read pathname))
   "Reads and returns a multires-analysis instance, returns nil when EOF"
   (make-instance 'multires-analysis
 		 :skeleton (read-skeleton-from-file (make-pathname :defaults path-to-read :type "skeleton"))
 		 :scaleogram (read-scaleogram-from-file (make-pathname :defaults path-to-read :type "scaleogram"))
-		 :ridge-peaks (.load-octave-file (make-pathname :defaults path-to-read :type "peaks"))))
+		 :ridge-peaks (.load (make-pathname :defaults path-to-read :type "peaks") :format :octave)))
 
 (defmethod analysis-of-rhythm-cached ((analysis-rhythm rhythm) &key (voices-per-octave 16)
 				      (cache-directory *mra-cache-path*))

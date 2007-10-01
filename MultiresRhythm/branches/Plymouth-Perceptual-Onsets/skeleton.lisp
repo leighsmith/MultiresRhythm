@@ -165,9 +165,9 @@
 ;; (start-sample longest-tactus)
 
 ;; 	 (example-ridge (ridge-containing-scale-and-time skeleton (- 144 (1+ 54)) 209)))
-;;     (.save-to-octave-file (scales example-ridge)
+;;     (.save (scales example-ridge)
 ;;			  "/Users/leigh/Research/Data/NewAnalysedRhythms/greensleeves-example-ridge.tactus"
-;;			  :variable-name "tactus")
+;;			  :variable-name "tactus" :format :octave)
 ;;    (format t "start sample ~a~%" (start-sample example-ridge))
 
 ;;(test-ridges "greensleeves-perform-medium")

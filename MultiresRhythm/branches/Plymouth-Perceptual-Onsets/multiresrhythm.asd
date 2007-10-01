@@ -57,6 +57,7 @@
 	       (:file "downbeat" :depends-on ("multires_rhythm"))
 	       (:file "clapping" :depends-on ("multires_rhythm" "downbeat"))
 	       (:file "perceptual-onsets" :depends-on ("clapping" "sound"))
+	       (:file "expectancies" :depends-on ("clapping"))
 	       (:file "test-examples" :depends-on ("rhythm" "multires_rhythm" "clapping"))
 	       (:file "national anthems")
 	       (:file "test-anthems" :depends-on ("national anthems" "multires_rhythm" "clapping"))))
