@@ -1,6 +1,6 @@
 ;;;; -*- Lisp -*-
 ;;;;
-;;;; $Id:$
+;;;; $Id$
 ;;;;
 ;;;; Functions for generating expectation points from a given set of event times.
 ;;;;
@@ -76,7 +76,7 @@
 ;;; Convert times in seconds to a rhythm.
 (defun clap-to-times-in-file (filepath)
   (let* ((sample-rate 200.0d0)
-	 (times-in-seconds (nlisp::.load-text-file filepath))
+	 (times-in-seconds (.load filepath :format :text))
 	 (times-as-rhythm (rhythm-of-onsets (pathname-name filepath) times-in-seconds :sample-rate sample-rate))
 	 (clap-times (clap-to-rhythm times-as-rhythm 
 				     :tactus-selector #'create-weighted-beat-ridge 
@@ -85,7 +85,7 @@
     	 (clap-times-in-seconds (./ clap-times sample-rate))
 	 (clap-filepath (make-pathname :defaults filepath :type "claps")))
     (format t "Beat times of ~a in seconds:~%~a~%" (name times-as-rhythm) clap-times-in-seconds)
-    (nlisp::.save-text-file clap-times-in-seconds clap-filepath)))
+    (.save clap-times-in-seconds clap-filepath :format :text)))
 
 ;; (walk-directory "/Volumes/iDisk/Research/Data/RicardsOnsetTests/PercussivePhrases/" #'print :test #'does-not-have-claps-file)
 
@@ -115,8 +115,9 @@
 	 ;; relative confidence = energy * duration of the ridge up until this moment.
 	 (confidence (* energy relative-ridge-duration))
 	 ;; precision = sharpness of peak. We calculate this as the area under the scale
-	 ;; between the other peaks.
-	 (precision 0))
+	 ;; between the other peaks. Do this by calculating the distance from the ridge
+	 ;; scale to the two nearest minima. The more narrow the width, the higher the precision
+	 (precision 0)) ; TODO
     (list (min expected-time max-time) confidence precision)))
 
 (defun expectancies-of-rhythm (rhythm)
@@ -131,7 +132,8 @@
     (loop
        for time in times-to-check
        for event-index = 0 then (1+ event-index)
-       ;;do (plot-scale-energy+peaks-at-time rhythm-scaleogram time (ridge-peaks rhythm-analysis) :sample-rate (sample-rate rhythm))
+       ;; do (plot-scale-energy+peaks-at-time rhythm-scaleogram time (ridge-peaks rhythm-analysis) :sample-rate (sample-rate rhythm))
+(break)
        collect (list event-index time
 		     (loop
 			for ridge in (ridges-at-time skeleton time)
@@ -147,16 +149,28 @@
 		  (mapcar (lambda (x) (list (/ (first x) (float sample-rate)) (second x) (third x)))
 			  (third expected-time)))) expectancy-structure))
 
+(defun label-expectancies (expectancy-structure sample-labels)
+  (loop 
+     for expectancy in expectancy-structure
+     collect (list (first expectancy) 
+		   (second expectancy)
+		   (.aref sample-labels (first expectancy) 0)
+		   (floor (.aref sample-labels (first expectancy) 1))
+		   (floor (.aref sample-labels (first expectancy) 2))
+		   (third expectancy))))
+
 (defun expectancies-at-times-in-file (filepath)
   (let* ((sample-rate 200.0d0)
-	 (times-in-seconds (nlisp::.load-text-file filepath))
+	 (events (.load filepath :format :text))
+	 (times-in-seconds (.column events 0))
 	 (times-as-rhythm (rhythm-of-onsets (pathname-name filepath) times-in-seconds :sample-rate sample-rate))
 	 (expectancies-at-times (expectancies-of-rhythm times-as-rhythm))
     	 (expectancy-times-in-seconds (expectancies-in-seconds expectancies-at-times sample-rate))
+	 (labelled-expectancy-times (label-expectancies expectancy-times-in-seconds events))
 	 (expectancy-filepath (make-pathname :defaults filepath :type "expectancies")))
     ;; Write the structure to a file.
     (with-open-file (expectancy-file expectancy-filepath :direction :output :if-exists :supersede)
-      (format expectancy-file "~{~{~d, ~,5f, ~:{~,5f ~,5f ~,5f~:^; ~}~}~%~}" expectancy-times-in-seconds))))
+      (format expectancy-file "~{~{~d, ~,5f, ~,5f, ~d, ~d, ~:{~,5f ~,5f ~,5f~:^; ~}~}~%~}" labelled-expectancy-times))))
 
 (defun does-not-have-expectancies-file (filepath)
   (and (is-not-file-of-type filepath "expectancies")	; ensure filepath isn't a clap file
@@ -165,4 +179,7 @@
        (not (probe-file (make-pathname :defaults filepath :type "expectancies")))))
 
 ;; (expectancies-at-times-in-file #P"/Volumes/iDisk/Research/Data/RicardsOnsetTests/PercussivePhrases/RobertRich/Java Gourd 01.corneronsetsqrt-p1-f30-s10-g075")
+
+;; (expectancies-at-times-in-file #P"/Volumes/iDisk/Research/Data/RicardsOnsetTests/PercussivePhrases/Burning/3.corneronsetsqrt-p1-f30-s10-g075")
+
 ;; (walk-directory "/Volumes/iDisk/Research/Data/RicardsOnsetTests/PercussivePhrases/" #'expectancies-at-times-in-file :test #'does-not-have-expectancies-file)
