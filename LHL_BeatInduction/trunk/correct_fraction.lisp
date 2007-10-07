@@ -90,28 +90,30 @@
                                 ,max
                                 ,multiples))))
 
-#|
-(defun make-level-from-file (file max &optional multiples)
-  (unless (probe-file file)
-    (error "Tree file not found ~A" file))
-  (let ((tree (with-open-file (stream file) (read stream))))
-    #'(lambda (pattern t1 beat)
-        (and pattern 
-             beat 
-             (new-level-tree-beat? tree pattern (mod t1 beat) beat max
-                               multiples)))))
+;; (defun make-level-from-file (file max &optional multiples)
+;;   (unless (probe-file file)
+;;     (error "Tree file not found ~A" file))
+;;   (let ((tree (with-open-file (stream file) (read stream))))
+;;     #'(lambda (pattern t1 beat)
+;;         (and pattern 
+;;              beat 
+;;              (new-level-tree-beat? tree pattern (mod t1 beat) beat max
+;;                                multiples)))))
 
 (defun make-correct-from-file (file &optional allow-multiples (allow-sub-beats t))
   (unless (probe-file file)
     (error "Tree file not found ~A" file))
   (let ((tree (with-open-file (stream file) (read stream))))
     #'(lambda (pattern t1 beat)
-        ;(print (list pattern t1 beat))
+        (format t "pattern ~a t1 ~a beat ~a~%" pattern t1 beat)
         (and ;pattern 
              beat 
              (correct-tree-beat? tree (or pattern '(1)) (mod t1 beat) beat 
                                  allow-multiples allow-sub-beats)))))
-|#
+
+
+;;; correct-tree-beat? check on script file. .LTF
+;;; new-correct-
 
 (defun correct-metric (pattern t1 beat)
   (and pattern beat (check-metric-t1-beat pattern t1 beat '(12 16 18 24) '(2 3))))

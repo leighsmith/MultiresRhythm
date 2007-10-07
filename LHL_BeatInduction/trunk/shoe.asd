@@ -26,6 +26,7 @@
 	       (:file "02 tap functions")
 	       (:file "04 trace printer")
 	       (:file "10 LHL82 microversion")
+	       (:file "pattern_trees")
 	       (:file "correct_fraction")
 	       (:file "random_generators")
 	       (:file "anthem-evaluation")))

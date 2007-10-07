@@ -1,4 +1,8 @@
-; generator-creators for random patterns
+;;;; -*- Lisp -*-
+;;;; $Id:$
+;;;;
+;;;; generator-creators for random patterns
+
 (in-package :shoe)
 
 ;**************************************************************************
@@ -412,9 +416,9 @@
               (<= (first pattern) (/ size (first metre))))
          (metric? pattern 		; use the same pattern.
                 (/ size (first metre)) 	; reduce size by the highest metrical subdivision.
-                (rest metre)	      ; reduce the metre, removing the highest subdivision
+                (rest metre)	        ; reduce the metre, removing the highest subdivision
                 (append metre-above  (list (first metre))) ; save the subdivision in metre-above
-                (cons 0 positions)))			   ; mark that we start at phase 0 on this metre.
+                (cons 0 positions)))			   ; mark that we start at phase 0 on this metrical subdivision.
         ((and (> (first pattern) size)
               (zerop (first positions))
               metre-above)
@@ -431,6 +435,7 @@
         (t nil)))
 
 (defun next-position (positions metre)
+  "Return a list of incremented positions"
   (when positions
     (let ((new (mod (1+ (first positions)) 
                (or (first metre) 1))))
@@ -438,11 +443,11 @@
         (cons new (next-position (rest positions) (rest metre)))
         (cons new (rest positions))))))
          
-;(metric? '(4 1 1 2 1 1 2  1 1 2 4 4 4 4 4) 12 '(3 2 2)) => T
+;(metric? '(4 1 1 2 1 1 2  1 1 2 4 4  4 4 4) 12 '(3 2 2)) => T
 ;(metric? '(1 1 2 1 1  2 1 1 2  2 2 2  2) 12 '(2 3 2)) => T
 ;(metric? '(2 2 2  2 1 1 2  2 2 2  6  1) 12 '(2 3 2)) =>
 ;(metric? '(3 3 3  1 1 1 3 1 1 1  3 3 3  9  1) 18 '(2 3 3)) => T
-;(metric? '(3 3 3 1 1 1 3 3  3 3 3 9  6 6 3 3) 18 '(3 2 3)) => NIL
+;(metric? '(3 3 3 1 1 1 3 3  3 3 3 3 6  6 6 3 3) 18 '(3 2 3)) => T
 ;(metric? '(6 6 6  6 6 3 3) 18 '(3 2 3)) => T
 
 ;(metric? '(2 2 2 2 1 1 2 2 24 2 2 2 6) 12 '(2 3 2))
@@ -453,8 +458,9 @@
 
 (defun position-to-state (position size metre &optional metre-above (positions '(0)))
   (cond ((null (integerp position)) nil)
-        ((zerop position) (list size metre metre-above positions))
-        ;; ((zerop position) (list size (append metre (reverse metre-above)) nil positions))
+        ;; ((zerop position) (list size metre metre-above positions))
+	;; Returns the full meter. If metre-above is nil, there is no change.
+        ((zerop position) (list size (append metre metre-above) nil positions))
         ((= position size)
          (list size metre metre-above  
                (cons (mod (1+ (first positions)) (first (last metre-above)))
@@ -596,7 +602,7 @@
                                     (and (check-position nil size metre (mod (+ t1 position) size)) 
                                          ;(check-t1-beat? t1 beat size metre position)
                                          (check-position pattern size metre position)
-					 (progn (format t "size ~a metre ~a position ~a~%" size metre position) t))))))
+					 (progn (format t "Matched size ~a metre ~a position ~a~%" size metre position) t))))))
 
 
 ; (check-metric-t1-beat '(4 1 1 2 1 1 2  1 1 2 4 4 4 4 4) 0 4 '(8 12 16 18 24) '(2 3)) => T
@@ -607,14 +613,15 @@
 (defun check-position (pattern size metre position)
   (let ((state (position-to-state position size metre)))
     (when state
-      (destructuring-bind (size metre metre-above positions) state
+      (destructuring-bind (size metre-new metre-above positions) state
         (metric? pattern size metre metre-above positions)))))
 
-;(check-metric-t1-beat '(2 2 4) 4 4 '(4 8) '(2 3))
-;(check-metric-t1-beat '(2 2 4) 3 4 '(4 8) '(2 3))
-;(check-metric-t1-beat '(3 1 2 1 1 1 2 1) 0 3 '(12 16 18 24) '(2 3))
-;(check-metric-t1-beat '(3 1 1 1 1 1 1 3) 0 3 '(12 16 18 24) '(2 3))
-;(check-metric-t1-beat '(3 1 2 1 1 1 1 2) 0 4 '(12 16 18 24) '(2 3))
+;(check-metric-t1-beat '(2 2 4) 4 4 '(4 8) '(2 3)) => T
+;(check-metric-t1-beat '(2 2 4) 3 4 '(12 16 18 24) '(2 3)) => T
+;(check-metric-t1-beat '(3 1 2 1 1 1 2 1) 0 3 '(12 16 18 24) '(2 3)) => NIL
+;(check-metric-t1-beat '(3 1 1 1 1 1 1 3) 0 3 '(12 16 18 24) '(2 3)) => T
+;(check-metric-t1-beat '(3 1 2 1 1 1 1 2) 0 4 '(12 16 18 24) '(2 3)) => NIL
+;(check-metric-t1-beat '(1 2 1 1 2 1 1 4 2 2 8) 0 4 '(12 16 18 24) '(2 3)) => T
 ;(apply #'+ '(3 1 2 1 1 1 2 1))
 ;(beat-fitting-metres 12 '(2 3) 3)
 ;(trace metric?)
