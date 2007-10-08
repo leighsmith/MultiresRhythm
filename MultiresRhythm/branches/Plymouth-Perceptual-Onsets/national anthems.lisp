@@ -177,7 +177,8 @@ model were multiplied by 3, in the first case (America).
 ((GREENLAND "4/4" ("NangmimeK Erinalik") :QUARTER-NOTE 4 :BAR-DURATION 16 :START-AT 14) 
 (2 4 3 1 4 3 1 4 3 1 6 2 4 3 1 3 1 2 2 8 6 2 4 3 1 4 3 1 3 1 3 1 6 2 3 1 2 2 3 1 2 2 4 4)) 
 
-((GUATEMALA "4/4" ("Himno Nacional") :QUARTER-NOTE 4 :BAR-DURATION 16 :START-AT -4) 
+;; This used to have a start-at value of -4, should be 12, unclear why it wasn't.
+((GUATEMALA "4/4" ("Himno Nacional") :QUARTER-NOTE 4 :BAR-DURATION 16 :START-AT 12) 
 (2 2 4 2 2 4 2 2 6 2 4 2 2 4 2 2 4 2 2 4 2 2 4 2 2 4 2 2 4 2 2 6 2 4 2 2 4 2 2 4 2 2 4 6 2 2 2 4 2 2 4 2 2 6 2 4 2 2 4 2 2 2 2 2 2 12 2 2 4 2 2 4 2 2 6 2 4 2 2 4 2 2 4 2 2 4 6 2 2 2 6 2 4 2 2 4 2 2 2 2 2 2 12 2 2 4 2 2 4 2 2 8 4 2 2 4 2 2 4 2 2 12 2 2 4 2 2 4 2 2 6 2 4 2 2 4 2 2 4 2 2)) 
 
 ((GUINEA "2/4" ("Liberte") :QUARTER-NOTE 12 :BAR-DURATION 24 :START-AT 0) 
