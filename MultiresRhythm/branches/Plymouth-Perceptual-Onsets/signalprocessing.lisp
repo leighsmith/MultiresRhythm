@@ -63,24 +63,33 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 	(setf (aref r-val j) (+ (aref r-val j) (aref a-val i j))))) 
     r))
 
-;; TODO check GSL for maxima/minima finding routines.
-(defun extrema-points (matrix array-dimension)
+(defun extrema-points (matrix &key (extrema :max))
+  "Returns a matrix of the same size as passed in, with peaks of the rows marked"
   (declare (optimize (speed 3) (space 0) (safety 1)))
   (let* ((dims (.array-dimensions matrix))
 	 (rows (.row-count matrix))
 	 (r (make-double-array dims)) ; (make-ninstance a result-length)
 	 (a-val (val matrix))
-	 (r-val (val r)))
+	 (r-val (val r))
+	 (comparison-fn (if (eql extrema :max) #'> #'<)))
     (declare (type fixnum rows))
-    ;; (type double * r-val)
+    (declare (type (simple-array double-float *) r-val a-val))
     (dotimes (c (.column-count matrix))
+      (declare (fixnum c))
       (dotimes (r (- rows 3))
-	(declare (type fixnum c r))
+	(declare (fixnum r))
 	(let* ((r+1 (1+ r))
 	       (center (aref a-val r+1 c)))
-	  (setf (aref r-val r+1 c) (if (and (< (aref a-val r c) center) 
-					    (> center (aref a-val (+ r 2) c))) 1d0 0d0)))))
+	  (declare (type double-float center))
+	  (setf (aref r-val r+1 c) (if (and (funcall comparison-fn center (aref a-val r c)) 
+					    (funcall comparison-fn center (aref a-val (+ r 2) c))) 1d0 0d0)))))
     r))
+
+;; Try using GSL Interpolation functions.
+
+(defmacro argmax (y)
+  "Returns the argument (index) that is the maximum of y"
+  `(position (.max ,y) (val ,y)))
 
 (defun cumsum (a)
   "Computes the cumulative summation across each row of the matrix"
@@ -110,6 +119,3 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 		     (if (> c width) (- (aref a-val r (- c width))) 0)))))
     cumsum))
 
-(defmacro argmax (y)
-  "Returns the argument (index) that is the maximum of y"
-  `(position (.max ,y) (val ,y)))
