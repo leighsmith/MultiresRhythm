@@ -42,11 +42,11 @@
 					      &key title time-axis-decimation)
   (:documentation "Plot highlighted ridges over the magnitude and ridges plots of the given rhythm."))
 
-(defgeneric label-scale-as-time-support (scaleogram)
-  (:documentation "Returns a list of plotting labels giving the time support for each scale"))
+;; (defgeneric label-scale-as-time-support (scaleogram)
+;;   (:documentation "Returns a list of plotting labels giving the time support for each scale"))
 
-(defgeneric label-scale-as-time-support-seconds (scaleogram sample-rate)
-  (:documentation "Generates a set of labels of the scales as time support intervals in seconds"))
+;; (defgeneric label-scale-as-time-support-seconds (scaleogram sample-rate)
+;;   (:documentation "Generates a set of labels of the scales as time support intervals in seconds"))
 
 ;;;; Methods
 
