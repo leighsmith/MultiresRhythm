@@ -110,17 +110,6 @@
   (if (> repeat 0)
       (append rhythm (repeat-rhythm rhythm (1- repeat)))))
 
-;;; We use a threshold for non binary rhythms. With the threshold under 1, this will work
-;;; with binary rhythms also.
-(defmethod onset-time-of-beat ((the-rhythm rhythm) beat-numbers)
-  "Returns the sample number of the beat-number'th beat in the given rhythm"
-  (let* ((threshold 0.9d0)
-	 (time-signal (time-signal the-rhythm))
-	 (amplitude-range (.max time-signal))
-	 ;; we don't check the rectified-signal otherwise we will count beats twice.
-	 (beat-positions (.find (.> time-signal (* amplitude-range threshold)))))
-    (.aref beat-positions beat-numbers)))
-
 ;; TODO This could be distinct, at the moment we are assuming the 'time' of the beat is the
 ;; same as it's onset time.
 ;; (defun onset-time-of-beat (rhythm beat-numbers)
@@ -179,13 +168,23 @@
 (defmethod onsets-in-samples ((rhythm-to-analyse rhythm))
   (.find (time-signal rhythm-to-analyse)))
 
+(defmethod onset-time-of-beat ((rhythm-to-analyse rhythm) beat-number)
+  "Returns the sample number of the beat-number'th beat in the given rhythm"
+  (let* ((beat-positions (onsets-in-samples rhythm-to-analyse)))
+    (.aref beat-positions beat-number)))
+
+(defmethod onset-time-of-beat ((rhythm-to-analyse rhythm) (beat-numbers n-fixnum-array))
+  "Returns the sample number of the beat-number'th beat in the given rhythm"
+  (let* ((beat-positions (onsets-in-samples rhythm-to-analyse)))
+    (.arefs beat-positions beat-numbers)))
+
 (defmethod onsets-in-seconds ((rhythm-to-analyse rhythm))
   (./ (onsets-in-samples rhythm-to-analyse) (* (sample-rate rhythm-to-analyse) 1d0)))
 
 (defmethod rhythm-iois ((rhythm-to-analyse rhythm))
   (.diff (onsets-in-seconds rhythm-to-analyse)))
 
-;;; need to extract the first row while .diff is silly.
+;;; TODO need to extract the first row while .diff is silly.
 (defmethod rhythm-iois-samples ((rhythm-to-analyse rhythm))
   (.row (.diff (onsets-in-samples rhythm-to-analyse)) 0)) 
 
