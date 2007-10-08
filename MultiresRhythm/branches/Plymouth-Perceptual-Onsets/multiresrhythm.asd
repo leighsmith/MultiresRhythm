@@ -10,7 +10,7 @@
 ;;;;
 ;;;; In nlisp (Matlab-alike Common Lisp library www.nlisp.info)
 ;;;;
-;;;; Known to work on SBCL 1.0.2
+;;;; Known to work on SBCL 1.0.10
 ;;;;
 ;;;; See for background:
 ;;;;   author =  {Leigh M. Smith},
@@ -21,9 +21,10 @@
 ;;;;   annote =  {\url{http://www.science.uva.nl/~lsmith/Papers/MultiresRhythm.pdf}}
 ;;;;
 
-(require 'nlisp)
+(require 'nlisp)			; For mathematics
+(require 'cl-fad)			; For file I/O
 
-(defpackage #:multires-rhythm (:use #:cl #:asdf #:nlisp)
+(defpackage #:multires-rhythm (:use #:cl #:asdf #:nlisp #:cl-fad)
 	    (:export :rhythm 
 		     :skeleton-of-rhythm
 		     :tactus-for-rhythm
