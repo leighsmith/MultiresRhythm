@@ -10,7 +10,7 @@
 ;; (defparameter *anthem-tree* (with-open-file (stream "/Volumes/iDisk/Research/Data/DesainHoning/anthems.tree") (read stream)))
 
 ;; Created from correct_fraction:make-correct-from-file.
-(defun correct-from-tree-file (pattern t1 beat &key (allow-multiples t) (allow-sub-beats t))
+(defun correct-from-anthem-tree (pattern t1 beat &key (allow-multiples t) (allow-sub-beats t))
   (format t "pattern ~a t1 ~a beat ~a~%" pattern t1 beat)
   (format t "normalized pattern ~a~%" (normalize pattern :sequential-ratio))
   ;; TODO should test that the name of the country matches.
@@ -49,15 +49,22 @@
 	    (and (= (t1 beat-track) (multires-rhythm::anthem-anacrusis-duration anthem))
 		 (= (beat beat-track) (multires-rhythm::anthem-bar-duration anthem))))
     (format t "Checking pattern ~a~%" pattern)
-    ;; (correct-from-tree-file pattern (t1 beat-track) (beat beat-track))))
-    (correct-from-tree-file pattern 
-			    (multires-rhythm::anthem-anacrusis-duration anthem)
-			    (multires-rhythm::anthem-bar-duration anthem))))
+    (correct-from-anthem-tree pattern (t1 beat-track) (beat beat-track))))
 
     ;; (correct-strict-pulse pattern (t1 beat-track) (beat beat-track)) ; from D&H99 for strict checking.
     ;; (format t "correct metric ~a~%" 
 ;;	    (correct-metric pattern (t1 beat-track) (beat beat-track)))
     ;; (correct-metric pattern (t1 beat-track) (beat beat-track))))
+
+(defun verify-lhl82-anthem (anthem)
+  (let* ((pattern (second anthem)))
+    (format t "official downbeat ~a official bar period ~a~%" 
+	    (multires-rhythm::anthem-anacrusis-duration anthem)
+	    (multires-rhythm::anthem-bar-duration anthem))
+    (format t "Checking pattern ~a with transcribed beat duration and phase~%" pattern)
+    (correct-from-anthem-tree pattern 
+			      (multires-rhythm::anthem-anacrusis-duration anthem)
+			      (multires-rhythm::anthem-bar-duration anthem))))
 
 
 ;; (setf anthem-tree-check (make-correct-from-file "/Volumes/iDisk/Research/Data/DesainHoning/anthems.tree"))
@@ -81,11 +88,8 @@
 ;;; (evaluate-lhl82-anthem (multires-rhythm::anthem-named 'multires-rhythm::yugoslavia))
 ;;; (evaluate-lhl82-anthem (multires-rhythm::anthem-named 'multires-rhythm::australia))
 ;;; (evaluate-lhl82-anthem (multires-rhythm::anthem-named 'multires-rhythm::america))
-;;; (evaluate-lhl82-anthem (multires-rhythm::anthem-named 'multires-rhythm::vietnam))
-;;; (evaluate-lhl82-anthem (multires-rhythm::anthem-named 'multires-rhythm::argentine))
-;;; (evaluate-lhl82-anthem (multires-rhythm::anthem-named 'multires-rhythm::yemen))
-;;; (evaluate-lhl82-anthem (multires-rhythm::anthem-named 'multires-rhythm::vietnam))
 
 ;;; (setf bad-bar-periods (multires-rhythm::evaluation-of-anthems #'evaluate-lhl82-bar-period-of-anthem))
 ;;; (setf bad-downbeats (multires-rhythm::evaluation-of-anthems #'evaluate-lhl82-downbeat-of-anthem))
 ;;; (setf bad-both (multires-rhythm::evaluation-of-anthems #'evaluate-lhl82-anthem))
+;;; (setf none-bad (multires-rhythm::evaluation-of-anthems #'verify-lhl82-anthem))
