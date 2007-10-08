@@ -130,6 +130,14 @@
 		   (.row ridge-plane (1+ period-scale))))
 	(duration-in-samples skeleton))))
 
+(defun skeleton-of-ridge-peaks (analysis-scaleogram ridge-peaks)
+  "Returns the skeleton instance given the scaleogram and ridge peaks."
+  (make-instance 'skeleton 
+		 :ridges (extract-ridges ridge-peaks)
+		 :duration (duration-in-samples analysis-scaleogram)
+		 :scales (number-of-scales analysis-scaleogram)
+		 :voices-per-octave (voices-per-octave analysis-scaleogram)
+		 :skip-highest-octaves (skip-highest-octaves analysis-scaleogram)))
 
 ;;; File I/O
 

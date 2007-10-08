@@ -19,31 +19,6 @@
 (defclass salience-trace-rhythm (rhythm)
   ((onsets-time-signal :initarg :onsets-time-signal :accessor onsets-time-signal :initform (make-double-array '(1)))))
 
-#|
-(defun perceptual-onsets-to-rhythm (filename &key (sample-rate 200) (description "") (weighted t))
-  (let* ((file-path (make-pathname 
-		     :directory (list :absolute "/Volumes/iDisk/Research/Data/PerceptualOnsets/") 
-		     :name filename
-		     :type "mat"))
-	 (perceptual-onsets (.load file-path :format :octave))
-	 ;; Assumes onset times are in milliseconds
-	 (onset-times (.floor (.* (.column perceptual-onsets 0) sample-rate)))
-	 (binary-grid (make-narray (onsets-to-grid (nlisp::array-to-list onset-times))))
-	 (weighted-grid (.* binary-grid 1d0))
-	 (rhythm-name (concatenate 'string (if weighted "weighted " "unweighted ") filename)))
-    (setf (.arefs weighted-grid onset-times) (.column perceptual-onsets 1))
-    (make-instance 'rhythm 
-		   :name rhythm-name
-		   :description description
-		   :time-signal (if weighted weighted-grid binary-grid)
-		   :sample-rate sample-rate)))
-|#
-
-;; (setf res1 (perceptual-onsets-to-rhythm "res1_1_pOnsets" :weighted nil))
-;; (setf res1 (perceptual-onsets-to-rhythm "res1_1_pOnsets" :weighted t))
-;; (plot-rhythm res1)
-;; (plot (time-signal res1) nil :aspect-ratio 0.66)
-
 (defun perceptual-salience-to-rhythm (salience-filename onsets-filename &key 
 				      (sample-rate 200) (description "") (weighted t))
   (let* ((data-directory "/Volumes/iDisk/Research/Data/PerceptualOnsets/")
@@ -54,7 +29,7 @@
 	 (perceptual-onsets (.load (make-pathname :directory (list :absolute data-directory) 
 						  :name onsets-filename
 						  :type "mat") :format :octave))
-	 ;; Assumes onset times are in milliseconds
+	 ;; Assumes onset times are in seconds
 	 (onset-times (.floor (.* (.column perceptual-onsets 0) sample-rate)))
 	 (binary-grid (make-narray (onsets-to-grid (nlisp::array-to-list onset-times))))
 	 (weighted-grid (.* binary-grid 1d0)))
@@ -69,7 +44,10 @@
 		   :onsets-time-signal (if weighted weighted-grid binary-grid)
 		   :sample-rate sample-rate)))
 
-;; (plot perceptual-salience nil :aspect-ratio 0.66)
+;; (setf res1 (perceptual-onsets-to-rhythm "res1/res1_1_resp_text" "res1/res1_1_pOnsets" :weighted nil))
+;; (setf res1 (perceptual-onsets-to-rhythm "res1/res1_1_resp_text" "res1/res1_1_pOnsets" :weighted t))
+;; (plot-rhythm res1)
+;; (plot (time-signal res1) nil :aspect-ratio 0.66)
 ;; (plot-cwt salience-scaleogram :title "res(1,1) continuous salience")
 
 (defun create-beat-ridge (rhythm-to-analyse analysis)
@@ -270,16 +248,26 @@
     (onset-time-of-beat onsets-rhythm beat-numbers)))
 
 
+(defun pOnset-times (onsets-filename)
+  (let* ((data-directory "/Volumes/iDisk/Research/Data/PerceptualOnsets/")
+	 (perceptual-onsets (.load (make-pathname :directory (list :absolute data-directory)
+						  :name onsets-filename
+						  :type "mat") :format :octave)))
+    (.column perceptual-onsets 0)))
+
+
+;;; Make the perceptual onset detector results audible
+(defun mix-pOnsets-with-sound (original-sound-filename)
+  (let* ((original-sound-path (make-pathname :directory "/Volumes/iDisk/Research/Data/PerceptualOnsets/"
+					     :name original-sound-filename
+					     :type "wav"))
+	 (accompaniment-sound-path (make-pathname :directory "/Volumes/iDisk/Research/Data/Handclap Examples"
+						  :name (concatenate 'string original-sound-filename "_pOnsets_mixed")
+						  :type "wav"))
+	 (onset-times-in-seconds (pOnset-times (concatenate 'string original-sound-filename "_pOnsets_text"))))
+    (save-rhythm-mix accompaniment-sound-path original-sound-path onset-times-in-seconds)))
+
 #|
-;;; TODO this is a total hack and is disgusting and should be replaced ASAP when we
-;;; integrate Plymouth's onsets thresholding function into our code. 
-(defmethod onset-time-of-beat ((rhythm salience-trace-rhythm) beat-numbers)
-  "Returns the sample number of the beat-number'th beat in the given rhythm"
-  (let* ((original-rhythm-filename (name rhythm))
-	 (prefix (subseq original-rhythm-filename 0 (search "_resp_text" original-rhythm-filename)))
-	 (onsets-filename (concatenate 'string prefix "_pOnsets_text"))
-	 (onsets-rhythm (perceptual-onsets-to-rhythm onsets-filename :weighted nil)))
-    (onset-time-of-beat onsets-rhythm beat-numbers)))
 
 ;; Problem is, 6 times the beat-period is typically longer than the maximum scale, so
 ;; there will be less examples of energy. If there is, say due to a longer analysis

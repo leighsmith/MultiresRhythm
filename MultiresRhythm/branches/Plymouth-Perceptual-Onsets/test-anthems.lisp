@@ -708,7 +708,8 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
     (format t "~a ~d failed, correct ~f%~%" 
 	    evaluation-function 
 	    number-failed
-	    (* (- 1.0 (/ (float number-failed) (length anthems))) 100.0))))
+	    (* (- 1.0 (/ (float number-failed) (length anthems))) 100.0))
+    failing-anthems))
 
 ;; (beat-period-of-rhythm (anthem-rhythm (anthem-named 'australia)) (skeleton-of-anthem (anthem-named 'australia)))
 

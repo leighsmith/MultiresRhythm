@@ -1,3 +1,7 @@
+;;; -*- Lisp -*-
+;;;
+;;; $Id$
+;;;
 ;;; National Anthems data set, as described in:
 ;;; Desain, P. and Honing, H. (1999). Computational Models of Beat Induction: 
 ;;; The Rule-Based Approach. Journal of New Music Research, 28(1), 29-42.
