@@ -33,8 +33,9 @@
 	 (onset-times (.floor (.* (.column perceptual-onsets 0) sample-rate)))
 	 (binary-grid (make-narray (onsets-to-grid (nlisp::array-to-list onset-times))))
 	 (weighted-grid (.* binary-grid 1d0)))
-    (plot perceptual-salience nil 
-	  :aspect-ratio 0.66 :title (format nil "salience trace of ~a" salience-filename))
+    (diag-plot 'perceptual-salience
+      (plot perceptual-salience nil 
+	    :aspect-ratio 0.66 :title (format nil "salience trace of ~a" salience-filename)))
     (setf (.arefs weighted-grid onset-times) (.column perceptual-onsets 1))
     ;; Even though we have assumed rhythm is a set of dirac fns, we can cheat a bit.
     (make-instance 'salience-trace-rhythm 
@@ -72,14 +73,15 @@
 	 (vpo (voices-per-octave scaleogram))
 	 (sample-rate (sample-rate rhythm-to-analyse))
 	 (salient-scale (preferred-tempo-scale vpo sample-rate))
-	 (tempo-beat-preference (tempo-salience-weighting salient-scale (.array-dimensions cumulative-scale-persistency)))
+	 (tempo-beat-preference (tempo-salience-weighting salient-scale (.array-dimensions cumulative-scale-persistency)
+							  :octaves-per-stddev 1.0))
  	 (weighted-persistency-profile (.* cumulative-scale-persistency tempo-beat-preference)))
-    (cond ((find 'weighted-beat-ridge *plotting*)
-	   (window)
-	   (plot-image #'magnitude-image (list weighted-persistency-profile) '((1.0 0.5) (0.0 0.3))
-		       (axes-labelled-in-seconds scaleogram sample-rate 4)
-		       :title (format nil "weighted persistency profile of ~a" (name rhythm-to-analyse)))
-	   (close-window)))
+    (diag-plot 'weighted-beat-ridge
+      (window)
+      (plot-image #'magnitude-image (list weighted-persistency-profile) '((1.0 0.5) (0.0 0.3))
+		  (axes-labelled-in-seconds scaleogram sample-rate 4)
+		  :title (format nil "weighted persistency profile of ~a" (name rhythm-to-analyse)))
+      (close-window))
     (loop
        for time from 0 below (duration-in-samples scaleogram)
        for scale-persistency-profile = (.column weighted-persistency-profile time)
@@ -210,7 +212,8 @@
 				   (clap-to-rhythm salience-trace-rhythm 
 						   :start-from-beat start-from-beat
 						   :tactus-selector #'create-weighted-beat-ridge)))
-;;					       :tactus-selector #'create-beat-ridge))
+;;					       :tactus-selector #'create-beat-ridge)))
+;; Not used:
 ;;					       :tactus-selector #'create-weighted-windowed-beat-ridge))
 ;;					       :tactus-selector #'select-longest-lowest-tactus)))
 ;;					       :tactus-selector #'select-tactus-by-beat-multiple)))
@@ -218,15 +221,12 @@
 ;;					       :tactus-selector #'create-beat-multiple-ridge)))
 	 ;; TODO gotta be a better way for division than making it a double-float.
 	 (clap-times-in-seconds (./ salience-trace-claps (* 1d0 (sample-rate salience-trace-rhythm)))))
-    ;; Plot the salience trace, the produced onsets, & zero phase.
-    (plot-claps salience-trace-rhythm 
-		(.find (onsets-time-signal salience-trace-rhythm))
-		;; empty phase
-		(make-double-array (duration-in-samples salience-trace-rhythm))
-		:signal-name (format nil "perceptual onsets plot of ~a" (name salience-trace-rhythm)))
-
-    ;;(plot (.column perceptual-onsets 1) (.find weighted-onsets-onsets 0) :style "impulses"
-    ;;				    :title rhythm-name :aspect-ratio 0.66)
+    (diag-plot 'onsets ;; Plot the salience trace, the produced onsets, & zero phase.
+      (plot-claps salience-trace-rhythm 
+		  (.find (onsets-time-signal salience-trace-rhythm))
+		  ;; empty phase
+		  (make-double-array (duration-in-samples salience-trace-rhythm))
+		  :signal-name (format nil "perceptual onsets plot of ~a" (name salience-trace-rhythm))))
 
     ;; TODO Should have a save-rhythm-and-claps method specialised on
     ;; salience-trace-rhythm that uses the weighted onsets rhythm so that we know the

@@ -74,7 +74,7 @@
 	 )
     (format t "Handclapping every ~d beats from beat ~d of original rhythm, sample ~d~%"
 	    beat-multiple start-from-beat down-beat-sample)
-    (if (find 'claps *plotting*) (plot-claps original-rhythm clap-at foot-tap-phase))
+    (diag-plot 'claps (plot-claps original-rhythm clap-at foot-tap-phase))
     clap-at))
 
 (defun beat-multiple-for-clapping (tactus vpo sample-rate)

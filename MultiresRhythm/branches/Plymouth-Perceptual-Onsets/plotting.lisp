@@ -33,6 +33,11 @@
 
 ;;; Implementation
 
+(defmacro diag-plot (plot-name &body body)
+  "Call the functions in the body if the named feature is in the plotting feature list"
+  `(cond ((find ,plot-name *plotting*)
+	  ,@body)))
+
 ;;; We assume max-undecimated-sample is the length of a scaleogram, *before time axis
 ;;; decimation* so the last element is the sample after the data to be displayed.
 (defun label-samples-as-seconds (max-undecimated-sample sample-rate &key (start 0)
