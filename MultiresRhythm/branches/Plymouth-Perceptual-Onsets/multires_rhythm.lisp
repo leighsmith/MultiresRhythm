@@ -21,11 +21,12 @@
 ;;; An analysis includes a textual description, skeleton, scaleogram and
 ;;; correlated-ridge-scale-peaks instances. 
 (defclass multires-analysis ()
-  ((description :initarg :description :accessor description :initform "")
-   (skeleton    :initarg :skeleton    :accessor skeleton)
-   (scaleogram  :initarg :scaleogram  :accessor scaleogram)
-   (ridge-peaks :initarg :ridge-peaks :accessor ridge-peaks)
-   (sample-rate :initarg :sample-rate :accessor sample-rate)))
+  ((description   :initarg :description   :accessor description :initform "")
+   (skeleton      :initarg :skeleton      :accessor skeleton)
+   (scaleogram    :initarg :scaleogram    :accessor scaleogram)
+   (ridge-peaks   :initarg :ridge-peaks   :accessor ridge-peaks)
+   (ridge-troughs :initarg :ridge-troughs :accessor ridge-troughs)
+   (sample-rate   :initarg :sample-rate   :accessor sample-rate)))
 
 ;;;; Declarations
 (defgeneric choose-tactus (rhythm-to-analyse analysis &key tactus-selector)
@@ -305,6 +306,7 @@ Phase is assumed to be -pi to pi."
 ;;; "Degree-two polynomial interpolation, i.e. parabolic interpolation, is particularly convenient as it uses
 ;;; only three bins of the magnitude spectrum."
 
+#|
 (defun correlate-ridges (magnitude phase voices-per-octave)
   "Computes independent surfaces analysing the magnitude and phase
 which are then combined to form an analytic surface from which we
@@ -317,13 +319,25 @@ then can extract ridges."
     ;; Stationary phase has been dropped for rhythm data since it mostly introduces
     ;; spurious ridges, not really improving discrimination of ridges.
     (./ (.+ normalised-magnitude local-pc) 2d0)))
+|#
+
+(defun correlate-ridges (magnitude phase voices-per-octave)
+  "Computes independent surfaces analysing the magnitude and phase
+which are then combined to form an analytic surface from which we
+then can extract ridges."
+  (let ((normalised-magnitude (normalise-by-scale magnitude)))
+    ;; Correlate (by averaging) the energy modulus and local phase congruency. 
+    ;; Since local phase congruency is conditioned on a minimal magnitude, we reduce false positives.
+    ;; Stationary phase has been dropped for rhythm data since it mostly introduces
+    ;; spurious ridges, not really improving discrimination of ridges.
+    normalised-magnitude))
 
 (defun determine-scale-peaks (correlated-profile &key (correlation-minimum 0.01))
   "Finds the peaks in the combined correlation profile 
   (of energy modulus, stationary phase and local phase congruency)
    across the dilation scale axis at each time point."
   (.* (.> correlated-profile correlation-minimum)
-      (extrema-points correlated-profile :rows) 
+      (extrema-points correlated-profile :extrema :max) 
       correlated-profile))
 
 (defun scale-peaks-of-scaleogram (scaleogram sample-rate &key (absolute-tempo-weighting nil))
@@ -359,26 +373,22 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
 (defmethod skeleton-of-scaleogram ((analysis-scaleogram scaleogram) sample-rate)
   "Returns the skeleton given the scaleogram and sample-rate."
   (let* ((correlated-ridge-scale-peaks (scale-peaks-of-scaleogram analysis-scaleogram sample-rate))
-       	 (skeleton (make-instance 'skeleton 
-				  :ridges (extract-ridges correlated-ridge-scale-peaks)
-				  :duration (duration-in-samples analysis-scaleogram)
-				  :scales (number-of-scales analysis-scaleogram)
-				  :voices-per-octave (voices-per-octave analysis-scaleogram)
-				  :skip-highest-octaves (skip-highest-octaves analysis-scaleogram))))
+       	 (skeleton (skeleton-of-ridge-peaks analysis-scaleogram correlated-ridge-scale-peaks)))
     (values skeleton correlated-ridge-scale-peaks)))
 
 (defmethod analysis-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
   "Returns the multires analysis of the given rhythm."
-  (let* ((scaleogram (scaleogram-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave))
-	 (sample-rate (sample-rate analysis-rhythm)))
-    (multiple-value-bind (skeleton correlated-ridge-scale-peaks) 
-	(skeleton-of-scaleogram scaleogram sample-rate)
-      (make-instance 'multires-analysis 
-		     :description (description analysis-rhythm)
-		     :scaleogram scaleogram
-		     :skeleton skeleton
-		     :ridge-peaks correlated-ridge-scale-peaks
-		     :sample-rate sample-rate))))
+  (let* ((sample-rate (sample-rate analysis-rhythm))
+	 (scaleogram (scaleogram-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave))
+	 (correlated-ridge-scale-peaks (scale-peaks-of-scaleogram scaleogram sample-rate))
+	 (skeleton (skeleton-of-ridge-peaks scaleogram correlated-ridge-scale-peaks)))
+    (make-instance 'multires-analysis 
+		   :description (description analysis-rhythm)
+		   :scaleogram scaleogram
+		   :skeleton skeleton
+		   :ridge-peaks correlated-ridge-scale-peaks
+		   :ridge-troughs (extrema-points (scaleogram-magnitude scaleogram) :extrema :min)
+		   :sample-rate sample-rate)))
 
 ;;; Should all be in tactus-selection.lisp
 (defmethod select-tactus-by-beat-multiple ((performed-rhythm rhythm) (rhythm-analysis multires-analysis))
@@ -425,17 +435,18 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
   (let* ((chosen-tactus (funcall tactus-selector analysis-rhythm analysis))
 	 (chosen-tactus-list (if (listp chosen-tactus) chosen-tactus (list chosen-tactus))))
     (format t "Chosen tactus ~a using ~a~%" chosen-tactus-list tactus-selector)
-    (cond ((find 'tactus *plotting*)
-	   (plot-cwt+ridges (scaleogram analysis) chosen-tactus-list analysis-rhythm
-			    ;; :phase-palette :greyscale
-			    ;; :magnitude-palette :jet
-			    :title (name analysis-rhythm))
-	   (plot-highlighted-ridges (scaleogram analysis)
-				    chosen-tactus-list
-				    (ridge-peaks analysis)
-				    :title (name analysis-rhythm)
-				    :sample-rate (sample-rate analysis-rhythm))
-	   (format t "Finished plotting scalograms~%")))
+    (diag-plot 'cwt
+      (plot-cwt+ridges (scaleogram analysis) chosen-tactus-list analysis-rhythm
+		       ;; :phase-palette :greyscale
+		       ;; :magnitude-palette :jet
+		       :title (name analysis-rhythm)))
+    (diag-plot 'tactus
+      (plot-highlighted-ridges (scaleogram analysis)
+			       chosen-tactus-list
+			       (ridge-peaks analysis)
+			       :title (name analysis-rhythm)
+			       :sample-rate (sample-rate analysis-rhythm))
+      (format t "Finished plotting scalograms~%"))
     chosen-tactus-list))
 
 (defmethod tactus-for-rhythm ((analysis-rhythm rhythm) 
@@ -509,7 +520,7 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
 
 (defun meter-of-analysis (analysis tactus)
   "Look for harmonicity of the beat, either duple or triple. Returns the selected beat multiple."
-  (let* ((meters '(2 3))
+  (let* ((meters '(3 4))
 	 (evidence (mapcar (lambda (beat-multiple) (meter-evidence analysis tactus beat-multiple)) meters)))
     (nth (position (apply #'max evidence) evidence) meters)))
 
