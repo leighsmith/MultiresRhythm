@@ -13,54 +13,9 @@
 
 (in-package :multires-rhythm)
 (use-package :nlisp)
+(use-package :cl-fad)
 
-;;;; "Peter Seibels directory walking functions, to be drawn in using packages"
-
-(defun component-present-p (value) 
-  (and value (not (eql value :unspecific)))) 
-
-(defun directory-pathname-p  (p) 
-  (and 
-   (not (component-present-p (pathname-name p))) 
-   (not (component-present-p (pathname-type p))) 
-   p)) 
-
-(defun pathname-as-directory (name) 
-  (let ((pathname (pathname name))) 
-    (when (wild-pathname-p pathname) 
-      (error "Can't reliably convert wild pathnames.")) 
-    (if (not (directory-pathname-p name)) 
-      (make-pathname 
-       :directory (append (or (pathname-directory pathname) (list :relative)) 
-                          (list (file-namestring pathname))) 
-       :name      nil 
-       :type      nil 
-       :defaults pathname) 
-      pathname))) 
-
-(defun directory-wildcard (dirname) 
-  (make-pathname 
-   :name :wild 
-   :type #-clisp :wild #+clisp nil 
-   :defaults (pathname-as-directory dirname))) 
-
-(defun list-directory (dirname) 
-  (when (wild-pathname-p dirname) 
-    (error "Can only list concrete directory names.")) 
-  (directory (directory-wildcard dirname))) 
-
-(defun walk-directory (dirname fn &key directories (test (constantly t))) 
-  (labels 
-      ((walk (name) 
-         (cond 
-           ((directory-pathname-p name) 
-            (when (and directories (funcall test name)) 
-              (funcall fn name)) 
-            (dolist (x (list-directory name)) (walk x))) 
-           ((funcall test name) (funcall fn name))))) 
-    (walk (pathname-as-directory dirname))))
-
-;;
+;; Routines to use with the cl-fad directory routines.
 (defun is-not-file-of-type (filepath type)
   (not (equal (pathname-type filepath) type)))
 
@@ -102,6 +57,46 @@
 ;; (clap-to-times-in-file #P"/Volumes/iDisk/Research/Data/RicardsOnsetTests/PercussivePhrases/Acid/drums1304.corneronsetsqrt-p1-f30-s10-g075")
 ;; (clap-to-times-in-file #P"/Volumes/iDisk/Research/Data/RicardsOnsetTests/PercussivePhrases/KeithLeblanc/fourkick1.corneronsetsqrt-p1-f30-s10-g075")
 
+(defun width-of-peaks (peaks minima)
+  (let ((minima-diffs (.row (.diff minima) 0))
+	(minima-val (val minima))
+	(minima-widths (make-fixnum-array (.array-dimensions peaks))))
+    (loop
+       for peak across (val peaks)
+       for peak-index = 0 then (1+ peak-index)
+       for right-position = (position peak minima-val :test #'<=)
+       do (setf (.aref minima-widths peak-index) 
+		(if (zerop right-position)
+		    (.aref minima 0) ;; the first element is the difference.
+		    (.aref minima-diffs (1- right-position)))))
+    minima-widths))
+
+;;; Precision = sharpness of peak. We calculate this as the area under the peak
+;;; between the other peaks. Do this by calculating the distance from the ridge
+;;; scale to the two nearest minima. The more narrow the width, the higher the precision.
+(defun precisions-at-time (analysis time)
+  "Returns the precision of each ridge at the given time"
+  (let* ((maxima (ridge-peaks analysis))
+	 (minima (ridge-troughs analysis))
+	 (widths (width-of-peaks (.find (.column maxima time)) (.find (.column minima time)))))
+    ;; Determine the widths in relative measures of scale span and from the inverse of
+    ;; those, the precision.
+    (.- 1d0 (./ widths (* (.row-count maxima) 1d0)))))
+
+(defun precision (analysis)
+  "Returns the precision of each ridge"
+  (loop
+     with maxima = (ridge-peaks analysis)
+     with minima = (ridge-troughs analysis)
+     with number-of-scales = (.row-count maxima)
+     for time from 0 below (duration-in-samples analysis)
+     for peak-widths = (width-of-peaks (.find (.column maxima time)) (.find (.column minima time)))
+     ;; Determine the widths in relative measures of scale span and from the inverse of
+     ;; those, the precision.
+     collect (./ peak-widths (* number-of-scales 1d0))))
+
+;; TODO assign the precision to each ridge
+
 (defun expectancy-of-ridge-at-time (ridge time scaleogram)
   "Return a list indicating the expection time, the confidence and the precision" 
   (let* ((vpo (voices-per-octave scaleogram))
@@ -114,9 +109,6 @@
 	 (relative-ridge-duration (if (> time 0) (- 1.0 (/ (start-sample ridge) time)) 1))
 	 ;; relative confidence = energy * duration of the ridge up until this moment.
 	 (confidence (* energy relative-ridge-duration))
-	 ;; precision = sharpness of peak. We calculate this as the area under the scale
-	 ;; between the other peaks. Do this by calculating the distance from the ridge
-	 ;; scale to the two nearest minima. The more narrow the width, the higher the precision
 	 (precision 0)) ; TODO
     (list (min expected-time max-time) confidence precision)))
 
@@ -132,8 +124,8 @@
     (loop
        for time in times-to-check
        for event-index = 0 then (1+ event-index)
-       ;; do (plot-scale-energy+peaks-at-time rhythm-scaleogram time (ridge-peaks rhythm-analysis) :sample-rate (sample-rate rhythm))
-(break)
+       do (plot-scale-energy+peaks-at-time rhythm-scaleogram time (ridge-peaks rhythm-analysis) :sample-rate (sample-rate rhythm))
+       (break)
        collect (list event-index time
 		     (loop
 			for ridge in (ridges-at-time skeleton time)
