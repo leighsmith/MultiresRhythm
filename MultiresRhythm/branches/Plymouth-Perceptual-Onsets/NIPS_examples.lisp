@@ -1,4 +1,9 @@
-; -*- Lisp -*-
+;;;; -*- Lisp -*-
+;;;;
+;;;; $Id$
+;;;;
+;;;; Examples used in NIPS workshop paper.
+;;;;
 
 (in-package :multires-rhythm)
 (use-package :nlisp)
@@ -26,11 +31,12 @@
 (compute-perceptual-versions "res1/res1_3_resp_text" "res1/res1_3_pOnsets_text" "res1/res1_3")
 (compute-perceptual-versions "res4/res4_1_resp_text" "res4/res4_1_pOnsets_text" "res4/res4_1")
 (compute-perceptual-versions "res4/res4_2_resp_text" "res4/res4_2_pOnsets_text" "res4/res4_2")
-;; The ridge selected by the weighted version is too slow, the unweighted version
-;; matches the beat rate.
+;; The ridge selected by the weighted version is too slow.
 (compute-perceptual-versions "res4/res4_3_resp_text" "res4/res4_3_pOnsets_text" "res4/res4_3")
 (compute-perceptual-versions "res4/res4_3_resp_text" "res4/res4_3_pOnsets_text" "res4/res4_3" :start-from-beat 5)
-;; Doing this with a beat-multiple of 3 correctly claps.
+
+;; Doing this with a beat-multiple of 3 correctly claps, the unweighted version
+;; matches the beat rate.
 (compute-perceptual-versions "res4/res4_3_resp_text" "res4/res4_3_pOnsets_text" "res4/res4_3" :start-from-beat 5 :beat-multiple 3)
 (compute-perceptual-versions "res4/res4_3_resp_text" "res4/res4_3_pOnsets_text" "res4/res4_3" :beat-multiple 3)
 
