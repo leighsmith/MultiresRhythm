@@ -24,7 +24,7 @@
 
 ;; Controls what we will plot. We can amend this as needed at the REPL with (push 'feature *plotting*)
 ;; '(claps beat-period tactus)
-(defparameter *plotting* '(claps))
+(defparameter *plotting* '())
 
 ;;; Declaration of interface
 
