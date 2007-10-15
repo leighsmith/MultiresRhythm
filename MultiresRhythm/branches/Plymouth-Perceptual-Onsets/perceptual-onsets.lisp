@@ -61,7 +61,7 @@
        for time from 0 below (duration-in-samples scaleogram)
        for scale-persistency-profile = (.column cumulative-scale-persistency time)
        ;; Maximum peak of energy is assumed to be the beat scale.
-       collect (position (.max scale-persistency-profile) (val scale-persistency-profile)) into beat-scales
+       collect (argmax scale-persistency-profile) into beat-scales
        finally (return (make-instance 'ridge
 				      :start-sample 0 ; could be when beat period is confirmed.
 				      :scales beat-scales)))))
@@ -86,7 +86,7 @@
        for time from 0 below (duration-in-samples scaleogram)
        for scale-persistency-profile = (.column weighted-persistency-profile time)
        ;; Maximum peak of energy is assumed to be the beat scale.
-       collect (position (.max scale-persistency-profile) (val scale-persistency-profile)) into beat-scales
+       collect (argmax scale-persistency-profile) into beat-scales
        finally (return (make-instance 'ridge
 				      :start-sample 0 ; could be when beat period is confirmed.
 				      :scales beat-scales)))))
@@ -107,7 +107,7 @@
        for time from 0 below (duration-in-samples scaleogram)
        for scale-persistency-profile = (.column weighted-persistency-profile time)
        ;; Maximum peak of energy is assumed to be the beat scale.
-       collect (position (.max scale-persistency-profile) (val scale-persistency-profile)) into beat-scales
+       collect (argmax scale-persistency-profile) into beat-scales
        finally (return (make-instance 'ridge
 				      :start-sample 0 ; could be when beat period is confirmed.
 				      :scales beat-scales)))))
@@ -125,7 +125,7 @@
        for time from 0 below (duration-in-samples scaleogram)
        for scale-persistency-profile = (.column cumulative-scale-persistency time)
        ;; Maximum peak of energy is assumed to be the beat scale.
-       for beat-scale = (position (.max scale-persistency-profile) (val scale-persistency-profile))
+       for beat-scale = (argmax scale-persistency-profile)
        for beat-period = (* (time-support beat-scale vpo) beat-multiple) ; TODO hardwired as 4/4
        collect (round (scale-from-period beat-period vpo)) into beat-scales
        finally (return (make-instance 'ridge
@@ -138,7 +138,7 @@
 	 (max-period (time-support (1- (.length scale-persistency-profile)) vpo))
 	 (average-persistency (mean scale-persistency-profile))
 	 ;; Maximum peak of energy is assumed to be the beat scale.
-	 (beat-scale (position (.max scale-persistency-profile) (val scale-persistency-profile)))
+	 (beat-scale (argmax scale-persistency-profile))
 	 (beat-period (time-support beat-scale vpo))
 	 (max-multiple (floor max-period beat-period))
 	 ;; Ensure there are no candidate bar scales that exceed the total scales, but
@@ -149,7 +149,7 @@
 	 ;; look at the scale persistency profiles at candidate-bar-scales locations
 	 (bar-scale-profiles (.arefs scale-persistency-profile candidate-bar-scales))
 	 (highest-bar-scale-profile (.max bar-scale-profiles))
-	 (bar-scale-index (position highest-bar-scale-profile (val bar-scale-profiles)))
+	 (bar-scale-index (position highest-bar-scale-profile (val bar-scale-profiles))) ; (argmax bar-scale-profiles)
 	 (bar-scale (.aref candidate-bar-scales bar-scale-index)))
     (if diagnose
 	(let* ((selected-scales (make-double-array (.array-dimensions scale-persistency-profile))))
@@ -290,7 +290,7 @@
 	 ;; look at the scale persistency profiles at candidate-bar-scales locations
 	 (bar-scale-profiles (.arefs scale-profile candidate-bar-scales))
 	 (meter-evidence (.partial-sum (.transpose bar-scale-profiles)))
-	 (meter-index (position (.max meter-evidence) (val meter-evidence)))) ; (argmax meter-evidence)
+	 (meter-index (argmax meter-evidence)))
     (plot scale-profile nil)
     (format t "candidate bar periods ~a bar-scale-profiles ~a meter evidence ~a~%"
 	    candidate-bar-periods bar-scale-profiles meter-evidence)
