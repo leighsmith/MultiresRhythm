@@ -91,6 +91,10 @@ Anything clipped will be set to the clamp-low, clamp-high values"
   "Returns the argument (index) that is the maximum of y"
   `(position (.max ,y) (val ,y)))
 
+(defmacro argmin (y)
+  "Returns the argument (index) that is the minimum of y"
+  `(position (.min ,y) (val ,y)))
+
 (defun cumsum (a)
   "Computes the cumulative summation across each row of the matrix"
   (let* ((array-dimensions (.array-dimensions a))
@@ -103,6 +107,8 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 	 for c from 1 below (second array-dimensions)
 	 do (setf (aref cumsum-val r c) (+ (aref cumsum-val r (1- c)) (aref a-val r c)))))
     cumsum))
+
+;; (setf a (cumsum (make-double-array '(2 100) :initial-element 1d0)))
 
 (defun window-integration (a width)
   "Computes the windowed integration across each row of the matrix to a maximum width"
@@ -119,3 +125,4 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 		     (if (> c width) (- (aref a-val r (- c width))) 0)))))
     cumsum))
 
+;; (setf a (window-integration (make-double-array '(2 100) :initial-element 1d0) 10))
