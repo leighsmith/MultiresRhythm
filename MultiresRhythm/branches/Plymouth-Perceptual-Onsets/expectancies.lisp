@@ -234,6 +234,14 @@ given the maxima and minima of the scaleogram"
 
 (defparameter *ricards-data* "/Volumes/iDisk/Research/Data/RicardsOnsetTests/PercussivePhrases/")
 
+;;; This is generated as the top-level interpreter from a SBCL not run within SLIME with:
+;;; (sb-ext:save-lisp-and-die "mrr-expectancy" :executable t :toplevel #'multires-rhythm::expectancy-command-line-parser)
+(defun expectancy-command-line-parser ()
+  "Function which is run instead of the top-level interpreter for standalone operation"
+  ;; (format t "argv ~a~%" sb-ext:*posix-argv*)
+  (last-expectancy-of-file (second sb-ext:*posix-argv*))
+  0)
+
 ;; (walk-directory *ricards-data* #'print :test #'does-not-have-claps-file)
 
 ;; (walk-directory *ricards-data* #'clap-to-times-in-file :test #'does-not-have-claps-file)
