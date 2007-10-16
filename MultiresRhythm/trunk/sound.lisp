@@ -45,24 +45,75 @@
 (defmethod print-object ((sound-to-print sound) stream)
   (call-next-method sound-to-print stream) ;; to print the superclass.
   (let ((sound-array (sound-signal sound-to-print)))
-    (format stream " frames ~a sample-rate ~a channels ~a"
-	    (.column-count sound-array) (sample-rate sound-to-print) (.row-count sound-array))))
+    (format stream " ~a frames ~a sample-rate ~a channels ~a"
+	    (description sound-to-print) 
+	    (.column-count sound-array)
+	    (sample-rate sound-to-print)
+	    (.row-count sound-array))))
 
 (defmethod sound-from-file ((path pathname))
   (multiple-value-bind (sound-signal sample-rate) (load-audio path)
     (make-instance 'sound 
+		   :description (namestring path)
 		   :sound-signal sound-signal
 		   :sample-rate sample-rate)))
 
 (defmethod onset-times ((sound-to-analyse sound))
   (./ (.* (.find (sound-signal sound-to-analyse)) 1d0) (sample-rate sound-to-analyse)))
 
+;;; Should be .length
+(defmethod sound-length ((sound-to-analyse sound))
+  (.length (sound-signal sound-to-analyse)))
+
+;; TODO SHould accept arbitary # of sounds.
+(defmethod sound-mix ((sound-to-mix1 sound) (sound-to-mix2 sound)) ; &rest sounds
+  (make-instance 'sound
+		 :sound-signal (.+ (sound-signal sound-to-mix1) (sound-signal sound-to-mix2))
+		 :sample-rate (sample-rate sound-to-mix1))) ; TODO should test SRs are all equal.
+
+		 
+(defmethod save-to-file ((sound-to-save sound) (path pathname))
+  (save-audio path (sound-signal sound-to-save) :sample-rate (sample-rate sound-to-save)))
+
+(defun sample-at-times (length-of-sound sample-sound times-in-seconds)
+  "Returns a sound with sample-sound placed beginning at each time specified in seconds. Uses the sample rate of the sample-sound."
+  (let* ((sample-rate (sample-rate sample-sound))
+	 (sample-length (sound-length sample-sound))
+	 (attack-times-in-frames (.floor (.* times-in-seconds sample-rate)))
+	 (full-duration (make-double-array length-of-sound)))
+    (loop
+       for attack-time across (val attack-times-in-frames)
+       for region-to-copy = (list attack-time (min (1- length-of-sound) (+ attack-time sample-length -1)))
+       do
+	 ;; (format t "region to copy ~a~%" region-to-copy)
+	 (setf (.subarray full-duration (list 0 region-to-copy)) (sound-signal sample-sound)))
+    (make-instance 'sound
+		   :description (format nil "~a duplications of ~a"
+					(.length times-in-seconds) (description sample-sound))
+		   :sound-signal full-duration
+		   :sample-rate sample-rate)))
+
+;; (setf hihat (sound-from-file #P"/Volumes/iDisk/Research/Data/Handclap Examples/hihat_closed.aiff"))
+;; (setf hats (sample-at-times 44100 hihat (make-narray '(0.0 0.33 0.66 0.8))))
+
+(defun save-rhythm-mix (filename-to-write original-rhythm-file clap-times 
+			&key (clap-sample-file #P"/Volumes/iDisk/Research/Data/Handclap Examples/hihat_closed.aiff"))
+  (let* ((original-rhythm-sound (sound-from-file original-rhythm-file)) ; load original file
+	 (clap-sample (sound-from-file clap-sample-file))
+	 ;; create an sound vector with our clap-sample
+	 (clapping-sound (sample-at-times (sound-length original-rhythm-sound) clap-sample clap-times))
+	 (clapping-mix (sound-mix original-rhythm-sound clapping-sound)))
+    (save-to-file clapping-mix filename-to-write)))
+
+;; (save-rhythm-mix #P"/Users/leigh/test-hats.wav" #P"/Volumes/iDisk/Research/Data/PerceptualOnsets/res1/res1_3.wav" (make-narray '(0.0 0.33 0.66 0.8)))
+
+
 ;; (setf down-sampled (.floor (.* (onset-times jw-clicks) 200)))
 ;; (setf down-sampled-length (floor (* (.length (sound-signal jw-clicks)) (/ 200.0 44100.0))))
 ;; (setf down-sampled-rhythm (make-double-array down-sampled-length))
 ;; (setf (.arefs down-sampled-rhythm down-sampled) (make-double-array (.length down-sampled) :initial-element 1d0))
 ;; (plot down-sampled-rhythm nil)
-(setf jw-prelude-3 (make-instance 'rhythm :time-signal down-sampled-rhythm :name "jw prelude 3"))
+;; (setf jw-prelude-3 (make-instance 'rhythm :time-signal down-sampled-rhythm :name "jw prelude 3"))
 
 
 

@@ -24,6 +24,9 @@
 ;;(defun mean (a)
 ;;  (/ (.sum a) (.length a)))
 
+(defun prune-to-limit (a limit)
+  (make-instance (class-of a) :ival (remove-if-not (lambda (x) (<= x limit)) (val a))))
+
 ;;thresholdMag = magnitude > threshold;
 ;;newphase = (thresholdMag .* phase) + (!thresholdMag .* clamp);
 (defun clamp-to-bounds (signal test-signal 
@@ -60,22 +63,66 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 	(setf (aref r-val j) (+ (aref r-val j) (aref a-val i j))))) 
     r))
 
-;; TODO check GSL for maxima/minima finding routines.
-(defun extrema-points (matrix array-dimension)
+(defun extrema-points (matrix &key (extrema :max))
+  "Returns a matrix of the same size as passed in, with peaks of the rows marked"
   (declare (optimize (speed 3) (space 0) (safety 1)))
   (let* ((dims (.array-dimensions matrix))
-	 (rows (first dims))
+	 (rows (.row-count matrix))
 	 (r (make-double-array dims)) ; (make-ninstance a result-length)
 	 (a-val (val matrix))
-	 (r-val (val r)))
+	 (r-val (val r))
+	 (comparison-fn (if (eql extrema :max) #'> #'<)))
     (declare (type fixnum rows))
-    ;; (type double * r-val)
-    (dotimes (c (.array-dimension matrix 1))
+    (declare (type (simple-array double-float *) r-val a-val))
+    (dotimes (c (.column-count matrix))
+      (declare (fixnum c))
       (dotimes (r (- rows 3))
-	(declare (type fixnum c r))
+	(declare (fixnum r))
 	(let* ((r+1 (1+ r))
 	       (center (aref a-val r+1 c)))
-	  (setf (aref r-val r+1 c) (if (and (< (aref a-val r c) center) 
-					    (> center (aref a-val (+ r 2) c))) 1d0 0d0)))))
+	  (declare (type double-float center))
+	  (setf (aref r-val r+1 c) (if (and (funcall comparison-fn center (aref a-val r c)) 
+					    (funcall comparison-fn center (aref a-val (+ r 2) c))) 1d0 0d0)))))
     r))
 
+;; Try using GSL Interpolation functions.
+
+(defmacro argmax (y)
+  "Returns the argument (index) that is the maximum of y"
+  `(position (.max ,y) (val ,y)))
+
+(defmacro argmin (y)
+  "Returns the argument (index) that is the minimum of y"
+  `(position (.min ,y) (val ,y)))
+
+(defun cumsum (a)
+  "Computes the cumulative summation across each row of the matrix"
+  (let* ((array-dimensions (.array-dimensions a))
+	 (a-val (val a))
+	 (cumsum (nlisp::narray-of-type a array-dimensions))
+	 (cumsum-val (val cumsum)))
+    (dotimes (r (first array-dimensions))
+      (setf (aref cumsum-val r 0) (aref a-val r 0))
+      (loop 
+	 for c from 1 below (second array-dimensions)
+	 do (setf (aref cumsum-val r c) (+ (aref cumsum-val r (1- c)) (aref a-val r c)))))
+    cumsum))
+
+;; (setf a (cumsum (make-double-array '(2 100) :initial-element 1d0)))
+
+(defun window-integration (a width)
+  "Computes the windowed integration across each row of the matrix to a maximum width"
+  (let* ((array-dimensions (.array-dimensions a))
+	 (a-val (val a))
+	 (cumsum (nlisp::narray-of-type a array-dimensions))
+	 (cumsum-val (val cumsum)))
+    (dotimes (r (first array-dimensions))
+      (setf (aref cumsum-val r 0) (aref a-val r 0))
+      (loop 
+	 for c from 1 below (second array-dimensions)
+	 do (setf (aref cumsum-val r c) 
+		  (+ (aref cumsum-val r (1- c)) (aref a-val r c)
+		     (if (> c width) (- (aref a-val r (- c width))) 0)))))
+    cumsum))
+
+;; (setf a (window-integration (make-double-array '(2 100) :initial-element 1d0) 10))

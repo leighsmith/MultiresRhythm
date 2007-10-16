@@ -42,11 +42,11 @@
 					      &key title time-axis-decimation)
   (:documentation "Plot highlighted ridges over the magnitude and ridges plots of the given rhythm."))
 
-(defgeneric label-scale-as-time-support (scaleogram)
-  (:documentation "Returns a list of plotting labels giving the time support for each scale"))
+;; (defgeneric label-scale-as-time-support (scaleogram)
+;;   (:documentation "Returns a list of plotting labels giving the time support for each scale"))
 
-(defgeneric label-scale-as-time-support-seconds (scaleogram sample-rate)
-  (:documentation "Generates a set of labels of the scales as time support intervals in seconds"))
+;; (defgeneric label-scale-as-time-support-seconds (scaleogram sample-rate)
+;;   (:documentation "Generates a set of labels of the scales as time support intervals in seconds"))
 
 ;;;; Methods
 
@@ -277,13 +277,17 @@
 	 :reset nil
 	 :aspect-ratio 0.2))
 
-(defmethod plot-scale-energy+peaks-at-time ((scaleogram-to-plot scaleogram) time peaks)
+(defmethod plot-scale-energy+peaks-at-time ((scaleogram-to-plot scaleogram) time peaks &key (sample-rate nil))
   "Plot a cross-section of the magnitude at a given time point so we can spot the highest activated scales."
   (plot-command "set title font \"Times,20\"")
   (plot-command "set xlabel font \"Times,20\"")
   (plot-command "set ylabel font \"Times,20\"")
   (plot-command "set key off")
   (plot-command "set xtics (~{~{\"~a\" ~d~}~^, ~})~%" (label-scale-as-time-support scaleogram-to-plot))
+  (if (not sample-rate)
+      (plot-command "set xtics (~{~{\"~d\" ~5d~}~^, ~})~%" (label-scale-as-time-support scaleogram-to-plot))
+      (plot-command "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
+		    (label-scale-as-time-support-seconds scaleogram-to-plot sample-rate)))
   (let ((time-slice (.column (scaleogram-magnitude scaleogram-to-plot) time)))
     ;; We reverse the column so we plot in more intuitive lowest scale on the left orientation.
     (nplot (list (.reverse time-slice) 

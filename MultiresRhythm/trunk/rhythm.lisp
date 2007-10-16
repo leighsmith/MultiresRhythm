@@ -42,6 +42,9 @@
 (defgeneric onsets-in-seconds (rhythm-to-analyse)
   (:documentation "Returns the location of each onset in seconds."))
 
+(defgeneric onset-time-of-beat (rhythm-to-analyse beat-numbers)
+  (:documentation "Returns the sample number of the beat-number'th beat in the given rhythm"))
+
 (defgeneric rhythm-iois (rhythm-to-analyse)
   (:documentation "Given a rhythm, returns IOIs specified in seconds."))
 
@@ -95,7 +98,7 @@
      for beat in grid
      counting beat into ioi
      when (not (zerop beat))
-     collect ioi))
+     collect (1- ioi)))
 
 (defun onsets-to-iois (onsets)
   "From a set of onset times, returns the interonset intervals, the first derivative thereof"
@@ -107,29 +110,40 @@
   (if (> repeat 0)
       (append rhythm (repeat-rhythm rhythm (1- repeat)))))
 
-(defun time-of-beat (rhythm beat-number)
-  "Returns the sample number of the beat-number'th beat in the given rhythm"
-  (let* ((beat-positions (.find (time-signal rhythm))))
-    (.aref beat-positions beat-number)))
+;; TODO This could be distinct, at the moment we are assuming the 'time' of the beat is the
+;; same as it's onset time.
+;; (defun onset-time-of-beat (rhythm beat-numbers)
+
+(defun threshold-rhythm (rhythm &key (threshold 0.75d0))
+  "Returns a binary valued rhythm based on the threshold"
+  (make-instance 'rhythm
+		 :name (name rhythm)
+		 :time-signal (.> (time-signal rhythm) threshold)
+		 :description ""
+		 :sample-rate (sample-rate rhythm)))
 
 (defun iois-to-rhythm (name iois &key 
 		       (shortest-ioi 1.0) 
 		       (sample-rate 200) 
 		       ((:tempo tempo-in-bpm) 60 tempo-supplied-p))
   "Returns a rhythm instance given a list of inter-onset intervals"
-    (make-instance 'rhythm 
-		   :name name
-		   :description name ; TODO transliterate '-' for ' '.
-		   :time-signal (make-narray 
-				 (butlast 
-				  (onsets-to-grid 
-				   (iois-to-onsets 
-				    (intervals-in-samples iois :ioi shortest-ioi)))))
-		   :sample-rate sample-rate))
+  (make-instance 'rhythm 
+		 :name name
+		 :description name ; TODO transliterate '-' for ' '.
+		 :time-signal (make-narray 
+			       (butlast 
+				(onsets-to-grid 
+				 (iois-to-onsets 
+				  (intervals-in-samples iois :ioi shortest-ioi)))))
+		 :sample-rate sample-rate))
 
 (defun rhythm-of-onsets (name onsets &key (sample-rate 200))
   "Given an narray of onsets, creates a rhythm instance"
-  (iois-to-rhythm name (nlisp::array-to-list (.diff onsets)) :sample-rate sample-rate))
+  (make-instance 'rhythm 
+		 :name name
+		 :description name ; TODO transliterate '-' for ' '.
+		 :time-signal (make-narray (onsets-to-grid (nlisp::array-to-list (.round (.* onsets sample-rate)))))
+		 :sample-rate sample-rate))
 
 (defun rhythm-of-grid (name grid &key (tempo 80 tempo-supplied-p)
 				(shortest-ioi 1.0)
@@ -154,13 +168,23 @@
 (defmethod onsets-in-samples ((rhythm-to-analyse rhythm))
   (.find (time-signal rhythm-to-analyse)))
 
+(defmethod onset-time-of-beat ((rhythm-to-analyse rhythm) beat-number)
+  "Returns the sample number of the beat-number'th beat in the given rhythm"
+  (let* ((beat-positions (onsets-in-samples rhythm-to-analyse)))
+    (.aref beat-positions beat-number)))
+
+(defmethod onset-time-of-beat ((rhythm-to-analyse rhythm) (beat-numbers n-fixnum-array))
+  "Returns the sample number of the beat-number'th beat in the given rhythm"
+  (let* ((beat-positions (onsets-in-samples rhythm-to-analyse)))
+    (.arefs beat-positions beat-numbers)))
+
 (defmethod onsets-in-seconds ((rhythm-to-analyse rhythm))
   (./ (onsets-in-samples rhythm-to-analyse) (* (sample-rate rhythm-to-analyse) 1d0)))
 
 (defmethod rhythm-iois ((rhythm-to-analyse rhythm))
   (.diff (onsets-in-seconds rhythm-to-analyse)))
 
-;;; need to extract the first row while .diff is silly.
+;;; TODO need to extract the first row while .diff is silly.
 (defmethod rhythm-iois-samples ((rhythm-to-analyse rhythm))
   (.row (.diff (onsets-in-samples rhythm-to-analyse)) 0)) 
 

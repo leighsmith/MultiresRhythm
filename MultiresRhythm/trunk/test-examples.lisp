@@ -66,7 +66,7 @@
     (plot-cwt scaleogram :title "rising-harmonic")
     (plot-highlighted-ridges scaleogram () (scale-peaks-of-scaleogram scaleogram 200))))
 
-
+;; (plot-rising-harmonic)
 ;; (time (cwt (rising-harmonic-test) 16))
 
 (defun test-lpc (test-scaleogram)
@@ -167,7 +167,7 @@
 		     :directory (list :absolute "/Users/leigh/Research/Data/NewAnalysedRhythms/") 
 		     :name filename
 		     :type "octave"))
-	 (rhythm-signal (.load-octave-file file-path))
+	 (rhythm-signal (.load file-path :format :octave))
 	 ;; Signals can be read in as column or row vectors, so we align them all to a row
 	 ;; vector by transposing.
 	 (aligned-signal (if (> (.array-dimension rhythm-signal 0) 1)
@@ -222,10 +222,6 @@
 ;; (multiple-value-setq (cliche-tactus cliche-analysis) (tactus-for-rhythm cliche-rhythm))
 ;; (setf cliche-analysis (analysis-of-rhythm cliche-rhythm))
 ;; (plot-cwt (scaleogram cliche-analysis))
-
-;;; Needs to have remaining time 
-(defun clap-to-iois (name iois &key (shortest-ioi (/ 120 17)))
-  (clap-to-rhythm (iois-to-rhythm name iois :shortest-ioi shortest-ioi)))
 
 ;; (onsets-to-grid (iois-to-onsets (intervals-in-samples '(17 17 20.5 13.5) :ioi (/ 600 17))))
 ;; (onsets-to-grid (iois-to-onsets (intervals-in-samples '(17 17 20.5 13.5 17 17) :ioi 10)))

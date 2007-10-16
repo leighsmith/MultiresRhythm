@@ -10,7 +10,7 @@
 ;;;;
 ;;;; In nlisp (Matlab-alike Common Lisp library www.nlisp.info)
 ;;;;
-;;;; Known to work on SBCL 1.0.2
+;;;; Known to work on SBCL 1.0.10
 ;;;;
 ;;;; See for background:
 ;;;;   author =  {Leigh M. Smith},
@@ -21,9 +21,10 @@
 ;;;;   annote =  {\url{http://www.science.uva.nl/~lsmith/Papers/MultiresRhythm.pdf}}
 ;;;;
 
-(require 'nlisp)
+(require 'nlisp)			; For mathematics
+(require 'cl-fad)			; For file I/O
 
-(defpackage #:multires-rhythm (:use #:cl #:asdf #:nlisp)
+(defpackage #:multires-rhythm (:use #:cl #:asdf #:nlisp #:cl-fad)
 	    (:export :rhythm 
 		     :skeleton-of-rhythm
 		     :tactus-for-rhythm
@@ -47,6 +48,7 @@
   :components ((:file "signalprocessing")
 	       (:file "ridges")
 	       (:file "scorefile")
+	       (:file "sound")
 	       (:file "skeleton" :depends-on ("ridges"))
 	       (:file "plotting" :depends-on ("ridges" "signalprocessing"))
 	       (:file "rhythm" :depends-on ("scorefile" "plotting" "signalprocessing"))
@@ -55,6 +57,8 @@
 	       (:file "multires_rhythm" :depends-on ("cwt" "skeleton" "plotting" "rhythm" "signalprocessing"))
 	       (:file "downbeat" :depends-on ("multires_rhythm"))
 	       (:file "clapping" :depends-on ("multires_rhythm" "downbeat"))
+	       (:file "perceptual-onsets" :depends-on ("clapping" "sound"))
+	       (:file "expectancies" :depends-on ("clapping"))
 	       (:file "test-examples" :depends-on ("rhythm" "multires_rhythm" "clapping"))
 	       (:file "national anthems")
 	       (:file "test-anthems" :depends-on ("national anthems" "multires_rhythm" "clapping"))))

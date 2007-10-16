@@ -17,13 +17,16 @@
 (in-package :multires-rhythm)
 (use-package :nlisp)
 
-(defgeneric clap-to-rhythm (rhythm-to-analyse &key tactus-selector start-from-beat)
+;;; TODO Should have a clapping behaviour class which specifies which beat to start clapping on
+;; and how often (it's a production task).
+
+(defgeneric clap-to-rhythm (rhythm-to-analyse &key tactus-selector start-from-beat beat-multiple)
   (:documentation "Returns a set of sample times to clap to given the supplied rhythm"))
 
 ;; TODO Return ((time intensity) (time intensity) ...)
 ;; use constant intensity claps but weight the amplitude for when we mix in Common Music.
 (defun clap-to-tactus-phase (original-rhythm rhythm-scaleogram tactus 
-			     &key (start-from-beat 0))
+			     &key (start-from-beat 0) (beat-multiple 1))
   "Function to compute times to clap and how hard from the extracted tactus.
    Returns a matrix where row 1 is the time to tap at, row 2 is the intensity."
   (let* ((time-frequency-dimensions (.array-dimensions (scaleogram-magnitude rhythm-scaleogram)))
@@ -50,7 +53,7 @@
 				       (voices-per-octave rhythm-scaleogram))))
 
 	 ;; Note the phase of the oscillating sinusoid at the beat to start tapping from.
-	 (down-beat-sample (time-of-beat original-rhythm start-from-beat))
+	 (down-beat-sample (onset-time-of-beat original-rhythm start-from-beat))
 	 (clap-on-phase-datum (.aref foot-tap-phase down-beat-sample))
 
 	 ;; check clap-on-phase-datum >= current and < next phase measure.
@@ -60,33 +63,67 @@
 				     (.subarray foot-tap-phase (list 0 (list 0 (- time-in-samples 2))))) 
 				(.< clap-on-phase-datum 
 				    (.subarray foot-tap-phase (list 0 (list 1 (1- time-in-samples)))))))
-	 (clap-at (.find phase-reoccured))
+	 ;; Stops any clapping before the downbeat.
+	 (valid-phase (.and phase-reoccured 
+			    (.>= (.rseq 0d0 (1- (.length phase-reoccured)) (.length phase-reoccured)) down-beat-sample)))
+	 (valid-claps (.find valid-phase))
+	 (subdivided-beats (.* (.iseq 0 (1- (floor (.length valid-claps) beat-multiple))) beat-multiple))
+	 (clap-at (.arefs valid-claps subdivided-beats))
 	 ;; Create a clapping rhythm
 	 ;; (clap-rhythm (rhythm-of-onsets (name original-rhythm) clap-at))
 	 )
-
-    (format t "Handclapping from beat ~d of original rhythm, sample ~d~%" start-from-beat down-beat-sample)
-    (plot-claps original-rhythm clap-at :beat-phase foot-tap-phase)
+    (format t "Handclapping every ~d beats from beat ~d of original rhythm, sample ~d~%"
+	    beat-multiple start-from-beat down-beat-sample)
+    (diag-plot 'claps (plot-claps original-rhythm clap-at foot-tap-phase))
     clap-at))
 
+(defun beat-multiple-for-clapping (tactus vpo sample-rate)
+  "Compute a beat multiple we should clap at, based on the chosen tactus beat period compared to the preferred tempo"
+  (let* ((preferred-beat-period (time-support (preferred-tempo-scale vpo sample-rate) vpo))
+	 (tactus-beat-period (time-support (average-scale (first tactus)) vpo))) ; TODO using first is a hack
+    (format t "Preferred clapping beat period ~f seconds actual tactus beat period ~f seconds, ratio ~f~%" 
+	    (/ preferred-beat-period sample-rate)
+	    (/ tactus-beat-period sample-rate)
+	    (/ preferred-beat-period tactus-beat-period))
+    ;; Establish a minimum of 1, since crazy tactus selectors can have round return 0
+    ;; which freaks out division...
+    (max 1 (round preferred-beat-period tactus-beat-period))))
+
 (defmethod clap-to-rhythm ((performed-rhythm rhythm) &key 
-			   (start-from-beat 1 downbeat-supplied-p)
+			   (beat-multiple 1 multiple-supplied-p)
+			   (start-from-beat 0 downbeat-supplied-p)
 			   (tactus-selector #'select-longest-lowest-tactus))
   "Returns a set of sample times to clap to given the supplied rhythm"
   (multiple-value-bind (computed-tactus rhythm-analysis)
       (tactus-for-rhythm performed-rhythm :tactus-selector tactus-selector)
-    (let* ((beat-period (beat-period-of-rhythm performed-rhythm (skeleton rhythm-analysis)))
-	   (found-downbeat (find-downbeat performed-rhythm beat-period :strategy #'is-greater-rhythmic-period)))
-      (clap-to-tactus-phase performed-rhythm (scaleogram rhythm-analysis) computed-tactus
-			   :start-from-beat (if downbeat-supplied-p start-from-beat found-downbeat)))))
+    (let* ((scaleogram (scaleogram rhythm-analysis))
+	   ;; (beat-period (beat-period-of-rhythm performed-rhythm (skeleton rhythm-analysis)))
+	   (beat-period (unweighted-beat-period-of-rhythm performed-rhythm scaleogram))
+	   (found-downbeat (if downbeat-supplied-p 
+			       start-from-beat 
+			       (find-downbeat performed-rhythm beat-period :strategy #'is-greater-rhythmic-period)))
+	   (clapping-beat-multiple (beat-multiple-for-clapping computed-tactus 
+							       (voices-per-octave scaleogram) 
+							       (sample-rate performed-rhythm))))
+      (format t "Suggested beat multiple ~f~%" clapping-beat-multiple)
+      (format t "Possible metrical divisor ~a~%" (meter-of-analysis rhythm-analysis computed-tactus))
+      ;; TODO find-downbeat is inclined to crash horribly because of the comparison - must fix.
+      ;; (format t "Found downbeat is ~d~%" (find-downbeat performed-rhythm beat-period :strategy #'is-greater-rhythmic-period))
+      (clap-to-tactus-phase performed-rhythm scaleogram computed-tactus
+			   :start-from-beat found-downbeat
+			   :beat-multiple (if multiple-supplied-p beat-multiple clapping-beat-multiple)))))
+
+;;; Needs to have remaining time 
+(defun clap-to-iois (name iois &key (shortest-ioi (/ 120 17)))
+  (clap-to-rhythm (iois-to-rhythm name iois :shortest-ioi shortest-ioi)))
 
 (defun save-rhythm-and-claps (original-rhythm clap-at)
   "Writes out the rhythm and the handclaps to a scorefile"
-  (save-scorefile (format nil "/Users/leigh/~a.handclap.score" (name original-rhythm)) 
+  (save-scorefile (format nil "/Volumes/iDisk/Research/Data/Handclap Examples/~a.handclap.score" (name original-rhythm)) 
 		  (list (nlisp::array-to-list (onsets-in-seconds original-rhythm)) 
 			(nlisp::array-to-list (./ clap-at (* (sample-rate original-rhythm) 1d0))))
 		  :instrument "midi"
 		  :midi-channel 10
 		  :key-numbers (list *low-woodblock* *closed-hi-hat*)
-		  :description (format nil "Handclapping to ~a" (description original-rhythm))))
+		  :description (format nil "Handclapping to ~a" (name original-rhythm))))
 

@@ -22,12 +22,21 @@
 (in-package :multires-rhythm)
 (use-package :nlisp)
 
+;; Controls what we will plot. We can amend this as needed at the REPL with (push 'feature *plotting*)
+;; '(claps beat-period tactus)
+(defparameter *plotting* '())
+
 ;;; Declaration of interface
 
 (defgeneric image-plotter (tf-plane window-dimensions title &key palette aspect-ratio)
   (:documentation "Plot images TODO"))
 
 ;;; Implementation
+
+(defmacro diag-plot (plot-name &body body)
+  "Call the functions in the body if the named feature is in the plotting feature list"
+  `(cond ((find ,plot-name *plotting*)
+	  ,@body)))
 
 ;;; We assume max-undecimated-sample is the length of a scaleogram, *before time axis
 ;;; decimation* so the last element is the sample after the data to be displayed.
@@ -330,20 +339,23 @@ colourmap, suitable for use by NLISP's palette-defined function."
   (close-window)
   (reset-plot))
 
-(defun plot-claps (original-rhythm claps &key beat-phase (max-computed-scale 1.2d0)
-		   (signal-name (name original-rhythm)))
+(defun plot-claps (original-rhythm claps beat-phase &key (signal-name (name original-rhythm)))
   "Plot locations of original beats, computed claps, the foot tap
    amplitude modulation/phase and reference expected clap points."
-  (let* ((rhythm-signal (time-signal original-rhythm))
-	 (clap-signal (make-double-array (.array-dimensions rhythm-signal) :initial-element 0d0)))
+  (let* ((rhythm-signal (.* (time-signal original-rhythm) 1d0))
+	 (bipolar-rhythm (minusp (.min rhythm-signal)))
+	 (max-computed-scale (* (.max rhythm-signal) 1.2d0)) ; to make claps visible.
+	 (clap-signal (make-double-array (.array-dimensions rhythm-signal) :initial-element 0d0))
+	 (scaled-phase (.* (.+ (./ beat-phase pi 2.0d0) (if bipolar-rhythm 0.0d0 0.5d0)) max-computed-scale)))
     (map nil (lambda (index) (setf (.aref clap-signal index) max-computed-scale)) (val claps))
     (window)
-    (plot-command "set yrange [0:~f]" (+ max-computed-scale 0.2))
+    (plot-command "set yrange [~f:~f]" (if (not bipolar-rhythm) 0 (- max-computed-scale)) (* max-computed-scale 1.4))
     (plot-command "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
 		  (label-samples-as-seconds (duration-in-samples original-rhythm) (sample-rate original-rhythm)))
-    (nplot (list rhythm-signal clap-signal (.+ (./ beat-phase pi 2.0d0) 0.5d0)) nil
+    (nplot (list rhythm-signal clap-signal scaled-phase) nil
 	   :legends '("Original Rhythm" "Computed Beats" "Normalised Beat Phase")
-	   :styles '("impulses linetype 6 linewidth 3" "impulses linetype 4" "dots 3")
+	   :styles (list (if bipolar-rhythm "lines linetype 6 linewidth 1" "impulses linetype 6 linewidth 3")
+			 "impulses linetype 4" "dots 3")
 	   :xlabel "Time in Seconds"
 	   :ylabel "Scaled Intensity/Phase"
 	   :title (format nil "Computed beat track of ~a" signal-name)

@@ -227,7 +227,7 @@
     (read-skeleton-from-file skeleton-pathname)))
 
 (defun ridge-persistency-of-anthem (anthem &key (anthem-path *anthem-analysis-path*))
-  (ridge-persistency-of-skeleton (skeleton-of-anthem anthem :anthem-path anthem-path)))
+  (ridge-persistency-of (skeleton-of-anthem anthem :anthem-path anthem-path)))
 
 ;; (bar-scale (anthem-named 'america) 16)
 ;; (.aref america-ridge-persistency 99)
@@ -319,11 +319,11 @@
 
 ;; (setf bar-ratios (bars-in-anthem-skeletons :count count))
 ;; (mean bar-ratios)
-;; (.save-to-octave-file bar-ratios "/Users/leigh/Data/anthem-bar-ratios.octave")
+;; (.save bar-ratios "/Users/leigh/Data/anthem-bar-ratios.octave" :format :octave)
 ;;
 ;; (setf beat-ratios (bars-in-anthem-skeletons :count count))
 ;; (mean beat-ratios)
-;; (.save-to-octave-file beat-ratios "/Users/leigh/Data/anthem-beat-ratios.octave")
+;; (.save beat-ratios "/Users/leigh/Data/anthem-beat-ratios.octave" :format :octave)
 
 (defun make-histogram (data)
   "Returns each unique value in data along with the count of it's occurrence in a hash-table"
@@ -447,6 +447,19 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 
 (defun x-axis-pad (rhythmic-beats)
     (mapcar (lambda (x) (list (concatenate 'string "\\n" (first x)) (second x))) rhythmic-beats))
+
+(defun meter-of-anthem (anthem &key (voices-per-octave 16) (anthem-path *anthem-analysis-path*))
+  (let* ((anthem-rhythm (anthem-rhythm anthem))
+	 ;;(bar-scale-index)
+	 ;;(beat-scale-index)
+	 (analysis (analysis-of-rhythm-cached anthem-rhythm 
+					      :voices-per-octave voices-per-octave 
+					      :cache-directory anthem-path))
+	 ;; (rhythm-skeleton (skeleton analysis))
+	 (selected-tactus (choose-tactus anthem-rhythm analysis :tactus-selector #'create-weighted-beat-ridge)))
+    ;; update the sample rate of the analysis to match the rhythm, since it wasn't stored.
+    (setf (sample-rate analysis) (sample-rate anthem-rhythm)) 
+    (format t "meter of ~a is ~a~%" (name anthem-rhythm) (meter-of-analysis analysis selected-tactus))))
 
 ;;;
 ;;; Plotting routines
@@ -695,7 +708,8 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
     (format t "~a ~d failed, correct ~f%~%" 
 	    evaluation-function 
 	    number-failed
-	    (* (- 1.0 (/ (float number-failed) (length anthems))) 100.0))))
+	    (* (- 1.0 (/ (float number-failed) (length anthems))) 100.0))
+    failing-anthems))
 
 ;; (beat-period-of-rhythm (anthem-rhythm (anthem-named 'australia)) (skeleton-of-anthem (anthem-named 'australia)))
 

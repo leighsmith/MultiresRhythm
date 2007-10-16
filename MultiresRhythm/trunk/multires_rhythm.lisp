@@ -18,17 +18,19 @@
 
 (defparameter *mra-cache-path* "/Users/leigh/Data/")
 
-;;;; TODO should we be declaring a MRA class that holds ?
-
 ;;; An analysis includes a textual description, skeleton, scaleogram and
 ;;; correlated-ridge-scale-peaks instances. 
 (defclass multires-analysis ()
-  ((description :initarg :description :accessor description :initform "")
-   (skeleton    :initarg :skeleton    :accessor skeleton)
-   (scaleogram  :initarg :scaleogram  :accessor scaleogram)
-   (ridge-peaks :initarg :ridge-peaks :accessor ridge-peaks)))
+  ((description   :initarg :description   :accessor description :initform "")
+   (skeleton      :initarg :skeleton      :accessor skeleton)
+   (scaleogram    :initarg :scaleogram    :accessor scaleogram)
+   (ridge-peaks   :initarg :ridge-peaks   :accessor ridge-peaks)
+   (ridge-troughs :initarg :ridge-troughs :accessor ridge-troughs)
+   (sample-rate   :initarg :sample-rate   :accessor sample-rate)))
 
-;;;; Declarations (see rhythm.lisp for the class definition)
+;;;; Declarations
+(defgeneric choose-tactus (rhythm-to-analyse analysis &key tactus-selector)
+  (:documentation "Returns the selected tactus for the rhythm."))
 
 (defgeneric tactus-for-rhythm (rhythm-to-analyse &key voices-per-octave tactus-selector)
   (:documentation "Returns the selected tactus for the rhythm."))
@@ -46,7 +48,15 @@
   (:documentation "Reads the skeleton, scaleogram and ridge-scale-peaks from disk if they have been cached,
 otherwise, generates them and writes to disk, and returns a multires-analysis instance."))
 
+;;; Tactus selectors
+(defgeneric select-longest-lowest-tactus (rhythm-to-analyse multires-rhythm)
+  (:documentation "Returns the longest duration and lowest scale ridge."))
+
 ;;;; Implementation
+
+(defmethod duration-in-samples ((analysis multires-analysis))
+  "Returns the duration of the skeleton, which should match the rhythm"
+  (duration-in-samples (scaleogram analysis)))
 
 ;; Fastest scale for tactus 
 ;; (scale-from-period (* 200 0.25) 16)
@@ -68,24 +78,26 @@ This is weighted by absolute constraints, look in the 600ms period range."
 
 ;;; Scale index 0 is the highest frequency (smallest dilation) scale.
 ;;; TODO this should be weighted by the log scale character, rather than symmetrical.
-(defun tempo-salience-weighting (salient-scale time-frequency-dimensions &key (voices-per-octave 16))
+(defun tempo-salience-weighting (salient-scale time-frequency-dimensions &key (voices-per-octave 16)
+				 ;; Define a doubling in frequency, 1 octave as 1 stddev.
+				 (octaves-per-stddev 1.0))
   "Produce a weighting matching the analysis window using tempo preference."
   (let* ((number-of-scales (first time-frequency-dimensions))
 	 (time-in-samples (second time-frequency-dimensions))
 	 (tempo-weighting-over-time (make-double-array time-frequency-dimensions))
-	 ;; Create a Gaussian envelope spanning the number of scales.
 	 ;; Match the mean to a span across -5 < mean < 5 standard deviations.
-	 ;; Define a doubling in frequency as 1 stddev.
+	 (stddev-span 10.0)
+	 ;; Create a Gaussian envelope spanning the number of scales.
 	 (tempo-scale-weighting (gaussian-envelope number-of-scales 
-						   :mean (- (/ (* 10.0 salient-scale) number-of-scales) 5.0)
-						   :stddev (/ (* voices-per-octave 10.0) number-of-scales)
+						   :mean (- (/ (* stddev-span salient-scale) number-of-scales) (/ stddev-span 2.0))
+						   :stddev (/ (* voices-per-octave stddev-span octaves-per-stddev) number-of-scales)
 						   :scaling 1d0)))
     (dotimes (time time-in-samples)
       (setf (.subarray tempo-weighting-over-time (list t time))
 	    (.reshape tempo-scale-weighting (list number-of-scales 1))))
     tempo-weighting-over-time))
 
-;; (plot (.column (tempo-salience-weighting 78 '(144 1)) 0) nil :title "Preferred tempo weighting profile")
+;; (plot (.column (tempo-salience-weighting 78 '(144 1) :voices-per-octave 16.0) 0) nil :title "Preferred tempo weighting profile")
 
 (defun normalise-by-scale (magnitude)
   "Normalise a magnitude finding the maximum scale at each time point.
@@ -294,6 +306,7 @@ Phase is assumed to be -pi to pi."
 ;;; "Degree-two polynomial interpolation, i.e. parabolic interpolation, is particularly convenient as it uses
 ;;; only three bins of the magnitude spectrum."
 
+#|
 (defun correlate-ridges (magnitude phase voices-per-octave)
   "Computes independent surfaces analysing the magnitude and phase
 which are then combined to form an analytic surface from which we
@@ -306,13 +319,25 @@ then can extract ridges."
     ;; Stationary phase has been dropped for rhythm data since it mostly introduces
     ;; spurious ridges, not really improving discrimination of ridges.
     (./ (.+ normalised-magnitude local-pc) 2d0)))
+|#
+
+(defun correlate-ridges (magnitude phase voices-per-octave)
+  "Computes independent surfaces analysing the magnitude and phase
+which are then combined to form an analytic surface from which we
+then can extract ridges."
+  (let ((normalised-magnitude (normalise-by-scale magnitude)))
+    ;; Correlate (by averaging) the energy modulus and local phase congruency. 
+    ;; Since local phase congruency is conditioned on a minimal magnitude, we reduce false positives.
+    ;; Stationary phase has been dropped for rhythm data since it mostly introduces
+    ;; spurious ridges, not really improving discrimination of ridges.
+    normalised-magnitude))
 
 (defun determine-scale-peaks (correlated-profile &key (correlation-minimum 0.01))
   "Finds the peaks in the combined correlation profile 
   (of energy modulus, stationary phase and local phase congruency)
    across the dilation scale axis at each time point."
   (.* (.> correlated-profile correlation-minimum)
-      (extrema-points correlated-profile :rows) 
+      (extrema-points correlated-profile :extrema :max) 
       correlated-profile))
 
 (defun scale-peaks-of-scaleogram (scaleogram sample-rate &key (absolute-tempo-weighting nil))
@@ -328,12 +353,11 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
 	 (tempo-weighting (tempo-salience-weighting salient-scale (.array-dimensions magnitude)))
 	 ;; Weight by the absolute tempo preference.
 	 (tempo-weighted-ridges (.* correlated-ridges tempo-weighting)))
-    (if absolute-tempo-weighting
-	(progn 
-	  (format t "Preferred tempo scale = ~d of ~d hierarchy, ~f samples, ~f seconds duration.~%" 
-		  salient-scale (.array-dimension magnitude 0) (time-support salient-scale vpo)
-		  (time-support-seconds salient-scale vpo sample-rate))
-	  (plot (.column tempo-weighting 0) nil :title "Preferred tempo weighting profile")))
+    (cond (absolute-tempo-weighting
+	   (format t "Preferred tempo scale = ~d of ~d hierarchy, ~f samples, ~f seconds duration.~%" 
+		   salient-scale (.array-dimension magnitude 0) (time-support salient-scale vpo)
+		   (time-support-seconds salient-scale vpo sample-rate))
+	   (plot (.column tempo-weighting 0) nil :title "Preferred tempo weighting profile")))
     ;; show what we got as an intensity plot
     ;; (setf *magnitude-colour-map* #'jet-colormap)
     ;; This tends to flatten everything out...
@@ -343,39 +367,104 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
     (determine-scale-peaks (if absolute-tempo-weighting tempo-weighted-ridges correlated-ridges))))
 
 (defmethod scaleogram-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
-  (format t "Length of Rhythm ~f seconds~%" (duration analysis-rhythm))
+  (format t "Length of rhythm \"~a\" is ~f seconds~%" (name analysis-rhythm) (duration analysis-rhythm))
   (cwt (time-signal analysis-rhythm) voices-per-octave))
 
 (defmethod skeleton-of-scaleogram ((analysis-scaleogram scaleogram) sample-rate)
   "Returns the skeleton given the scaleogram and sample-rate."
   (let* ((correlated-ridge-scale-peaks (scale-peaks-of-scaleogram analysis-scaleogram sample-rate))
-       	 (skeleton (make-instance 'skeleton 
-				  :ridges (extract-ridges correlated-ridge-scale-peaks)
-				  :duration (duration-in-samples analysis-scaleogram)
-				  :scales (number-of-scales analysis-scaleogram)
-				  :voices-per-octave (voices-per-octave analysis-scaleogram)
-				  :skip-highest-octaves (skip-highest-octaves analysis-scaleogram))))
+       	 (skeleton (skeleton-of-ridge-peaks analysis-scaleogram correlated-ridge-scale-peaks)))
     (values skeleton correlated-ridge-scale-peaks)))
 
 (defmethod analysis-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
   "Returns the multires analysis of the given rhythm."
-  (let* ((scaleogram (scaleogram-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave)))
-    (multiple-value-bind (skeleton correlated-ridge-scale-peaks) 
-	(skeleton-of-scaleogram scaleogram (sample-rate analysis-rhythm))
-      (make-instance 'multires-analysis 
-		     :description (description analysis-rhythm)
-		     :scaleogram scaleogram
-		     :skeleton skeleton
-		     :ridge-peaks correlated-ridge-scale-peaks))))
+  (let* ((sample-rate (sample-rate analysis-rhythm))
+	 (scaleogram (scaleogram-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave))
+	 (correlated-ridge-scale-peaks (scale-peaks-of-scaleogram scaleogram sample-rate))
+	 (skeleton (skeleton-of-ridge-peaks scaleogram correlated-ridge-scale-peaks)))
+    (make-instance 'multires-analysis 
+		   :description (description analysis-rhythm)
+		   :scaleogram scaleogram
+		   :skeleton skeleton
+		   :ridge-peaks correlated-ridge-scale-peaks
+		   :ridge-troughs (extrema-points (scaleogram-magnitude scaleogram) :extrema :min)
+		   :sample-rate sample-rate)))
+
+;;; Should all be in tactus-selection.lisp
+(defmethod select-tactus-by-beat-multiple ((performed-rhythm rhythm) (rhythm-analysis multires-analysis))
+  "Returns the ridges that are the most commonly occurring lowest integer multiples of the beat"
+  (let* ((skeleton (skeleton rhythm-analysis))
+	 (vpo (voices-per-octave skeleton))
+	 ;; TODO Try Gaussian weighting the scale-persistency?
+ 	 (beat-period (unweighted-beat-period-of-rhythm performed-rhythm (scaleogram rhythm-analysis)))
+ 	 ;; (beat-scale (scale-from-period beat-period vpo))
+ 	 (beat-multiples (.iseq 1 7))  ; determines the bar periods
+ 	 (candidate-bar-periods (.* beat-period beat-multiples))
+ 	 (candidate-bar-scales (scale-from-period candidate-bar-periods vpo)))
+    (format t "Checking multiples for beat period ~a, as ~a~%" beat-period (.round candidate-bar-scales))
+    (loop
+       for candidate-bar-scale across (val (.round candidate-bar-scales))
+       ;; Retrieve ridges possessing a candidate-bar-scale
+       for candidate-bar-scale-ridges = (ridges-containing-scale skeleton candidate-bar-scale)
+       ;; Measure total duration covered by all candidate bar scale ridges, 
+       for candidate-ridge-duration = (reduce #'+ (mapcar #'duration-in-samples candidate-bar-scale-ridges))
+       ;; TODO weight by distances of scales in ridge from the nominated scale.
+       ;; do (format t "For candidate-bar-scale ~a, period ~a~%" candidate-bar-scale (time-support candidate-bar-scale vpo))
+       ;; Longest total duration is the selected ridge.
+       maximizing candidate-ridge-duration into max-candidate-ridge-duration
+       collecting (list candidate-ridge-duration candidate-bar-scale-ridges) into ridge-totals
+       ;; finally (format t "candidate ridges and durations ~a~%" ridge-totals)
+       finally (return (second (find max-candidate-ridge-duration ridge-totals :key #'first))))))
+
+(defmethod select-longest-lowest-tactus ((performed-rhythm rhythm) (rhythm-analysis multires-analysis))
+  "Returns the longest duration and lowest scale ridge."
+  (let* ((skeleton-to-analyse (skeleton rhythm-analysis))
+	 (max-ridge (make-instance 'ridge)))
+    (dolist (ridge (ridges skeleton-to-analyse))
+      (if (or (> (duration-in-samples ridge) (duration-in-samples max-ridge))
+	      ;; average-scale returns scale numbers indexed from the highest scales, so 
+	      (and (eql (duration-in-samples ridge) (duration-in-samples max-ridge))
+		   (> (average-scale ridge) (average-scale max-ridge))))
+	  (setf max-ridge ridge)))
+    (list max-ridge)))
+
+(defmethod choose-tactus ((analysis-rhythm rhythm) (analysis multires-analysis)
+			  &key (tactus-selector #'select-longest-lowest-tactus))
+  "Returns the selected tactus given the rhythm."
+  ;; select out the tactus from all ridge candidates.
+  (let* ((chosen-tactus (funcall tactus-selector analysis-rhythm analysis))
+	 (chosen-tactus-list (if (listp chosen-tactus) chosen-tactus (list chosen-tactus))))
+    (format t "Chosen tactus ~a using ~a~%" chosen-tactus-list tactus-selector)
+    (diag-plot 'cwt
+      (plot-cwt+ridges (scaleogram analysis) chosen-tactus-list analysis-rhythm
+		       ;; :phase-palette :greyscale
+		       ;; :magnitude-palette :jet
+		       :title (name analysis-rhythm)))
+    (diag-plot 'tactus
+      (plot-highlighted-ridges (scaleogram analysis)
+			       chosen-tactus-list
+			       (ridge-peaks analysis)
+			       :title (name analysis-rhythm)
+			       :sample-rate (sample-rate analysis-rhythm))
+      (format t "Finished plotting scalograms~%"))
+    chosen-tactus-list))
 
 (defmethod tactus-for-rhythm ((analysis-rhythm rhythm) 
 			      &key (voices-per-octave 16)
 			      (tactus-selector #'select-longest-lowest-tactus))
   "Returns the selected tactus given the rhythm."
+  (let* ((analysis (analysis-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave)))
+    (values (choose-tactus analysis-rhythm analysis :tactus-selector tactus-selector) analysis)))
+
+;;; TODO This can probably be replaced with choose-tactus above.
+#|(defmethod tactus-for-rhythm ((analysis-rhythm rhythm) 
+			      &key (voices-per-octave 16)
+			      (tactus-selector #'select-longest-lowest-tactus))
+  "Returns the selected tactus given the rhythm."
   (let* ((analysis (analysis-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave))
-	 (chosen-tactus (funcall tactus-selector (skeleton analysis)))   ; select out the tactus from all ridge candidates.
+	 (chosen-tactus (funcall tactus-selector analysis-rhythm analysis))   ; select out the tactus from all ridge candidates.
 	 (chosen-tactus-list (if (listp chosen-tactus) chosen-tactus (list chosen-tactus))))
-    (format t "Computed skeleton and chosen tactus ~a~%" chosen-tactus-list)
+    (format t "Computed skeleton and chosen tactus ~a using ~a~%" chosen-tactus-list tactus-selector)
     (plot-cwt+ridges (scaleogram analysis) chosen-tactus-list analysis-rhythm
 		     ;; :phase-palette :greyscale
 		     ;; :magnitude-palette :jet
@@ -387,6 +476,11 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
 			     :sample-rate (sample-rate analysis-rhythm))
     (format t "Finished plotting scalograms~%")
     (values chosen-tactus-list analysis)))
+|#
+
+(defmethod ridge-persistency-of ((analysis multires-analysis))
+  "Returns the ridge persistency of the precomputed ridge peaks"
+  (scale-persistency (ridge-peaks analysis)))
 
 ;;; To verify the ridge extraction accuracy:
 ;;; (plot-highlighted-ridges-of-rhythm scaleogram (ridges skeleton) correlated-ridge-scale-peaks analysis-rhythm)
@@ -398,6 +492,37 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
 (defun clean-phase (magnitude phase &key (threshold 0.001) (clamp 0.0))
   "We clamp any ill-conditioned phase (negligble magnitude) to the value given (defaulting to zero)"
   (clamp-to-bounds phase magnitude :low-bound threshold :clamp-low clamp))
+
+;; Calculates the persistency of period multiples in the skeleton.
+(defun meter-evidence (analysis tactus beat-multiple)
+  "Returns the evidence of harmonicity of the beat to the given beat-multiple."
+  ;; Get the scales in the ridge and their relative ratios.
+  ;; TODO using the first ridge in the list is a hack.
+  (multiple-value-bind (tactus-scales scale-weights) (scales-and-weights-in-ridge (first tactus))
+    (let* ((skeleton (skeleton analysis))
+	   (vpo (voices-per-octave skeleton))
+	   (persistency-profile (ridge-persistency-of analysis)) ; (ridge-persistency-of (skeleton analysis))
+	   (beat-periods (time-support tactus-scales vpo))
+	   (candidate-bar-periods (.* beat-periods beat-multiple))
+	   (candidate-scales (prune-to-limit (.round (scale-from-period candidate-bar-periods vpo))
+					     (1- (number-of-scales skeleton))))
+	   (weighted-meter-evidence (if (> (.length candidate-scales) 0)
+					(.sum (.* (.arefs persistency-profile candidate-scales) scale-weights))
+					0d0))
+	   (unweighted-meter-evidence (.sum (.arefs persistency-profile candidate-scales))))
+;;       (format t "beat-periods ~a candidate-bar-periods ~a scale-weights ~a scale-values ~a unweighted meter evidence ~a weighted meter evidence ~a~%" 
+;; 	      beat-periods candidate-bar-periods scale-weights 
+;; 	      (.arefs persistency-profile candidate-scales) unweighted-meter-evidence weighted-meter-evidence)
+;;       (plot-command "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
+;; 		    (label-scale-as-time-support-seconds (skeleton analysis) (sample-rate analysis)))
+;;       (plot (.reverse persistency-profile) nil :title (description analysis) :aspect-ratio 0.66 :reset nil)
+      weighted-meter-evidence)))
+
+(defun meter-of-analysis (analysis tactus)
+  "Look for harmonicity of the beat, either duple or triple. Returns the selected beat multiple."
+  (let* ((meters '(3 4))
+	 (evidence (mapcar (lambda (beat-multiple) (meter-evidence analysis tactus beat-multiple)) meters)))
+    (nth (position (apply #'max evidence) evidence) meters)))
 
 ;;; File I/O
 
@@ -411,14 +536,14 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
       (format t "Writing ~a~%" scaleogram-filename) 
       (save-to-file (scaleogram analysis-to-write) scaleogram-filename)
       (format t "Writing ~a~%" ridge-peaks-filename)
-      (.save-to-octave-file (ridge-peaks analysis-to-write) ridge-peaks-filename)))x
+      (.save (ridge-peaks analysis-to-write) ridge-peaks-filename :format :octave)))
 
 (defmethod read-mra-from-file ((path-to-read pathname))
   "Reads and returns a multires-analysis instance, returns nil when EOF"
   (make-instance 'multires-analysis
 		 :skeleton (read-skeleton-from-file (make-pathname :defaults path-to-read :type "skeleton"))
 		 :scaleogram (read-scaleogram-from-file (make-pathname :defaults path-to-read :type "scaleogram"))
-		 :ridge-peaks (.load-octave-file (make-pathname :defaults path-to-read :type "peaks"))))
+		 :ridge-peaks (.load (make-pathname :defaults path-to-read :type "peaks") :format :octave)))
 
 (defmethod analysis-of-rhythm-cached ((analysis-rhythm rhythm) &key (voices-per-octave 16)
 				      (cache-directory *mra-cache-path*))

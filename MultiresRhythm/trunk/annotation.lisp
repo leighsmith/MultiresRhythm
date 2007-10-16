@@ -46,3 +46,7 @@
 				    ;; Bar 6 below
 				    2 2 3 1 2 2 3 1 2 2 2 2 3 1 2 2 3 1 12) :shortest-ioi 120))
 
+
+(defun accompany-rhythm (rhythm)
+  (save-rhythm-and-claps rhythm (clap-to-rhythm rhythm)))
+

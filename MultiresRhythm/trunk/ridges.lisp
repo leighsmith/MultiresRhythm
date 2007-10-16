@@ -125,8 +125,23 @@
     (- (.max scales) (.min scales))))
     
 (defmethod scales-in-ridge ((the-ridge ridge))
-  "Returns a list of the scales the ridge spans"
-  (remove-duplicates (scales the-ridge) :from-end t))
+  "Returns a list of the scales the ridge spans and the counts of each."
+  (let* ((scales (scales the-ridge))
+	 (unique-scales (remove-duplicates scales :from-end t)))
+    (mapcar (lambda (scale) (list scale (count scale scales))) unique-scales)))
+
+;; (reduce #'+ (scales-in-ridge ridge) :key #'cadr) == (duration-in-samples ridge)
+
+(defmethod scales-and-weights-in-ridge ((the-ridge ridge))
+  "Returns an narray of the scales the ridge spans and the relative weights of each."
+  (let ((ridge-scales-and-counts (scales-in-ridge the-ridge)))
+    (values (make-narray (map 'list #'first ridge-scales-and-counts))
+	    (./ (.* (make-narray (map 'list #'second ridge-scales-and-counts)) 1d0)
+			       (duration-in-samples the-ridge)))))
+
+;; (defmethod deviation-from-scale ((the-ridge ridge) scale)
+;; "Returns the sum-squared deviation of each scale along the ridge from the given scale"
+
 
 (defmethod .decimate ((the-ridge ridge) reduce-list &key (start-indices '(0 0)))
   "Returns the ridge instance with it's data decimated using the decimation-parameter-list"
@@ -202,11 +217,11 @@
 	 for comparison-index from next-unmatched-ridge below (length ridge-scales-2)
 	 for comparison-ridge = (nth comparison-index ridge-scales-2)
 	 while (<= comparison-ridge (+ current-ridge tolerance))
-	 do (if (<= (abs (- current-ridge comparison-ridge)) tolerance)
-		(progn (setf ridge-1-matches (cons current-ridge ridge-1-matches))
-		       (setf ridge-2-matches (cons comparison-ridge ridge-2-matches))
-		       (incf comparison-index)
-		       (loop-finish)))
+	 do (cond ((<= (abs (- current-ridge comparison-ridge)) tolerance)
+		   (setf ridge-1-matches (cons current-ridge ridge-1-matches))
+		   (setf ridge-2-matches (cons comparison-ridge ridge-2-matches))
+		   (incf comparison-index)
+		   (loop-finish)))
 	 finally (setf next-unmatched-ridge comparison-index)))
     (values (reverse ridge-1-matches) (reverse ridge-2-matches))))
 
