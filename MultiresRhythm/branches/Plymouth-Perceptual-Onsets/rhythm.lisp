@@ -98,7 +98,7 @@
      for beat in grid
      counting beat into ioi
      when (not (zerop beat))
-     collect ioi))
+     collect (1- ioi)))
 
 (defun onsets-to-iois (onsets)
   "From a set of onset times, returns the interonset intervals, the first derivative thereof"
