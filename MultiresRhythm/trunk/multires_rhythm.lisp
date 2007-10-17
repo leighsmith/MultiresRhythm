@@ -536,7 +536,7 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
       (format t "Writing ~a~%" scaleogram-filename) 
       (save-to-file (scaleogram analysis-to-write) scaleogram-filename)
       (format t "Writing ~a~%" ridge-peaks-filename)
-      (.save (ridge-peaks analysis-to-write) ridge-peaks-filename :format :octave)))
+      (.save (ridge-peaks analysis-to-write) ridge-peaks-filename :format :binary)))
 
 (defmethod read-mra-from-file ((path-to-read pathname))
   "Reads and returns a multires-analysis instance, returns nil when EOF"

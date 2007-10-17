@@ -40,6 +40,7 @@
   :description "A Multiresolution Time-Frequency Analysis and Interpretation of Musical Rhythm"
   :version "2.1"
   :author "Leigh M. Smith"
+  :license "Copyright (c) 2005-2007"
   :depends-on (:nlisp)
   :properties ((#:author-email . "lsmith@science.uva.nl")
 	       (#:date . "2007")	; Compute this automatically?
@@ -61,4 +62,5 @@
 	       (:file "expectancies" :depends-on ("clapping"))
 	       (:file "test-examples" :depends-on ("rhythm" "multires_rhythm" "clapping"))
 	       (:file "national anthems")
-	       (:file "test-anthems" :depends-on ("national anthems" "multires_rhythm" "clapping"))))
+	       (:file "test-anthems" :depends-on ("national anthems" "multires_rhythm" "clapping"))
+	       (:file "commandline" :depends-on ("expectancies"))))

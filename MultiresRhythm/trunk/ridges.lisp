@@ -29,6 +29,8 @@
    ;; Holds a time sequence of scale indices.
    ;; TODO This could become an array using fill pointers to reduce memory foot-print.
    (scale-list :initform nil :initarg :scales :accessor scales)
+   ;; TODO an equally long list holding the number of scales between adjacent troughs.
+   ;; (widths :initform nil :initarg :widths :accessor widths)
    ;; The time as a sample index that the ridge begins on.
    (start-sample :initarg :start-sample :accessor start-sample)))
 
