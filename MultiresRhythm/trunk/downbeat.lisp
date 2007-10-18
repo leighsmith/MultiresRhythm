@@ -122,17 +122,18 @@ start-onset, these measures are in samples"
 	 (beat-period (time-support beat-scale vpo)))
     (format t "Computed beat (with tempo weighting) as scale ~a, period ~a samples, ~a seconds~%" 
 	    beat-scale beat-period (/ beat-period sample-rate))
-    (window)
-    ;; (plot-command "set xtics (~{~{\"~d\" ~5d~}~^, ~})~%" (label-scale-as-time-support skeleton-to-analyse))
-    (plot-command "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
-		  (label-scale-as-time-support-seconds skeleton-to-analyse sample-rate))
-    (nplot (mapcar #'.reverse (list ridge-persistency-profile tempo-beat-preference weighted-persistency-profile))
-	   nil
-	   :title (format nil "Ridge persistency profile for ~a" (name rhythm-to-analyse))
-	   :legends '("Original ridge persistency" "absolute tempo preference profile" "weighted persistency profile") 
-	   :aspect-ratio 0.66
-	   :reset nil)
-    (close-window)
+    (diag-plot 'beat-period 
+      (window)
+      ;; (plot-command "set xtics (~{~{\"~d\" ~5d~}~^, ~})~%" (label-scale-as-time-support skeleton-to-analyse))
+      (plot-command "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
+		    (label-scale-as-time-support-seconds skeleton-to-analyse sample-rate))
+      (nplot (mapcar #'.reverse (list ridge-persistency-profile tempo-beat-preference weighted-persistency-profile))
+	     nil
+	     :title (format nil "Ridge persistency profile for ~a" (name rhythm-to-analyse))
+	     :legends '("Original ridge persistency" "absolute tempo preference profile" "weighted persistency profile") 
+	     :aspect-ratio 0.66
+	     :reset nil)
+      (close-window))
     beat-period))
 
 #|
