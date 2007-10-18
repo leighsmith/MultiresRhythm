@@ -59,7 +59,7 @@
 (defgeneric ridge-persistency-of (skeleton)
   (:documentation "Returns the normalised scale profile of the ridges found in the skeleton."))
 
-(defgeneric read-skeleton-from-file (file-stream-or-name)
+(defgeneric read-skeleton-from (file-stream-or-name)
   (:documentation "Read the ridge or skeleton contained in the named file or given stream"))
 
 ;;; Methods
@@ -153,7 +153,15 @@
     (dolist (ridge (ridges skeleton-to-write))
       (save-to-file ridge file-stream))))
 
-(defmethod read-skeleton-from-file ((file-stream stream))
+(defun read-scaleogram-file-header (file-stream)
+  ;; Throw away the first comment line for now, one day, we may check it.
+  (read-line file-stream)
+  (values (read file-stream nil)	; duration
+	  (read file-stream nil)	; scale-number
+	  (read file-stream nil)	; voices-per-octave
+	  (read file-stream nil)))	; skip-highest-octaves
+
+(defmethod read-skeleton-from ((file-stream stream))
   "Read the entire file"
   (multiple-value-bind (duration scale-number voices-per-octave skip-highest-octaves)
       (read-scaleogram-file-header file-stream)	; we read the same header.
@@ -163,10 +171,10 @@
 		   :scales scale-number
 		   :voices-per-octave voices-per-octave
 		   :skip-highest-octaves skip-highest-octaves)))
-    
-(defmethod read-skeleton-from-file ((filename pathname))
+
+(defmethod read-skeleton-from ((filename pathname))
   (with-open-file (file-stream filename :direction :input)
-    (read-skeleton-from-file file-stream)))
+    (read-skeleton-from file-stream)))
 
 ;;; Test routines.
 ;; (setf longest-tactus (select-longest-lowest-tactus skeleton))

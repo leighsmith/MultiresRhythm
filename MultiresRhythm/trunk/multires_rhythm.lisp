@@ -526,24 +526,23 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
 
 ;;; File I/O
 
-(defmethod save-mra-to-file ((analysis-to-write multires-analysis) 
-			     (path-to-write pathname))
+(defmethod save-to-file ((analysis-to-write multires-analysis) (path-to-write pathname))
   (let* ((skeleton-filename (make-pathname :defaults path-to-write :type "skeleton"))
 	 (scaleogram-filename (make-pathname :defaults path-to-write :type "scaleogram"))
 	 (ridge-peaks-filename (make-pathname :defaults path-to-write :type "peaks")))
-      (format t "Writing ~a~%" skeleton-filename) 
-      (save-to-file (skeleton analysis-to-write) skeleton-filename)
-      (format t "Writing ~a~%" scaleogram-filename) 
-      (save-to-file (scaleogram analysis-to-write) scaleogram-filename)
-      (format t "Writing ~a~%" ridge-peaks-filename)
-      (.save (ridge-peaks analysis-to-write) ridge-peaks-filename :format :binary)))
+    (format t "Writing ~a~%" skeleton-filename) 
+    (save-to-file (skeleton analysis-to-write) skeleton-filename)
+    (format t "Writing ~a~%" scaleogram-filename) 
+    (save-to-file (scaleogram analysis-to-write) scaleogram-filename)
+    (format t "Writing ~a~%" ridge-peaks-filename)
+    (.save (ridge-peaks analysis-to-write) ridge-peaks-filename :format :binary)))
 
-(defmethod read-mra-from-file ((path-to-read pathname))
+(defmethod read-mra-from ((path-to-read pathname))
   "Reads and returns a multires-analysis instance, returns nil when EOF"
   (make-instance 'multires-analysis
-		 :skeleton (read-skeleton-from-file (make-pathname :defaults path-to-read :type "skeleton"))
-		 :scaleogram (read-scaleogram-from-file (make-pathname :defaults path-to-read :type "scaleogram"))
-		 :ridge-peaks (.load (make-pathname :defaults path-to-read :type "peaks") :format :octave)))
+		 :skeleton (read-skeleton-from (make-pathname :defaults path-to-read :type "skeleton"))
+		 :scaleogram (read-scaleogram-from (make-pathname :defaults path-to-read :type "scaleogram"))
+		 :ridge-peaks (.load (make-pathname :defaults path-to-read :type "peaks") :format :binary)))
 
 (defmethod analysis-of-rhythm-cached ((analysis-rhythm rhythm) &key (voices-per-octave 16)
 				      (cache-directory *mra-cache-path*))
@@ -551,7 +550,7 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
 otherwise, generates them and writes to disk."
   (let ((cache-root-pathname (make-pathname :directory cache-directory :name (name analysis-rhythm))))
     (if (probe-file (make-pathname :defaults cache-root-pathname :type "skeleton"))
-	(read-mra-from-file cache-root-pathname)
+	(read-mra-from cache-root-pathname)
 	(let ((mra (analysis-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave)))
-	  (save-mra-to-file mra cache-root-pathname)
+	  (save-to-file mra cache-root-pathname)
 	  mra))))
