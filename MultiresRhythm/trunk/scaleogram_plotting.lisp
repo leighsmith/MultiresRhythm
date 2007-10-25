@@ -254,6 +254,26 @@
 		 :title title
 		 :time-axis-decimation time-axis-decimation)))
 
+(defmethod plot-cwt+skeleton-of-analysis ((analysis multires-analysis)
+					  (highlighted-ridges list)
+					  (analysed-rhythm rhythm))
+  "Plot the ridges in greyscale and the highlighted ridges in red."
+  (let* ((rhythm-scaleogram (scaleogram analysis))
+	 (correlated-ridge-scale-peaks (ridge-peaks analysis))
+	 (time-axis-decimation 4)
+	 (formatting "set title font \"Times,20\"~%set xlabel font \"Times,20\"~%set ylabel font \"Times,20\"")
+	 (axes-labels (axes-labelled-in-seconds rhythm-scaleogram (sample-rate analysed-rhythm) time-axis-decimation)))
+      (plot-images (list (list #'magnitude-image 
+			       (list (scaleogram-magnitude rhythm-scaleogram))
+			       '((1.0 1.0) (0.0 0.3))
+			       (concatenate 'string axes-labels formatting))
+			 (list #'highlighted-ridges-image
+			       (list (mapcar #'copy-object highlighted-ridges) correlated-ridge-scale-peaks)
+			       '((1.0 1.0) (0.0 0.0))
+			       (concatenate 'string axes-labels formatting))) ; ':xlabel "Time (Seconds)"
+		   :title (name analysed-rhythm)
+		   :time-axis-decimation time-axis-decimation)))
+
 (defmethod plot-scale-energy-at-times ((scaleogram-to-plot scaleogram) times &key
 				       (description "unnamed")
 				       (sample-rate nil))
@@ -311,3 +331,4 @@
 			    (list (name original-rhythm)))
 	   :title "Select wavelet voice behaviours to non-isochronous rhythms"
 	   :aspect-ratio 0.15)))
+

@@ -106,9 +106,7 @@
     (format t "bar scale index ~a time-support ~a samples~%" 
 	    bar-scale-index 
 	    (time-support bar-scale-index (voices-per-octave rhythm-skeleton)))
-    (values (ridges-containing-scale rhythm-skeleton bar-scale-index)
-	    (scaleogram analysis)
-	    (ridge-peaks analysis))))
+    (values (ridges-containing-scale rhythm-skeleton bar-scale-index) analysis)))
 
 ;; (bar-ridges-for-anthem (anthem-named 'australia))
 ;; (bar-ridges-for-anthem (anthem-named 'america))
@@ -274,7 +272,7 @@
   (format t "Reading ~a~%" (anthem-name anthem))
   (let* ((anthem-rhythm (anthem-rhythm anthem))
 	 (skeleton-pathname (make-pathname :directory anthem-path :name (name anthem-rhythm) :type "skeleton"))
-	 (skeleton (read-skeleton-from-file skeleton-pathname)))
+	 (skeleton (read-skeleton-from skeleton-pathname)))
     (persistency-of-period-in-skeleton anthem skeleton period)))
 
 ;; (assess-anthem-for-period (anthem-named 'greenland) 20)
@@ -465,10 +463,12 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 
 (defun plot-bar-ridges-of-anthem (anthem)
   "Plot the magnitude"
-  (let ((anthem-rhythm (anthem-rhythm anthem)))
-    (multiple-value-bind (matching-ridges rhythm-scaleogram correlated-ridge-scale-peaks) 
-	(bar-ridges-for-anthem anthem)
-      (plot-highlighted-ridges-of-rhythm rhythm-scaleogram 
+  (multiple-value-bind (matching-ridges rhythm-analysis) 
+      (bar-ridges-for-anthem anthem)
+    (let ((anthem-rhythm (anthem-rhythm anthem))
+	  (rhythm-scaleogram (scaleogram rhythm-analysis))
+	  (correlated-ridge-scale-peaks (ridge-peaks rhythm-analysis)))
+      (plot-highlighted-ridges-of-rhythm rhythm-scaleogram
 					 matching-ridges 
 					 correlated-ridge-scale-peaks
 					 anthem-rhythm :title (name anthem-rhythm))
@@ -480,25 +480,11 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 
 (defun plot-scaleogram-skeleton-of-anthem (anthem)
   "Plot the ridges in greyscale and the highlighted ridges in red."
-  (multiple-value-bind (matching-ridges rhythm-scaleogram correlated-ridge-scale-peaks) 
-      (bar-ridges-for-anthem anthem)
+  (multiple-value-bind (matching-ridges rhythm-analysis) (bar-ridges-for-anthem anthem)
     (declare (ignore matching-ridges))
-    (let* ((anthem-rhythm (anthem-rhythm anthem))
-	   (time-axis-decimation 4)
-	   (formatting "set title font \"Times,20\"~%set xlabel font \"Times,20\"~%set ylabel font \"Times,20\"")
-	   (axes-labels (axes-labelled-in-seconds rhythm-scaleogram (sample-rate anthem-rhythm) time-axis-decimation))
-	   (highlighted-ridges (list (canonical-bar-ridge anthem rhythm-scaleogram))))
+    (let* ((highlighted-ridges (list (canonical-bar-ridge anthem (scaleogram rhythm-analysis)))))
       (format t "Plotting images~%")
-      (plot-images (list (list #'magnitude-image 
-			       (list (scaleogram-magnitude rhythm-scaleogram))
-			       '((1.0 1.0) (0.0 0.3))
-			       (concatenate 'string axes-labels formatting))
-			 (list #'highlighted-ridges-image
-			       (list (mapcar #'copy-object highlighted-ridges)  correlated-ridge-scale-peaks)
-			       '((1.0 1.0) (0.0 0.0))
-			       (concatenate 'string axes-labels formatting))) ; ':xlabel "Time (Seconds)"
-		   :title (name anthem-rhythm)
-		   :time-axis-decimation time-axis-decimation))))
+      (plot-cwt+skeleton-of-analysis rhythm-analysis highlighted-ridges (anthem-rhythm anthem)))))
 
 ;; (plot-scaleogram-skeleton-of-anthem (anthem-named 'tunisia))
 ;; (plot-scaleogram-skeleton-of-anthem (anthem-named 'vietnam))
@@ -834,7 +820,7 @@ printing the proportion that pass."
 	   (downbeat-in-note-units (floor downbeat minimum-interval-in-samples)))
     (format t "official anacrusis duration ~a official bar period ~a~%" official-downbeat official-bar-period)
     (format t "computed anacrusis duration ~a computed bar period ~a~%" downbeat-in-note-units bar-period-in-note-units)
-    (shoe::correct-from-anthem-tree pattern downbeat-in-note-units bar-period-in-note-units)
+    ;; (shoe::correct-from-anthem-tree pattern downbeat-in-note-units bar-period-in-note-units)
     )))
 
 ;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'australia))
@@ -854,7 +840,7 @@ printing the proportion that pass."
 ;; (evaluate-mrr-beat-period-phase-of-anthem (anthem-named 'australia))
 ;;; Of course, this is not really valid, how do we check LHL82 using the same measure?
 ;;; (setf bad-beat-or-phase (evaluation-of-anthems #'evaluate-multires-beat-period-phase-of-anthem))
-;;; #<FUNCTION EVALUATE-MULTIRES-BEAT-PERIOD-PHASE-OF-ANTHEM> 40 failed, correct 61.904762%
+
 
 (defun meter-numerator (meter-string)
   (read-from-string meter-string :start 0 :end (position #\/ meter-string)))
@@ -867,10 +853,10 @@ printing the proportion that pass."
 	 (computed-tactus (create-weighted-beat-ridge anthem-rhythm rhythm-analysis))
 	 (tactus-list (if (not (listp computed-tactus)) (list computed-tactus) computed-tactus))
 	 (meter-factor (meter-division rhythm-analysis tactus-list))
-	 (official-meter (second (first anthem)))
-	 (official-meter-numerator (meter-numerator official-meter)))
+	 (official-meter-signature (second (first anthem)))
+	 (official-meter-numerator (meter-numerator official-meter-signature)))
     (format t "official meter ~a official meter numerator ~a meter factor ~a~%" 
-	    official-meter official-meter-numerator meter-factor)
+	    official-meter-signature official-meter-numerator meter-factor)
     (zerop (mod official-meter-numerator meter-factor))))
 
 ;;; (setf bad-meter-periods (evaluation-of-anthems #'meter-factor-of-anthem))

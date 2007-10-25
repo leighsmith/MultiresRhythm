@@ -435,6 +435,8 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
   (let* ((chosen-tactus (funcall tactus-selector analysis-rhythm analysis))
 	 (chosen-tactus-list (if (listp chosen-tactus) chosen-tactus (list chosen-tactus))))
     (format t "Chosen tactus ~a using ~a~%" chosen-tactus-list tactus-selector)
+    (diag-plot 'cwt+tactus
+      (plot-cwt+skeleton-of-analysis analysis chosen-tactus-list analysis-rhythm))
     (diag-plot 'cwt
       (plot-cwt+ridges (scaleogram analysis) chosen-tactus-list analysis-rhythm
 		       ;; :phase-palette :greyscale
