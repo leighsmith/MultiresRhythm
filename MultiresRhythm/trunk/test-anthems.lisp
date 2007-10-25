@@ -81,13 +81,10 @@
 
 (defun bar-scale (anthem voices-per-octave)
   "Compute the scale index that the anthem would activate on the scaleogram for the bar"
-  (scale-from-period (anthem-duration-in-samples anthem (anthem-bar-duration anthem))
-		     voices-per-octave))
+  (anthem-interval-scale anthem voices-per-octave (anthem-bar-duration anthem)))
 
-;;; TODO should make both bar-scale and beat-scale the same function.
 (defun beat-scale (anthem voices-per-octave)
-  (scale-from-period (anthem-duration-in-samples anthem (anthem-beat-period anthem))
-		     voices-per-octave))
+  (anthem-interval-scale anthem voices-per-octave (anthem-beat-period anthem)))
 
 (defun canonical-bar-ridge (anthem rhythm-scaleogram)
   (make-monotone-ridge (round (bar-scale anthem (voices-per-octave rhythm-scaleogram)))
@@ -98,7 +95,7 @@
 ;;; how well bar duration matches against human perception of tactus given the same rhythms?
 ;;; TODO need to match anacrusis for phase
 (defun bar-ridges-for-anthem (anthem &key (voices-per-octave 16) (anthem-path *anthem-analysis-path*))
-  "Returns the ridges of the given anthem matching the bar duration"
+  "Returns the ridges of the given anthem matching the transcribed bar duration"
   (let* ((anthem-rhythm (anthem-rhythm anthem))
 	 (bar-scale-index)
 	 (analysis (analysis-of-rhythm-cached anthem-rhythm 
@@ -159,10 +156,11 @@
   (anacrusis-count anthem))
 
 (defun clap-to-anthem (anthem)
+  "Uses the transcribed downbeat to begin clapping from"
   (clap-to-rhythm (anthem-rhythm anthem) :start-from-beat (downbeat-number anthem)))
 
 ;; (time (clap-to-anthem (anthem-named 'america)))
-;; (save-rhythm-and-claps (anthem-rhythm (anthem-named 'america)) (clap-to-anthem (anthem-named 'america)))
+;; (accompany-rhythm (anthem-rhythm (anthem-named 'america)))
 
 (defun generate-anthem-skeletons (&key (count (length *national-anthems*)) 
 				  (anthem-path *anthem-analysis-path*)
@@ -224,7 +222,7 @@
   (format t "Reading ~a~%" (anthem-name anthem))
   (let* ((anthem-rhythm (anthem-rhythm anthem))
 	 (skeleton-pathname (make-pathname :directory anthem-path :name (name anthem-rhythm) :type "skeleton")))
-    (read-skeleton-from-file skeleton-pathname)))
+    (read-skeleton-from skeleton-pathname)))
 
 (defun ridge-persistency-of-anthem (anthem &key (anthem-path *anthem-analysis-path*))
   (ridge-persistency-of (skeleton-of-anthem anthem :anthem-path anthem-path)))
@@ -699,6 +697,8 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 
 ;;; TODO  :anthem-path "/Users/leigh/Data/ShortAnthems"
 (defun evaluation-of-anthems (evaluation-function &key (anthems *national-anthems*))
+  "Applies the evaluation function to each anthem in turn, returning those that fail and
+printing the proportion that pass."
   (let* ((failing-anthems (loop
 			    for anthem in anthems
 			    do (format t "Evaluating ~a~%" (anthem-name anthem))
@@ -729,13 +729,13 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 
 ;; (evaluate-beat-period-of-anthem (anthem-named 'australia))
 ;; (evaluate-beat-period-of-anthem (anthem-named 'australia) :anthem-path "/Users/leigh/Data/ShortAnthems")
-;; (evaluate-beat-period-of-anthem (anthem-named 'america))
-;; (evaluate-beat-period-of-anthem (anthem-named 'vietnam))
-;; (evaluate-beat-period-of-anthem (anthem-named 'ghana))
-;; (evaluate-beat-period-of-anthem (anthem-named 'tunisia))
-;; (evaluate-beat-period-of-anthem (anthem-named 'italy))
 
-;;; Conservative doesn't work for Tunisia. Opportune does.
+;;; TODO Probably could tune (skew) the tempo weighting envelope.
+;;; (setf bad-beat-periods (evaluation-of-anthems #'evaluate-beat-period-of-anthem))
+;;; #<FUNCTION EVALUATE-BEAT-PERIOD-OF-ANTHEM> 12 failed, correct 88.57143%
+;;;
+;;; However many anthems which are not correct are producing beat estimates which are half the length.
+;;; Perhaps try shorter time periods from ShortAnthems?
 
 ;; (let ((r (anthem-rhythm (anthem-rhythm anthem)))
 ;;       (beat-period (beat-period-of-rhythm r (skeleton-of-anthem anthem :anthem-path anthem-path))))
@@ -743,13 +743,17 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 
 ;;; This assumes that no meter changes occur in the intervening period, so the Netherlands
 ;;; is wrongly evaluated, for example.
+;;; Conservative doesn't work for Tunisia. Opportune does.
 (defun evaluate-downbeat-of-anthem (anthem)
+  "Returns T if the downbeat chosen aligns on a measure boundary with the official downbeat"
   (let* ((official-downbeat (downbeat-number anthem))
-	 (vpo 16)
+	 (vpo 16)			; should be determined from scaleogram.
 	 (official-beat-period (time-support (beat-scale anthem vpo) vpo))
 	 (beat-period (beat-period-of-rhythm (anthem-rhythm anthem) (skeleton-of-anthem anthem)))
+	 (found-downbeat (find-downbeat (anthem-rhythm anthem) beat-period :strategy #'is-greater-rhythmic-period))
 	 ;; (found-downbeat (find-downbeat (anthem-rhythm anthem) beat-period :strategy #'<))
-	 (found-downbeat (find-downbeat (anthem-rhythm anthem) official-beat-period :strategy #'<))
+	 ;; (found-downbeat (find-downbeat (anthem-rhythm anthem) official-beat-period :strategy #'is-greater-rhythmic-period))
+	 ;; (found-downbeat (find-downbeat (anthem-rhythm anthem) official-beat-period :strategy #'<))
 	 (bar-duration (anthem-bar-duration anthem))
 	 (total-duration-between)	; between official & found downbeats.
 	 (position-within-bar))
@@ -771,17 +775,102 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 		     bar-duration total-duration-between position-within-bar)
 	     (zerop position-within-bar))))))
 
-;; (evaluate-beat-period-of-anthem (anthem-named 'vietnam))
-;; (evaluate-beat-period-of-anthem (anthem-named 'faroe-islands))
-;; (evaluate-beat-period-of-anthem (anthem-named 'albania))
-;; (evaluate-beat-period-of-anthem (anthem-named 'portugal))
+;;; (setf bad-downbeats (evaluation-of-anthems #'evaluate-downbeat-of-anthem))
+;;; #<FUNCTION EVALUATE-DOWNBEAT-OF-ANTHEM> 32 failed, correct 69.52381%
 
-;;; Only produces a 62% successful identification of the beat level. Much better than 22%
-;;; without tempo weighting. Probably could tune (tighten or skew) the tempo weighting envelope.
-;;; (setf bad-beat-periods (evaluation-of-anthems #'evaluate-beat-period-of-anthem))
-;;;
-;;; However many anthems which are not correct are producing beat estimates which are half the length.
-;;; Perhaps try shorter time periods that ShortAnthems?
+(defun scales-in-tactus (tactus-list)
+   "Returns every scale that the ridge extraction reveals"
+   ;; if it's just a single ridge, make it a list.
+   (if (not (listp tactus-list)) (setf tactus-list (list tactus-list)))	
+   (remove-duplicates (loop for ridge in tactus-list append (nlisp::cars (scales-in-ridge ridge)))))
 
-;;; (setf bad-downbeats-conservative (evaluation-of-anthems #'evaluate-downbeat-of-anthem))
-;;; (setf bad-downbeats-opportune (evaluation-of-anthems #'evaluate-downbeat-of-anthem))
+(defun average-scale-in-tactus (tactus-list)
+  "Returns the average of the average scale for each ridge"
+  (coerce (/ (reduce #'+ (mapcar (lambda (ridge) (.sum (scales-as-array ridge))) tactus-list))
+	     (reduce #'+ (mapcar #'duration-in-samples tactus-list))) 'double-float))
+
+;;; TODO or the range, or just those unique values over the ridge?
+(defun modal-scale-in-tactus (tactus-list)
+ "Returns the statistical mode of the scales"
+ (let* ((scales-and-counts (scales-in-ridge tactus-list))
+	(scale-counts (mapcar #'second scales-and-counts))
+	(maximum-count (apply #'max scale-counts))
+	(which-maximum (position maximum-count scales-and-counts :key #'second)))
+   (first (nth which-maximum scales-and-counts))))
+
+;;; Perhaps split into bar-period-of-rhythm and downbeat-of-rhythm?
+(defun bar-period-and-phase-of-rhythm (performed-rhythm &key (tactus-selector #'select-longest-lowest-tactus))
+  "Returns the period and phase of the rhythm in samples. Need to convert back to rhythmicly useful units."
+  (let* ((rhythm-analysis (analysis-of-rhythm-cached performed-rhythm :cache-directory *anthem-analysis-path*))
+	 (vpo (voices-per-octave (scaleogram rhythm-analysis)))
+	 (computed-tactus (funcall tactus-selector performed-rhythm rhythm-analysis))
+	 (tactus-list (if (not (listp computed-tactus)) (list computed-tactus) computed-tactus))
+	 (meter-factor (meter-of-analysis rhythm-analysis tactus-list))
+	 (beat-period (beat-period-of-rhythm performed-rhythm (skeleton rhythm-analysis)))
+	 ;; Return which beat is the downbeat.
+	 (found-downbeat (find-downbeat performed-rhythm beat-period :strategy #'is-greater-rhythmic-period))
+	 ;; Compare the average against the actual scales.
+	 ;; (tactus-scales (make-narray (scales-in-tactus tactus-list)))
+	 ;; (tactus-scales (average-scale-in-tactus tactus-list))
+	 (tactus-scales (modal-scale-in-tactus (first tactus-list))) ;; TODO kludged as first.
+	 (likely-bar-periods (.* (time-support tactus-scales vpo) meter-factor)))
+    (format t "range of scales ~a periods (samples) ~a meter factor ~a~%"
+	    tactus-scales likely-bar-periods meter-factor)
+    (format t "downbeat on note # ~a, samples ~a~%"
+	    found-downbeat (onset-time-of-beat performed-rhythm found-downbeat))
+    (values likely-bar-periods (onset-time-of-beat performed-rhythm found-downbeat))))
+
+;; Evaluate using the same method as anthem-evaluation.lisp in LHL_BeatInduction
+(defun evaluate-mrr-with-tree-on-anthem (anthem)
+  "Evaluate using the anthem tree method in shoe"
+  (multiple-value-bind (bar-period-candidates downbeat) 
+      (bar-period-and-phase-of-rhythm (anthem-rhythm anthem) :tactus-selector #'create-weighted-beat-ridge)
+    (let* ((pattern (second anthem))
+	   (official-bar-period (anthem-bar-duration anthem))
+	   ;; official-downbeat is interval from first note to downbeat.
+	   (official-downbeat (anthem-anacrusis-duration anthem)) 
+	   (minimum-interval-in-samples (anthem-minimum-duration anthem))
+	   (bar-period-in-note-units (.round (./ bar-period-candidates minimum-interval-in-samples)))
+	   (downbeat-in-note-units (floor downbeat minimum-interval-in-samples)))
+    (format t "official anacrusis duration ~a official bar period ~a~%" official-downbeat official-bar-period)
+    (format t "computed anacrusis duration ~a computed bar period ~a~%" downbeat-in-note-units bar-period-in-note-units)
+    (shoe::correct-from-anthem-tree pattern downbeat-in-note-units bar-period-in-note-units)
+    )))
+
+;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'australia))
+;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'america))
+;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'yugoslavia))
+;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'vietnam))
+;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'yemen))
+
+;;; (setf bad-beat-or-phase (evaluation-of-anthems #'evaluate-mrr-with-tree-on-anthem))
+;; #<FUNCTION EVALUATE-MRR-WITH-TREE-ON-ANTHEM> 69 failed, correct 34.285713%
+
+;; Evaluate using just the beat period (not the bar period) and phase.
+(defun evaluate-mrr-beat-period-phase-of-anthem (anthem)
+  (and (evaluate-beat-period-of-anthem anthem)
+       (evaluate-downbeat-of-anthem anthem)))
+
+;; (evaluate-mrr-beat-period-phase-of-anthem (anthem-named 'australia))
+;;; Of course, this is not really valid, how do we check LHL82 using the same measure?
+;;; (setf bad-beat-or-phase (evaluation-of-anthems #'evaluate-multires-beat-period-phase-of-anthem))
+;;; #<FUNCTION EVALUATE-MULTIRES-BEAT-PERIOD-PHASE-OF-ANTHEM> 40 failed, correct 61.904762%
+
+(defun meter-numerator (meter-string)
+  (read-from-string meter-string :start 0 :end (position #\/ meter-string)))
+
+;;; Evaluate with bar-period generated with meter-division and meter-of-analysis
+(defun meter-factor-of-anthem (anthem)
+  "Returns if the meter factor of the rhythm matches (in an overly strict fashion) the official meter."
+  (let* ((anthem-rhythm (anthem-rhythm anthem))
+	 (rhythm-analysis (analysis-of-rhythm-cached anthem-rhythm :cache-directory *anthem-analysis-path*))
+	 (computed-tactus (create-weighted-beat-ridge anthem-rhythm rhythm-analysis))
+	 (tactus-list (if (not (listp computed-tactus)) (list computed-tactus) computed-tactus))
+	 (meter-factor (meter-division rhythm-analysis tactus-list))
+	 (official-meter (second (first anthem)))
+	 (official-meter-numerator (meter-numerator official-meter)))
+    (format t "official meter ~a official meter numerator ~a meter factor ~a~%" 
+	    official-meter official-meter-numerator meter-factor)
+    (zerop (mod official-meter-numerator meter-factor))))
+
+;;; (setf bad-meter-periods (evaluation-of-anthems #'meter-factor-of-anthem))
