@@ -85,16 +85,6 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 					    (funcall comparison-fn center (aref a-val (+ r 2) c))) 1d0 0d0)))))
     r))
 
-;; Try using GSL Interpolation functions.
-
-(defmacro argmax (y)
-  "Returns the argument (index) that is the maximum of y"
-  `(position (.max ,y) (val ,y)))
-
-(defmacro argmin (y)
-  "Returns the argument (index) that is the minimum of y"
-  `(position (.min ,y) (val ,y)))
-
 (defun cumsum (a)
   "Computes the cumulative summation across each row of the matrix"
   (let* ((array-dimensions (.array-dimensions a))
