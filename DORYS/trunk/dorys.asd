@@ -12,7 +12,8 @@
 ;;;;
 
 (defpackage #:dorys (:use #:cl #:asdf)
-	    (:export :anthem-named
+	    (:export :*national-anthems*
+		     :anthem-named
 		     :anthem-beat-duration
 		     :read-esac-file))
 
