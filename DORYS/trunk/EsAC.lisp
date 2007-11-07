@@ -10,10 +10,7 @@
 ;;;; meter decoding, currently all "Frei" meter are skipped.
 ;;;; extendibility, keyword for anthems slots
 
-(defpackage #:esac (:use #:cl #:asdf)
-	    (:export :read-esac-file))
-
-(in-package :esac)
+(in-package :dorys)
 
 ;;; Tests:
 ;;; Conversion of Essen to Anthems format

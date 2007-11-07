@@ -1,6 +1,6 @@
 ;;;; -*- Lisp -*-
 ;;;;
-;;;; $Id: multiresrhythm.asd 361 2007-10-25 16:37:37Z leigh $
+;;;; $Id$
 ;;;;
 ;;;; ASDF definition file for Database of Rhythmic Stimuli.
 ;;;;
@@ -13,7 +13,8 @@
 
 (defpackage #:dorys (:use #:cl #:asdf)
 	    (:export :anthem-named
-		     :anthem-beat-duration))
+		     :anthem-beat-duration
+		     :read-esac-file))
 
 (in-package :dorys)
 
@@ -23,4 +24,5 @@
   :author "Leigh M. Smith"
   :license "Copyright (c) 2005-2007"
   :components ((:file "national anthems")
-	       (:file "anthem-accessors" :depends-on ("national anthems"))))
+	       (:file "anthem-accessors" :depends-on ("national anthems"))
+	       (:file "EsAC")))
