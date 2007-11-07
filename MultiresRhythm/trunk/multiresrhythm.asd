@@ -23,8 +23,9 @@
 
 (require 'nlisp)			; For mathematics
 (require 'cl-fad)			; For file I/O
+(require 'dorys)			; For databases to test against.
 
-(defpackage #:multires-rhythm (:use #:cl #:asdf #:nlisp #:cl-fad)
+(defpackage #:multires-rhythm (:use #:cl #:asdf #:nlisp #:cl-fad #:dorys)
 	    (:export :rhythm 
 		     :skeleton-of-rhythm
 		     :tactus-for-rhythm
@@ -63,6 +64,5 @@
 	       (:file "perceptual-onsets" :depends-on ("clapping" "sound"))
 	       (:file "expectancies" :depends-on ("clapping"))
 	       (:file "test-examples" :depends-on ("rhythm" "multires_rhythm" "clapping"))
-	       (:file "national anthems")
-	       (:file "test-anthems" :depends-on ("national anthems" "multires_rhythm" "clapping" "meter"))
+	       (:file "test-anthems" :depends-on ("multires_rhythm" "clapping" "meter"))
 	       (:file "commandline" :depends-on ("expectancies"))))
