@@ -11,9 +11,9 @@
 ;;;; In nlisp (Matlab-alike Common Lisp library www.nlisp.info)
 ;;;;
 
-(require 'multiresrhythm)
+(require 'dorys)
 
-(defpackage #:shoe (:use #:cl #:asdf #:multires-rhythm))
+(defpackage #:shoe (:use #:cl #:asdf #:dorys))
 
 (in-package :shoe)
 

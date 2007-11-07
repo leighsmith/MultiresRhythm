@@ -78,7 +78,7 @@
 ;; Assumes the pattern is not "normalized".
 (defun find-terminals (tree pattern fun &key (mode :gcd-multiple))
   (let ((sub (if pattern (select-tree tree (normalize pattern mode)) tree)))
-    (format t "find-terminals sub = ~a~%" sub)
+    ;; (format t "find-terminals sub = ~a~%" sub)
     (search-tree sub fun)))
 
 ;(correct-tree-beat? *anthem-tree* '() 0 1)
