@@ -1,5 +1,5 @@
 ;;;; -*- Lisp -*-
-;;;; $Id: playing.lisp 236 2007-03-09 14:21:51Z leigh $
+;;;; $Id$
 ;;;;
 ;;;; General purpose note, which has a continuous time, an identifier (tag) and a hash
 ;;;; table of parameters.
@@ -22,15 +22,16 @@
 (defmethod set-note-duration ((the-note note) duration)
   (setf (gethash 'duration (parameters the-note)) duration))
   
+(defun parameter-list (parameter-hash-table)
+  "Return a two level list of parameters and values, given the hash table"
+  (with-hash-table-iterator (parameter-retriever parameter-hash-table)
+    (loop
+       for (more? parameter-name parameter-value) = (multiple-value-list (parameter-retriever))
+       while more?
+       collect (list parameter-name parameter-value))))
+
 (defun print-note-parameters (parameter-hash-table)
-  (let ((parameter-string ""))
-    (with-hash-table-iterator (parameter-retriever parameter-hash-table)
-      (loop
-	 (multiple-value-bind (more? parameter-name parameter-value) (parameter-retriever)
-	   (if more?
-	       (setf parameter-string (concatenate 'string parameter-string
-						   (format nil "~a: ~a, " parameter-name parameter-value)))
-	       (return parameter-string)))))))
+  (format nil "~:{~a: ~a~:^, ~}" (parameter-list parameter-hash-table)))
 
 (defmethod print-object ((note-object note) stream)
   (call-next-method note-object stream) ;; to print the superclass.

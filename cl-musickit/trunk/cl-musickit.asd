@@ -1,6 +1,6 @@
 ;;;; -*- Lisp -*-
 ;;;;
-;;;; $Id: syncopation.asd 253 2007-04-13 16:35:02Z leigh $
+;;;; $Id$
 ;;;;
 ;;;; ASDF definition file for Common Lisp MusicKit routines.
 ;;;;

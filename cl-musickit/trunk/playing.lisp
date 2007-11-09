@@ -1,6 +1,6 @@
 ;;;; -*- Lisp -*-
-;;;; $Id: playing.lisp 236 2007-03-09 14:21:51Z leigh $
-;;;; Minimal rhythm playing functions interfacing to portmidi.
+;;;; $Id$
+;;;; Minimal note playing functions interfacing to portmidi.
 ;;;;
 ;;;; Leigh M. Smith <lsmith@science.uva.nl>
 ;;;;
@@ -38,7 +38,6 @@
   ;; on-off-pairs + single-events = double for note-on/off pairs.
   (+ (count :note-duration notes :key #'note-type) (length notes)))
 
-;;TODO (event-times (iois-to-onsets intervals (pm:time)))
 (defun create-event-buffer (notes)
   "Given a time ordered list of note objects, create and return a portmidi event buffer"
   (let* ((event-count (number-of-events notes)) 
@@ -58,6 +57,7 @@
 
   ;; initialize portmidi lib
   (defun enable-playing ()
+    "Opens the portmidi library and retrieves the default output device"
     (pm:portmidi)
     (setf output-device-id (pm:GetDefaultOutputDeviceID))
     (pm:GetDeviceInfo output-device-id))
@@ -75,33 +75,3 @@
 	(pm:Write output-device event-buffer event-count)
 	(pm:EventBufferFree event-buffer)
 	(pm:Close output-device)))))
-
-;;; TODO this isn't strictly playing using portmidi, it could be elsewhere.
-;;; If a tempo parameter is not specified, a
-;;; default of 60BPM is used, assuming a beat is an interval of 1.
-;;; If an IOI is instead not specified, a default of 1 second is used.
-(defun make-rhythm (intervals &key ((:tempo tempo-in-bpm) 60)
-		    (ioi 1.0 interval-supplied-p)
-		    (pitch 60))
-  "Plays a given rhythm (in relative interval values, 1.0 = the shortest interval) to the MIDI device."
-  (let* ((shortest-interval-milliseconds (if interval-supplied-p ioi
-					     (/ 60000 tempo-in-bpm)))
-	 (intervals-milliseconds (mapcar #'(lambda (x) (truncate (* shortest-interval-milliseconds x))) intervals)))
-    (loop 
-       with start-note = (make-midi-note 0
-					 0
-					 :key-number pitch
-					 :velocity 127
-					 :duration (truncate shortest-interval-milliseconds 2))
-       for interval in intervals-milliseconds
-       for abs-time = interval then (+ abs-time interval)
-       for note-tag = 1 then (1+ note-tag)
-       collect (make-midi-note abs-time
-			       note-tag
-			       :key-number pitch
-			       :velocity 127
-			       :duration (truncate shortest-interval-milliseconds 2)) into note-list
-       finally (return (cons start-note note-list)))))
-
-; (play-timed-notes (make-rhythm '(1 1 2 1 3 1) :ioi 250))
-; (play-timed-notes (make-rhythm '(1 1 1 3 1 2) :ioi 250))
