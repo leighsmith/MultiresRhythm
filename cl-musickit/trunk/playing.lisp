@@ -64,7 +64,7 @@
 
   ;; to get available playing devices
   ;; (pm:CountDevices)
-  ;; (pm:GetDeviceInfo))
+  ;; (pm:GetDeviceInfo)
 
   (defun play-timed-notes (midi-notes)
     "Sends the note objects (which are assumed to have MIDI parameters) at times in milliseconds"

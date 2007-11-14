@@ -21,4 +21,5 @@
   :depends-on (:portmidi)
   :serial t
   :components ((:file "note")
-	       (:file "playing")))
+	       (:file "playing")
+	       (:file "rhythm-parts")))

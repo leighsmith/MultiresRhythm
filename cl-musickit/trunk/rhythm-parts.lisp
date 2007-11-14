@@ -29,20 +29,31 @@
 			       note-tag
 			       :key-number pitch
 			       :velocity 127
-			       :duration (truncate shortest-interval-milliseconds 2)) into note-list
+			       :duration (floor shortest-interval-milliseconds 2)) into note-list
        finally (return (cons start-note note-list)))))
 
 ; (play-timed-notes (note-list-of-rhythm-intervals '(1 1 2 1 3 1) :ioi 250))
 ; (play-timed-notes (note-list-of-rhythm-intervals '(1 1 1 3 1 2) :ioi 250))
 
-(defun note-list-of-rhythm-grid (grid)
+(defun grid-to-onsets (grid)
+  "From a binary grid returns onset locations of non-zero values"
+  (loop
+     for note in grid
+     counting note into ioi
+     when (not (zerop note))
+     collect (1- ioi)))
+
+(defun note-list-of-rhythm-grid (grid  &key ((:tempo tempo-in-bpm) 60) (ioi 1.0 interval-supplied-p))
   "Given a binary rhythmic grid, returns a note list with the timing set"
-  (make-midi-note abs-time
-		  note-tag
-		  :velocity 127
-		  :duration (truncate shortest-interval-milliseconds 2))
-(setf (gethash 'duration midi-parameters) duration)
-)
+  (loop
+     with onsets = (grid-to-onsets grid) ; (append grid '(1))
+     with shortest-interval-milliseconds = (if interval-supplied-p ioi (/ 60000 tempo-in-bpm))
+     for onset-time in onsets
+     for note-tag = 1 then (1+ note-tag)
+     collect (make-midi-note (* onset-time shortest-interval-milliseconds)
+			     note-tag
+			     :velocity 127
+			     :duration (floor shortest-interval-milliseconds 2))))
 
 (defun set-drum-instrument (notes drum-key-number &key (percussion-channel 9))
   "Assigns the General MIDI percussion channel and the given drum note number to all notes in the list"
