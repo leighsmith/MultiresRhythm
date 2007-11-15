@@ -18,17 +18,15 @@
 
 ;;;; Declarations
 
-;;; A rhythm includes a textual description, the sample rate and a general description of
-;;; a signal. This allows representing a rhythm as a continuum between
-;;; a signal processing representation (high sample rate) and a symbolic representation
-;;; (low sample rate).
 ;;; TODO Do we need a distinction between a description and a name, if we use the name of
 ;;; the variable pointing to the rhythm object anyway?
 (defclass rhythm ()
   ((name        :initarg :name        :accessor name        :initform "unnamed")
    (description :initarg :description :accessor description :initform "")
    (time-signal :initarg :time-signal :accessor time-signal :initform (make-double-array '(1)))
-   (sample-rate :initarg :sample-rate :accessor sample-rate :initform 200)))
+   (sample-rate :initarg :sample-rate :accessor sample-rate :initform 200))
+  (:documentation "A rhythm includes a textual description, the sample rate and a signal. This allows representing a rhythm as a continuum between a signal processing representation (high sample rate) and a symbolic representation
+(low sample rate)."))
 
 (defgeneric duration (rhythm-to-analyse)
   (:documentation "Returns the length of the rhythm in seconds."))
@@ -51,7 +49,8 @@
 (defgeneric rhythm-iois-samples (rhythm-to-analyse)
   (:documentation "Given a rhythm, returns IOIs specified in samples."))
 
-(defgeneric save-rhythm (rhythm-to-save)
+;;; TODO should it become save-to-file?
+(defgeneric save-rhythm (rhythm-to-save &key directory)
   (:documentation "Writes the rhythm to a MusicKit scorefile."))
 
 (defgeneric plot-rhythm (rhythm-to-plot &key reset)
@@ -238,13 +237,15 @@
 	:aspect-ratio aspect-ratio
 	:reset nil))
 
-(defmethod save-rhythm ((rhythm-to-save rhythm))
-  (save-scorefile (format nil "/Users/leigh/~a.score" (name rhythm-to-save)) 
-		  (list (nlisp::array-to-list (onsets-in-seconds rhythm-to-save)))
-		  :instrument "midi"
-		  :midi-channel 10
-		  :key-numbers (list *low-woodblock*)
-		  :description (description rhythm-to-save)))
+(defmethod save-rhythm ((rhythm-to-save rhythm) &key (directory "/Users/leigh/"))
+  (let ((scorefile-pathname (make-pathname :directory directory :name (name rhythm-to-save) :type "score")))
+    (save-scorefile scorefile-pathname
+		    (list (nlisp::array-to-list (onsets-in-seconds rhythm-to-save)))
+		    :instrument "midi"
+		    :midi-channel 10
+		    :key-numbers (list *low-woodblock*)
+		    :description (description rhythm-to-save))
+    scorefile-pathname))
 
 (defun add-rhythm (&rest rhythms-to-add)
   "Adds multiple rhythms together. Returns the shortest? longest? rhythm."

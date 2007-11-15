@@ -24,6 +24,7 @@
 (require 'nlisp)			; For mathematics
 (require 'cl-fad)			; For file I/O
 (require 'dorys)			; For databases to test against.
+(require 'shoe)				; For anthem comparisons. TODO should be factored out.
 
 (defpackage #:multires-rhythm (:use #:cl #:asdf #:nlisp #:cl-fad #:dorys)
 	    (:export :rhythm 

@@ -68,6 +68,9 @@
 
 ;; (plot-rising-harmonic)
 ;; (time (cwt (rising-harmonic-test) 16))
+;;; Make audible
+;; (setf rise-sound (make-instance 'sound :sample-rate 8000 :sound-signal (rising-harmonic-test :signal-length 4096) :description "harmonic rising sound"))
+;; (save-to-file rise-sound #P"/Users/leigh/rise-sound.wav")
 
 (defun test-lpc (test-scaleogram)
   "Tests local phase congruency"
@@ -346,3 +349,21 @@
     (clap-to-rhythm modulated-rhythm)))
 
 ;; (modulated-rhythm-test)
+
+
+;; (setf r (rhythm-of-grid "test-rhythm" '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1) :shortest-ioi 100))
+;; (setf ra (analysis-of-rhythm r))
+;; (setf br (create-weighted-beat-ridge r ra))
+;; (setf bru (unwindowed-weighted-beat-ridge r ra))
+;; (plot bru nil :aspect-ratio 0.2)
+;; (plot-command "set yrange [70:75]")
+;; (nplot (list (scales-as-array br) (scales-as-array bru)) nil :legends '("create-weighted-beat-ridge" "unwindowed-weighted-beat-ridge") :aspect-ratio 0.2 :reset nil)
+;; (nplot (list (time-support (scales-as-array br) 16) (time-support (scales-as-array bru) 16)) nil :aspect-ratio 0.2)
+
+;; (setf mag (scaleogram-magnitude (scaleogram ra)))
+;; (setf csp (cumsum mag))
+;; (setf wpp (.* csp tbp))
+;; (setf spp (.column wpp 800))
+;; (plot spp nil :aspect-ratio 0.2)
+;; (max-scale-of-profile spp)
+;; (time-support (max-scale-of-profile spp) 16)

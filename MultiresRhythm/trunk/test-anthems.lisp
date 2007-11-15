@@ -28,7 +28,7 @@
 ;;; 1 crochet = 100 samples => 120 BPM
 (defun anthem-minimum-duration (anthem &key (crochet-duration 100))
   "Returns the duration of the smallest interval in the anthem, in samples, given a fixed tempo."
-  (/ crochet-duration (anthem-beat-period anthem)))
+  (/ crochet-duration (anthem-beat-duration anthem)))
 
 (defun anthem-duration-in-samples (anthem duration)
   "Returns the duration in samples, normalized to equal tempo"
@@ -45,14 +45,14 @@
   "Compute the scale index that the interval in the given anthem would activate on its scaleogram"
   (scale-from-period (anthem-duration-in-samples anthem interval) voices-per-octave))
 
-;; (anthem-interval-scale (anthem-named 'australia) 16 (anthem-beat-period (anthem-named 'australia)))
+;; (anthem-interval-scale (anthem-named 'australia) 16 (anthem-beat-duration (anthem-named 'australia)))
 
 (defun bar-scale (anthem voices-per-octave)
   "Compute the scale index that the anthem would activate on the scaleogram for the bar"
   (anthem-interval-scale anthem voices-per-octave (anthem-bar-duration anthem)))
 
 (defun beat-scale (anthem voices-per-octave)
-  (anthem-interval-scale anthem voices-per-octave (anthem-beat-period anthem)))
+  (anthem-interval-scale anthem voices-per-octave (anthem-beat-duration anthem)))
 
 (defun canonical-bar-ridge (anthem rhythm-scaleogram)
   (make-monotone-ridge (round (bar-scale anthem (voices-per-octave rhythm-scaleogram)))
@@ -128,13 +128,13 @@
 ;; (time (clap-to-anthem (anthem-named 'america)))
 ;; (accompany-rhythm (anthem-rhythm (anthem-named 'america)))
 
-(defun generate-anthem-skeletons (&key (count (length *national-anthems*)) 
+(defun generate-anthem-skeletons (&key (anthems *national-anthems*)
 				  (anthem-path *anthem-analysis-path*)
 				  (length-limit 16384))
   "Generates and writes the skeleton of the numbered, time limited, anthems"
-  (dotimes (anthem-index count)
+  (dolist (anthem anthems)
     ;; Limits the maximum length of the rhythm to make the computation time manageable.
-    (let* ((anthem-rhythm (limit-rhythm (anthem-rhythm (anthem# anthem-index))
+    (let* ((anthem-rhythm (limit-rhythm (anthem-rhythm anthem)
 					:maximum-samples length-limit)))
       (format t "Processing ~a~%" (name anthem-rhythm))
       (if (not (probe-file (make-pathname :directory anthem-path :name (name anthem-rhythm) :type "skeleton")))
@@ -184,8 +184,9 @@
 ;; 	    (count-scale-in-skeleton skeleton (1- bar-scale-index)))
 ;;     (/ (count-scale-in-skeleton skeleton bar-scale-index) (duration-in-samples skeleton))))
 
-(defun skeleton-of-anthem (anthem &key (anthem-path *anthem-analysis-path*))
-  (format t "Reading ~a~%" (anthem-name anthem))
+(defun skeleton-of-anthem (anthem &key (voices-per-octave 16) (anthem-path *anthem-analysis-path*))
+  "Returns the skeleton of the given anthem. We do this by reading the skeleton file only since it's small and fast to read."
+  (format t "Reading ~a~%" (dorys::anthem-name anthem))
   (let* ((anthem-rhythm (anthem-rhythm anthem))
 	 (skeleton-pathname (make-pathname :directory anthem-path :name (name anthem-rhythm) :type "skeleton")))
     (read-skeleton-from skeleton-pathname)))
@@ -251,7 +252,7 @@
   (let* ((anthem-rhythm (anthem-rhythm anthem))
 	 (skeleton-pathname (make-pathname :directory anthem-path :name (name anthem-rhythm) :type "skeleton"))
 	 (skeleton (read-skeleton-from-file skeleton-pathname))
-	 (beat-persistency (persistency-of-period-in-skeleton anthem skeleton (anthem-beat-period anthem)))
+	 (beat-persistency (persistency-of-period-in-skeleton anthem skeleton (anthem-beat-duration anthem)))
 	 (bar-persistency (persistency-of-period-in-skeleton anthem skeleton (anthem-bar-duration anthem))))
     (format t "bar prominently in skeleton ~a~%" 
 	    (skeleton-has-prominent-scale skeleton (round (bar-scale anthem (voices-per-octave skeleton)))))
@@ -269,7 +270,7 @@
   "Returns the ridges of the given anthem matching the bar duration"
   (loop
      for anthem in anthems
-     collect (assess-anthem-for-period anthem (anthem-beat-period anthem))))
+     collect (assess-anthem-for-period anthem (anthem-beat-duration anthem))))
 
 (defun label-country (anthems)
   "Routine to create a labelling based on country."
@@ -311,7 +312,7 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 	 ;; Multiply the intervals by the counts to measure the time over which each interval spans.
 	 (spans (.* intervals (histogram-counts duration-histogram intervals)))
 	 (relative-occurrence (./ spans (.sum spans))) ; make it a relative measure wrt time.
-	 (crochet-ratios (./ intervals (float (anthem-beat-period anthem) 1d0))))
+	 (crochet-ratios (./ intervals (float (anthem-beat-duration anthem) 1d0))))
     ;; TODO .floor should be .round
     (setf (.arefs scale-histogram (.floor (scale-from-period (.* crochet-ratios crochet-duration) vpo)))
 	  relative-occurrence)))
@@ -612,7 +613,7 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 ;; (evaluate-beat-period-of-anthem (anthem-named 'australia) :anthem-path "/Users/leigh/Data/ShortAnthems")
 
 ;;; TODO Probably could tune (skew) the tempo weighting envelope.
-;;; (setf bad-beat-periods (evaluation-of-anthems #'evaluate-beat-period-of-anthem))
+;;; (setf bad-beat-periods (dorys::evaluation-of-anthems #'evaluate-beat-period-of-anthem))
 ;;; #<FUNCTION EVALUATE-BEAT-PERIOD-OF-ANTHEM> 12 failed, correct 88.57143%
 ;;;
 ;;; However many anthems which are not correct are producing beat estimates which are half the length.
@@ -625,7 +626,7 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 ;;; This assumes that no meter changes occur in the intervening period, so the Netherlands
 ;;; is wrongly evaluated, for example.
 ;;; Conservative doesn't work for Tunisia. Opportune does.
-(defun evaluate-downbeat-of-anthem (anthem)
+(defun evaluate-downbeat-of-anthem-old (anthem)
   "Returns T if the downbeat chosen aligns on a measure boundary with the official downbeat"
   (let* ((official-downbeat (downbeat-number anthem))
 	 (vpo 16)			; should be determined from scaleogram.
@@ -653,11 +654,34 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 	     (setf total-duration-between (reduce #'+ (second anthem) :start official-downbeat :end found-downbeat))
 	     (setf position-within-bar (mod total-duration-between bar-duration))
 	     (format t "bar-duration ~a total-duration-between ~a position within bar ~a~%" 
-		     bar-duration total-duration-between position-within-bar)
+ 		     bar-duration total-duration-between position-within-bar)
 	     (zerop position-within-bar))))))
 
+;;; (setf bad-downbeats (evaluation-of-anthems #'evaluate-downbeat-of-anthem-old))
+;;; #<FUNCTION EVALUATE-DOWNBEAT-OF-ANTHEM-OLD> 32 failed, correct 69.52381%
+
+(defun evaluate-downbeat-of-anthem (anthem)
+  "Returns T if the downbeat chosen aligns on a measure boundary with the official downbeat"
+  (let* ((vpo 16)			; should be determined from scaleogram.
+	 (pattern (second anthem))
+	 (official-downbeat (dorys::anthem-anacrusis-duration anthem))
+	 (official-bar-duration (anthem-bar-duration anthem)) ; in anthem rhythmic units
+	 (official-beat-period (time-support (beat-scale anthem vpo) vpo)) ; in samples.
+	 ;; official-beat-period & beat-period's contribution are the same in this case.
+	 (beat-period (beat-period-of-rhythm (anthem-rhythm anthem) (skeleton-of-anthem anthem)))
+	 (found-downbeat-number (find-downbeat (anthem-rhythm anthem)
+					       beat-period 
+					       :strategy #'is-greater-rhythmic-period))
+	 (found-anacrusis-duration (reduce #'+ (subseq (second anthem) 0 found-downbeat-number))))
+    (format t "official downbeat ~a found downbeat ~a~%" official-downbeat found-anacrusis-duration)
+    (format t "official beat period ~a computed beat period ~a~%" official-beat-period beat-period)
+    (format t "Strictly matches ~a~%" (= found-anacrusis-duration (dorys::anthem-anacrusis-duration anthem)))
+    (if (not found-downbeat-number)
+	(format t "Early exit, found downbeat is nil, couldn't find beat period~%")
+	(shoe::correct-from-anthem-tree pattern found-anacrusis-duration official-bar-duration))))
+
 ;;; (setf bad-downbeats (evaluation-of-anthems #'evaluate-downbeat-of-anthem))
-;;; #<FUNCTION EVALUATE-DOWNBEAT-OF-ANTHEM> 32 failed, correct 69.52381%
+;;; #<FUNCTION EVALUATE-DOWNBEAT-OF-ANTHEM> 28 failed, correct 73.333336%
 
 (defun scales-in-tactus (tactus-list)
    "Returns every scale that the ridge extraction reveals"
@@ -709,20 +733,19 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
     (let* ((pattern (second anthem))
 	   (official-bar-period (anthem-bar-duration anthem))
 	   ;; official-downbeat is interval from first note to downbeat.
-	   (official-downbeat (anthem-anacrusis-duration anthem)) 
+	   (official-downbeat (dorys::anthem-anacrusis-duration anthem)) 
 	   (minimum-interval-in-samples (anthem-minimum-duration anthem))
 	   (bar-period-in-note-units (.round (./ bar-period-candidates minimum-interval-in-samples)))
 	   (downbeat-in-note-units (floor downbeat minimum-interval-in-samples)))
     (format t "official anacrusis duration ~a official bar period ~a~%" official-downbeat official-bar-period)
     (format t "computed anacrusis duration ~a computed bar period ~a~%" downbeat-in-note-units bar-period-in-note-units)
-    ;; (shoe::correct-from-anthem-tree pattern downbeat-in-note-units bar-period-in-note-units)
-    )))
+    (shoe::correct-from-anthem-tree pattern downbeat-in-note-units bar-period-in-note-units))))
 
-;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'australia))
-;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'america))
-;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'yugoslavia))
-;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'vietnam))
-;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'yemen))
+;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'dorys::australia))
+;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'dorys::america))
+;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'dorys::yugoslavia))
+;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'dorys::vietnam))
+;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'dorys::yemen))
 
 ;;; (setf bad-beat-or-phase (evaluation-of-anthems #'evaluate-mrr-with-tree-on-anthem))
 ;; #<FUNCTION EVALUATE-MRR-WITH-TREE-ON-ANTHEM> 69 failed, correct 34.285713%
@@ -745,9 +768,18 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 	 (tactus-list (if (not (listp computed-tactus)) (list computed-tactus) computed-tactus))
 	 (meter-factor (meter-division rhythm-analysis tactus-list))
 	 (official-meter-signature (second (first anthem)))
-	 (official-meter-numerator (meter-numerator official-meter-signature)))
-    (format t "official meter ~a official meter numerator ~a meter factor ~a~%" 
+	 (official-meter-numerator (dorys::meter-numerator official-meter-signature)))
+    (format t "official meter ~a official meter numerator ~a computed meter factor ~a~%" 
 	    official-meter-signature official-meter-numerator meter-factor)
     (zerop (mod official-meter-numerator meter-factor))))
 
 ;;; (setf bad-meter-periods (evaluation-of-anthems #'meter-factor-of-anthem))
+
+(defun save-anthem-rhythms (&key (anthems *national-anthems*))
+  "Save all anthems as scorefiles for audition"
+  (dolist (anthem anthems)
+    (save-rhythm (anthem-rhythm anthem)
+		 :directory "/Users/leigh/Research/Data/Anthems/MIDI")))
+
+;; foreach f (*.score); convertscore -m `basename $f score`midi $f; end
+

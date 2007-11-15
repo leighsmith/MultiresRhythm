@@ -223,15 +223,16 @@ colourmap, suitable for use by NLISP's palette-defined function."
 ;;; Setting the colour box display. (determined by image-plotter and window-position)
 (defun magnitude-image (magnitude window-dimensions title &key
 			(palette :greyscale)
-			(aspect-ratio 0.15))
+			(aspect-ratio 0.15)
+			(units "Seconds"))
   "Creates a plotable image object from the magnitude using a colour map.
    Dark values are higher valued, lighter values are lower valued."
   (set-colour-box magnitude window-dimensions)
   (set-plot-palette palette)
   (image (.flip magnitude) nil nil
-	 :title (format nil "Magnitude of ~a" title)
+	 :title (format nil "Scaleogram Magnitude of ~a" title)
 	 :xlabel nil
-	 :ylabel "Scale as IOI Range\\n(Seconds)"
+	 :ylabel (format nil "Scale as IOI Range\\n(~a)" units)
 	 :reset nil
 	 :aspect-ratio aspect-ratio))
 
@@ -246,16 +247,17 @@ colourmap, suitable for use by NLISP's palette-defined function."
 (defun phase-image (phase magnitude window-dimensions title &key
 		    (maximum-colour-value 255d0)
 		    (aspect-ratio 0.15)
-		    (palette :spectral))
+		    (palette :spectral)
+		    (units "Seconds"))
   "Assumes the magnitude value is positive, phase is -pi -> pi.
    Ill-conditioned phase measures due to low magnitude are displayed as white."
   (let ((plotable-phase (.* (plotable-phase phase magnitude maximum-colour-value) 1d0)))
     (phase-colour-box plotable-phase window-dimensions)
     (set-plot-palette palette)
     (image (.flip plotable-phase) nil nil
-	   :title (format nil "Phase of ~a" title)
+	   :title (format nil "Scaleogram Phase of ~a" title)
 	   :xlabel "Time (Seconds)" 
-	   :ylabel "Scale as IOI Range\\n(Seconds)"
+	   :ylabel (format nil "Scale as IOI Range\\n(~a)" units)
 	   :reset nil
 	   :aspect-ratio aspect-ratio)))
 
