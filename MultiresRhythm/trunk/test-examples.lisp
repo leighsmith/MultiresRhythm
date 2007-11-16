@@ -367,3 +367,17 @@
 ;; (plot spp nil :aspect-ratio 0.2)
 ;; (max-scale-of-profile spp)
 ;; (time-support (max-scale-of-profile spp) 16)
+
+(defun clap-to-times-in-file (filepath &key (sample-rate 200.0d0))
+  "Convert times in seconds to a rhythm."
+  (let* ((times-in-seconds (.column (.load filepath :format :text) 0))
+	 (times-as-rhythm (rhythm-of-onsets (pathname-name filepath) times-in-seconds :sample-rate sample-rate))
+	 (clap-times (clap-to-rhythm times-as-rhythm 
+				     :tactus-selector #'create-weighted-beat-ridge 
+				     ;; :beat-multiple 1
+				     :start-from-beat 0))
+    	 (clap-times-in-seconds (./ clap-times sample-rate))
+	 (clap-filepath (make-pathname :defaults filepath :type "claps")))
+    (format t "Beat times of ~a in seconds:~%~a~%" (name times-as-rhythm) clap-times-in-seconds)
+    (.save clap-times-in-seconds clap-filepath :format :text)))
+

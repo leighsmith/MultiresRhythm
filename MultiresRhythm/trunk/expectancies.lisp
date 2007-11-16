@@ -13,43 +13,6 @@
 
 (in-package :multires-rhythm)
 (use-package :nlisp)
-(use-package :cl-fad)
-
-;; Routines to use with the cl-fad directory routines.
-(defun is-file-of-type (filepath type)
-  (equal (pathname-type filepath) type))
-
-(defun is-dot-file (filepath)
-  (equal (aref (pathname-name filepath) 0) #\.))
-
-(defun does-not-have-file-of-type (filepath type)
-  (and (is-file-of-type filepath "corneronsetsqrt-p1-f30-s10-g075")	; ensure filepath isn't a clap file
-       (not (is-dot-file filepath))		; it isn't a .DS_Store
-       ;; and that it doesn't have an accompanying clap file
-       (not (probe-file (make-pathname :defaults filepath :type type)))))
-
-(defun does-not-have-expectancies-file (filepath)
-  (does-not-have-file-of-type filepath "expectancies"))
-
-(defun does-not-have-last-expectancy-file (filepath)
-  (does-not-have-file-of-type filepath "last_expectancy"))
-
-(defun does-not-have-claps-file (filepath)
-  (does-not-have-file-of-type filepath "claps"))
-
-;;; TODO can probably be moved out.								    
-;;; Convert times in seconds to a rhythm.
-(defun clap-to-times-in-file (filepath &key (sample-rate 200.0d0))
-  (let* ((times-in-seconds (.column (.load filepath :format :text) 0))
-	 (times-as-rhythm (rhythm-of-onsets (pathname-name filepath) times-in-seconds :sample-rate sample-rate))
-	 (clap-times (clap-to-rhythm times-as-rhythm 
-				     :tactus-selector #'create-weighted-beat-ridge 
-				     ;; :beat-multiple 1
-				     :start-from-beat 0))
-    	 (clap-times-in-seconds (./ clap-times sample-rate))
-	 (clap-filepath (make-pathname :defaults filepath :type "claps")))
-    (format t "Beat times of ~a in seconds:~%~a~%" (name times-as-rhythm) clap-times-in-seconds)
-    (.save clap-times-in-seconds clap-filepath :format :text)))
 
 ;;; Interface
 
@@ -62,12 +25,24 @@
 (defgeneric time-in-seconds (expectation sample-rate)
   (:documentation "Returns the expected time in seconds, given the sample rate."))
 
+(defgeneric list-in-seconds (expectation sample-rate)
+ (:documentation "Returns the expectatioin as a list, times in seconds, given the sample rate."))
+
 ;;; Implementation
 
 (defmethod print-object ((expectation-to-print expectation) stream)
   (call-next-method expectation-to-print stream) ;; print the superclass
   (format stream " ~,5f ~,5f ~,5f" 
 	  (expected-time expectation-to-print) (confidence expectation-to-print) (precision expectation-to-print)))
+
+(defmethod time-in-seconds ((expectation-to-report expectation) sample-rate)
+  (/ (expected-time expectation-to-report) (float sample-rate)))
+
+(defmethod list-in-seconds ((expectation-to-list expectation) sample-rate)
+  "Returns the expectancy as a list, times in seconds"
+  (list (time-in-seconds expectation-to-list sample-rate) 
+	(confidence expectation-to-list)
+	(precision expectation-to-list)))
 
 (defun width-of-peaks (peaks minima number-of-scales)
   "Returns the widths of the peaks, by finding the distance between two minima either side of each peak"
@@ -100,25 +75,12 @@
     ;; those, the precision.
     (.- 1d0 (./ widths (* (.row-count maxima) 1d0)))))
 
-#|
-(defun precision (analysis)
-  "Returns the precision of each ridge"
-  (loop
-     with maxima = (ridge-peaks analysis)
-     with minima = (ridge-troughs analysis)
-     with number-of-scales = (.row-count maxima)
-     for time from 0 below (duration-in-samples analysis)
-     for peak-scales = (.find (.column maxima time))
-     for peak-widths = (width-of-peaks peak-scales (.find (.column minima time)))
-     ;; Determine the widths in relative measures of scale span and from the inverse of
-     ;; those, the precision.
-     collect (./ peak-widths (* number-of-scales 1d0))))
-|#
-
-;;; Need better name.
-(defun normalized-precision-old (maxima minima)
-  "Returns a matrix of the relative measure of precision of each peak, 
-given the maxima and minima of the scaleogram"
+;;; This returns the normalized maximum value for each of the peaks. We could calculate
+;;; this by (./ normalised-precision (.partial-sum normalised-precision)) to choose from
+;;; the most precise peaks (and ignoring those regions that are not a peak), but this is
+;;; more efficient.
+(defun most-precise (maxima minima)
+  "Returns a matrix of the relative measure of precision of each peak, given the maxima and minima of the scaleogram"
   (let* ((time-freq-dimensions (.array-dimensions maxima))
 	 (number-of-scales (.row-count maxima))
 	 (duration (.column-count maxima))
@@ -136,8 +98,8 @@ given the maxima and minima of the scaleogram"
     precision))
 
 (defun normalized-precision (maxima minima)
-  "Returns a matrix of the relative measure of precision of each peak, 
-given the maxima and minima of the scaleogram"
+  "Returns a matrix of the relative measure of precision of each peak, with respect to the
+  total number of scales, given the maxima and minima of the scaleogram."
   (let* ((time-freq-dimensions (.array-dimensions maxima))
 	 (number-of-scales (.row-count maxima))
 	 (duration (.column-count maxima))
@@ -155,11 +117,23 @@ given the maxima and minima of the scaleogram"
 	(setf (.column precision time) precision-profile)))
     precision))
 
+;; (defun precision (analysis)
+;;   "Returns the precision of each ridge"
+;;   (loop
+;;      with maxima = (ridge-peaks analysis)
+;;      with minima = (ridge-troughs analysis)
+;;      with number-of-scales = (.row-count maxima)
+;;      for time from 0 below (duration-in-samples analysis)
+;;      for peak-scales = (.find (.column maxima time))
+;;      for peak-widths = (width-of-peaks peak-scales (.find (.column minima time)))
+;;      ;; Determine the widths in relative measures of scale span and from the inverse of
+;;      ;; those, the precision.
+;;      collect (./ peak-widths (* number-of-scales 1d0))))
 
 (defun confidence-and-precision (analysis)
   "Returns the most likely which is the most confident and most precise"
   (let ((peaks (ridge-peaks analysis)))
-    (.* peaks (normalized-precision-old peaks (ridge-troughs analysis)))))
+    (.* peaks (most-precise peaks (ridge-troughs analysis)))))
 
 (defun expectancy-of-ridge-at-time (ridge time scaleogram all-precision &key (time-limit-expectancies t))
   "Return an expectation instance holding the expection time, the confidence and the precision" 
@@ -208,27 +182,8 @@ given the maxima and minima of the scaleogram"
 							     precision 
 							     :time-limit-expectancies time-limit-expectancies))))))
 
-(defmethod time-in-seconds ((expectation-to-report expectation) sample-rate)
-  (/ (expected-time expectation-to-report) (float sample-rate)))
-
-#|
-;;; TODO this is hacky, depending on the expectancy structure, should just call
-;;; expectation method to return values in seconds.
-(defun expectancies-in-seconds (expectancy-structure sample-rate)
-  "Converts sample times to seconds"
-  (mapcar (lambda (expected-time) 
-	    (list (first expected-time)
-		  (/ (second expected-time) (float sample-rate))
-		  (mapcar (lambda (x) (list (/ (first x) (float sample-rate)) (second x) (third x)))
-			  (third expected-time)))) expectancy-structure))
-|#
-
-(defun expectancy-seconds-list (expectancy sample-rate)
-  "Returns the expectancy as a list, times in seconds"
-  (list (time-in-seconds expectancy sample-rate) (confidence expectancy) (precision expectancy)))
-  
 (defun write-expectancies-to-file (expectancies sample-labels sample-rate filepath)
-    ;; Write the structure to a file.
+    "Write the expectancies to a file with the labelling the MTG code needs."
     (with-open-file (expectancy-file filepath :direction :output :if-exists :supersede)
       (loop 
 	 for expectancy in expectancies
@@ -239,7 +194,7 @@ given the maxima and minima of the scaleogram"
 		    (.aref sample-labels event-index 0)
 		    (floor (.aref sample-labels event-index 1))
 		    (floor (.aref sample-labels event-index 2))
-		    (mapcar (lambda (expectation) (expectancy-seconds-list expectation sample-rate))
+		    (mapcar (lambda (expectation) (list-in-seconds expectation sample-rate))
 			    (second expectancy))))))
 
 (defun expectancies-at-times-in-file (filepath &key (sample-rate 200.0d0))
@@ -247,35 +202,48 @@ given the maxima and minima of the scaleogram"
 	 (times-in-seconds (.column events 0))
 	 (times-as-rhythm (rhythm-of-onsets (pathname-name filepath) times-in-seconds :sample-rate sample-rate))
 	 (expectancies-at-times (expectancies-of-rhythm times-as-rhythm)))
-    ;; Write the structure to a file.
     (write-expectancies-to-file expectancies-at-times 
 				events 
 				sample-rate 
 				(make-pathname :defaults filepath :type "expectancies"))))
 
-(defun label-expectancies (expectancy-structure sample-labels sample-rate)
-  (loop 
-     for expectancy in expectancy-structure
-     collect (list (first expectancy) 
-		   (/ (second expectancy) (float sample-rate))
-		   (.aref sample-labels (first expectancy) 0)
-		   (floor (.aref sample-labels (first expectancy) 1))
-		   (floor (.aref sample-labels (first expectancy) 2))
-		   (third expectancy))))
-
 (defun last-expectancy-of-file (filepath &key (sample-rate 200.0d0))
   (let* ((events (.load filepath :format :text))
 	 (times-in-seconds (.column events 0))
 	 (times-as-rhythm (rhythm-of-onsets (pathname-name filepath) times-in-seconds :sample-rate sample-rate))
-	 (expectancies-at-times (expectancies-of-rhythm times-as-rhythm :time-limit-expectancies nil))
-	 (labelled-expectancy-times (label-expectancies expectancies-at-times events sample-rate))
-	 (expectancy-filepath (make-pathname :defaults filepath :type "last_expectancy")))
-    ;; Write the structure to a file.
-    (with-open-file (expectancy-file expectancy-filepath :direction :output :if-exists :supersede)
-      (format expectancy-file "~{~{~d, ~,5f, ~,5f, ~d, ~d, ~:{~,5f ~,5f ~,5f~:^; ~}~}~%~}"
-	      (last labelled-expectancy-times)))))
+	 (expectancies-at-times (expectancies-of-rhythm times-as-rhythm :time-limit-expectancies nil)))
+    (write-expectancies-to-file (last expectancies-at-times)
+				events 
+				sample-rate 
+				(make-pathname :defaults filepath :type "last_expectancy"))))
+
+;;; File I/O routines.
+(use-package :cl-fad)
+
+;; Routines to use with the cl-fad directory routines.
+(defun is-file-of-type (filepath type)
+  (equal (pathname-type filepath) type))
+
+(defun is-dot-file (filepath)
+  (equal (aref (pathname-name filepath) 0) #\.))
+
+(defun does-not-have-file-of-type (filepath type)
+  (and (is-file-of-type filepath "corneronsetsqrt-p1-f30-s10-g075")	; ensure filepath isn't a clap file
+       (not (is-dot-file filepath))		; it isn't a .DS_Store
+       ;; and that it doesn't have an accompanying clap file
+       (not (probe-file (make-pathname :defaults filepath :type type)))))
+
+(defun does-not-have-expectancies-file (filepath)
+  (does-not-have-file-of-type filepath "expectancies"))
+
+(defun does-not-have-last-expectancy-file (filepath)
+  (does-not-have-file-of-type filepath "last_expectancy"))
+
+(defun does-not-have-claps-file (filepath)
+  (does-not-have-file-of-type filepath "claps"))
 
 (defparameter *ricards-data* "/Volumes/iDisk/Research/Data/RicardsOnsetTests/PercussivePhrases/")
+
 
 ;; (walk-directory *ricards-data* #'print :test #'does-not-have-claps-file)
 
