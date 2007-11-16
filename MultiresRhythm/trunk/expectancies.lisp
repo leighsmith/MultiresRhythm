@@ -51,6 +51,23 @@
     (format t "Beat times of ~a in seconds:~%~a~%" (name times-as-rhythm) clap-times-in-seconds)
     (.save clap-times-in-seconds clap-filepath :format :text)))
 
+;;; Interface
+
+(defclass expectation ()
+  ((expected-time :initarg :time       :accessor expected-time :initform 0)
+   (confidence    :initarg :confidence :accessor confidence)
+   (precision     :initarg :precision  :accessor precision))
+  (:documentation "Defines the expectation to the next point in time."))
+
+(defgeneric time-in-seconds (expectation sample-rate)
+  (:documentation "Returns the expected time in seconds, given the sample rate."))
+
+;;; Implementation
+
+(defmethod print-object ((expectation-to-print expectation) stream)
+  (call-next-method expectation-to-print stream) ;; print the superclass
+  (format stream " ~,5f ~,5f ~,5f" 
+	  (expected-time expectation-to-print) (confidence expectation-to-print) (precision expectation-to-print)))
 
 (defun width-of-peaks (peaks minima number-of-scales)
   "Returns the widths of the peaks, by finding the distance between two minima either side of each peak"
@@ -133,6 +150,7 @@ given the maxima and minima of the scaleogram"
 	     ;; those, the precision.
 	     (normalized-precision (./ peak-widths (coerce number-of-scales 'double-float)))
 	     (precision-profile (make-double-array number-of-scales)))
+	;; TODO Have to do this in two assignments since we can't do .arefs across a single column.
 	(setf (.arefs precision-profile peak-scales) normalized-precision)
 	(setf (.column precision time) precision-profile)))
     precision))
@@ -143,9 +161,8 @@ given the maxima and minima of the scaleogram"
   (let ((peaks (ridge-peaks analysis)))
     (.* peaks (normalized-precision-old peaks (ridge-troughs analysis)))))
 
-(defun expectancy-of-ridge-at-time (ridge time scaleogram all-precision &key
-				    (time-limit-expectancies t))
-  "Return a list indicating the expection time, the confidence and the precision" 
+(defun expectancy-of-ridge-at-time (ridge time scaleogram all-precision &key (time-limit-expectancies t))
+  "Return an expectation instance holding the expection time, the confidence and the precision" 
   (let* ((vpo (voices-per-octave scaleogram))
 	 (max-time (if time-limit-expectancies (duration-in-samples scaleogram) most-positive-fixnum))
 	 (magnitude (scaleogram-magnitude scaleogram))
@@ -153,11 +170,12 @@ given the maxima and minima of the scaleogram"
 	 (expected-time (+ time (time-support scale vpo)))
 	 ;; energy = relative height (of scaleogram or ridge-peaks)
 	 (energy (/ (.aref magnitude scale time) (.max (.column magnitude time))))
-	 (relative-ridge-duration (if (> time 0) (- 1.0 (/ (start-sample ridge) time)) 1))
-	 ;; relative confidence = energy * duration of the ridge up until this moment.
-	 (confidence (* energy relative-ridge-duration))
-	 (precision (.aref all-precision scale time)))
-    (list (min expected-time max-time) confidence precision)))
+	 (relative-ridge-duration (if (> time 0) (- 1.0 (/ (start-sample ridge) time)) 1)))
+    (make-instance 'expectation 
+		   :time (min expected-time max-time)
+		   ;; relative confidence = energy * duration of the ridge up until this moment.
+		   :confidence (* energy relative-ridge-duration)
+		   :precision (.aref all-precision scale time))))
 
 (defun expectancies-of-rhythm (rhythm &key (time-limit-expectancies t))
   "Return a list structure of expectancies. If limit-expectancies is true, only calculate
@@ -175,10 +193,11 @@ given the maxima and minima of the scaleogram"
     (if time-limit-expectancies (setf times-to-check (butlast times-to-check)))
     (loop
        for time in times-to-check
-       for event-index = 0 then (1+ event-index)
        ;; do (plot-scale-energy+peaks-at-time rhythm-scaleogram time (ridge-peaks rhythm-analysis) :sample-rate (sample-rate rhythm))
        ;; (break)
-       collect (list event-index time
+       collect (list time
+		     ;; TODO able to make this a separate function? 
+		     ;; (expectancies-at-time skeleton time)
 		     (loop
 			for ridge in (ridges-at-time skeleton time)
 			;; filter out the ridges higher than a cut off point determined by preferred tempo rate.
@@ -189,6 +208,12 @@ given the maxima and minima of the scaleogram"
 							     precision 
 							     :time-limit-expectancies time-limit-expectancies))))))
 
+(defmethod time-in-seconds ((expectation-to-report expectation) sample-rate)
+  (/ (expected-time expectation-to-report) (float sample-rate)))
+
+#|
+;;; TODO this is hacky, depending on the expectancy structure, should just call
+;;; expectation method to return values in seconds.
 (defun expectancies-in-seconds (expectancy-structure sample-rate)
   "Converts sample times to seconds"
   (mapcar (lambda (expected-time) 
@@ -196,36 +221,54 @@ given the maxima and minima of the scaleogram"
 		  (/ (second expected-time) (float sample-rate))
 		  (mapcar (lambda (x) (list (/ (first x) (float sample-rate)) (second x) (third x)))
 			  (third expected-time)))) expectancy-structure))
+|#
 
-(defun label-expectancies (expectancy-structure sample-labels)
-  (loop 
-     for expectancy in expectancy-structure
-     collect (list (first expectancy) 
-		   (second expectancy)
-		   (.aref sample-labels (first expectancy) 0)
-		   (floor (.aref sample-labels (first expectancy) 1))
-		   (floor (.aref sample-labels (first expectancy) 2))
-		   (third expectancy))))
+(defun expectancy-seconds-list (expectancy sample-rate)
+  "Returns the expectancy as a list, times in seconds"
+  (list (time-in-seconds expectancy sample-rate) (confidence expectancy) (precision expectancy)))
+  
+(defun write-expectancies-to-file (expectancies sample-labels sample-rate filepath)
+    ;; Write the structure to a file.
+    (with-open-file (expectancy-file filepath :direction :output :if-exists :supersede)
+      (loop 
+	 for expectancy in expectancies
+	 for event-index = 0 then (1+ event-index)
+	 do (format expectancy-file "~d, ~,5f, ~,5f, ~d, ~d, ~:{~,5f ~,5f ~,5f~:^; ~}~%" 
+		    event-index
+		    (/ (first expectancy) (float sample-rate))
+		    (.aref sample-labels event-index 0)
+		    (floor (.aref sample-labels event-index 1))
+		    (floor (.aref sample-labels event-index 2))
+		    (mapcar (lambda (expectation) (expectancy-seconds-list expectation sample-rate))
+			    (second expectancy))))))
 
 (defun expectancies-at-times-in-file (filepath &key (sample-rate 200.0d0))
   (let* ((events (.load filepath :format :text))
 	 (times-in-seconds (.column events 0))
 	 (times-as-rhythm (rhythm-of-onsets (pathname-name filepath) times-in-seconds :sample-rate sample-rate))
-	 (expectancies-at-times (expectancies-of-rhythm times-as-rhythm))
-    	 (expectancy-times-in-seconds (expectancies-in-seconds expectancies-at-times sample-rate))
-	 (labelled-expectancy-times (label-expectancies expectancy-times-in-seconds events))
-	 (expectancy-filepath (make-pathname :defaults filepath :type "expectancies")))
+	 (expectancies-at-times (expectancies-of-rhythm times-as-rhythm)))
     ;; Write the structure to a file.
-    (with-open-file (expectancy-file expectancy-filepath :direction :output :if-exists :supersede)
-      (format expectancy-file "~{~{~d, ~,5f, ~,5f, ~d, ~d, ~:{~,5f ~,5f ~,5f~:^; ~}~}~%~}" labelled-expectancy-times))))
+    (write-expectancies-to-file expectancies-at-times 
+				events 
+				sample-rate 
+				(make-pathname :defaults filepath :type "expectancies"))))
+
+(defun label-expectancies (expectancy-structure sample-labels sample-rate)
+  (loop 
+     for expectancy in expectancy-structure
+     collect (list (first expectancy) 
+		   (/ (second expectancy) (float sample-rate))
+		   (.aref sample-labels (first expectancy) 0)
+		   (floor (.aref sample-labels (first expectancy) 1))
+		   (floor (.aref sample-labels (first expectancy) 2))
+		   (third expectancy))))
 
 (defun last-expectancy-of-file (filepath &key (sample-rate 200.0d0))
   (let* ((events (.load filepath :format :text))
 	 (times-in-seconds (.column events 0))
 	 (times-as-rhythm (rhythm-of-onsets (pathname-name filepath) times-in-seconds :sample-rate sample-rate))
 	 (expectancies-at-times (expectancies-of-rhythm times-as-rhythm :time-limit-expectancies nil))
-    	 (expectancy-times-in-seconds (expectancies-in-seconds expectancies-at-times sample-rate))
-	 (labelled-expectancy-times (label-expectancies expectancy-times-in-seconds events))
+	 (labelled-expectancy-times (label-expectancies expectancies-at-times events sample-rate))
 	 (expectancy-filepath (make-pathname :defaults filepath :type "last_expectancy")))
     ;; Write the structure to a file.
     (with-open-file (expectancy-file expectancy-filepath :direction :output :if-exists :supersede)
