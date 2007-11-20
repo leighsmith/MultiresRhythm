@@ -46,14 +46,21 @@
 ;;; (setf bad-bar-periods (dorys::evaluation-of-anthems #'evaluate-lhl82-beat-period-of-anthem))
 
 (defun evaluate-lhl82-downbeat-of-anthem (anthem)
-  (let ((beat-track (lhl82 (second anthem) :debug #'print-state-debug :trace nil))) ; :max-beat 30
+  "Checks that the anthem tree checking works with the generated downbeat and the transcribed bar duration"
+  (let* ((pattern (second anthem))
+	 (beat-track (lhl82 pattern :debug #'print-state-debug :trace nil))) ; :max-beat 30
     (format t "~%Beat tracking ~a~%" (string (caar anthem)))
-    (format t "official downbeat ~a~%" (dorys::anthem-anacrusis-duration anthem))
+    (format t "official downbeat ~a official bar period ~a~%" 
+	    (dorys::anthem-anacrusis-duration anthem)
+	    (dorys::anthem-bar-duration anthem))
     (format t "computed downbeat ~a~%" (t1 beat-track))
-    (= (t1 beat-track) (dorys::anthem-anacrusis-duration anthem))))
+    (format t "Strictly matches ~a~%" (= (t1 beat-track) (dorys::anthem-anacrusis-duration anthem)))
+    (correct-from-anthem-tree pattern 
+			      (t1 beat-track)
+			      (dorys::anthem-bar-duration anthem))))
 
 ;;; (setf bad-downbeats (dorys::evaluation-of-anthems #'evaluate-lhl82-downbeat-of-anthem))
-;;; #<FUNCTION EVALUATE-LHL82-DOWNBEAT-OF-ANTHEM> 34 failed, correct 67.61905%
+;;; #<FUNCTION EVALUATE-LHL82-DOWNBEAT-OF-ANTHEM> 29 failed, correct 72.38095%
 
 (defun evaluate-lhl82-anthem (anthem)
   (let* ((pattern (second anthem))
@@ -92,27 +99,27 @@
 ;;; (setf none-bad (dorys::evaluation-of-anthems #'verify-lhl82-anthem))
 ;;; #<FUNCTION VERIFY-LHL82-ANTHEM> 0 failed, correct 100.0%
 
+
 ;;;; These are old and crufty tests:
-
 ;; (setf anthem-tree-check (make-correct-from-file "/Volumes/iDisk/Research/Data/DesainHoning/anthems.tree"))
-;; (funcall anthem-tree-check (second (dorys::anthem-named 'dorys::vietnam)) 5 16)
+;; (funcall anthem-tree-check (second (anthem-named 'dorys::vietnam)) 5 16)
 
-;;; (evaluate-lhl82-bar-period-of-anthem (dorys::anthem-named 'dorys::yugoslavia))
+;;; (evaluate-lhl82-bar-period-of-anthem (anthem-named 'dorys::yugoslavia))
 
-;;; (correct-metric (second (dorys::anthem-named 'dorys::yugoslavia)) 0 12) => ?
-;;; (check-metric-t1-beat (second (dorys::anthem-named 'dorys::yugoslavia)) 0 12 '(12 16 18 24) '(2 3))
-;;; (correct-strict-pulse (second (dorys::anthem-named 'dorys::yugoslavia)) 0 12) => T
-;;; (metric? (second (dorys::anthem-named 'dorys::yugoslavia)) 12 '(3 2 2))
+;;; (correct-metric (second (anthem-named 'dorys::yugoslavia)) 0 12) => ?
+;;; (check-metric-t1-beat (second (anthem-named 'dorys::yugoslavia)) 0 12 '(12 16 18 24) '(2 3))
+;;; (correct-strict-pulse (second (anthem-named 'dorys::yugoslavia)) 0 12) => T
+;;; (metric? (second (anthem-named 'dorys::yugoslavia)) 12 '(3 2 2))
 
-;;; (correct-metric (second (dorys::anthem-named 'dorys::vietnam)) 5 16) => ?
-;;; (check-metric-t1-beat (second (dorys::anthem-named 'dorys::vietnam)) 5 16 '(12 16 18 24) '(2 3)) => ?
+;;; (correct-metric (second (anthem-named 'dorys::vietnam)) 5 16) => ?
+;;; (check-metric-t1-beat (second (anthem-named 'dorys::vietnam)) 5 16 '(12 16 18 24) '(2 3)) => ?
 
-;;; (check-metric-t1-beat (second (dorys::anthem-named 'dorys::yemen)) 6 24 '(12 16 18 24) '(2 3))
-;;; (correct-strict-pulse (second (dorys::anthem-named 'dorys::yemen)) 6 24) => T
+;;; (check-metric-t1-beat (second (anthem-named 'dorys::yemen)) 6 24 '(12 16 18 24) '(2 3))
+;;; (correct-strict-pulse (second (anthem-named 'dorys::yemen)) 6 24) => T
 
-;;; (setf pattern (second (dorys::anthem-named 'dorys::australia)))
+;;; (setf pattern (second (anthem-named 'dorys::australia)))
 
-;;; (evaluate-lhl82-anthem (dorys::anthem-named 'dorys::yugoslavia))
-;;; (evaluate-lhl82-anthem (dorys::anthem-named 'dorys::australia))
-;;; (evaluate-lhl82-anthem (dorys::anthem-named 'dorys::america))
+;;; (evaluate-lhl82-anthem (anthem-named 'dorys::yugoslavia))
+;;; (evaluate-lhl82-anthem (anthem-named 'dorys::australia))
+;;; (evaluate-lhl82-anthem (anthem-named 'dorys::america))
 

@@ -113,9 +113,8 @@
                   (lambda (country time-sig name &key bar-duration start-at)
 		    ;; The first element of the pattern is the normalizing divisor
 		    ;; calculated by normalize :sequential-ratio.
-		    (format t "in lambda, from tree: country ~a time-sig ~a name ~a bar duration ~a start at ~a first pattern ~a~%pattern ~a~%"
-			    country time-sig name bar-duration start-at (first pattern) pattern)
-		    (format t "testing against: phase ~a dur ~a~%" phase dur)
+		    ;; (format t "in lambda, from tree: country ~a time-sig ~a name ~a bar duration ~a start at ~a first pattern ~a~%pattern ~a~%" country time-sig name bar-duration start-at (first pattern) pattern)
+		    ;; (format t "testing against: phase ~a dur ~a~%" phase dur)
 		    (when (or
 			   (and allow-multiples	; accept beat multiples
 				(> dur (* (first pattern) bar-duration))
