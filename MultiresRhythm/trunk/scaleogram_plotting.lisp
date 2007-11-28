@@ -97,20 +97,6 @@
 ;; (defmethod label-scale-as-rhythmic-beat ((scaleogram-to-plot scaleogram) crochet-IOI)
 ;; (label-scale-as-rhythmic-beat (voices-per-octave scaleogram-to-plot) crochet-IOI))
 
-(defun label-phase-in-radians (phaseogram-range divisions)
-  (declare (ignore phaseogram-range divisions))
-  ;; '(("-{/Symbol p}" 0) ("-{/Symbol p}/2" 64) ("0" 128) ("{/Symbol p}/2" 192) ("{/Symbol p}" 254)))
-  '(("-pi" 0) ("-pi/2" 64) ("0" 128) ("pi/2" 192) ("pi" 254)))
-
-(defun label-phase-in-radians-2 (phaseogram-range divisions)
-  (loop 
-     for label-index from 0 upto divisions
-     with position-increment = (/ phaseogram-range divisions)
-     with label-increment = (/ (* 2 pi) divisions)
-     for position = (* label-index position-increment)
-     for label = (- (* label-index label-increment) pi)
-     collect (list label position)))
-
 (defun axes-labelled-in-seconds (scaleogram-to-plot sample-rate time-axis-decimation)
   "Returns the axes commands to gnuplot to label axes in seconds"
   (let ((axes-commands (make-array 200 :element-type 'character :fill-pointer 0)))
@@ -184,10 +170,10 @@
   "Plot the magnitude in greyscale overlaid with the computed tactus in red, the phase
    overlaid with the tactus in black."
   (let ((axes-labels (axes-labelled-in-seconds scaleogram-to-plot (sample-rate analysis-rhythm) time-axis-decimation)))
-    (plot-images (list ;; (list #'rhythm-plot
-;; 			     (list analysis-rhythm)
-;; 			     '((1.0 0.25) (0.0 0.3))
-;; 			     axes-labels)
+    (plot-images (list  ;(list #'rhythm-plot
+ 			;     (list analysis-rhythm)
+ 			;    '((1.0 0.25) (0.0 0.3))
+ 			;    axes-labels)
 		       (list #'magnitude-image 
 			     (list (scaleogram-magnitude scaleogram-to-plot))
 			     '((1.0 0.5) (0.0 0.3))
@@ -196,7 +182,7 @@
 		       ;; We make a copy of the tactus since decimate modifies the object
 		       ;; (it is, after all, an instance method) 
 		       (list #'ridges-on-phase-image 
-			     (list (mapcar #'copy-object ridges)
+			     (list (mapcar #'copy-object ridges) 
 				   (scaleogram-phase scaleogram-to-plot)
 				   (scaleogram-magnitude scaleogram-to-plot))
 			     '((1.0 0.5) (0.0 0.0))

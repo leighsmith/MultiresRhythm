@@ -219,6 +219,7 @@
 	:aspect-ratio aspect-ratio
 	:reset nil))
 
+;;; TODO Should make this a method.
 (defun rhythm-plot (rhythm-to-plot window-dimensions title &key 
 		    (time-in-seconds nil)
 		    (aspect-ratio 0.1))
@@ -277,3 +278,8 @@
   (if (< (duration-in-samples rhythm-to-limit) maximum-samples)
       rhythm-to-limit	; under maximum, no change
       (subset-of-rhythm rhythm-to-limit (list 0 (1- maximum-samples)))))
+
+;;; A dummy method to keep the plotting happy. For now...
+(defmethod .decimate ((rhythm-to-decimate rhythm) reduce-list &key start-indices)
+  (declare (ignore reduce-list start-indices))
+  rhythm-to-decimate)

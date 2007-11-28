@@ -60,6 +60,22 @@
        for position across (val sample-index)
        collect (list (floor label) (floor position)))))
 
+(defun label-phase-in-radians (phaseogram-range divisions)
+  "Returns a list of strings and values to graphically label phase values"
+  (declare (ignore phaseogram-range divisions))
+  '(("-p" 0) ("-p/2" 64) ("0" 128) ("p/2" 192) ("p" 254)))
+  ;; '(("-pi" 0) ("-pi/2" 64) ("0" 128) ("pi/2" 192) ("pi" 254)))
+
+(defun label-phase-in-radians-2 (phaseogram-range divisions)
+  "Returns a list of strings and values to graphically label phase values"
+  (loop 
+     for label-index from 0 upto divisions
+     with position-increment = (/ phaseogram-range divisions)
+     with label-increment = (/ (* 2 pi) divisions)
+     for position = (* label-index position-increment)
+     for label = (- (* label-index label-increment) pi)
+     collect (list label position)))
+
 ;;; Colour map generating functions
 
 ;; (defun search-sorted (a x)
@@ -187,7 +203,7 @@ colourmap, suitable for use by NLISP's palette-defined function."
 
 (defun phase-colour-box (phase-data window-dimensions  &key (colorbox-divisions 4.0))
   (let ((window-origin (second window-dimensions)))
-    ;; (plot-command "set cbtics font \"Symbol,12\"") ; Doesn't work on Aquaterm yet.
+    (plot-command "set cbtics font \"Symbol,18\"") ; So we can plot pi symbols.
     (plot-command "set cbtics (~{~{\"~a\" ~d~}~^, ~})~%" 
 		  (label-phase-in-radians (range phase-data) colorbox-divisions))
     (plot-command "set colorbox user origin ~f,~f size 0.03,0.2" (+ (first window-origin) 0.88) (+ (second window-origin) 0.15))))
@@ -229,7 +245,8 @@ colourmap, suitable for use by NLISP's palette-defined function."
    Dark values are higher valued, lighter values are lower valued."
   (set-colour-box magnitude window-dimensions)
   (set-plot-palette palette)
-  (image (.flip magnitude) nil nil
+  ;; (plot-command "set size 0.88") ; when using image, not image-pm3d
+  (nlisp::image-pm3d (.flip magnitude) nil nil
 	 :title (format nil "Scaleogram Magnitude of ~a" title)
 	 :xlabel nil
 	 :ylabel (format nil "Scale as IOI Range\\n(~a)" units)
@@ -254,7 +271,7 @@ colourmap, suitable for use by NLISP's palette-defined function."
   (let ((plotable-phase (.* (plotable-phase phase magnitude maximum-colour-value) 1d0)))
     (phase-colour-box plotable-phase window-dimensions)
     (set-plot-palette palette)
-    (image (.flip plotable-phase) nil nil
+    (nlisp::image-pm3d (.flip plotable-phase) nil nil
 	   :title (format nil "Scaleogram Phase of ~a" title)
 	   :xlabel "Time (Seconds)" 
 	   :ylabel (format nil "Scale as IOI Range\\n(~a)" units)
@@ -291,16 +308,16 @@ colourmap, suitable for use by NLISP's palette-defined function."
       (setf plotable-phase-with-ridges (insert-ridge ridge plotable-phase-with-ridges :constant-value maximum-colour-value)))
     (phase-colour-box plotable-phase-with-ridges window-dimensions)
     (set-plot-palette palette)
-    (image (.flip plotable-phase-with-ridges) nil nil
+    (nlisp::image-pm3d (.flip plotable-phase-with-ridges) nil nil
 	   :title (format nil "Phase of ~a" title)
 	   :xlabel "Time (Seconds)" 
 	   :ylabel "Scale as IOI Range\\n(Seconds)"
 	   :reset nil
 	   :aspect-ratio aspect-ratio)))
 
-(defmethod .decimate ((ridge-list list) reduce-list &key start-indices)
+(defmethod .decimate ((ridge-list list) reduce-list &rest start-indices)
   "Method to decimate a list of ridges."
-  (mapcar (lambda (ridge) (.decimate ridge reduce-list :start-indices start-indices)) ridge-list))
+  (mapcar (lambda (ridge) (apply #'.decimate ridge reduce-list start-indices)) ridge-list))
 
 (defun plot-image (image-plotter data-to-plot window-dimensions axes-labels
 		   &key (title "unnamed")
@@ -313,7 +330,7 @@ colourmap, suitable for use by NLISP's palette-defined function."
    (set-image-dimensions window-dimensions)
    (set-axes-labels axes-labels)
    ;; Downsample the data 
-   (let* ((down-sampled-data (mapcar (lambda (x) (.decimate x (list 1 time-axis-decimation))) data-to-plot))
+   (let* ((down-sampled-data (.decimate data-to-plot (list 1 time-axis-decimation)))
 	  (plotable-image (apply image-plotter (append down-sampled-data (list window-dimensions title)))))
      ;; If we need to do something with the image after plotting, here's where...
      (reset-plot)
