@@ -21,7 +21,11 @@
 
 (defmethod set-note-duration ((the-note note) duration)
   (setf (gethash 'duration (parameters the-note)) duration))
-  
+
+(defmethod compare ((first-note note) (second-note note))
+  "Compare the play-times"
+  (< (play-time first-note) (play-time second-note)))
+
 (defun parameter-list (parameter-hash-table)
   "Return a two level list of parameters and values, given the hash table"
   (with-hash-table-iterator (parameter-retriever parameter-hash-table)

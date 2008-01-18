@@ -43,14 +43,14 @@
      when (not (zerop note))
      collect (1- ioi)))
 
-(defun note-list-of-rhythm-grid (grid  &key ((:tempo tempo-in-bpm) 60) (ioi 1.0 interval-supplied-p))
+(defun note-list-of-rhythm-grid (grid &key ((:tempo tempo-in-bpm) 60) (ioi 1.0 interval-supplied-p))
   "Given a binary rhythmic grid, returns a note list with the timing set"
   (loop
      with onsets = (grid-to-onsets grid) ; (append grid '(1))
      with shortest-interval-milliseconds = (if interval-supplied-p ioi (/ 60000 tempo-in-bpm))
      for onset-time in onsets
      for note-tag = 1 then (1+ note-tag)
-     collect (make-midi-note (* onset-time shortest-interval-milliseconds)
+     collect (make-midi-note (floor (* onset-time shortest-interval-milliseconds))
 			     note-tag
 			     :velocity 127
 			     :duration (floor shortest-interval-milliseconds 2))))
@@ -60,5 +60,25 @@
   (dolist (note notes)
     (let ((midi-parameters (parameters note)))
       (setf (gethash 'key-number midi-parameters) drum-key-number)
-      (setf (gethash 'midi-channel midi-parameters) percussion-channel))))
- 
+      (setf (gethash 'midi-channel midi-parameters) percussion-channel)))
+  notes)
+
+(defun renumber-part (note-list)
+  "Rewrites the note tag, typically only needed after merging note lists"
+  (loop 
+     for note in note-list
+     for new-note-tag = 1 then (1+ new-note-tag) ; why start at 1 & not 0?
+     do (setf (note-tag note) new-note-tag)
+     finally (return note-list)))
+
+;;; TODO perhaps this should be mix-parts
+;;; Perhaps just concatenate and sort by time?
+(defun mix-note-lists (note-lists)
+  "Returns a single note list combining the supplied list of separate note lists ordered by time"
+  (loop 
+     for part in note-lists
+     for time-ordered-part = '() then (merge 'list time-ordered-part part #'compare)
+     finally (return (renumber-part time-ordered-part))))
+
+;(defun time-cut (note-list start-time cut-duration)
+;  "Removes cut-duration time from the note-list starting at start-time") 

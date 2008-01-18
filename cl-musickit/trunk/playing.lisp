@@ -38,6 +38,29 @@
   ;; on-off-pairs + single-events = double for note-on/off pairs.
   (+ (count :note-duration notes :key #'note-type) (length notes)))
 
+;;; This allows sorting all simultaneously occurring note-ons together.
+(defun split-notes (notes)
+  "Returns a note list with all note-duration notes split into their respective note-on and
+  note-off note events"
+  (loop
+     for note in notes
+     when (eq (note-type note) :note-duration)
+     append (list (make-instance 'note 
+				 :note-type :note-on 
+				 :note-tag (note-tag note)
+				 :play-time (play-time note)
+				 ;; should remove the duration parameter
+				 :parameters (parameters note)) 
+		  (make-instance 'note 
+				 :note-type :note-off 
+				 :note-tag (note-tag note)
+				 :play-time (+ (play-time note) (note-duration note))
+				 ;; should remove the duration parameter
+				 :parameters (parameters note))) into split-notes
+     unless (eq (note-type note) :note-duration)
+     collect note into split-notes
+     finally (return split-notes)))
+
 (defun create-event-buffer (notes)
   "Given a time ordered list of note objects, create and return a portmidi event buffer"
   (let* ((event-count (number-of-events notes)) 
@@ -45,12 +68,12 @@
 	 (play-now-time (pm:time)))
     (loop				; assign the buffer's note on and off events.
        for note in notes
-       for event-index = 0 then (+ event-index 2)
+       for event-index = 0 then (1+ event-index)
        do
 	 (set-pm-event play-now-time 
 		       note
 		       (pm:EventBufferElt event-buffer event-index)
-		       (pm:EventBufferElt event-buffer (1+ event-index))))
+		       nil))
     (values event-buffer event-count)))
 
 (let ((output-device-id nil))
@@ -68,10 +91,12 @@
 
   (defun play-timed-notes (midi-notes)
     "Sends the note objects (which are assumed to have MIDI parameters) at times in milliseconds"
-    (if (null output-device-id)
-	(enable-playing))
-    (multiple-value-bind (event-buffer event-count) (create-event-buffer midi-notes)
-      (let* ((output-device (pm:OpenOutput output-device-id 100 1000)))
-	(pm:Write output-device event-buffer event-count)
-	(pm:EventBufferFree event-buffer)
-	(pm:Close output-device)))))
+    (let ((playable-events (sort (split-notes midi-notes) #'compare)))
+      (if (null output-device-id)
+	  (enable-playing))
+      (multiple-value-bind (event-buffer event-count) (create-event-buffer playable-events)
+	(let* ((output-device (pm:OpenOutput output-device-id 100 1000)))
+	  (pm:Write output-device event-buffer event-count)
+	  (pm:EventBufferFree event-buffer)
+	  (pm:Close output-device))))))
+
