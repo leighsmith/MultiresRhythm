@@ -9,19 +9,11 @@
 
 ;; Passing in the play-time-datum allows decoupling the creation of the event buffer from the time of
 ;; playing, so the creation can be slow.
-(defmethod set-pm-event (play-time-datum (note-to-play note) pm-note-on-event pm-note-off-event)
+(defmethod set-pm-event (play-time-datum (note-to-play note) pm-note-on-event)
   "Convert select parameters of a note into portmidi elements for playing"
   (let ((param (parameters note-to-play)))
     (case (note-type note-to-play)
-      (:note-duration
-       (pm:Event.message pm-note-on-event (pm:message (+ #b10010000 (gethash 'midi-channel param))
-						   (gethash 'key-number param)
-						   (gethash 'velocity param)))
-       (pm:Event.timestamp pm-note-on-event (+ play-time-datum (play-time note-to-play)))
-       (pm:Event.message pm-note-off-event (pm:message (+ #b10000000 (gethash 'midi-channel param))
-						    (gethash 'key-number param)
-						    0))
-       (pm:Event.timestamp pm-note-off-event (+ play-time-datum (play-time note-to-play) (gethash 'duration param))))
+      ;;  & :note-duration
       (:note-on
        (pm:Event.message pm-note-on-event (pm:message (+ #b10010000 (gethash 'midi-channel param))
 						   (gethash 'key-number param)
@@ -72,8 +64,7 @@
        do
 	 (set-pm-event play-now-time 
 		       note
-		       (pm:EventBufferElt event-buffer event-index)
-		       nil))
+		       (pm:EventBufferElt event-buffer event-index)))
     (values event-buffer event-count)))
 
 (let ((output-device-id nil))

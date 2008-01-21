@@ -43,11 +43,16 @@
      when (not (zerop note))
      collect (1- ioi)))
 
-(defun note-list-of-rhythm-grid (grid &key ((:tempo tempo-in-bpm) 60) (ioi 1.0 interval-supplied-p))
+(defun note-list-of-rhythm-grid (grid &key ((:tempo tempo-in-bpm) 60) 
+				 ;; number of grid elements making up a quarter-note, which is the beat for BPM.
+				 (grids-per-crotchet 4) 
+				 (ioi 1.0 interval-supplied-p))
   "Given a binary rhythmic grid, returns a note list with the timing set"
   (loop
      with onsets = (grid-to-onsets grid) ; (append grid '(1))
-     with shortest-interval-milliseconds = (if interval-supplied-p ioi (/ 60000 tempo-in-bpm))
+     with shortest-interval-milliseconds = (if interval-supplied-p 
+					       ioi 
+					       (/ 60000 tempo-in-bpm grids-per-crotchet))
      for onset-time in onsets
      for note-tag = 1 then (1+ note-tag)
      collect (make-midi-note (floor (* onset-time shortest-interval-milliseconds))
@@ -77,8 +82,8 @@
   "Returns a single note list combining the supplied list of separate note lists ordered by time"
   (loop 
      for part in note-lists
-     for time-ordered-part = '() then (merge 'list time-ordered-part part #'compare)
-     finally (return (renumber-part time-ordered-part))))
+     and time-ordered-part = '() then (merge 'list time-ordered-part part #'compare)
+     finally (return (renumber-part (merge 'list time-ordered-part part #'compare)))))
 
 ;(defun time-cut (note-list start-time cut-duration)
 ;  "Removes cut-duration time from the note-list starting at start-time") 
