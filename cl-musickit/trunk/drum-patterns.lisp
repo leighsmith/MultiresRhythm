@@ -28,10 +28,10 @@
 		  :key-numbers (list *bass-drum* *snare-drum* *closed-hi-hat*)))
 |#
 
-(defun drum-machine (grids &key (tempo 60) 
+(defun drum-machine (grids &key (tempo 60) (ioi 300 ioi-supplied-p)
 		     (instruments (list *closed-hi-hat* *snare-drum* *bass-drum*)))
-;;  (let* ((drum-note-lists (mapcar (lambda (grid) (note-list-of-rhythm-grid grid :ioi 300)) grids))
-  (let* ((drum-note-lists (mapcar (lambda (grid) (note-list-of-rhythm-grid grid :tempo tempo)) grids))
+  (let* ((drum-note-lists (mapcar (lambda (grid) (note-list-of-rhythm-grid grid :ioi ioi)) grids))
+;;  (let* ((drum-note-lists (mapcar (lambda (grid) (note-list-of-rhythm-grid grid :tempo tempo)) grids))
 	 (orchestrated-parts (loop
 				for instrument-note-list in drum-note-lists 
 				for key-number in instruments
@@ -55,5 +55,33 @@
   (drum-machine '((1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1)
 		  (0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0)
 		  (1 0 0 0 0 0 0 0 1 0 1 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 1 0 0 0 0 0 1))
-		:tempo 130))
+		:ioi 150))
+
+;;; D1 pattern: "Regular rock pattern with strong syncopation (towards beat pos 0)"
+(defparameter sync-d1-pattern 
+  (drum-machine '((1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 0 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1)
+		  (0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0)
+		  (1 0 0 0 0 0 0 0 1 0 1 0 0 0 1 0 0 0 0 0 0 0 0 0 1 0 1 0 0 0 0 0 1))
+		:ioi 150))
+
+;;; D2 pattern: "Regular rock pattern with weak syncopation (towards beat pos 5)"
+(defparameter sync-d2-pattern 
+  (drum-machine '((1 0 1 0 1 0 1 0 1 1 0 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1)
+		  (0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0)
+		  (1 0 0 0 0 0 0 0 1 1 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 1 0 0 0 0 0 1))
+		:ioi 150))
+
+(defparameter shift-d1-pattern 
+  (time-cut (drum-machine '((1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1)
+			    (0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0)
+			    (1 0 0 0 0 0 0 0 1 0 1 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 1 0 0 0 0 0 1))
+			  :ioi 150)
+	    2100 300))
+
+(defparameter shift-d2-pattern 
+  (time-cut (drum-machine '((1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1)
+			    (0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0)
+			    (1 0 0 0 0 0 0 0 1 0 1 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 1 0 0 0 0 0 1))
+			  :ioi 150)
+	    1350 1050))
 

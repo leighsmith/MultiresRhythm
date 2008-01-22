@@ -26,6 +26,11 @@
   "Compare the play-times"
   (< (play-time first-note) (play-time second-note)))
 
+(defmethod note-in-region ((note-to-check note) region-start region-end)
+  "Predicate checking if a note is within a temporal region"
+  (and (>= (play-time note-to-check) region-start)
+       (< (play-time note-to-check) region-end)))
+
 (defun parameter-list (parameter-hash-table)
   "Return a two level list of parameters and values, given the hash table"
   (with-hash-table-iterator (parameter-retriever parameter-hash-table)

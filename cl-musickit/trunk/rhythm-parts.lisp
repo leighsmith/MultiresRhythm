@@ -85,5 +85,12 @@
      and time-ordered-part = '() then (merge 'list time-ordered-part part #'compare)
      finally (return (renumber-part (merge 'list time-ordered-part part #'compare)))))
 
-;(defun time-cut (note-list start-time cut-duration)
-;  "Removes cut-duration time from the note-list starting at start-time") 
+(defun time-cut (note-list start-time cut-duration)
+  "Removes cut-duration time from the note-list starting at start-time, all in mS"
+  (loop 
+     for note in note-list
+     ;; Remove any notes which fall within the cut zone.
+     unless (note-in-region note start-time (+ start-time cut-duration))
+     do (if (> (play-time note) start-time)
+	    (decf (play-time note) cut-duration)) ; shift up all the notes after the start time.
+     and collect note))
