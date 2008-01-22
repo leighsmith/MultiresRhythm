@@ -57,20 +57,23 @@
 		  (1 0 0 0 0 0 0 0 1 0 1 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 1 0 0 0 0 0 1))
 		:ioi 150))
 
-;;; D1 pattern: "Regular rock pattern with strong syncopation (towards beat pos 0)"
+;; (play-timed-notes s-pattern)
+
+;;; Experiment A D1 pattern: "Regular rock pattern with strong syncopation (towards beat pos 0)"
 (defparameter sync-d1-pattern 
   (drum-machine '((1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 0 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1)
 		  (0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0)
 		  (1 0 0 0 0 0 0 0 1 0 1 0 0 0 1 0 0 0 0 0 0 0 0 0 1 0 1 0 0 0 0 0 1))
 		:ioi 150))
 
-;;; D2 pattern: "Regular rock pattern with weak syncopation (towards beat pos 5)"
+;;; Experiment A D2 pattern: "Regular rock pattern with weak syncopation (towards beat pos 5)"
 (defparameter sync-d2-pattern 
   (drum-machine '((1 0 1 0 1 0 1 0 1 1 0 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1)
 		  (0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0)
 		  (1 0 0 0 0 0 0 0 1 1 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 1 0 0 0 0 0 1))
 		:ioi 150))
 
+;;; Experiment B D1 pattern: "Regular rock pattern with strong shift (towards beat pos 0)"
 (defparameter shift-d1-pattern 
   (time-cut (drum-machine '((1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1)
 			    (0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0)
@@ -78,6 +81,7 @@
 			  :ioi 150)
 	    2100 300))
 
+;;; Experiment B D2 pattern: "Regular rock pattern with weak shift (towards beat pos 5)"
 (defparameter shift-d2-pattern 
   (time-cut (drum-machine '((1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1)
 			    (0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0 0 0)
@@ -85,3 +89,4 @@
 			  :ioi 150)
 	    1350 1050))
 
+;; (play-timed-notes shift-d2-pattern)
