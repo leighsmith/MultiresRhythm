@@ -15,6 +15,12 @@
 
 ;;; The *national-anthems* symbol is interned into :dorys package by loading.
 
+(defun keyword-access (list keyword)
+  (nth (1+ (position keyword list)) list))
+
+(defmacro anthem-description (anthem)
+  `(first ,anthem))
+
 (defmacro anthem# (anthem-number)
   "Retrieves the anthem by number"
   `(nth ,anthem-number *national-anthems*))
@@ -24,16 +30,16 @@
   (find anthem-symbol *national-anthems* :key #'caar :test #'eq))
 
 (defmacro anthem-name (anthem)
-  `(caar ,anthem))
+  `(first (anthem-description ,anthem)))
 
 (defmacro anthem-bar-duration (anthem)
-  `(seventh (first ,anthem)))
+  `(seventh (anthem-description ,anthem)))
 
 (defmacro anthem-beat-duration (anthem)
-  `(fifth (first ,anthem)))
+  `(fifth (anthem-description ,anthem)))
 
 (defmacro meter-signature (anthem)
-  `(second (first ,anthem)))
+  `(second (anthem-description ,anthem)))
 
 (defun meter-numerator (meter-string)
   (read-from-string meter-string :start 0 :end (position #\/ meter-string)))
@@ -45,7 +51,7 @@
 ;;; Defined as a function, rather than as a macro to allow it to be used as a key to remove-if-not.
 (defun anthem-start-at (anthem)
   "Returns the position in the bar where the upbeat starts, in grid units"
-  (ninth (first anthem)))
+  (ninth (anthem-description anthem)))
 
 (defun anthem-anacrusis-duration (anthem)
   "Returns the number of grid units of time (not the number of notes), before the downbeat"
@@ -115,7 +121,7 @@ printing the proportion that pass."
   (let* ((failing-anthems (loop
 			    for anthem in anthems
 			    do (format t "Evaluating ~a~%" (anthem-name anthem))
-			    when (not (funcall evaluation-function anthem))
+			    when (not (print (funcall evaluation-function anthem)))
 			    collect anthem))
 	 (number-failed (length failing-anthems)))
     (format t "~a ~d failed, correct ~f%~%" 

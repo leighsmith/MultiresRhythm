@@ -20,6 +20,7 @@
 	    (:export :*national-anthems*
 		     :anthem-named :meter-numerator :anthem-name
 		     :anthem-beat-duration :anthem-bar-duration :anthem-anacrusis-duration
+		     :anthems-of-meter
 		     :evaluation-of-anthems
 		     :read-esac-file))
 
