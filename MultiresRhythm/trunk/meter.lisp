@@ -43,3 +43,33 @@
   "Returns whether the meter is duple or triple"
   (if (zerop (mod (meter-of-analysis analysis tactus) 2)) 2 3))
 
+
+#|
+
+;; Problem is, 6 times the beat-period is typically longer than the maximum scale, so
+;; there will be less examples of energy. If there is, say due to a longer analysis
+;; window, it is likely the energy will be more due to low frequency signals, than
+;; necessarily longer periods.
+
+;; Simply sums the magnitude modulus contributions at multiples of the candidate periods.
+(defun meter-of-scale-profile (scale-profile beat-scale voices-per-octave)
+  "Look for harmonicity of the beat, either duple or triple. Returns the selected beat multiple."
+  (let* ((beat-period (time-support beat-scale voices-per-octave))
+	 (max-period (time-support (1- (.length scale-profile)) voices-per-octave))
+	 (max-multiple (floor max-period beat-period))
+	 ;; Ensure there are no candidate bar scales that exceed the total scales, but
+	 ;; check all multiples up to 7/8 periods.
+	 ;; (beat-multiples (.iseq (min 2 max-multiple) (min 7 max-multiple)))
+	 ;;TODO  must check if these exceed max-multiple.
+	 (beat-multiples (make-instance 'n-fixnum-array :ival #2A((2 4) (3 6))))
+	 (candidate-bar-periods (.* beat-period beat-multiples))
+	 (candidate-bar-scales (.round (scale-from-period candidate-bar-periods voices-per-octave)))
+	 ;; look at the scale persistency profiles at candidate-bar-scales locations
+	 (bar-scale-profiles (.arefs scale-profile candidate-bar-scales))
+	 (meter-evidence (.partial-sum (.transpose bar-scale-profiles)))
+	 (meter-index (argmax meter-evidence)))
+    (plot scale-profile nil)
+    (format t "candidate bar periods ~a bar-scale-profiles ~a meter evidence ~a~%"
+	    candidate-bar-periods bar-scale-profiles meter-evidence)
+    (.aref beat-multiples meter-index 0)))
+|#
