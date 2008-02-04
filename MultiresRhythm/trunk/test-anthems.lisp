@@ -186,7 +186,7 @@
 
 (defun skeleton-of-anthem (anthem &key (voices-per-octave 16) (anthem-path *anthem-analysis-path*))
   "Returns the skeleton of the given anthem. We do this by reading the skeleton file only since it's small and fast to read."
-  (format t "Reading ~a~%" (dorys::anthem-name anthem))
+  (format t "Reading ~a~%" (dorys:anthem-name anthem))
   (let* ((anthem-rhythm (anthem-rhythm anthem))
 	 (skeleton-pathname (make-pathname :directory anthem-path :name (name anthem-rhythm) :type "skeleton")))
     (read-skeleton-from skeleton-pathname)))
@@ -307,8 +307,8 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 						(vpo 16) (crochet-duration 100) (max-time-limit 16384))
   "Returns an narray of scales with the relative occurrence of each interval over the duration of the anthem rhythm"
   (let* ((scale-histogram (make-double-array (number-of-scales-for-period max-time-limit :voices-per-octave vpo)))
-	 (duration-histogram (make-histogram (second anthem)))
-	 (intervals (histogram-intervals duration-histogram))
+	 (duration-histogram (dorys::make-histogram (second anthem)))
+	 (intervals (make-narray (dorys::histogram-intervals duration-histogram)))
 	 ;; Multiply the intervals by the counts to measure the time over which each interval spans.
 	 (spans (.* intervals (histogram-counts duration-histogram intervals)))
 	 (relative-occurrence (./ spans (.sum spans))) ; make it a relative measure wrt time.
@@ -335,7 +335,7 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 ;;   "Returns an narray of scales based on histogram counts"
 ;;   (let* ((anthem-duration (duration-in-samples (anthem-rhythm (first anthems))))
 ;; 	 (scale-histogram (make-double-array (number-of-scales-for-period anthem-duration :voices-per-octave vpo)))
-;; 	 (histogram-hash-table (make-histogram-of-anthem-intervals :anthems anthems))
+;; 	 (histogram-hash-table (dorys::make-histogram-of-anthem-intervals :anthems anthems))
 ;; 	 (intervals (histogram-intervals histogram-hash-table)))
 ;;     ;; TODO should be .round
 ;;     (setf (.arefs scale-histogram (.floor (scale-from-period (.* intervals crochet-duration) vpo)))
@@ -432,7 +432,7 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 	    anthem-bar-scale prominent-scale-indices (time-support prominent-scale-indices vpo))
     (reset-plot)
     (plot-command "set title font \"Times,24\"")
-    (plot-command "set xlabel ,-1 font \"Times,24\"")
+    (plot-command "set xlabel offset 0,-1 font \"Times,24\"")
     (plot-command "set ylabel font \"Times,24\"")
     (plot-command "set xtics border (~{~{\"~a\" ~d~}~^, ~}) font \"Sonata,28\"~%" 
 		  (x-axis-pad (label-scale-as-rhythmic-beat vpo crochet-duration)))
@@ -446,35 +446,47 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 	  :aspect-ratio 0.66
 	  :reset nil)))
 
-;; (plot-ridge-persistency-for-anthems (anthems-of-meter "4/4") "in 4/4 Meter")
-;; (plot-ridge-persistency-for-anthems (anthems-of-meter "3/4") "in 3/4 Meter")
-;; (plot-ridge-persistency-for-anthems (anthems-of-meter "2/4") "in 2/4 Meter")
-;; (plot-ridge-persistency-for-anthems (anthems-of-meter "2/2") "in 2/2 Meter")
+;; (plot-ridge-persistency-for-anthems (dorys:anthems-of-meter "4/4") "in 4/4 Meter")
+;; (plot-ridge-persistency-for-anthems (dorys:anthems-of-meter "3/4") "in 3/4 Meter")
+;; (plot-ridge-persistency-for-anthems (dorys:anthems-of-meter "2/4") "in 2/4 Meter")
+;; (plot-ridge-persistency-for-anthems (dorys:anthems-of-meter "2/2") "in 2/2 Meter")
 
 (defun plot-histogram-of-anthems (anthems description &key (crochet-duration 100) (vpo 16))
   "Plots a comparison between the histogram of intervals and the multiresolution ridge presence"
-  (reset-plot)
-  (plot-command "set title font \"Times,24\"")
-  (plot-command "set xlabel ,-1 font \"Times,24\"")
-  (plot-command "set ylabel font \"Times,24\"")
-  (plot-command "set xtics border (~{~{\"~a\" ~d~}~^, ~}) font \"Sonata,28\"~%" 
-		(x-axis-pad (label-scale-as-rhythmic-beat vpo crochet-duration)))
-  (let ((bar-scale-index (round (bar-scale (first anthems) vpo))))
-    (plot-command "set arrow 1 from ~d,0.4 to ~d,0.3" bar-scale-index bar-scale-index)
-    (plot-command "show arrow 1"))
-  (nplot (list (scale-histogram-of-anthems anthems) (average-ridge-persistency :anthems anthems))
-	 nil
-	 :styles '("boxes fill solid border 9" "lines linetype 3 linewidth 2")
-	 :legends '("Relative Frequency of Occurrence of Intervals" "Time-Frequency Scale Presence")
-	 :xlabel "Dilation Scales in Units of Musical Time"
-	 :ylabel "Proportion of Interval Present"
-	 :title (format nil "Skeleton Scale Presence vs. Occurrence of Intervals For ~d Anthems ~a"
-			(length anthems) description)
-	 :reset nil
-	 :aspect-ratio 0.66))
+  (let* ((bar-scale-index (round (bar-scale (first anthems) vpo)))
+	 (average-ridge-presence (average-ridge-persistency :anthems anthems))
+	 (interval-histogram (scale-histogram-of-anthems anthems))
+	 ;; Scales the histogram to match the highest average ridge presence
+	 (histogram-scaling (/ (.max average-ridge-presence) (.max interval-histogram))))
+    (reset-plot)
+    (plot-command "set title font \"Times,24\"")
+    (plot-command "set xlabel offset 0,-1 font \"Times,24\"")
+    ;; (plot-command "set y2label 'Proportion of Interval Present'")
+    (plot-command "set ylabel font \"Times,24\"")
+    (plot-command "set xtics border (~{~{\"~a\" ~d~}~^, ~}) font \"Sonata,28\"~%" 
+		  (x-axis-pad (label-scale-as-rhythmic-beat vpo crochet-duration)))
+    (plot-command "set arrow 1 from ~d,0.40 to ~d,0.35" bar-scale-index bar-scale-index)
+    (plot-command "show arrow 1")
+    (nplot (list (.* interval-histogram histogram-scaling) average-ridge-presence)
+	   nil
+	   :styles '("boxes fill solid border 9" "lines linetype 3 linewidth 2")
+	   :legends '("Relative Frequency of Occurrence of Intervals" "Time-Frequency Scale Presence")
+	   :xlabel "Dilation Scales in Units of Musical Time"
+	   :ylabel "Proportion of Interval Present"
+	   :title (format nil "Skeleton Scale Presence vs. Occurrence of Intervals For ~d Anthems ~a"
+			  (length anthems) description)
+	   :reset nil
+	   :aspect-ratio 0.66)))
 
-;; (plot-histogram-of-anthems (anthems-of-meter "4/4") "in 4/4 Meter")
-;; (plot-histogram-of-anthems (anthems-of-meter "3/4") "in 3/4 Meter")
+;; (plot-histogram-of-anthems (dorys:anthems-of-meter "4/4") "in 4/4 Meter")
+;; (plot-histogram-of-anthems (dorys:anthems-of-meter "3/4") "in 3/4 Meter")
+;; (plot-histogram-of-anthems (dorys:anthems-of-meter "2/4") "in 2/4 Meter")
+;; (plot-histogram-of-anthems (dorys:anthems-of-meter "2/2") "in 2/2 Meter")
+
+;; To scale the histogram to match the 
+;; (setf arp (average-ridge-persistency :anthems (dorys:anthems-of-meter "2/2")))
+;; (setf h (scale-histogram-of-anthems (dorys:anthems-of-meter "2/2")))
+;; (setf scaling (/ (.max arp) (.max h)))
 
 (defun plot-ridge-persistency-for-anthem (anthem &key (voices-per-octave 16) (anthem-path *anthem-analysis-path*))
   (let* ((anthem-rhythm (anthem-rhythm anthem))
@@ -613,7 +625,7 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 ;; (evaluate-beat-period-of-anthem (anthem-named 'australia) :anthem-path "/Users/leigh/Data/ShortAnthems")
 
 ;;; TODO Probably could tune (skew) the tempo weighting envelope.
-;;; (setf bad-beat-periods (dorys::evaluation-of-anthems #'evaluate-beat-period-of-anthem))
+;;; (setf bad-beat-periods (dorys:evaluation-of-anthems #'evaluate-beat-period-of-anthem))
 ;;; #<FUNCTION EVALUATE-BEAT-PERIOD-OF-ANTHEM> 12 failed, correct 88.57143%
 ;;;
 ;;; However many anthems which are not correct are producing beat estimates which are half the length.
@@ -664,7 +676,7 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
   "Returns T if the downbeat chosen aligns on a measure boundary with the official downbeat"
   (let* ((vpo 16)			; should be determined from scaleogram.
 	 (pattern (second anthem))
-	 (official-downbeat (dorys::anthem-anacrusis-duration anthem))
+	 (official-downbeat (dorys:anthem-anacrusis-duration anthem))
 	 (official-bar-duration (anthem-bar-duration anthem)) ; in anthem rhythmic units
 	 (official-beat-period (time-support (beat-scale anthem vpo) vpo)) ; in samples.
 	 ;; official-beat-period & beat-period's contribution are the same in this case.
@@ -675,7 +687,7 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 	 (found-anacrusis-duration (reduce #'+ (subseq (second anthem) 0 found-downbeat-number))))
     (format t "official downbeat ~a found downbeat ~a~%" official-downbeat found-anacrusis-duration)
     (format t "official beat period ~a computed beat period ~a~%" official-beat-period beat-period)
-    (format t "Strictly matches ~a~%" (= found-anacrusis-duration (dorys::anthem-anacrusis-duration anthem)))
+    (format t "Strictly matches ~a~%" (= found-anacrusis-duration (dorys:anthem-anacrusis-duration anthem)))
     (if (not found-downbeat-number)
 	(format t "Early exit, found downbeat is nil, couldn't find beat period~%")
 	(shoe::correct-from-anthem-tree pattern found-anacrusis-duration official-bar-duration))))
@@ -733,7 +745,7 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
     (let* ((pattern (second anthem))
 	   (official-bar-period (anthem-bar-duration anthem))
 	   ;; official-downbeat is interval from first note to downbeat.
-	   (official-downbeat (dorys::anthem-anacrusis-duration anthem)) 
+	   (official-downbeat (dorys:anthem-anacrusis-duration anthem)) 
 	   (minimum-interval-in-samples (anthem-minimum-duration anthem))
 	   (bar-period-in-note-units (.round (./ bar-period-candidates minimum-interval-in-samples)))
 	   (downbeat-in-note-units (floor downbeat minimum-interval-in-samples)))
@@ -768,7 +780,7 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 	 (tactus-list (if (not (listp computed-tactus)) (list computed-tactus) computed-tactus))
 	 (meter-factor (meter-division rhythm-analysis tactus-list))
 	 (official-meter-signature (second (first anthem)))
-	 (official-meter-numerator (dorys::meter-numerator official-meter-signature)))
+	 (official-meter-numerator (dorys:meter-numerator official-meter-signature)))
     (format t "official meter ~a official meter numerator ~a computed meter factor ~a~%" 
 	    official-meter-signature official-meter-numerator meter-factor)
     (zerop (mod official-meter-numerator meter-factor))))
