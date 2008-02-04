@@ -381,3 +381,21 @@
     (format t "Beat times of ~a in seconds:~%~a~%" (name times-as-rhythm) clap-times-in-seconds)
     (.save clap-times-in-seconds clap-filepath :format :text)))
 
+;;; TODO Create rhythm with noise generating extra impulses surrounding the intended onset
+;;; time. This should modify an existing rhythm.
+(defun noisy-rhythm (rhythm-to-noise &key (addition-probability 0d0) (deletion-probability 0d0))
+  "additions is the percentage chance of extra onsets within a normal distribution of
+ existing onsets. deletions is the percentage chance of an existing onset being deleted."
+  (let* ((rhythm-duration (duration-in-samples rhythm-to-noise))
+	 (number-added (* addition-probability rhythm-duration))
+	 (number-deleted (* deletion-probability rhythm-duration))
+	 (rhythm-vector (copy-seq (val (time-signal rhythm-to-noise)))))
+    (declare (ignore number-deleted))
+    (loop 
+       repeat number-added
+       do (setf (aref rhythm-vector (random rhythm-duration)) 1))
+    (make-instance 'rhythm 
+		   :name (concatenate 'string "Noisy " (name rhythm-to-noise))
+		   :sample-rate (sample-rate rhythm-to-noise)
+		   :time-signal (make-instance 'n-fixnum-array :ival rhythm-vector))))
+
