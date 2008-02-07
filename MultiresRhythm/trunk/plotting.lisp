@@ -25,6 +25,8 @@
 ;; Controls what we will plot. We can amend this as needed at the REPL with (push 'feature *plotting*)
 ;; '(claps beat-period tactus)
 (defparameter *plotting* '())
+(defparameter *colour-box-x* 0.88)
+(defparameter *colour-box-y* 0.25)
 
 ;;; Declaration of interface
 
@@ -179,11 +181,9 @@ colourmap, suitable for use by NLISP's palette-defined function."
 
 ;;; Image plotting functions.
 
-(defun set-image-dimensions (image-dimensions)
-  (let ((image-size (first image-dimensions))
-	(image-origin (second image-dimensions)))
-    (plot-command "set size ~f,~f" (first image-size) (second image-size))
-    (plot-command "set origin ~f,~f" (first image-origin) (second image-origin))))
+(defun set-image-dimensions (image-size image-origin)
+  (plot-command "set size ~f,~f" (first image-size) (second image-size))
+  (plot-command "set origin ~f,~f" (first image-origin) (second image-origin)))
 
 (defun set-axes-labels (axes-commands)
   (plot-command "set xtics font \"Times,10\"")
@@ -191,22 +191,24 @@ colourmap, suitable for use by NLISP's palette-defined function."
   (plot-command axes-commands))
 
 (defun set-colour-box (data-to-plot window-dimensions &key (colorbox-divisions 4.0))
+  "Set the location of the colour box and the tics"
   (let ((window-size (first window-dimensions))
 	(window-origin (second window-dimensions)))
     ;; Expand the colorbox and only display the given number of tics.
     (plot-command "set format cb \"%4.2f\"")
     (plot-command "set cbtics ~5,2f" (/ (range data-to-plot) colorbox-divisions))
     (plot-command "set colorbox user origin ~f,~f size 0.03,0.2"
-		  (+ (first window-origin) (* (first window-size) 0.88))
-		  (+ (second window-origin) (* (second window-size) 0.38)))))
-;;    (plot-command "set colorbox user origin ~f,~f size 0.03,0.2" (+ (first window-origin) 0.88) (+ (second window-origin) 0.15))))
+		  (+ (first window-origin) (* (first window-size) *colour-box-x*))
+		  (+ (second window-origin) (* (second window-size) *colour-box-y*)))))
 
 (defun phase-colour-box (phase-data window-dimensions  &key (colorbox-divisions 4.0))
   (let ((window-origin (second window-dimensions)))
     (plot-command "set cbtics font \"Symbol,18\"") ; So we can plot pi symbols.
     (plot-command "set cbtics (~{~{\"~a\" ~d~}~^, ~})~%" 
 		  (label-phase-in-radians (range phase-data) colorbox-divisions))
-    (plot-command "set colorbox user origin ~f,~f size 0.03,0.2" (+ (first window-origin) 0.88) (+ (second window-origin) 0.15))))
+    (plot-command "set colorbox user origin ~f,~f size 0.03,0.2" 
+		  (+ (first window-origin) *colour-box-x*)
+		  (+ (second window-origin) 0.15))))
 
 (defun set-plot-palette (palette &key (maximum-colour-value 255))
   (cond ((eq palette :greyscale) ; White thru grey to black for magnitude plots
@@ -245,8 +247,7 @@ colourmap, suitable for use by NLISP's palette-defined function."
    Dark values are higher valued, lighter values are lower valued."
   (set-colour-box magnitude window-dimensions)
   (set-plot-palette palette)
-  ;; (plot-command "set size 0.88") ; when using image, not image-pm3d
-  (nlisp::image-pm3d (.flip magnitude) nil nil
+  (image (.flip magnitude) nil nil
 	 :title (format nil "Scaleogram Magnitude of ~a" title)
 	 :xlabel nil
 	 :ylabel (format nil "Scale as IOI Range\\n(~a)" units)
@@ -271,7 +272,7 @@ colourmap, suitable for use by NLISP's palette-defined function."
   (let ((plotable-phase (.* (plotable-phase phase magnitude maximum-colour-value) 1d0)))
     (phase-colour-box plotable-phase window-dimensions)
     (set-plot-palette palette)
-    (nlisp::image-pm3d (.flip plotable-phase) nil nil
+    (image (.flip plotable-phase) nil nil
 	   :title (format nil "Scaleogram Phase of ~a" title)
 	   :xlabel "Time (Seconds)" 
 	   :ylabel (format nil "Scale as IOI Range\\n(~a)" units)
@@ -308,7 +309,7 @@ colourmap, suitable for use by NLISP's palette-defined function."
       (setf plotable-phase-with-ridges (insert-ridge ridge plotable-phase-with-ridges :constant-value maximum-colour-value)))
     (phase-colour-box plotable-phase-with-ridges window-dimensions)
     (set-plot-palette palette)
-    (nlisp::image-pm3d (.flip plotable-phase-with-ridges) nil nil
+    (image (.flip plotable-phase-with-ridges) nil nil
 	   :title (format nil "Phase of ~a" title)
 	   :xlabel "Time (Seconds)" 
 	   :ylabel "Scale as IOI Range\\n(Seconds)"
@@ -327,7 +328,10 @@ colourmap, suitable for use by NLISP's palette-defined function."
     We could do away with this when we can process the data without excess resource strain,
     but it also makes diagrams which are not so wide, making them easier to view and interpret."
    (reset-plot)
-   (set-image-dimensions window-dimensions)
+   ;; Modify the window dimensions for the image dimensions to give room for the colour
+   ;; bar (when using image, not image-pm3d). 
+   (set-image-dimensions (list (* (caar window-dimensions) *colour-box-x*) (cadar window-dimensions)) 
+			 (second window-dimensions))
    (set-axes-labels axes-labels)
    ;; Downsample the data 
    (let* ((down-sampled-data (.decimate data-to-plot (list 1 time-axis-decimation)))
