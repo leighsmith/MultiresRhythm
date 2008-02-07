@@ -184,8 +184,22 @@
 ;; 	    (count-scale-in-skeleton skeleton (1- bar-scale-index)))
 ;;     (/ (count-scale-in-skeleton skeleton bar-scale-index) (duration-in-samples skeleton))))
 
+
+#|
+;; This is the "right" way to do this, but it requires reading the entire analysis file.
 (defun skeleton-of-anthem (anthem &key (voices-per-octave 16) (anthem-path *anthem-analysis-path*))
-  "Returns the skeleton of the given anthem. We do this by reading the skeleton file only since it's small and fast to read."
+  "Returns the skeleton of the given anthem."
+  (format t "Reading ~a~%" (dorys:anthem-name anthem))
+  (let* ((anthem-rhythm (anthem-rhythm anthem))
+	 (analysis (analysis-of-rhythm-cached anthem-rhythm 
+					      :voices-per-octave voices-per-octave 
+					      :cache-directory anthem-path)))
+    (skeleton analysis)))
+|#
+
+(defun skeleton-of-anthem (anthem &key (voices-per-octave 16) (anthem-path *anthem-analysis-path*))
+  "Returns the skeleton of the given anthem. We do this by reading the skeleton file only,
+since it's small and fast to read rather than the entire analysis files."
   (format t "Reading ~a~%" (dorys:anthem-name anthem))
   (let* ((anthem-rhythm (anthem-rhythm anthem))
 	 (skeleton-pathname (make-pathname :directory anthem-path :name (name anthem-rhythm) :type "skeleton")))
