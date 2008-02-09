@@ -65,16 +65,16 @@ start-onset, these measures are in samples"
     (setf (time-signal rhythm-to-accent) scaled-time-signal)
     rhythm-to-accent))
 
-(defun long-silence-dyadic-pad (signal &key (silence-pad t))
+(defun long-silence-dyadic-pad (signal)
   "Pad at double the dyadic length"
-  (pad-signal signal (dyadic-length (1+ (dyadic-length (.length signal)))) :silence-pad silence-pad))
+  (centered-silence-pad signal (dyadic-length (1+ (dyadic-length (.length signal))))))
 
 ;; Retrieve the first region of rhythm (or do we have to do the whole thing to get
 ;; sufficient lower frequency regions?) this would seem problematic for inducing an
 ;; anacrusis. We should be able to set a maximum time region covering beat or bar period.
 (defmethod scaleogram-of-rhythm-silence ((analysis-rhythm rhythm) &key (voices-per-octave 16))
   (format t "Length of Rhythm ~f seconds~%" (duration analysis-rhythm))
-  (let ((silence-padded-rhythm (long-silence-dyadic-pad (time-signal analysis-rhythm) :silence-pad t)))
+  (let ((silence-padded-rhythm (long-silence-dyadic-pad (time-signal analysis-rhythm))))
     (cwt silence-padded-rhythm voices-per-octave)))
 
 ;; (setf rhythm (anthem-rhythm (anthem-named 'america)))
