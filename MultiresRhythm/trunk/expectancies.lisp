@@ -182,40 +182,34 @@
 							     precision 
 							     :time-limit-expectancies time-limit-expectancies))))))
 
-(defun write-expectancies-to-file (expectancies sample-labels sample-rate filepath)
+(defun write-expectancies-to-file (expectancies sample-rate filepath)
     "Write the expectancies to a file with the labelling the MTG code needs."
     (with-open-file (expectancy-file filepath :direction :output :if-exists :supersede)
       (loop 
 	 for expectancy in expectancies
 	 for event-index = 0 then (1+ event-index)
-	 do (format expectancy-file "~d, ~,5f, ~,5f, ~d, ~d, ~:{~,5f ~,5f ~,5f~:^; ~}~%" 
-		    event-index
-		    (/ (first expectancy) (float sample-rate))
-		    (.aref sample-labels event-index 0)
-		    (floor (.aref sample-labels event-index 1))
-		    (floor (.aref sample-labels event-index 2))
+	 ;; TODO to write the time of the expectation (/ (first expectancy) (float sample-rate))
+	 do (format expectancy-file "~:{~,5f ~,5f ~,5f~%~}" 
 		    (mapcar (lambda (expectation) (list-in-seconds expectation sample-rate))
 			    (second expectancy))))))
 
-(defun expectancies-at-times-in-file (filepath &key (sample-rate 200.0d0))
+(defun expectancies-at-times-in-file (input-filepath output-filepath &key (sample-rate 200.0d0))
   (let* ((events (.load filepath :format :text))
 	 (times-in-seconds (.column events 0))
 	 (times-as-rhythm (rhythm-of-onsets (pathname-name filepath) times-in-seconds :sample-rate sample-rate))
 	 (expectancies-at-times (expectancies-of-rhythm times-as-rhythm)))
     (write-expectancies-to-file expectancies-at-times 
-				events 
 				sample-rate 
-				(make-pathname :defaults filepath :type "expectancies"))))
+				output-filepath)))
 
-(defun last-expectancy-of-file (filepath &key (sample-rate 200.0d0))
-  (let* ((events (.load filepath :format :text))
+(defun last-expectancy-of-file (input-filepath output-filepath &key (sample-rate 200.0d0))
+  (let* ((events (.load input-filepath :format :text))
 	 (times-in-seconds (.column events 0))
-	 (times-as-rhythm (rhythm-of-onsets (pathname-name filepath) times-in-seconds :sample-rate sample-rate))
+	 (times-as-rhythm (rhythm-of-onsets (pathname-name input-filepath) times-in-seconds :sample-rate sample-rate))
 	 (expectancies-at-times (expectancies-of-rhythm times-as-rhythm :time-limit-expectancies nil)))
     (write-expectancies-to-file (last expectancies-at-times)
-				events 
 				sample-rate 
-				(make-pathname :defaults filepath :type "last_expectancy"))))
+				output-filepath)))
 
 ;;; File I/O routines.
 (use-package :cl-fad)

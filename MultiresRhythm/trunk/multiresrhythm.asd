@@ -23,10 +23,11 @@
 
 (require 'nlisp)			; For mathematics
 (require 'cl-fad)			; For file I/O
+(require 'cli-parser)			; For command line option interpretation.
 (require 'dorys)			; For databases to test against.
 (require 'shoe)				; For anthem comparisons. TODO should be factored out.
 
-(defpackage #:multires-rhythm (:use #:cl #:asdf #:nlisp #:cl-fad #:dorys)
+(defpackage #:multires-rhythm (:use #:cl #:asdf #:nlisp #:cl-fad #:dorys #:cli-parser)
 	    (:export :rhythm 
 		     :skeleton-of-rhythm
 		     :tactus-for-rhythm
@@ -34,7 +35,8 @@
 		     :rhythm-complexity
 		     :rhythm-of-grid
 		     :clap-to-rhythm
-		     :save-scorefile))
+		     :save-scorefile
+		     :generate-executable))
 
 (in-package :multires-rhythm)
 
