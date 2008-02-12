@@ -53,7 +53,7 @@
 				       (voices-per-octave rhythm-scaleogram))))
 
 	 ;; Note the phase of the oscillating sinusoid at the beat to start tapping from.
-	 (down-beat-sample (onset-time-of-beat original-rhythm start-from-beat))
+	 (down-beat-sample (onset-time-of-note original-rhythm start-from-beat))
 	 (clap-on-phase-datum (.aref foot-tap-phase down-beat-sample))
 
 	 ;; check clap-on-phase-datum >= current and < next phase measure.

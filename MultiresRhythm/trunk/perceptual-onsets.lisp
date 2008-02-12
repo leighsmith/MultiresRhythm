@@ -100,12 +100,12 @@
 
 ;;; TODO This should be replaced when we integrate Plymouth's onsets thresholding function
 ;;; into our code.
-(defmethod onset-time-of-beat ((rhythm salience-trace-rhythm) beat-numbers)
+(defmethod onset-time-of-note ((rhythm salience-trace-rhythm) note-numbers)
   "Returns the sample number of the beat-number'th beat in the given rhythm"
   (let* ((onsets-rhythm (make-instance 'rhythm 
 				       :time-signal (onsets-time-signal rhythm)
 				       :sample-rate (sample-rate rhythm))))
-    (onset-time-of-beat onsets-rhythm beat-numbers)))
+    (onset-time-of-note onsets-rhythm note-numbers)))
 
 
 (defun pOnset-times (onsets-filename)

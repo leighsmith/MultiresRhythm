@@ -64,7 +64,7 @@
 				       (voices-per-octave rhythm-scaleogram))))
 
 	 ;; Note the phase of the oscillating sinusoid at the beat to start tapping from.
-	 (downbeat-sample (onset-time-of-beat rhythm-to-annotate start-from-beat))
+	 (downbeat-sample (onset-time-of-note rhythm-to-annotate start-from-beat))
 	 (downbeat-phase-datum (.aref foot-tap-phase downbeat-sample)))
 (./ (.- (.arefs foot-tap-phase (onsets-in-samples rhythm-to-annotate)) downbeat-phase-datum)
     (* 2 pi))

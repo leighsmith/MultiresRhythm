@@ -748,8 +748,8 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
     (format t "range of scales ~a periods (samples) ~a meter factor ~a~%"
 	    tactus-scales likely-bar-periods meter-factor)
     (format t "downbeat on note # ~a, samples ~a~%"
-	    found-downbeat (onset-time-of-beat performed-rhythm found-downbeat))
-    (values likely-bar-periods (onset-time-of-beat performed-rhythm found-downbeat))))
+	    found-downbeat (onset-time-of-note performed-rhythm found-downbeat))
+    (values likely-bar-periods (onset-time-of-note performed-rhythm found-downbeat))))
 
 ;; Evaluate using the same method as anthem-evaluation.lisp in LHL_BeatInduction
 (defun evaluate-mrr-with-tree-on-anthem (anthem)

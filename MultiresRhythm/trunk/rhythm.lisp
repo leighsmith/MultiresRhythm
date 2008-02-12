@@ -40,8 +40,11 @@
 (defgeneric onsets-in-seconds (rhythm-to-analyse)
   (:documentation "Returns the location of each onset in seconds."))
 
-(defgeneric onset-time-of-beat (rhythm-to-analyse beat-numbers)
-  (:documentation "Returns the sample number of the beat-number'th beat in the given rhythm"))
+(defgeneric onset-time-of-note (rhythm-to-analyse note-numbers)
+  (:documentation "Returns the sample number of the note-number'th note in the given rhythm"))
+
+(defgeneric last-onset-time (rhythm-to-analyse)
+  (:documentation "Returns the sample number of the last note in the given rhythm"))
 
 (defgeneric rhythm-iois (rhythm-to-analyse)
   (:documentation "Given a rhythm, returns IOIs specified in seconds."))
@@ -54,7 +57,7 @@
   (:documentation "Writes the rhythm to a MusicKit scorefile."))
 
 (defgeneric plot-rhythm (rhythm-to-plot &key reset)
-  (:documentation "Plot locations of beats of the given rhythm."))
+  (:documentation "Plot locations of notes of the given rhythm."))
 
 (defgeneric scale-amplitude (rhythm-to-scale scale-factor)
   (:documentation "Scales the amplitude of each onset by the given scale-factor."))
@@ -94,9 +97,9 @@
 (defun grid-to-onsets (grid)
   "From a binary grid returns onset locations of non-zero values"
   (loop
-     for beat in grid
-     counting beat into ioi
-     when (not (zerop beat))
+     for note in grid
+     counting note into ioi
+     when (not (zerop note))
      collect (1- ioi)))
 
 (defun onsets-to-iois (onsets)
@@ -109,9 +112,9 @@
   (if (> repeat 0)
       (append rhythm (repeat-rhythm rhythm (1- repeat)))))
 
-;; TODO This could be distinct, at the moment we are assuming the 'time' of the beat is the
+;; TODO This could be distinct, at the moment we are assuming the 'time' of the note is the
 ;; same as it's onset time.
-;; (defun onset-time-of-beat (rhythm beat-numbers)
+;; (defun onset-time-of-note (rhythm note-numbers)
 
 (defun threshold-rhythm (rhythm &key (threshold 0.75d0))
   "Returns a binary valued rhythm based on the threshold"
@@ -167,15 +170,21 @@
 (defmethod onsets-in-samples ((rhythm-to-analyse rhythm))
   (.find (time-signal rhythm-to-analyse)))
 
-(defmethod onset-time-of-beat ((rhythm-to-analyse rhythm) beat-number)
-  "Returns the sample number of the beat-number'th beat in the given rhythm"
-  (let* ((beat-positions (onsets-in-samples rhythm-to-analyse)))
-    (.aref beat-positions beat-number)))
+(defmethod onset-time-of-note ((rhythm-to-analyse rhythm) note-number)
+  "Returns the sample number of the note-number'th note in the given rhythm"
+  (let* ((note-positions (onsets-in-samples rhythm-to-analyse)))
+    (.aref note-positions note-number)))
 
-(defmethod onset-time-of-beat ((rhythm-to-analyse rhythm) (beat-numbers n-fixnum-array))
-  "Returns the sample number of the beat-number'th beat in the given rhythm"
-  (let* ((beat-positions (onsets-in-samples rhythm-to-analyse)))
-    (.arefs beat-positions beat-numbers)))
+(defmethod onset-time-of-note ((rhythm-to-analyse rhythm) (note-numbers n-fixnum-array))
+  "Returns the sample number of the note-number'th note in the given rhythm"
+  (let* ((note-positions (onsets-in-samples rhythm-to-analyse)))
+    (.arefs note-positions note-numbers)))
+
+(defmethod last-onset-time ((rhythm-to-analyse rhythm))
+  "Returns the sample number of the last note in the given rhythm"
+  (let* ((note-positions (onsets-in-samples rhythm-to-analyse))
+	 (number-of-notes (.length note-positions)))
+    (.aref note-positions (1- number-of-notes))))
 
 (defmethod onsets-in-seconds ((rhythm-to-analyse rhythm))
   (./ (onsets-in-samples rhythm-to-analyse) (* (sample-rate rhythm-to-analyse) 1d0)))
@@ -272,7 +281,7 @@
 		   :time-signal (.subarray (time-signal rhythm-to-subset) (list 0 time-region))
 		   :sample-rate (sample-rate rhythm-to-subset)))
 
-;;; TODO this should also allow limitation by the number of beats, number of bars etc.
+;;; TODO this should also allow limitation by the number of notes, number of bars etc.
 (defmethod limit-rhythm ((rhythm-to-limit rhythm) &key (maximum-samples 16384))
   "Returns a rhythm that is bounded in it's length to a maximum number of samples"
   (if (< (duration-in-samples rhythm-to-limit) maximum-samples)
