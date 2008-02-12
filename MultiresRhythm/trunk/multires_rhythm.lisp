@@ -29,7 +29,7 @@
    (sample-rate   :initarg :sample-rate   :accessor sample-rate)))
 
 ;;;; Declarations
-(defgeneric scaleogram-of-rhythm (rhythm-to-analyse &key voices-per-octave)
+(defgeneric scaleogram-of-rhythm (rhythm-to-analyse &key voices-per-octave padding)
   (:documentation "Returns the scaleogram for the rhythm."))
 
 (defgeneric skeleton-of-scaleogram (scaleogram sample-rate)
@@ -356,9 +356,10 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
     ;; Substitutes tempo-weighted-ridges for correlated-ridges to enable tempo selectivity.
     (determine-scale-peaks (if absolute-tempo-weighting tempo-weighted-ridges correlated-ridges))))
 
-(defmethod scaleogram-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
+(defmethod scaleogram-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16)
+				 (padding #'mirror-pad))
   (format t "Length of rhythm \"~a\" is ~f seconds~%" (name analysis-rhythm) (duration analysis-rhythm))
-  (cwt (time-signal analysis-rhythm) voices-per-octave))
+  (cwt (time-signal analysis-rhythm) voices-per-octave :padding padding))
 
 (defmethod skeleton-of-scaleogram ((analysis-scaleogram scaleogram) sample-rate)
   "Returns the skeleton given the scaleogram and sample-rate."
