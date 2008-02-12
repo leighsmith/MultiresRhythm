@@ -51,18 +51,38 @@
     (format t "NLISP Version ~a.~%" (version-number 'nlisp))
     (format t "~a Lisp Version ~a.~%" (lisp-implementation-type) (lisp-implementation-version))))
 
+(defparameter *for-example-text* "e.g")
+
+(defun formatted-option-string (option)
+  (format nil "~a~a, ~a~a~a ~28t~a~%~28t~a ~a~%" 
+	  ;;(if (cli-option-abbr option)
+	  ;;    ("      " 
+	  cli-parser::*single-dash* (cli-option-abbr option)
+	  cli-parser::*double-dash* (cli-option-full option)
+	  (case (cli-option-requires-arguments option)
+	    ((t) "=ARG  ")
+	    (:optional "[=ARG]")
+	    ((nil) "    "))
+	  (cli-option-description option)
+	  *for-example-text*
+	  (cli-option-example option)))
+
+(defun formatted-options (option-list)
+  (format nil "~{~a~}" (mapcar #'formatted-option-string option-list)))
+
 (defun usage (command-name)
   "Print the command line usage"
-  (format t "Usage: ~a ~a~%" command-name ""))
+  (format t "~%Usage: ~a [options]~%~%Where [options] are:~%~a~%" command-name 
+	  (formatted-options *expectancy-options*)))
 
-;;; This is generated as the top-level interpreter from a SBCL not run within SLIME with:
-;;; 
+;;; This is generated as the top-level interpreter from a SBCL not run within SLIME with (generate-executable)
 (defun expectancy-command-line-parser ()
   "Function which is run instead of the top-level interpreter for standalone operation"
   ;; (format t "argv ~a~%" sb-ext:*posix-argv*)
   (let ((parsed-cli (cli-parser:cli-parse sb-ext:*posix-argv* *expectancy-options*)))
     (cond ((< (length sb-ext:*posix-argv*) 2)
-	   (info-banner))
+	   (info-banner) 
+	   (usage (nth 0 sb-ext:*posix-argv*)))
 	  ((gethash "saliency-trace" parsed-cli)
 	   (format t "yet to implement saliency-trace file I/O~%"))
 	   #|
