@@ -17,32 +17,46 @@
 ;;; Interface
 
 (defclass expectation ()
-  ((expected-time :initarg :time       :accessor expected-time :initform 0)
-   (confidence    :initarg :confidence :accessor confidence)
-   (precision     :initarg :precision  :accessor precision))
+  ((expected-time     :initarg :time       :accessor expected-time :initform 0)
+   (confidence        :initarg :confidence :accessor confidence)
+   (precision         :initarg :precision  :accessor precision)
+   (expected-features :initarg :features   :accessor expected-features :initform '()))
   (:documentation "Defines the expectation to the next point in time."))
 
 (defgeneric time-in-seconds (expectation sample-rate)
   (:documentation "Returns the expected time in seconds, given the sample rate."))
 
 (defgeneric list-in-seconds (expectation sample-rate)
- (:documentation "Returns the expectatioin as a list, times in seconds, given the sample rate."))
+ (:documentation "Returns the expectation as a list, times in seconds, given the sample rate."))
 
 ;;; Implementation
 
 (defmethod print-object ((expectation-to-print expectation) stream)
   (call-next-method expectation-to-print stream) ;; print the superclass
   (format stream " ~,5f ~,5f ~,5f" 
-	  (expected-time expectation-to-print) (confidence expectation-to-print) (precision expectation-to-print)))
+	  (expected-time expectation-to-print) 
+	  (confidence expectation-to-print)
+	  (precision expectation-to-print)))
 
 (defmethod time-in-seconds ((expectation-to-report expectation) sample-rate)
   (/ (expected-time expectation-to-report) (float sample-rate)))
 
+;;; TODO obsolete.
 (defmethod list-in-seconds ((expectation-to-list expectation) sample-rate)
   "Returns the expectancy as a list, times in seconds"
   (list (time-in-seconds expectation-to-list sample-rate) 
 	(confidence expectation-to-list)
 	(precision expectation-to-list)))
+
+;;; TODO this should produce XML
+(defmethod exchange-format ((expectation-to-exchange expectation) sample-rate)
+  "Returns the expectancy in the EmCAP interchange output format."
+  ;; TODO to write the time of the expectation (/ (first expectancy) (float sample-rate))
+  (format nil "~,5f ~,5f ~,5f;~:{~,5f,~,5f~:^ ~}" 
+	  (time-in-seconds expectation-to-exchange sample-rate) 
+	  (precision expectation-to-exchange)
+	  (confidence expectation-to-exchange)
+	  (expected-features expectation-to-exchange)))
 
 (defun width-of-peaks (peaks minima number-of-scales)
   "Returns the widths of the peaks, by finding the distance between two minima either side of each peak"
@@ -150,6 +164,7 @@
 		   ;; relative confidence = energy * duration of the ridge up until this moment.
 		   :confidence (* energy relative-ridge-duration)
 		   :precision (.aref all-precision scale time))))
+;; TODO :expected-features ()
 
 (defun expectancies-of-rhythm (rhythm &key (time-limit-expectancies t))
   "Return a list structure of expectancies. If limit-expectancies is true, only calculate
@@ -182,83 +197,76 @@
 							     precision 
 							     :time-limit-expectancies time-limit-expectancies))))))
 
-(defun write-expectancies-to-file (expectancies sample-rate filepath)
-    "Write the expectancies to a file with the labelling the MTG code needs."
-    (with-open-file (expectancy-file filepath :direction :output :if-exists :supersede)
-      (loop 
-	 for expectancy in expectancies
-	 for event-index = 0 then (1+ event-index)
-	 ;; TODO to write the time of the expectation (/ (first expectancy) (float sample-rate))
-	 do (format expectancy-file "~:{~,5f ~,5f ~,5f~%~}" 
-		    (mapcar (lambda (expectation) (list-in-seconds expectation sample-rate))
-			    (second expectancy))))))
+(defun write-expectancies-to-stream (expectancies sample-rate stream)
+  "Write the expectancies to a file with the labelling the MTG code needs."
+  (loop 
+     for expectancy in expectancies
+     for event-index = 0 then (1+ event-index)
+     do (format stream "<EXPECT ID=~,5f>~%~{~a~%~}</EXPECT>" 
+		(/ (first expectancy) (float sample-rate)) ; write the time of the expectation
+		(mapcar (lambda (expectation) (exchange-format expectation sample-rate))
+			(second expectancy)))))
 
+(defun split-string (string-to-split split-char)
+  "Return a list of strings split by each occurrance of split-char"
+  (loop 
+     for search-from = 0 then (1+ separator-position)
+     for separator-position = (position split-char string-to-split :start search-from) ; returns nil on end
+     collect (subseq string-to-split search-from separator-position)
+     while separator-position))
+
+;;; Format is:
+;;; ONSET-TIME,ONSET-TIME-VAR;FEAT1-VAL,FEAT1-VAR FEAT2-VAL,FEAT2-VAR ... FEATn-VAL,FEATn-VAR
+;;; Because this format is so full of useless context sensitive formatting noise, we strip
+;;; all the crap away to get it to a form that Lisp can devour simply.
+(defun strip-emcap-formatting (emcap-data-line)
+  (destructuring-bind (onset features) (split-string emcap-data-line #\;)
+    (list (mapcar #'read-from-string (split-string onset #\,))
+	  (mapcar (lambda (feature-string) (mapcar #'read-from-string (split-string feature-string #\,))) 
+		  (split-string features #\Space)))))
+
+(defun summarise-features-to-accent (features)
+  (reduce #'+ (mapcar #'car features)))
+
+(defun weighted-onsets-from-emcap-stream (stream)
+  (loop
+     for emcap-data-record = (read-line stream nil)
+     while emcap-data-record
+     collect (destructuring-bind (onset-time features) (strip-emcap-formatting emcap-data-record)
+	       (list (first onset-time) (summarise-features-to-accent features)))))
+
+(defun read-emcap-onsets-from-stream (stream name sample-rate)
+  "Reads the EmCAP onsets format, returning a rhythm instance"
+  (rhythm-of-weighted-onsets name (weighted-onsets-from-emcap-stream stream) :sample-rate sample-rate))
+
+(defun rhythm-of-plain-onset-file (input-filepath sample-rate)
+  (let* ((events (.load input-filepath :format :text))
+	 (times-in-seconds (.column events 0)))
+    (rhythm-of-onsets (pathname-name input-filepath) times-in-seconds :sample-rate sample-rate)))
+
+(defun rhythm-of-emcap-onset-file (input-filepath sample-rate)
+  (with-open-file (emcap-data-stream input-filepath)
+    (read-emcap-onsets-from-stream emcap-data-stream (pathname-name input-filepath) sample-rate)))
+
+;;; TODO probably no longer used.
 (defun expectancies-at-times-in-file (input-filepath output-filepath &key (sample-rate 200.0d0))
-  (let* ((events (.load filepath :format :text))
-	 (times-in-seconds (.column events 0))
-	 (times-as-rhythm (rhythm-of-onsets (pathname-name filepath) times-in-seconds :sample-rate sample-rate))
+  (let* ((times-as-rhythm (rhythm-of-plain-onset-file input-filepath sample-rate))
 	 (expectancies-at-times (expectancies-of-rhythm times-as-rhythm)))
-    (write-expectancies-to-file expectancies-at-times 
-				sample-rate 
-				output-filepath)))
+    (with-open-file (expectancy-file output-filepath :direction :output :if-exists :supersede)
+      (write-expectancies-to-stream expectancies-at-times sample-rate expectancy-file))))
 
 (defun last-expectancy-of-file (input-filepath output-filepath &key (sample-rate 200.0d0))
-  (let* ((events (.load input-filepath :format :text))
-	 (times-in-seconds (.column events 0))
-	 (times-as-rhythm (rhythm-of-onsets (pathname-name input-filepath) times-in-seconds :sample-rate sample-rate))
+  "Computes the expectancies at the last moment in the file from the discrete onset times"
+  (let* ((times-as-rhythm (rhythm-of-emcap-onset-file input-filepath sample-rate))
 	 (expectancies-at-times (expectancies-of-rhythm times-as-rhythm :time-limit-expectancies nil)))
-    (write-expectancies-to-file (last expectancies-at-times)
-				sample-rate 
-				output-filepath)))
+    (with-open-file (expectancy-file output-filepath :direction :output :if-exists :supersede)
+      (write-expectancies-to-stream (last expectancies-at-times) sample-rate expectancy-file))))
 
-;;; File I/O routines.
-(use-package :cl-fad)
+;; "/Local/Users/leigh/Research/Data/RicardsOnsetTests/EmCAP_format_test.txt"
 
-;; Routines to use with the cl-fad directory routines.
-(defun is-file-of-type (filepath type)
-  (equal (pathname-type filepath) type))
-
-(defun is-dot-file (filepath)
-  (equal (aref (pathname-name filepath) 0) #\.))
-
-(defun does-not-have-file-of-type (filepath type)
-  (and (is-file-of-type filepath "corneronsetsqrt-p1-f30-s10-g075")	; ensure filepath isn't a clap file
-       (not (is-dot-file filepath))		; it isn't a .DS_Store
-       ;; and that it doesn't have an accompanying clap file
-       (not (probe-file (make-pathname :defaults filepath :type type)))))
-
-(defun does-not-have-expectancies-file (filepath)
-  (does-not-have-file-of-type filepath "expectancies"))
-
-(defun does-not-have-last-expectancy-file (filepath)
-  (does-not-have-file-of-type filepath "last_expectancy"))
-
-(defun does-not-have-claps-file (filepath)
-  (does-not-have-file-of-type filepath "claps"))
-
-(defparameter *ricards-data* "/Volumes/iDisk/Research/Data/RicardsOnsetTests/PercussivePhrases/")
-
-
-;; (walk-directory *ricards-data* #'print :test #'does-not-have-claps-file)
-
-;; (walk-directory *ricards-data* #'clap-to-times-in-file :test #'does-not-have-claps-file)
-
-;; (clap-to-times-in-file #P"/Volumes/iDisk/Research/Data/RicardsOnsetTests/PercussivePhrases/RobertRich/Java Gourd 01.corneronsetsqrt-p1-f30-s10-g075")
-;; (clap-to-times-in-file
-;;  #P"/Volumes/iDisk/Research/Data/RicardsOnsetTests/PercussivePhrases/KeithLeblanc/clever01.corneronsetsqrt-p1-f30-s10-g075")
-;; (clap-to-times-in-file
-;;  #P"/Volumes/iDisk/Research/Data/RicardsOnsetTests/PercussivePhrases/KeithLeblanc/4-Down 1.corneronsetsqrt-p1-f30-s10-g075")
-
-;;; Crashers!
-;; (walk-directory "/Volumes/iDisk/Research/Data/RicardsOnsetTests/crashers/" #'clap-to-times-in-file :test #'does-not-have-claps-file)
-;; (clap-to-times-in-file #P"/Volumes/iDisk/Research/Data/RicardsOnsetTests/PercussivePhrases/Acid/drums1304.corneronsetsqrt-p1-f30-s10-g075")
-;; (clap-to-times-in-file #P"/Volumes/iDisk/Research/Data/RicardsOnsetTests/PercussivePhrases/KeithLeblanc/fourkick1.corneronsetsqrt-p1-f30-s10-g075")
-
-
-;; (expectancies-at-times-in-file #P"/Volumes/iDisk/Research/Data/RicardsOnsetTests/PercussivePhrases/RobertRich/Java Gourd 01.corneronsetsqrt-p1-f30-s10-g075")
-
-;; (expectancies-at-times-in-file #P"/Volumes/iDisk/Research/Data/RicardsOnsetTests/PercussivePhrases/Burning/3.corneronsetsqrt-p1-f30-s10-g075")
-
-;; (walk-directory *ricards-data* #'expectancies-at-times-in-file :test #'does-not-have-expectancies-file)
-
-;; (walk-directory *ricards-data* #'last-expectancy-of-file :test #'does-not-have-last-expectancy-file)
+(defun last-expectancy-of-salience (input-filepath output-filepath &key (sample-rate 200.0d0)) 
+  "Computes the expectancies at the last moment in the file from the perceptual salience trace"
+  (let* ((times-as-rhythm (perceptual-salience-to-rhythm input-filepath "TODO" :sample-rhythm sample-rate))
+	 (expectancies-at-times (expectancies-of-rhythm times-as-rhythm :time-limit-expectancies nil)))
+    (with-open-file (expectancy-file output-filepath :direction :output :if-exists :supersede)
+      (write-expectancies-to-stream (last expectancies-at-times) sample-rate expectancy-file))))

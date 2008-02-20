@@ -84,19 +84,18 @@
 	   (info-banner) 
 	   (usage (nth 0 sb-ext:*posix-argv*)))
 	  ((gethash "saliency-trace" parsed-cli)
-	   (format t "yet to implement saliency-trace file I/O~%"))
-	   #|
-	  (last-expectancy-of-trace (first (gethash "saliency-file" parsed-cli)) 
-	  (first (gethash "sample-rate" parsed-cli))
-	  (first (gethash "output-file" parsed-cli)))
-	   |#
+	   (last-expectancy-of-salience (first (gethash "saliency-file" parsed-cli)) 
+					(first (gethash "output-file" parsed-cli))
+					:sample-rate (first (gethash "sample-rate" parsed-cli))))
 	  ((gethash "onset-times" parsed-cli)
 	   (last-expectancy-of-file (first (gethash "onset-times" parsed-cli))
-				    (first (gethash "output-file" parsed-cli))))
+				    (first (gethash "output-file" parsed-cli))
+				    :sample-rate (first (gethash "sample-rate" parsed-cli))))
 	  (t
 	   (last-expectancy-of-file (second sb-ext:*posix-argv*))))
     0))
 
+;;; This must be run using an SBCL not run within SLIME.
 (defun generate-executable ()
   "Call this to generate an executable and die"
   (sb-ext:save-lisp-and-die "emem-expect-mrr" :executable t :toplevel #'expectancy-command-line-parser))

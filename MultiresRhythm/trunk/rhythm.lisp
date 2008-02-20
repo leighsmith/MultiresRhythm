@@ -158,6 +158,18 @@
 		  :shortest-ioi shortest-ioi
 		  :sample-rate sample-rate))
 
+(defun rhythm-of-weighted-onsets (name note-list &key (sample-rate 200))
+  "Accepts a list of lists, each containing a time and a normalised intensity"
+  (let* ((times (mapcar (lambda (time) (round (* sample-rate (first time)))) note-list))
+	 (amp (make-narray (mapcar #'second note-list)))
+	 (time-sig (make-double-array (1+ (first (last times))))))
+    (setf (.arefs time-sig (make-narray times)) amp)
+    (make-instance 'rhythm 
+		   :name name
+		   :description name
+		   :time-signal time-sig
+		   :sample-rate sample-rate)))
+
 ;; (clap-signal (make-double-array (.array-dimensions rhythm-signal) :initial-element 0d0))
 ;; (map nil (lambda (index) (setf (.aref clap-signal index) max-computed-scale)) (val onsets))
 

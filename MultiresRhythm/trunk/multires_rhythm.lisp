@@ -396,6 +396,12 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
   "We clamp any ill-conditioned phase (negligble magnitude) to the value given (defaulting to zero)"
   (clamp-to-bounds phase magnitude :low-bound threshold :clamp-low clamp))
 
+;;; Plotting
+
+;; TODO should be a method plot.
+(defmethod plot-analysis ((analysis-to-plot multires-analysis))
+  (plot-cwt (scaleogram analysis-to-plot) :title (description analysis-to-plot)))
+
 ;;; File I/O
 
 (defmethod save-to-file ((analysis-to-write multires-analysis) (path-to-write pathname))
