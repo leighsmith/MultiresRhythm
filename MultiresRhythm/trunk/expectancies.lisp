@@ -51,7 +51,6 @@
 ;;; TODO this should produce XML
 (defmethod exchange-format ((expectation-to-exchange expectation) sample-rate)
   "Returns the expectancy in the EmCAP interchange output format."
-  ;; TODO to write the time of the expectation (/ (first expectancy) (float sample-rate))
   (format nil "~,5f ~,5f ~,5f;~:{~,5f,~,5f~:^ ~}" 
 	  (time-in-seconds expectation-to-exchange sample-rate) 
 	  (precision expectation-to-exchange)
@@ -166,7 +165,38 @@
 		   :precision (.aref all-precision scale time))))
 ;; TODO :expected-features ()
 
-(defun expectancies-of-rhythm (rhythm &key (time-limit-expectancies t))
+;; weight the analysis 
+;; (create-weighted-beat-ridge analysis-rhythm analysis)
+(defun expectancies-of-rhythm-integrator (rhythm-to-analyse)
+  "Return a list structure of expectancies. Computes the expectancies using the maximum
+   value of the cumulative sum of the scaleogram energy" 
+  (let* ((analysis (analysis-of-rhythm rhythm-to-analyse :padding #'causal-pad))
+	 (scaleogram (scaleogram analysis))
+	 (cumulative-scale-persistency (cumsum (scaleogram-magnitude scaleogram)))
+	 (vpo (voices-per-octave scaleogram))
+	 (sample-rate (sample-rate rhythm-to-analyse))
+	 (salient-scale (preferred-tempo-scale vpo sample-rate))
+	 (tempo-beat-preference (tempo-salience-weighting salient-scale (.array-dimensions cumulative-scale-persistency)
+							  :octaves-per-stddev 1.0))
+ 	 (weighted-persistency-profile (.* cumulative-scale-persistency tempo-beat-preference)))
+    (diag-plot 'weighted-beat-ridge
+      (window)
+      (plot-image #'magnitude-image (list weighted-persistency-profile) '((1.0 0.5) (0.0 0.3))
+		  (axes-labelled-in-seconds scaleogram sample-rate 4)
+		  :title (format nil "weighted persistency profile of ~a" (name rhythm-to-analyse)))
+      (close-window))
+    (loop
+       for time from 0 below (duration-in-samples scaleogram)
+       for scale-persistency-profile = (.column weighted-persistency-profile time)
+       ;; Maximum peak of energy is assumed to be the beat scale.
+       ;; collect (argmax scale-persistency-profile) into beat-scales
+       collect (max-scale-of-profile scale-persistency-profile) into beat-scales
+       finally (return (make-instance 'ridge
+				      :start-sample 0 ; TODO could be when beat period is confirmed.
+				      :scales beat-scales)))))
+
+
+(defun expectancies-of-rhythm (rhythm &key (time-limit-expectancies nil))
   "Return a list structure of expectancies. If limit-expectancies is true, only calculate
   expectancies for events within the period analysed. If false, forward expectancies are generated
   for the last event."
@@ -198,11 +228,11 @@
 							     :time-limit-expectancies time-limit-expectancies))))))
 
 (defun write-expectancies-to-stream (expectancies sample-rate stream)
-  "Write the expectancies to a file with the labelling the MTG code needs."
+  "Write the expectancies to a stream with the labelling the MTG code needs."
   (loop 
      for expectancy in expectancies
      for event-index = 0 then (1+ event-index)
-     do (format stream "<EXPECT ID=~,5f>~%~{~a~%~}</EXPECT>" 
+     do (format stream "<EXPECT ID=~,5f>~%~{~a~%~}</EXPECT>~%" 
 		(/ (first expectancy) (float sample-rate)) ; write the time of the expectation
 		(mapcar (lambda (expectation) (exchange-format expectation sample-rate))
 			(second expectancy)))))
@@ -248,10 +278,10 @@
   (with-open-file (emcap-data-stream input-filepath)
     (read-emcap-onsets-from-stream emcap-data-stream (pathname-name input-filepath) sample-rate)))
 
-;;; TODO probably no longer used.
 (defun expectancies-at-times-in-file (input-filepath output-filepath &key (sample-rate 200.0d0))
-  (let* ((times-as-rhythm (rhythm-of-plain-onset-file input-filepath sample-rate))
-	 (expectancies-at-times (expectancies-of-rhythm times-as-rhythm)))
+  "Computes the expectancies at each onset in the file from the discrete onset times"
+  (let* ((times-as-rhythm (rhythm-of-emcap-onset-file input-filepath sample-rate))
+	 (expectancies-at-times (expectancies-of-rhythm times-as-rhythm :time-limit-expectancies nil)))
     (with-open-file (expectancy-file output-filepath :direction :output :if-exists :supersede)
       (write-expectancies-to-stream expectancies-at-times sample-rate expectancy-file))))
 
@@ -262,11 +292,10 @@
     (with-open-file (expectancy-file output-filepath :direction :output :if-exists :supersede)
       (write-expectancies-to-stream (last expectancies-at-times) sample-rate expectancy-file))))
 
-;; "/Local/Users/leigh/Research/Data/RicardsOnsetTests/EmCAP_format_test.txt"
-
 (defun last-expectancy-of-salience (input-filepath output-filepath &key (sample-rate 200.0d0)) 
   "Computes the expectancies at the last moment in the file from the perceptual salience trace"
   (let* ((times-as-rhythm (perceptual-salience-to-rhythm input-filepath "TODO" :sample-rhythm sample-rate))
 	 (expectancies-at-times (expectancies-of-rhythm times-as-rhythm :time-limit-expectancies nil)))
     (with-open-file (expectancy-file output-filepath :direction :output :if-exists :supersede)
       (write-expectancies-to-stream (last expectancies-at-times) sample-rate expectancy-file))))
+

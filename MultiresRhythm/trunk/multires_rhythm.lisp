@@ -35,7 +35,7 @@
 (defgeneric skeleton-of-scaleogram (scaleogram sample-rate)
   (:documentation "Returns the skeleton given the scaleogram and sample-rate."))
 
-(defgeneric analysis-of-rhythm (rhythm-to-analyse &key voices-per-octave)
+(defgeneric analysis-of-rhythm (rhythm-to-analyse &key voices-per-octave padding)
   (:documentation "Returns a multires-analysis instance for the given rhythm."))
 
 (defgeneric analysis-of-rhythm-cached (rhythm-to-analyse &key voices-per-octave cache-directory)
@@ -367,10 +367,10 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
        	 (skeleton (skeleton-of-ridge-peaks analysis-scaleogram correlated-ridge-scale-peaks)))
     (values skeleton correlated-ridge-scale-peaks)))
 
-(defmethod analysis-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16))
+(defmethod analysis-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16) (padding #'mirror-pad))
   "Returns the multires analysis of the given rhythm."
   (let* ((sample-rate (sample-rate analysis-rhythm))
-	 (scaleogram (scaleogram-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave))
+	 (scaleogram (scaleogram-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave :padding padding))
 	 (correlated-ridge-scale-peaks (scale-peaks-of-scaleogram scaleogram sample-rate))
 	 (skeleton (skeleton-of-ridge-peaks scaleogram correlated-ridge-scale-peaks)))
     (make-instance 'multires-analysis 
