@@ -22,12 +22,11 @@
 ;;;;
 
 (require 'nlisp)			; For mathematics
-(require 'cl-fad)			; For file I/O
 (require 'cli-parser)			; For command line option interpretation.
 (require 'dorys)			; For databases to test against.
 (require 'shoe)				; For anthem comparisons. TODO should be factored out.
 
-(defpackage #:multires-rhythm (:use #:cl #:asdf #:nlisp #:cl-fad #:dorys #:cli-parser)
+(defpackage #:multires-rhythm (:use #:cl #:asdf #:nlisp #:dorys #:cli-parser)
 	    (:export :rhythm 
 		     :skeleton-of-rhythm
 		     :tactus-for-rhythm
@@ -44,10 +43,10 @@
   :description "A Multiresolution Time-Frequency Analysis and Interpretation of Musical Rhythm"
   :version "2.2"
   :author "Leigh M. Smith"
-  :license "Copyright (c) 2005-2007"
+  :license "Copyright (c) 2005-2008"
   :depends-on (:nlisp)
   :properties ((#:author-email . "lsmith@science.uva.nl")
-	       (#:date . "2007")	; Compute this automatically?
+	       (#:date . "2008")	; Compute this automatically?
 	       ((#:albert #:output-dir) . "documentation")
 	       ((#:albert #:formats) . ("docbook")))
   :components ((:file "signalprocessing")
