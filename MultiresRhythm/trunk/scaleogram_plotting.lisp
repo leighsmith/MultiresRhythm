@@ -141,7 +141,7 @@
 		 :time-axis-decimation time-axis-decimation)))
 
 (defmethod plot-cwt-of-rhythm ((scaleogram-to-plot scaleogram) (analysis-rhythm rhythm) &key 
-			       (title "unnamed")
+			       (title (name analysis-rhythm))
 			       (time-axis-decimation 4))
   "Method to plot the magnitude and phase components of the result of
    a continuous wavelet transform on a rhythm signal."
@@ -152,7 +152,11 @@
   (let ((axes-labels (axes-labelled-in-seconds scaleogram-to-plot (sample-rate analysis-rhythm) time-axis-decimation)))
     ;; TODO (plot-rhythm analysis-rhythm))
     ;; Put the magnitude plot above the phase on the same window.
-    (plot-images (list (list #'magnitude-image 
+    (plot-images (list (list #'rhythm-plot
+ 			     (list analysis-rhythm)
+			     '((0.95 0.5) (0.05 0.6))
+			     (axes-labelled-in-seconds scaleogram-to-plot (sample-rate analysis-rhythm) 1))
+		       (list #'magnitude-image 
 			     (list (scaleogram-magnitude scaleogram-to-plot))
 			     '((1.0 0.5) (0.0 0.3))
 			     axes-labels)

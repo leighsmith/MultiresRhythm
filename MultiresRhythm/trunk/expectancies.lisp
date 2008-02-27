@@ -165,9 +165,23 @@
 		   :precision (.aref all-precision scale time))))
 ;; TODO :expected-features ()
 
-;; weight the analysis 
-;; (create-weighted-beat-ridge analysis-rhythm analysis)
-(defun expectancies-of-rhythm-integrator (rhythm-to-analyse)
+(defun expectancies-of-skeleton-at-times (skeleton times-to-check rhythm-scaleogram precision &key (cutoff-scale 16))
+  "Returns the expectancies determined from the skeleton, scaleogram and precision at the indicated times"
+  (loop
+     for time in times-to-check
+     collect (list time
+		   (loop
+		      for ridge in (ridges-at-time skeleton time)
+		      ;; filter out the ridges higher than a cut off point determined by preferred tempo rate.
+		      when (> (scale-at-time ridge time) cutoff-scale)
+		      collect (expectancy-of-ridge-at-time ridge 
+							   time
+							   rhythm-scaleogram
+							   precision 
+							   :time-limit-expectancies nil)))))
+
+(defun expectancies-of-rhythm-integrator (rhythm-to-analyse 
+					  &key (times-to-check (nlisp::array-to-list (onsets-in-samples rhythm-to-analyse))))
   "Return a list structure of expectancies. Computes the expectancies using the maximum
    value of the cumulative sum of the scaleogram energy" 
   (let* ((analysis (analysis-of-rhythm rhythm-to-analyse :padding #'causal-pad))
@@ -176,24 +190,29 @@
 	 (vpo (voices-per-octave scaleogram))
 	 (sample-rate (sample-rate rhythm-to-analyse))
 	 (salient-scale (preferred-tempo-scale vpo sample-rate))
-	 (tempo-beat-preference (tempo-salience-weighting salient-scale (.array-dimensions cumulative-scale-persistency)
+	 (tempo-beat-preference (tempo-salience-weighting salient-scale 
+							  (.array-dimensions cumulative-scale-persistency)
 							  :octaves-per-stddev 1.0))
- 	 (weighted-persistency-profile (.* cumulative-scale-persistency tempo-beat-preference)))
+ 	 (weighted-persistency-profile (.* cumulative-scale-persistency tempo-beat-preference))
+	 (weighted-scale-peaks (determine-scale-peaks weighted-persistency-profile))
+	 (weighted-scale-troughs (extrema-points weighted-persistency-profile :extrema :min))
+	 (weighted-precision (normalized-precision weighted-scale-peaks weighted-scale-troughs))
+       	 (weighted-skeleton (skeleton-of-ridge-peaks scaleogram weighted-scale-peaks)))
     (diag-plot 'weighted-beat-ridge
       (window)
       (plot-image #'magnitude-image (list weighted-persistency-profile) '((1.0 0.5) (0.0 0.3))
 		  (axes-labelled-in-seconds scaleogram sample-rate 4)
 		  :title (format nil "weighted persistency profile of ~a" (name rhythm-to-analyse)))
       (close-window))
-    (loop
-       for time from 0 below (duration-in-samples scaleogram)
-       for scale-persistency-profile = (.column weighted-persistency-profile time)
-       ;; Maximum peak of energy is assumed to be the beat scale.
-       ;; collect (argmax scale-persistency-profile) into beat-scales
-       collect (max-scale-of-profile scale-persistency-profile) into beat-scales
-       finally (return (make-instance 'ridge
-				      :start-sample 0 ; TODO could be when beat period is confirmed.
-				      :scales beat-scales)))))
+    (plot-scale-energy+peaks-at-time scaleogram 
+				     (first (last times-to-check))
+				     weighted-scale-peaks :sample-rate (sample-rate rhythm-to-analyse))
+    (expectancies-of-skeleton-at-times weighted-skeleton
+				       times-to-check
+				       scaleogram
+				       weighted-precision)))
+
+;; (expectancies-of-rhythm-integrator rhythm-to-analyse :times-to-check (list (1- (duration-in-samples rhythm-to-analyse))))
 
 
 (defun expectancies-of-rhythm (rhythm &key (time-limit-expectancies nil))
@@ -210,6 +229,7 @@
 	 (cutoff-scale (- preferred-tempo-scale (* 3 (voices-per-octave rhythm-scaleogram))))
 	 (times-to-check (nlisp::array-to-list (onsets-in-samples rhythm))))
     (if time-limit-expectancies (setf times-to-check (butlast times-to-check)))
+    ;; TODO replace with (expectancies-of-skeleton-at-times skeleton times-to-check scaleogram precision)
     (loop
        for time in times-to-check
        ;; do (plot-scale-energy+peaks-at-time rhythm-scaleogram time (ridge-peaks rhythm-analysis) :sample-rate (sample-rate rhythm))
@@ -294,7 +314,7 @@
 
 (defun last-expectancy-of-salience (input-filepath output-filepath &key (sample-rate 200.0d0)) 
   "Computes the expectancies at the last moment in the file from the perceptual salience trace"
-  (let* ((times-as-rhythm (perceptual-salience-to-rhythm input-filepath "TODO" :sample-rhythm sample-rate))
+  (let* ((times-as-rhythm (perceptual-salience-to-rhythm input-filepath "TODO" :sample-rate sample-rate))
 	 (expectancies-at-times (expectancies-of-rhythm times-as-rhythm :time-limit-expectancies nil)))
     (with-open-file (expectancy-file output-filepath :direction :output :if-exists :supersede)
       (write-expectancies-to-stream (last expectancies-at-times) sample-rate expectancy-file))))

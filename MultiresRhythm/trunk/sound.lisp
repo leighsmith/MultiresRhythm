@@ -75,7 +75,8 @@
 (defmethod save-to-file ((sound-to-save sound) (path pathname))
   (save-audio path (sound-signal sound-to-save) :sample-rate (sample-rate sound-to-save)))
 
-(defun sample-at-times (length-of-sound sample-sound times-in-seconds)
+(defun sample-at-times (length-of-sound sample-sound times-in-seconds 
+			&key (amplitudes (make-double-array (.length times-in-seconds) :initial-element 1.0d0)))
   "Returns a sound with sample-sound placed beginning at each time specified in seconds. Uses the sample rate of the sample-sound."
   (let* ((sample-rate (sample-rate sample-sound))
 	 (sample-length (sound-length sample-sound))
@@ -83,10 +84,11 @@
 	 (full-duration (make-double-array length-of-sound)))
     (loop
        for attack-time across (val attack-times-in-frames)
+       for amplitude-scaler across (val amplitudes)
        for region-to-copy = (list attack-time (min (1- length-of-sound) (+ attack-time sample-length -1)))
        do
 	 ;; (format t "region to copy ~a~%" region-to-copy)
-	 (setf (.subarray full-duration (list 0 region-to-copy)) (sound-signal sample-sound)))
+	 (setf (.subarray full-duration (list 0 region-to-copy)) (.* (sound-signal sample-sound) amplitude-scaler)))
     (make-instance 'sound
 		   :description (format nil "~a duplications of ~a"
 					(.length times-in-seconds) (description sample-sound))

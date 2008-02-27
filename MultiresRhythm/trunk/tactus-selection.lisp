@@ -51,6 +51,19 @@
 	 (maximal-neighbourhood (.arefs scale-profile indexes-of-neighbourhood)))
     (nlisp::peak-x (.* indexes-of-neighbourhood 1d0) maximal-neighbourhood 15)))
 
+;; TODO expand to return a list of ridges when there is a discontinuity.
+(defun ridges-of-max-scales (weighted-persistency-profile)
+  "Returns a single ridge along the magnitude-scale plane"
+  (loop
+     for time from 0 below (.array-dimension weighted-persistency-profile 1)
+     for scale-persistency-profile = (.column weighted-persistency-profile time)
+     ;; Maximum peak of energy is assumed to be the beat scale.
+     ;; collect (argmax scale-persistency-profile) into beat-scales
+     collect (max-scale-of-profile scale-persistency-profile) into beat-scales
+     finally (return (make-instance 'ridge
+				    :start-sample 0 ; TODO could be when beat period is confirmed.
+				    :scales beat-scales))))
+
 (defmethod create-weighted-beat-ridge ((rhythm-to-analyse rhythm) (analysis multires-analysis))
   "Creates a ridge using the maximum value of the cumulative sum of the scaleogram energy"
   (let* ((scaleogram (scaleogram analysis))
@@ -67,15 +80,7 @@
 		  (axes-labelled-in-seconds scaleogram sample-rate 4)
 		  :title (format nil "weighted persistency profile of ~a" (name rhythm-to-analyse)))
       (close-window))
-    (loop
-       for time from 0 below (duration-in-samples scaleogram)
-       for scale-persistency-profile = (.column weighted-persistency-profile time)
-       ;; Maximum peak of energy is assumed to be the beat scale.
-       ;; collect (argmax scale-persistency-profile) into beat-scales
-       collect (max-scale-of-profile scale-persistency-profile) into beat-scales
-       finally (return (make-instance 'ridge
-				      :start-sample 0 ; TODO could be when beat period is confirmed.
-				      :scales beat-scales)))))
+    (ridges-of-max-scales weighted-persistency-profile)))
 
 (defmethod unwindowed-weighted-beat-ridge ((rhythm-to-analyse rhythm) (analysis multires-analysis))
   "Creates a ridge using the maximum value of the cumulative sum of the scaleogram energy"
@@ -93,11 +98,13 @@
 		  (axes-labelled-in-seconds scaleogram sample-rate 4)
 		  :title (format nil "weighted magnitude profile of ~a" (name rhythm-to-analyse)))
       (close-window))
+    ;; TODO replace with (ridges-of-max-scales weighted-magnitude)?
     (loop
        for time from 0 below (duration-in-samples scaleogram)
        for weighted-magnitude-profile = (.column weighted-magnitude time)
        ;; Maximum peak of energy is assumed to be the beat scale.
-       for beat-scale = (argmax weighted-magnitude-profile) ;; (max-scale-of-profile weighted-magnitude-profile)
+       ;; for beat-scale = (argmax weighted-magnitude-profile)
+       for beat-scale = (max-scale-of-profile weighted-magnitude-profile)
        collect beat-scale into beat-scales
        finally (return (make-instance 'ridge
 				      :start-sample 0 ; TODO could be when beat period is confirmed.
@@ -109,6 +116,7 @@
 	 (cumulative-scale-persistency (cumsum (scaleogram-magnitude scaleogram))))
 	 ;; (vpo (voices-per-octave scaleogram)))
 	 ;; (sample-rate (sample-rate rhythm-to-analyse))
+    ;; TODO replace with (ridges-of-max-scales weighted-magnitude)?
     (loop
        for time from 0 below (duration-in-samples scaleogram)
        for scale-persistency-profile = (.column cumulative-scale-persistency time)
@@ -155,6 +163,7 @@
 	 (tempo-beat-preference (tempo-salience-weighting salient-scale (.array-dimensions windowed-scale-persistency)))
  	 (weighted-persistency-profile (.* windowed-scale-persistency tempo-beat-preference)))
     (image weighted-persistency-profile nil nil :aspect-ratio 0.2)
+    ;; TODO replace with (ridges-of-max-scales weighted-magnitude)?
     (loop
        for time from 0 below (duration-in-samples scaleogram)
        for scale-persistency-profile = (.column weighted-persistency-profile time)
@@ -231,7 +240,7 @@
   (let* ((chosen-tactus (funcall tactus-selector analysis-rhythm analysis))
 	 (chosen-tactus-list (if (listp chosen-tactus) chosen-tactus (list chosen-tactus))))
     (format t "Chosen tactus ~a using ~a~%" chosen-tactus-list tactus-selector)
-    (diag-plot 'cwt+tactus
+    (diag-plot 'cwt+skeleton
       (plot-cwt+skeleton-of-analysis analysis chosen-tactus-list analysis-rhythm))
     (diag-plot 'cwt
       (plot-cwt+ridges (scaleogram analysis) chosen-tactus-list analysis-rhythm

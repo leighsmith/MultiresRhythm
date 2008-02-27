@@ -62,6 +62,9 @@
 (defgeneric scale-amplitude (rhythm-to-scale scale-factor)
   (:documentation "Scales the amplitude of each onset by the given scale-factor."))
 
+(defgeneric write-as-audio (rhythm-to-save filepath-to-save clap-pathname)
+  (:documentation "Write the rhythm to the filename, using the clapping sound."))
+
 ;;;; Implementation
 
 (defmethod print-object ((rhythm-to-print rhythm) stream)
@@ -132,11 +135,11 @@
   (make-instance 'rhythm 
 		 :name name
 		 :description name ; TODO transliterate '-' for ' '.
-		 :time-signal (make-narray 
-			       (butlast 
-				(onsets-to-grid 
-				 (iois-to-onsets 
-				  (intervals-in-samples iois :ioi shortest-ioi)))))
+		 :time-signal (.* (make-narray 
+				   (butlast 
+				    (onsets-to-grid 
+				     (iois-to-onsets 
+				      (intervals-in-samples iois :ioi shortest-ioi))))) 1.0d0)
 		 :sample-rate sample-rate))
 
 (defun rhythm-of-onsets (name onsets &key (sample-rate 200))
@@ -240,9 +243,9 @@
 	:aspect-ratio aspect-ratio
 	:reset nil))
 
-;;; TODO Should make this a method.
+;;; TODO Should make this a method. Use window dimensions?
 (defun rhythm-plot (rhythm-to-plot window-dimensions title &key 
-		    (time-in-seconds nil)
+		    (time-in-seconds t)
 		    (aspect-ratio 0.1))
   (plot-command "set xrange [0:~d]" (duration-in-samples rhythm-to-plot)) ; ensures last label plotted
   (plot-command "set yrange [0:1.2]")	; Gives some height for the key.
@@ -269,6 +272,14 @@
 		    :description (description rhythm-to-save))
     scorefile-pathname))
 
+(defmethod write-as-audio ((rhythm-to-save rhythm) (filepath-to-save pathname) (clap-pathname pathname))
+  (let* ((clap-sound (sound-from-file clap-pathname))
+	 (length-of-sound (round (* (duration rhythm-to-save) (sample-rate clap-sound))))
+	 (note-times (onsets-in-seconds rhythm-to-save))
+	 (note-amplitudes (print (.arefs (time-signal rhythm-to-save) (onsets-in-samples rhythm-to-save))))
+	 (rhythm-sound (sample-at-times length-of-sound clap-sound note-times :amplitudes note-amplitudes)))
+    (save-to-file rhythm-sound filepath-to-save)))
+
 (defun add-rhythm (&rest rhythms-to-add)
   "Adds multiple rhythms together. Returns the shortest? longest? rhythm."
   (let* ((added-rhythms (apply #'.+ (mapcar #'time-signal rhythms-to-add)))
@@ -294,7 +305,7 @@
 		   :sample-rate (sample-rate rhythm-to-subset)))
 
 ;;; TODO this should also allow limitation by the number of notes, number of bars etc.
-(defmethod limit-rhythm ((rhythm-to-limit rhythm) &key (maximum-samples 16384))
+(defmethod limit-rhythm ((rhythm-to-limit rhythm) &key maximum-samples)
   "Returns a rhythm that is bounded in it's length to a maximum number of samples"
   (if (< (duration-in-samples rhythm-to-limit) maximum-samples)
       rhythm-to-limit	; under maximum, no change
@@ -304,3 +315,11 @@
 (defmethod .decimate ((rhythm-to-decimate rhythm) reduce-list &key start-indices)
   (declare (ignore reduce-list start-indices))
   rhythm-to-decimate)
+
+(defun append-rhythm (&rest rhythms)
+  "Append each rhythm onto the first returning a new instance, assumes all the sample-rates are equal."
+  (make-instance 'rhythm 
+		 :name (name (first rhythms)) 
+		 :description (name (first rhythms))
+		 :time-signal (apply #'.concatenate (mapcar #'time-signal rhythms))
+		 :sample-rate (sample-rate (first rhythms))))

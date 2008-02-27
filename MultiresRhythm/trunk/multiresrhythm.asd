@@ -56,7 +56,7 @@
 	       (:file "sound")
 	       (:file "skeleton" :depends-on ("ridges"))
 	       (:file "plotting" :depends-on ("ridges" "signalprocessing"))
-	       (:file "rhythm" :depends-on ("scorefile" "plotting" "signalprocessing"))
+	       (:file "rhythm" :depends-on ("scorefile" "plotting" "signalprocessing" "sound"))
 	       (:file "cwt" :depends-on ("plotting" "ridges" "rhythm"))
 	       (:file "multires_rhythm" :depends-on ("cwt" "skeleton" "plotting" "rhythm" "signalprocessing"))
 	       (:file "scaleogram_plotting" :depends-on ("multires_rhythm" "cwt" "rhythm" "plotting"))
