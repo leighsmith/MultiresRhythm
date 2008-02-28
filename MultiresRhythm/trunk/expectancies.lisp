@@ -249,13 +249,16 @@
 
 (defun write-expectancies-to-stream (expectancies sample-rate stream)
   "Write the expectancies to a stream with the labelling the MTG code needs."
+  (format stream "<EXPECTANCIES>~%") ; Write enclosing tags.
   (loop 
      for expectancy in expectancies
      for event-index = 0 then (1+ event-index)
-     do (format stream "<EXPECT ID=~,5f>~%~{~a~%~}</EXPECT>~%" 
+     do (format stream "<EXPECT ID=\"~,5d\" TIME=\"~,5f\">~%~{~a~%~}</EXPECT>~%" 
+		event-index
 		(/ (first expectancy) (float sample-rate)) ; write the time of the expectation
 		(mapcar (lambda (expectation) (exchange-format expectation sample-rate))
-			(second expectancy)))))
+			(second expectancy)))
+     finally (format stream "</EXPECTANCIES>~%")))
 
 (defun split-string (string-to-split split-char)
   "Return a list of strings split by each occurrance of split-char"
