@@ -62,6 +62,9 @@
 (defgeneric scale-amplitude (rhythm-to-scale scale-factor)
   (:documentation "Scales the amplitude of each onset by the given scale-factor."))
 
+(defgeneric sound-of (rhythm-to-sonify clap-pathname)
+  (:documentation "Returns a sound instance of the rhythm."))
+
 (defgeneric write-as-audio (rhythm-to-save filepath-to-save clap-pathname)
   (:documentation "Write the rhythm to the filename, using the clapping sound."))
 
@@ -272,13 +275,17 @@
 		    :description (description rhythm-to-save))
     scorefile-pathname))
 
-(defmethod write-as-audio ((rhythm-to-save rhythm) (filepath-to-save pathname) (clap-pathname pathname))
+(defmethod sound-of ((rhythm-to-sonify rhythm) (clap-pathname pathname))
+  "Create a sound instance from the rhythm"
   (let* ((clap-sound (sound-from-file clap-pathname))
-	 (length-of-sound (round (* (duration rhythm-to-save) (sample-rate clap-sound))))
-	 (note-times (onsets-in-seconds rhythm-to-save))
-	 (note-amplitudes (print (.arefs (time-signal rhythm-to-save) (onsets-in-samples rhythm-to-save))))
-	 (rhythm-sound (sample-at-times length-of-sound clap-sound note-times :amplitudes note-amplitudes)))
-    (save-to-file rhythm-sound filepath-to-save)))
+	 (length-of-sound (round (* (duration rhythm-to-sonify) (sample-rate clap-sound))))
+	 (note-times (onsets-in-seconds rhythm-to-sonify))
+	 (note-amplitudes (.arefs (time-signal rhythm-to-sonify) (onsets-in-samples rhythm-to-sonify))))
+    (sample-at-times length-of-sound clap-sound note-times :amplitudes note-amplitudes)))
+
+(defmethod write-as-audio ((rhythm-to-save rhythm) (filepath-to-save pathname) (clap-pathname pathname))
+  "Write the given rhythm as an audio file"
+  (save-to-file (sound-of rhythm-to-save clap-pathname) filepath-to-save))
 
 (defun add-rhythm (&rest rhythms-to-add)
   "Adds multiple rhythms together. Returns the shortest? longest? rhythm."
