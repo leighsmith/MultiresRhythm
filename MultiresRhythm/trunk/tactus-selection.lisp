@@ -58,8 +58,8 @@
      for time from 0 below (.array-dimension weighted-persistency-profile 1)
      for scale-persistency-profile = (.column weighted-persistency-profile time)
      ;; Maximum peak of energy is assumed to be the beat scale.
-     ;; collect (argmax scale-persistency-profile) into beat-scales
-     collect (max-scale-of-profile scale-persistency-profile) into beat-scales
+     collect (argmax scale-persistency-profile) into beat-scales ; For integer scales.
+     ;; collect (max-scale-of-profile scale-persistency-profile) into beat-scales ; For fractional scales.
      finally (return (make-instance 'ridge
 				    :start-sample 0 ; TODO could be when beat period is confirmed.
 				    :scales beat-scales))))
