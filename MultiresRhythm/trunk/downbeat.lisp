@@ -223,7 +223,9 @@ start-onset, these measures are in samples"
 				   (minimum-differing-ratio (expt 2 (/ number-of-voices-different voices-per-octave))))
   "Checks if the comparison is greater than the difference in period of number-of-voices-different voices"
   ;; (format t "comparison-ratio ~f minimum-differing-ratio ~f~%" (/ comparison original) minimum-differing-ratio)
-  (> (- (/ comparison original) minimum-differing-ratio) 0.00001))
+  (if (zerop original)
+      t
+      (> (- (/ comparison original) minimum-differing-ratio) 0.00001)))
 
 ;;; We skip until we find truly the first longer interval (not equal to beat period) and
 ;;; then count back from there, or more logically, not start clapping until after that
