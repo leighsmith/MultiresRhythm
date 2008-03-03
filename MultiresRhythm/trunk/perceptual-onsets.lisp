@@ -19,34 +19,27 @@
   ((onsets-time-signal :initarg :onsets-time-signal :accessor onsets-time-signal :initform (make-double-array '(1))))
   (:documentation "A subclass of rhythm that holds the full salience trace and the onset data."))
 
-(defun perceptual-salience-to-rhythm (salience-filename onsets-filename &key 
-				      (sample-rate 200) (description "") (weighted t)
-				      (data-directory "/Volumes/iDisk/Research/Data/PerceptualOnsets/"))
+(defun perceptual-salience-to-rhythm (salience-filepath onsets-filepath &key 
+				      (sample-rate 200) (description "") (weighted t))
   "Reads the salience data and returns a salience-trace-rhythm instance"
-  (let* ((perceptual-salience-matrix (.load (make-pathname :directory (list :absolute data-directory) 
-							   :name salience-filename
-							   :type "mat") :format :octave))
-	 (perceptual-salience (.row perceptual-salience-matrix 0))
-	 (perceptual-onsets (.load (make-pathname :directory (list :absolute data-directory) 
-						  :name onsets-filename
-						  :type "mat") :format :octave))
-	 ;; Assumes onset times are in seconds
+  (let* ((perceptual-salience-matrix (.load salience-filepath :format :text))
+	 (perceptual-onsets (.load onsets-filepath :format :text))
+	 (perceptual-salience (.column perceptual-salience-matrix 0))
+	 ;; Assumes onset times are in seconds, converts to samples
 	 (onset-times (.floor (.* (.column perceptual-onsets 0) sample-rate)))
+	 ;; TODO perhaps rhythm-of-weighted-onsets can be used instead?
 	 (binary-grid (make-narray (onsets-to-grid (nlisp::array-to-list onset-times))))
 	 (weighted-grid (.* binary-grid 1d0)))
-    (diag-plot 'perceptual-salience
-      (plot perceptual-salience nil 
-	    :aspect-ratio 0.66 :title (format nil "salience trace of ~a" salience-filename)))
     (setf (.arefs weighted-grid onset-times) (.column perceptual-onsets 1))
     ;; Even though we have assumed rhythm is a set of dirac fns, we can cheat a bit.
     (make-instance 'salience-trace-rhythm 
-		   :name salience-filename
+		   :name (pathname-name salience-filepath)
 		   :description description
 		   :time-signal perceptual-salience
 		   :onsets-time-signal (if weighted weighted-grid binary-grid)
 		   :sample-rate sample-rate)))
 
-;; (setf res1 (perceptual-onsets-to-rhythm "res1/res1_1_resp_text" "res1/res1_1_pOnsets" :weighted nil))
+;; (setf ps (perceptual-salience-to-rhythm "/Volumes/iDisk/Research/Sources/OtherResearchers/UoP/AuditorySaliencyModel/ines1.saliency" "/Volumes/iDisk/Research/Sources/OtherResearchers/UoP/AuditorySaliencyModel/ines1.onsets" :weighted t))
 ;; (setf res1 (perceptual-onsets-to-rhythm "res1/res1_1_resp_text" "res1/res1_1_pOnsets" :weighted t))
 ;; (plot-rhythm res1)
 ;; (plot (time-signal res1) nil :aspect-ratio 0.66)
@@ -56,14 +49,21 @@
 ;; (onsets-to-grid (nlisp::array-to-list (.floor (.column perceptual-onsets 0))))
 
 (defun compute-perceptual-versions (salience-filename onsets-filename original-sound-filename 
-				    &key (start-from-beat 0) (beat-multiple 1 multiple-supplied-p)) 
+				    &key (start-from-beat 0) (beat-multiple 1 multiple-supplied-p)
+				    (data-directory "/Volumes/iDisk/Research/Data/PerceptualOnsets/"))
   (let* ((original-sound-path (make-pathname :directory "/Volumes/iDisk/Research/Data/PerceptualOnsets/"
 					     :name original-sound-filename
 					     :type "wav"))
 	 (accompaniment-sound-path (make-pathname :directory "/Volumes/iDisk/Research/Data/Handclap Examples"
 						  :name (concatenate 'string original-sound-filename "_mixed")
 						  :type "wav"))
-	 (salience-trace-rhythm (perceptual-salience-to-rhythm salience-filename onsets-filename :weighted nil))
+	 (salience-trace-rhythm (perceptual-salience-to-rhythm (make-pathname :directory (list :absolute data-directory) 
+									      :name salience-filename
+									      :type "saliency")
+							       (make-pathname :directory (list :absolute data-directory) 
+									      :name onsets-filename
+									      :type "onsets") 
+							       :weighted nil))
 	 (salience-trace-claps (if multiple-supplied-p 
 				   (clap-to-rhythm salience-trace-rhythm 
 						   :start-from-beat start-from-beat
@@ -81,6 +81,9 @@
 ;;					       :tactus-selector #'create-beat-multiple-ridge)))
 	 ;; TODO gotta be a better way for division than making it a double-float.
 	 (clap-times-in-seconds (./ salience-trace-claps (* 1d0 (sample-rate salience-trace-rhythm)))))
+    (diag-plot 'perceptual-salience
+      (plot (time-signal salience-trace-rhythm) nil 
+	    :aspect-ratio 0.66 :title (format nil "salience trace of ~a" salience-filename)))
     (diag-plot 'onsets ;; Plot the salience trace, the produced onsets, & zero phase.
       (plot-claps salience-trace-rhythm 
 		  (.find (onsets-time-signal salience-trace-rhythm))

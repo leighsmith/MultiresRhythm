@@ -88,6 +88,7 @@
 	   (usage (nth 0 sb-ext:*posix-argv*)))
 	  ((gethash "saliency-trace" parsed-cli)
 	   (last-expectancy-of-salience (first (gethash "saliency-file" parsed-cli)) 
+					(first (gethash "onset-times" parsed-cli))
 					(first (gethash "output-file" parsed-cli))
 					:sample-rate sample-rate))
 	  ((gethash "onset-times" parsed-cli)

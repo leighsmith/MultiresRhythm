@@ -41,7 +41,7 @@
 
 (defsystem :multiresrhythm
   :description "A Multiresolution Time-Frequency Analysis and Interpretation of Musical Rhythm"
-  :version "2.2"
+  :version "2.3"
   :author "Leigh M. Smith"
   :license "Copyright (c) 2005-2008"
   :depends-on (:nlisp)

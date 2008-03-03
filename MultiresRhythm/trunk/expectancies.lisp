@@ -17,10 +17,11 @@
 ;;; Interface
 
 (defclass expectation ()
-  ((expected-time     :initarg :time       :accessor expected-time :initform 0)
-   (confidence        :initarg :confidence :accessor confidence)
-   (precision         :initarg :precision  :accessor precision)
-   (expected-features :initarg :features   :accessor expected-features :initform '()))
+  ((expected-time     :initarg :time        :accessor expected-time :initform 0)
+   (confidence        :initarg :confidence  :accessor confidence)
+   (precision         :initarg :precision   :accessor precision)
+   (expected-features :initarg :features    :accessor expected-features :initform '())
+   (sample-rate       :initarg :sample-rate :accessor sample-rate)) ; not yet used.
   (:documentation "Defines the expectation to the next point in time."))
 
 (defgeneric time-in-seconds (expectation sample-rate)
@@ -33,7 +34,7 @@
 
 (defmethod print-object ((expectation-to-print expectation) stream)
   (call-next-method expectation-to-print stream) ;; print the superclass
-  (format stream " ~,5f ~,5f ~,5f" 
+  (format stream " time: ~,5f confidence: ~,5f precision: ~,5f" 
 	  (expected-time expectation-to-print) 
 	  (confidence expectation-to-print)
 	  (precision expectation-to-print)))
@@ -148,36 +149,34 @@
   (let ((peaks (ridge-peaks analysis)))
     (.* peaks (most-precise peaks (ridge-troughs analysis)))))
 
-(defun expectancy-of-ridge-at-time (ridge time scaleogram all-precision &key (time-limit-expectancies t))
+(defun expectancy-of-ridge-at-time (ridge time scaleogram all-precision &key (time-limit-expectancies nil))
   "Return an expectation instance holding the expection time, the confidence and the precision" 
   (let* ((vpo (voices-per-octave scaleogram))
 	 (max-time (if time-limit-expectancies (duration-in-samples scaleogram) most-positive-fixnum))
 	 (magnitude (scaleogram-magnitude scaleogram))
 	 (scale (scale-at-time ridge time))
 	 (expected-time (+ time (time-support scale vpo)))
-	 ;; energy = relative height (of scaleogram or ridge-peaks)
-	 (energy (/ (.aref magnitude scale time) (.max (.column magnitude time))))
+	 ;; energy = absolute height (of scaleogram or ridge-peaks)
+	 (energy (.aref magnitude scale time))
 	 (relative-ridge-duration (if (> time 0) (- 1.0 (/ (start-sample ridge) time)) 1)))
     (make-instance 'expectation 
 		   :time (min expected-time max-time)
+		   ;; :sample-rate (sample-rate ?) TODO sample rate of?
 		   ;; relative confidence = energy * duration of the ridge up until this moment.
-		   :confidence (* energy relative-ridge-duration)
+		   :confidence energy
 		   :precision (.aref all-precision scale time))))
-;; TODO :expected-features ()
+;; TODO :expected-features (create-expected-features magnitude)
 
-(defun expectancies-of-skeleton-at-times (skeleton times-to-check rhythm-scaleogram precision &key (cutoff-scale 16))
+(defun expectancies-of-skeleton-at-times (skeleton times scaleogram precision &key (cutoff-scale 16))
   "Returns the expectancies determined from the skeleton, scaleogram and precision at the indicated times"
   (loop
-     for time in times-to-check
+     for time in times
      collect (list time
 		   (loop
 		      for ridge in (ridges-at-time skeleton time)
 		      ;; filter out the ridges higher than a cut off point determined by preferred tempo rate.
 		      when (> (scale-at-time ridge time) cutoff-scale)
-		      collect (expectancy-of-ridge-at-time ridge 
-							   time
-							   rhythm-scaleogram
-							   precision 
+		      collect (expectancy-of-ridge-at-time ridge time scaleogram precision 
 							   :time-limit-expectancies nil)))))
 
 (defun expectancies-of-rhythm-integrator (rhythm-to-analyse 
@@ -215,10 +214,12 @@
 ;; (expectancies-of-rhythm-integrator rhythm-to-analyse :times-to-check (list (1- (duration-in-samples rhythm-to-analyse))))
 
 
-(defun expectancies-of-rhythm (rhythm &key (time-limit-expectancies nil))
+(defun expectancies-of-rhythm (rhythm &key (times-to-check (nlisp::array-to-list (onsets-in-samples rhythm)))
+			       (time-limit-expectancies nil))
   "Return a list structure of expectancies. If limit-expectancies is true, only calculate
   expectancies for events within the period analysed. If false, forward expectancies are generated
   for the last event."
+;;  (let* ((rhythm-analysis (analysis-of-rhythm rhythm :padding #'causal-pad))
   (let* ((rhythm-analysis (analysis-of-rhythm rhythm))
 	 (rhythm-scaleogram (scaleogram rhythm-analysis))
 	 ;; The skeleton has already picked scale peaks at each time.
@@ -226,10 +227,14 @@
 	 (precision (normalized-precision (ridge-peaks rhythm-analysis) (ridge-troughs rhythm-analysis)))
 	 (preferred-tempo-scale (preferred-tempo-scale (voices-per-octave rhythm-scaleogram) (sample-rate rhythm)))
 	 ;; Cut off freq above 3 stddev's from preferred-scale = 3 octaves.
-	 (cutoff-scale (- preferred-tempo-scale (* 3 (voices-per-octave rhythm-scaleogram))))
-	 (times-to-check (nlisp::array-to-list (onsets-in-samples rhythm))))
-    (if time-limit-expectancies (setf times-to-check (butlast times-to-check)))
-    ;; TODO replace with (expectancies-of-skeleton-at-times skeleton times-to-check scaleogram precision)
+	 (cutoff-scale (- preferred-tempo-scale (* 3 (voices-per-octave rhythm-scaleogram)))))
+    (if time-limit-expectancies 
+	(setf times-to-check (butlast times-to-check)))
+    ;; (format t "times to check ~a~%" times-to-check)
+    (expectancies-of-skeleton-at-times skeleton times-to-check rhythm-scaleogram precision
+				       :cutoff-scale cutoff-scale)))
+
+#|
     (loop
        for time in times-to-check
        ;; do (plot-scale-energy+peaks-at-time rhythm-scaleogram time (ridge-peaks rhythm-analysis) :sample-rate (sample-rate rhythm))
@@ -246,6 +251,7 @@
 							     rhythm-scaleogram
 							     precision 
 							     :time-limit-expectancies time-limit-expectancies))))))
+|#
 
 (defun write-expectancies-to-stream (expectancies sample-rate stream)
   "Write the expectancies to a stream with the labelling the MTG code needs."
@@ -311,14 +317,15 @@
 (defun last-expectancy-of-file (input-filepath output-filepath &key (sample-rate 200.0d0))
   "Computes the expectancies at the last moment in the file from the discrete onset times"
   (let* ((times-as-rhythm (rhythm-of-emcap-onset-file input-filepath sample-rate))
-	 (expectancies-at-times (expectancies-of-rhythm times-as-rhythm :time-limit-expectancies nil)))
+	 (expectancies-at-times (expectancies-of-rhythm times-as-rhythm)))
     (with-open-file (expectancy-file output-filepath :direction :output :if-exists :supersede)
       (write-expectancies-to-stream (last expectancies-at-times) sample-rate expectancy-file))))
 
-(defun last-expectancy-of-salience (input-filepath output-filepath &key (sample-rate 200.0d0)) 
+(defun last-expectancy-of-salience (saliency-filepath onset-times-filepath output-filepath
+				    &key (sample-rate 200.0d0)) 
   "Computes the expectancies at the last moment in the file from the perceptual salience trace"
-  (let* ((times-as-rhythm (perceptual-salience-to-rhythm input-filepath "TODO" :sample-rate sample-rate))
-	 (expectancies-at-times (expectancies-of-rhythm times-as-rhythm :time-limit-expectancies nil)))
+  (let* ((times-as-rhythm (perceptual-salience-to-rhythm saliency-filepath onset-times-filepath :sample-rate sample-rate))
+	 (expectancies-at-times (expectancies-of-rhythm times-as-rhythm)))
     (with-open-file (expectancy-file output-filepath :direction :output :if-exists :supersede)
       (write-expectancies-to-stream (last expectancies-at-times) sample-rate expectancy-file))))
 
