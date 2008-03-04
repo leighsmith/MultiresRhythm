@@ -60,10 +60,11 @@
 
 (defun width-of-peaks (peaks minima number-of-scales)
   "Returns the widths of the peaks, by finding the distance between two minima either side of each peak"
-  (let ((minima-diffs (.row (.diff minima) 0))
-	(minima-val (val minima))
-	(last-minima (.aref minima (1- (.length minima))))
-	(minima-widths (make-fixnum-array (.array-dimensions peaks))))
+  (let* ((minima-val (val minima))
+	 (minima-length (length minima-val))
+	 (minima-widths (make-fixnum-array (.array-dimensions peaks)))
+	 (last-minima (if (zerop minima-length) 0 (.aref minima (1- minima-length))))
+	 (minima-diffs (.diff minima)))
     (loop
        for peak across (val peaks)
        for peak-index = 0 then (1+ peak-index)
@@ -219,8 +220,7 @@
   "Return a list structure of expectancies. If limit-expectancies is true, only calculate
   expectancies for events within the period analysed. If false, forward expectancies are generated
   for the last event."
-;;  (let* ((rhythm-analysis (analysis-of-rhythm rhythm :padding #'causal-pad))
-  (let* ((rhythm-analysis (analysis-of-rhythm rhythm))
+  (let* ((rhythm-analysis (analysis-of-rhythm rhythm :padding #'causal-pad))
 	 (rhythm-scaleogram (scaleogram rhythm-analysis))
 	 ;; The skeleton has already picked scale peaks at each time.
 	 (skeleton (skeleton rhythm-analysis))
