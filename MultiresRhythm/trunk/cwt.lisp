@@ -229,6 +229,24 @@
 ;; (dyadic-cwt :fourier-domain-wavelet #'sombrero-wavelet-fourier)
 
 (defun causal-pad (the-signal padded-length)
+  "Pad the start of the-signal with silence. Handles matrices as well
+   as signal vectors, in the former case, assuming the columns
+   are to be padded to the given length. Returns multiple values
+   of the padded signal, and the region to trim (on time-axis)."
+  (let* ((signal-rows (.row-count the-signal))
+	 (matrix-or-vector (if (equalp signal-rows 1) 0 t)) 
+	 (signal-length (.length the-signal))
+	 (to-pad (- padded-length signal-length)))
+    (if (zerop to-pad)
+	(values the-signal (list matrix-or-vector (list 0 (1- signal-length)))) ; Redundant case
+	(values
+	 ;; Create the zero padded signal.
+	 (let* ((start-region (if (eq matrix-or-vector t) (list signal-rows to-pad) to-pad)))
+	   (.concatenate (make-double-array start-region) the-signal))
+	   ;; Create the .subarray trim description.
+	   (list matrix-or-vector (list to-pad (1- padded-length)))))))
+
+(defun end-pad (the-signal padded-length)
   "Pad the end of the-signal with silence. Handles matrices as well
    as signal vectors, in the former case, assuming the columns
    are to be padded to the given length. Returns multiple values

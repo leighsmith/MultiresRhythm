@@ -54,8 +54,8 @@
   "Returns the expectancy in the EmCAP interchange output format."
   (format nil "~,5f ~,5f ~,5f;~:{~,5f,~,5f~:^ ~}" 
 	  (time-in-seconds expectation-to-exchange sample-rate) 
-	  (precision expectation-to-exchange)
 	  (confidence expectation-to-exchange)
+	  (precision expectation-to-exchange)
 	  (expected-features expectation-to-exchange)))
 
 (defun width-of-peaks (peaks minima number-of-scales)
@@ -120,6 +120,7 @@
 	 (duration (.column-count maxima))
 	 (precision (make-double-array time-freq-dimensions)))
     (dotimes (time duration)
+      ;; (format t "precision of ~a~%" time)
       (let* ((ridge-peak-profile (.column maxima time))
 	     (peak-scales (.find ridge-peak-profile))
 	     (peak-widths (width-of-peaks peak-scales (.find (.column minima time)) number-of-scales))
@@ -155,18 +156,18 @@
   (let* ((vpo (voices-per-octave scaleogram))
 	 (max-time (if time-limit-expectancies (duration-in-samples scaleogram) most-positive-fixnum))
 	 (magnitude (scaleogram-magnitude scaleogram))
+	 (phase (scaleogram-phase scaleogram))
 	 (scale (scale-at-time ridge time))
 	 (expected-time (+ time (time-support scale vpo)))
 	 ;; energy = absolute height (of scaleogram or ridge-peaks)
-	 (energy (.aref magnitude scale time))
-	 (relative-ridge-duration (if (> time 0) (- 1.0 (/ (start-sample ridge) time)) 1)))
+	 (energy (.aref magnitude scale time)))
     (make-instance 'expectation 
 		   :time (min expected-time max-time)
 		   ;; :sample-rate (sample-rate ?) TODO sample rate of?
-		   ;; relative confidence = energy * duration of the ridge up until this moment.
 		   :confidence energy
 		   :precision (.aref all-precision scale time))))
-;; TODO :expected-features (create-expected-features magnitude)
+;; TODO :features (create-expected-features magnitude)
+;; :features (.aref phase scale time) ; TODO kludged to hold the phase values
 
 (defun expectancies-of-skeleton-at-times (skeleton times scaleogram precision &key (cutoff-scale 16))
   "Returns the expectancies determined from the skeleton, scaleogram and precision at the indicated times"
@@ -234,25 +235,6 @@
     (expectancies-of-skeleton-at-times skeleton times-to-check rhythm-scaleogram precision
 				       :cutoff-scale cutoff-scale)))
 
-#|
-    (loop
-       for time in times-to-check
-       ;; do (plot-scale-energy+peaks-at-time rhythm-scaleogram time (ridge-peaks rhythm-analysis) :sample-rate (sample-rate rhythm))
-       ;; (break)
-       collect (list time
-		     ;; TODO able to make this a separate function? 
-		     ;; (expectancies-at-time skeleton time)
-		     (loop
-			for ridge in (ridges-at-time skeleton time)
-			;; filter out the ridges higher than a cut off point determined by preferred tempo rate.
-			when (> (scale-at-time ridge time) cutoff-scale)
-			collect (expectancy-of-ridge-at-time ridge 
-							     time
-							     rhythm-scaleogram
-							     precision 
-							     :time-limit-expectancies time-limit-expectancies))))))
-|#
-
 (defun write-expectancies-to-stream (expectancies sample-rate stream)
   "Write the expectancies to a stream with the labelling the MTG code needs."
   (format stream "<EXPECTANCIES>~%") ; Write enclosing tags.
@@ -280,7 +262,7 @@
 ;;; all the crap away to get it to a form that Lisp can devour simply.
 (defun strip-emcap-formatting (emcap-data-line)
   (destructuring-bind (onset features) (split-string emcap-data-line #\;)
-    (list (mapcar #'read-from-string (split-string onset #\,))
+    (list (mapcar #'read-from-string (split-string onset #\Space))
 	  (mapcar (lambda (feature-string) (mapcar #'read-from-string (split-string feature-string #\,))) 
 		  (split-string features #\Space)))))
 
@@ -292,7 +274,8 @@
      for emcap-data-record = (read-line stream nil)
      while emcap-data-record
      collect (destructuring-bind (onset-time features) (strip-emcap-formatting emcap-data-record)
-	       (list (first onset-time) (summarise-features-to-accent features)))))
+	       (declare (ignore features))
+	       (list (first onset-time) (second onset-time)))))
 
 (defun read-emcap-onsets-from-stream (stream name sample-rate)
   "Reads the EmCAP onsets format, returning a rhythm instance"
@@ -318,13 +301,14 @@
   "Computes the expectancies at the last moment in the file from the discrete onset times"
   (let* ((times-as-rhythm (rhythm-of-emcap-onset-file input-filepath sample-rate))
 	 (expectancies-at-times (expectancies-of-rhythm times-as-rhythm)))
+    ;; (expectancies-of-rhythm times-as-rhythm :times-to-check (list (1- (duration-in-samples times-as-rhythm))))
     (with-open-file (expectancy-file output-filepath :direction :output :if-exists :supersede)
       (write-expectancies-to-stream (last expectancies-at-times) sample-rate expectancy-file))))
 
 (defun last-expectancy-of-salience (saliency-filepath onset-times-filepath output-filepath
 				    &key (sample-rate 200.0d0)) 
   "Computes the expectancies at the last moment in the file from the perceptual salience trace"
-  (let* ((times-as-rhythm (perceptual-salience-to-rhythm saliency-filepath onset-times-filepath :sample-rate sample-rate))
+  (let* ((times-as-rhythm (perceptual-salience-rhythm saliency-filepath onset-times-filepath :sample-rate sample-rate))
 	 (expectancies-at-times (expectancies-of-rhythm times-as-rhythm)))
     (with-open-file (expectancy-file output-filepath :direction :output :if-exists :supersede)
       (write-expectancies-to-stream (last expectancies-at-times) sample-rate expectancy-file))))
