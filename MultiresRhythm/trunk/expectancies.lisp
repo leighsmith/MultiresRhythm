@@ -151,14 +151,26 @@
   (let ((peaks (ridge-peaks analysis)))
     (.* peaks (most-precise peaks (ridge-troughs analysis)))))
 
+;; (defun normalized-phase (x) 
+;;   "Return a value between 0 and 1 for a phase value from 0 -> pi, -pi -> 0"
+;;   (let ((pi2 (* pi 2)))
+;;     (/ (+ x (if (minusp x) pi2 0)) pi2)))
+
+(defun normalized-phase (x) 
+  "Return a value between 0 -> 0.5, 0.5 -> 0 for a phase value from 0 -> pi, -pi -> 0.
+   This represents the maximum angular distance"
+  (/ (abs x) (* pi 2)))
+
 (defun expectancy-of-ridge-at-time (ridge time scaleogram all-precision &key (time-limit-expectancies nil))
   "Return an expectation instance holding the expection time, the confidence and the precision" 
   (let* ((vpo (voices-per-octave scaleogram))
 	 (max-time (if time-limit-expectancies (duration-in-samples scaleogram) most-positive-fixnum))
+	 (scale (scale-at-time ridge time))
 	 (magnitude (scaleogram-magnitude scaleogram))
 	 (phase (scaleogram-phase scaleogram))
-	 (scale (scale-at-time ridge time))
-	 (expected-time (+ time (time-support scale vpo)))
+	 (phase-of-ridge (.aref phase scale time))
+	 ;; Compute the time prediction, modified by the phase.
+	 (expected-time (+ time (* (time-support scale vpo) (- 1.0d0 (normalized-phase phase-of-ridge)))))
 	 ;; energy = absolute height (of scaleogram or ridge-peaks)
 	 (energy (.aref magnitude scale time)))
     (make-instance 'expectation 
@@ -167,7 +179,6 @@
 		   :confidence energy
 		   :precision (.aref all-precision scale time))))
 ;; TODO :features (create-expected-features magnitude)
-;; :features (.aref phase scale time) ; TODO kludged to hold the phase values
 
 (defun expectancies-of-skeleton-at-times (skeleton times scaleogram precision &key (cutoff-scale 16))
   "Returns the expectancies determined from the skeleton, scaleogram and precision at the indicated times"

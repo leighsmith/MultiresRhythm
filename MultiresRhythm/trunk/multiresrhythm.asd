@@ -26,6 +26,8 @@
 (require 'dorys)			; For databases to test against.
 (require 'shoe)				; For anthem comparisons. TODO should be factored out.
 
+;; (setf (logical-pathname-translations "rhythm") '(("data;*.*.*" "/Volumes/iDisk/Research/Data/")))
+
 (defpackage #:multires-rhythm (:use #:cl #:asdf #:nlisp #:dorys #:cli-parser)
 	    (:export :rhythm 
 		     :skeleton-of-rhythm
@@ -41,7 +43,7 @@
 
 (defsystem :multiresrhythm
   :description "A Multiresolution Time-Frequency Analysis and Interpretation of Musical Rhythm"
-  :version "2.3"
+  :version "2.5"
   :author "Leigh M. Smith"
   :license "Copyright (c) 2005-2008"
   :depends-on (:nlisp)
