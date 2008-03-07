@@ -75,13 +75,13 @@
   (format stream " ~a ~a sample-rate ~f" 
 	  (name rhythm-to-print) (description rhythm-to-print) (sample-rate rhythm-to-print)))
 
-(defun intervals-in-samples (intervals &key ((:tempo tempo-in-bpm) 60 tempo-supplied-p)
+(defun intervals-in-samples (intervals &key ((:tempo tempo-in-bpm) 60)
 			     (ioi 1.0 interval-supplied-p)
 			     (sample-rate 1000)) ; in Hz (samples per second)
   "Converts a given rhythm (in relative interval values, 1.0 = the shortest interval) to
    samples, defaulting to milliseconds for 1000Hz."
   (let* ((shortest-interval-samples (if interval-supplied-p ioi (/ (* 60 sample-rate) tempo-in-bpm))))
-    (mapcar #'(lambda (interval) (truncate (* shortest-interval-samples interval))) intervals)))
+    (mapcar #'(lambda (interval) (round (* shortest-interval-samples interval))) intervals)))
 
 (defun iois-to-onsets (iois &optional (onset 0))
   (if iois
@@ -130,9 +130,7 @@
 		 :description ""
 		 :sample-rate (sample-rate rhythm)))
 
-(defun iois-to-rhythm (name iois &key 
-		       (shortest-ioi 1.0) 
-		       (sample-rate 200) 
+(defun iois-to-rhythm (name iois &key (shortest-ioi 1.0) (sample-rate 200) 
 		       ((:tempo tempo-in-bpm) 60 tempo-supplied-p))
   "Returns a rhythm instance given a list of inter-onset intervals"
   (make-instance 'rhythm 
@@ -141,8 +139,15 @@
 		 :time-signal (.* (make-narray 
 				   (butlast 
 				    (onsets-to-grid 
-				     (iois-to-onsets 
-				      (intervals-in-samples iois :ioi shortest-ioi))))) 1.0d0)
+				     ;; We compute the intervals in samples after the onsets to avoid
+				     ;; the propagating error from truncation that occurs in intervals-in-samples.
+				     (if tempo-supplied-p
+					 (intervals-in-samples (iois-to-onsets iois) 
+							       :sample-rate sample-rate
+							       :tempo tempo-in-bpm)
+					 (intervals-in-samples (iois-to-onsets iois) 
+							       :sample-rate sample-rate
+							       :ioi shortest-ioi))))) 1.0d0)
 		 :sample-rate sample-rate))
 
 (defun rhythm-of-onsets (name onsets &key (sample-rate 200))
