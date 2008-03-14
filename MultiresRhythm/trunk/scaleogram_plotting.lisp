@@ -289,11 +289,11 @@
 
 (defmethod plot-scale-energy+peaks-at-time ((scaleogram-to-plot scaleogram) time peaks &key (sample-rate nil))
   "Plot a cross-section of the magnitude at a given time point so we can spot the highest activated scales."
+  (reset-plot)
   (plot-command "set title font \"Times,20\"")
   (plot-command "set xlabel font \"Times,20\"")
   (plot-command "set ylabel font \"Times,20\"")
   (plot-command "set key off")
-  (plot-command "set xtics (~{~{\"~a\" ~d~}~^, ~})~%" (label-scale-as-time-support scaleogram-to-plot))
   (if (not sample-rate)
       (plot-command "set xtics (~{~{\"~d\" ~5d~}~^, ~})~%" (label-scale-as-time-support scaleogram-to-plot))
       (plot-command "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
@@ -301,7 +301,7 @@
   (let ((time-slice (.column (scaleogram-magnitude scaleogram-to-plot) time)))
     ;; We reverse the column so we plot in more intuitive lowest scale on the left orientation.
     (nplot (list (.reverse time-slice) 
-		 ;; scale it down to magnitude maximum.
+		 ;; scale the peaks down to magnitude maximum.
 		 (.* (.max time-slice) (.reverse (.column peaks time)))) 
 	   nil 
 	   :title (format nil "Energy profile and scale peaks at sample number ~d" time)

@@ -1,6 +1,6 @@
 ;;;; -*- Lisp -*-
 ;;;;
-;;;; $Id: expectancies.lisp 423 2008-02-28 14:09:13Z leigh $
+;;;; $Id$
 ;;;;
 ;;;; Functions for generating expectations of metrical rhythms.
 ;;;;
@@ -18,7 +18,7 @@
 (defun make-envelope (amplitude &key (sample-rate 200) (attack 0.020) (decay 0.0) (sustain 0.0) (release 0.020))
   (let* ((attack-samples (round (* attack sample-rate)))
 	 (release-samples (round (* release sample-rate)))
-	 (duration-samples (round (* duration sample-rate)))
+	 (duration-samples (round (* sustain sample-rate)))
 	 (sustain-samples (- duration-samples attack-samples release-samples)))
     (.concatenate (.rseq 0.0 amplitude attack-samples) 
 		  (.rseq amplitude amplitude sustain-samples)
@@ -64,6 +64,9 @@
 	      (plot-cwt-of-rhythm (scaleogram probe-analysis) probe-rhythm)
 	      probe-analysis)) rhythms))
 
+#|
+
+;;; Just needs the syncopation package loaded.
 (defun metric-scale (meter &key (max-amp 1.0d0) (min-amp 0.12d0))
   "Derive from Longuet-Higgin's & Lee's metric salience measure (which is inverted in
    polarity) an amplitude weighting"
@@ -79,6 +82,7 @@
   (let* ((metrical-weights (nlisp::array-to-list (metric-scale meter)))
 	 (times (nlisp::array-to-list (.rseq 0 1.0d0 (1+ (reduce #'* meter))))))
     (rhythm-of-weighted-onsets "metrical scaling" (mapcar #'list times metrical-weights))))
+|#
 
 ;;;; 
 
@@ -135,21 +139,45 @@
 (defun plot-expectancies (all-expectations title)
   (let ((expect-times (make-narray (mapcar (lambda (expect) (time-in-seconds expect 200.0)) all-expectations)))
 	(expect-confidences (make-narray (mapcar (lambda (expect) (confidence expect)) all-expectations))))
-    (plot expect-confidences expect-times 
-	  :style "points" :xlabel "Time" :ylabel "Confidence" 
-	  :aspect-ratio 0.66
-	  :title title)))
+     (plot expect-confidences expect-times 
+ 	  :style "points" :xlabel "Time" :ylabel "Confidence" 
+ 	  :aspect-ratio 0.66
+ 	  :title title)))
+
+;;; Sum all values falling within the given bins ranges. Effectively integrate.
+;;; Could sort by time value. Need to add, rather than average the bins.
+(defun time-bins (expect-times &key (bin-size 0.1) (number-of-bins (ceiling (/ (range expect-times) bin-size))))
+  (let* ((bin-boundaries (.rseq (.min expect-times) (.max expect-times) number-of-bins))
+	 (bins (make-double-array number-of-bins)))
+    (loop
+       for bin-index from 1 below number-of-bins
+       do (progn
+	    (format t "from ~a to ~a ~%" (.aref bin-boundaries (1- bin-index))
+		    (.aref bin-boundaries bin-index))
+	    (setf (.aref bins bin-index) (.sum (.and (.>= expect-times (.aref bin-boundaries (1- bin-index)))
+						     (.< expect-times (.aref bin-boundaries bin-index))))))
+       finally (return (values bins bin-boundaries)))))
+
+(defun plot-expectancies-histogram (all-expectations title)
+  (multiple-value-bind (prediction-counts time-bins)
+      (time-bins (make-narray (mapcar (lambda (expect) (time-in-seconds expect 200.0)) all-expectations))) 
+    (plot prediction-counts time-bins
+ 	  :style "boxes" :xlabel "Time" :ylabel "Occurance" 
+ 	  :aspect-ratio 0.66
+ 	  :title title)))
 
 (defun metrical-rhythm-expectancies (candidate-meter &key (sample-size 40) (number-of-bars 2))
   "Given a meter, create a set of random metrical rhythms plot the confidences of each expectation"
   (let* ((random-metrical-rhythms (create-metrical-set candidate-meter sample-size :number-of-bars number-of-bars))
-	 ;; (expectancy-set (mapcar (lambda (r) (last-expectations (first r))) random-metrical-rhythms))
 	 (expectancy-set (mapcar (lambda (r) (last-expectations r)) random-metrical-rhythms))
 	 ;; Make all expectations into a single list for easy traversal.
 	 (all-expectations (reduce #'append expectancy-set)))
-    (plot-expectancies all-expectations (format nil "Expectation Confidences for ~a meter" candidate-meter))))
+    (plot-expectancies all-expectations (format nil "Expectation Confidences for ~a bars of ~a meter" 
+						number-of-bars candidate-meter))
+    (plot-expectancies-histogram all-expectations (format nil "Expectation Counts for ~a bars of ~a meter" 
+							  number-of-bars candidate-meter))))
 
-
+#|
 ;; zero valued last point to stretch the rhythm
 (setf jongsma-ternary-meter-rhythms 
       (create-probe-rhythms "ternary-meter" '((0.0   1.0) 
@@ -293,9 +321,8 @@
 
 ;; (dolist (candidate-meter '((3 2) (2 2)))
 
-;; (metrical-rhythm-expectancies '(3 2))
-;; (metrical-rhythm-expectancies '(2 2))
-
+;; (metrical-rhythm-expectancies '(3 2) :number-of-bars 4 :sample-size 20)
+;; (metrical-rhythm-expectancies '(2 2) :number-of-bars 4 :sample-size 20)
 (setf short-ternary-meter (rhythm-of-weighted-onsets "ternary-meter" '((0.0   1.0) 
 								       (0.333 0.43) 
 								       (0.666 0.43) 
@@ -312,3 +339,12 @@
 								     (2.0 1.0) 
 								     (3.0 0.0))))
 
+(multiple-value-setq (m r) (random-metrical-rhythm-of-meter '(3 2) :number-of-bars 4))
+(setf r '(2 1 1 2 6 1 1 1 1 1 1 1 1 1 1 2))
+(setf m (iois-to-rhythm "blah" r :shortest-ioi (/ 200.0 6) :sample-rate 200))
+(write-as-audio m
+		#P"/Volumes/iDisk/Research/Data/RicardsOnsetTests/test_sound.wav"
+		#P"/Volumes/iDisk/Research/Data/Handclap Examples/hihat_closed.aiff")
+(last-expectations m)
+
+|#
