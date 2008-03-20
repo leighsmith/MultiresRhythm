@@ -40,6 +40,9 @@
 (defgeneric reverse-time (ridge)
   (:documentation "Returns the ridge, with it's scales list reversed in time."))
 
+(defgeneric last-sample (ridge)
+  (:documentation "Returns the sample index of the last sample in the ridge."))
+
 (defgeneric duration-in-samples (ridge)
   (:documentation "Returns the duration in samples of the ridge."))
 
@@ -73,6 +76,15 @@
 (defgeneric copy-object (object)
   (:documentation "Creates a deep copy of the object")) 
 
+(defgeneric phase-of (the-ridge phase)
+  (:documentation "Returns the phase values at each scale and time in the ridge"))
+
+(defgeneric plot-ridge (the-ridge)
+  (:documentation "Plots the given ridge."))
+
+(defgeneric plot-phase (the-ridge phase)
+  (:documentation "Plots the phase of the ridge."))
+
 ;;; Methods
 
 (defmethod print-object ((ridge-to-print ridge) stream)
@@ -94,6 +106,9 @@
 (defmethod duration-in-samples ((the-ridge ridge))
   "Returns the duration in samples of the ridge."
   (length (scales the-ridge)))
+
+(defmethod last-sample ((the-ridge ridge))
+  (+ (start-sample the-ridge) (1- (duration-in-samples the-ridge))))
 
 (defmethod scale-at-time ((the-ridge ridge) time)
   "Returns the scale at the given time"
@@ -362,6 +377,14 @@
 		 :scales (copy-list (scales ridge-to-copy))
 		 :start-sample (start-sample ridge-to-copy)))
 
+(defmethod phase-of ((the-ridge ridge) phase)
+  (loop
+     with phases-of-ridge = (make-double-array (duration-in-samples the-ridge))
+     for scale across (val (scales-as-array the-ridge))
+     for time = 0 then (1+ time)
+     do (setf (.aref phases-of-ridge time) (.aref phase scale (+ time (start-sample the-ridge))))
+     finally (return phases-of-ridge)))
+
 ;;; File I/O routines.
 
 (defmethod save-to-file ((ridge-to-save ridge) (file-stream stream))
@@ -378,7 +401,12 @@
 	nil)))
 
 ;;; Plotting
-(defun plot-ridge (ridge-to-plot)
+(defmethod plot-ridge (ridge-to-plot)
   (let* ((start (start-sample ridge-to-plot))
 	 (time (.iseq start (+ start (duration-in-samples ridge-to-plot) -1))))
     (plot (scales-as-array ridge-to-plot) time :aspect-ratio 0.15)))
+
+(defmethod plot-phase ((the-ridge ridge) phase)
+  (plot (phase-of the-ridge phase) (.iseq (start-sample the-ridge) (last-sample the-ridge))
+	:aspect-ratio 0.66
+	:title (format nil "Phase of ~a" the-ridge)))
