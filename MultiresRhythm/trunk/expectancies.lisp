@@ -49,15 +49,6 @@
 	(confidence expectation-to-list)
 	(precision expectation-to-list)))
 
-;;; TODO this should produce XML
-(defmethod exchange-format ((expectation-to-exchange expectation) sample-rate)
-  "Returns the expectancy in the EmCAP interchange output format."
-  (format nil "~,5f ~,5f ~,5f;~:{~,5f,~,5f~:^ ~}" 
-	  (time-in-seconds expectation-to-exchange sample-rate) 
-	  (confidence expectation-to-exchange)
-	  (precision expectation-to-exchange)
-	  (expected-features expectation-to-exchange)))
-
 (defun width-of-peaks (peaks minima number-of-scales)
   "Returns the widths of the peaks, by finding the distance between two minima either side of each peak"
   (let* ((minima-val (val minima))
@@ -161,33 +152,54 @@
    This represents the maximum angular distance"
   (/ (abs x) (* pi 2)))
 
+;; (defun normalized-phase (x) 
+;;   "Return a value between 0 -> 1 for a phase value from 0 -> pi, -pi -> 0.
+;;    This represents the maximum angular distance"
+;;   (/ (abs x) pi))
+
+(defun phase-diff-from-start (phase scale time)
+  (format t "phase at time ~a phase at 0 ~a~%" (.aref phase scale time) (.aref phase scale 0))
+  (.aref (phase-diff (make-narray (list (.aref phase scale time) (.aref phase scale 0)))) 0))
+
+(defun phase-correct (time-projection time phase-correct-from)
+  "Compute the time prediction, modified by the phase using multiple case scenarios"
+  ;; Calculate the number of periods of projection within the gap between last onset & the
+  ;; moment of expectancy projection.
+  (if (null phase-correct-from)
+      (+ time time-projection)
+      (multiple-value-bind (periods phase-offset)
+	  (floor (- time phase-correct-from) time-projection)
+	(format t "time projection ~a time ~a phase correct from ~a periods ~a phase-offset ~a~%" 
+		time-projection time phase-correct-from periods phase-offset)
+	(cond ((> periods 1)		; multiple projections within the gap.
+	       (+ time time-projection))
+	      ((= periods 1)		; a single projection fits within the gap
+	       (+ time time-projection (- phase-offset)))
+	      ((zerop periods)		; the projection exceeds the gap.
+	       (+ phase-correct-from time-projection))))))
+  
 (defun expectancy-of-ridge-at-time (ridge time scaleogram all-precision 
-				    &key (time-limit-expectancies nil) (phase-correct nil))
+				    &key (time-limit-expectancies nil) (phase-correct-from nil))
   "Return an expectation instance holding the expection time, the confidence and the precision" 
   (let* ((vpo (voices-per-octave scaleogram))
 	 (max-time (if time-limit-expectancies (duration-in-samples scaleogram) most-positive-fixnum))
 	 (scale (scale-at-time ridge time))
 	 (magnitude (scaleogram-magnitude scaleogram))
-	 (phase (scaleogram-phase scaleogram))
-	 (phase-of-ridge (.aref phase scale time))
-	 ;; Compute the time prediction, modified by the phase.
-	 (expected-time (if phase-correct
-			    (+ time (* (time-support scale vpo) (- 1.0d0 (normalized-phase phase-of-ridge))))
-			    (+ time (time-support scale vpo))))
+	 (uncorrected-time (+ time (time-support scale vpo)))
+	 (phase-corrected-time (phase-correct (time-support scale vpo) time phase-correct-from))
+	 (expected-time (if phase-correct-from phase-corrected-time uncorrected-time))
 	 ;; energy = absolute height (of scaleogram or ridge-peaks)
 	 (energy (.aref magnitude scale time)))
-    (format t "time projection ~,5f phase weighting ~,5f time ~a expected-time ~,3f unweighted ~,3f~%"
-	(time-support scale vpo) (- 1.0d0 (normalized-phase phase-of-ridge)) time expected-time
-	(+ (time-support scale vpo) time))
+    (format t "time ~a time projection ~,3f phase-corrected ~,3f uncorrected ~,3f expected-time ~,3f~%"
+	    time (time-support scale vpo) phase-corrected-time uncorrected-time expected-time)
     (make-instance 'expectation 
 		   :time (min expected-time max-time)
 		   ;; :sample-rate (sample-rate ?) TODO sample rate of?
 		   :confidence energy
 		   :precision (.aref all-precision scale time))))
-;; TODO :features (create-expected-features magnitude)
 
 (defun expectancies-of-skeleton-at-times (skeleton times scaleogram precision &key
-					  (cutoff-scale 16) (phase-correct nil))
+					  (cutoff-scale 16) (phase-correct-from nil))
   "Returns the expectancies determined from the skeleton, scaleogram and precision at the indicated times"
   (loop
      for time in times
@@ -198,7 +210,7 @@
 		      ;; filter out the ridges higher than a cut off point determined by preferred tempo rate.
 		      when (> (scale-at-time ridge time) cutoff-scale)
 		      collect (expectancy-of-ridge-at-time ridge time scaleogram precision 
-							   :phase-correct phase-correct
+							   :phase-correct-from phase-correct-from
 							   :time-limit-expectancies nil)))))
 
 (defun expectancies-of-rhythm-integrator (rhythm-to-analyse 
@@ -231,11 +243,26 @@
 				       (first (last times-to-check))
 				       (.normalise weighted-scale-peaks)))
 				       ;; :sample-rate (sample-rate rhythm-to-analyse)))
+    (diag-plot 'ridge-phase
+      (let* ((last-time (first (last times-to-check)))
+	     (peak-scales (.find (.column weighted-scale-peaks last-time)))
+	     (phase (scaleogram-phase scaleogram))
+	     ;; (phases-to-plot (map 'list (lambda (s) (.row phase s)) (val peak-scales)))
+	     (peak-to-plot 1)
+	     (phases-to-plot (list (time-signal rhythm-to-analyse) (.row phase (.aref peak-scales peak-to-plot)))))
+	(nplot phases-to-plot nil 
+	       :aspect-ratio 0.66 
+	       :title (format nil "plotting peak ~a~%" peak-to-plot)
+	       :legends (list "onsets" 
+			      (format nil "phase at scale ~a period ~,3f" 
+				      (.aref peak-scales peak-to-plot)
+				      (time-support (.aref peak-scales peak-to-plot) 16)))
+	       :styles '("impulses" "lines"))))
     (expectancies-of-skeleton-at-times weighted-skeleton
 				       times-to-check
 				       scaleogram
 				       weighted-precision
-				       :phase-correct nil)))
+				       :phase-correct-from (last-onset-time rhythm-to-analyse))))
 
 ;; (expectancies-of-rhythm-integrator rhythm-to-analyse :times-to-check (list (1- (duration-in-samples rhythm-to-analyse))))
 
@@ -261,20 +288,32 @@
 				       (ridge-peaks rhythm-analysis)))
     ;; (format t "times to check ~a~%" times-to-check)
     (expectancies-of-skeleton-at-times skeleton times-to-check rhythm-scaleogram precision
-				       :cutoff-scale cutoff-scale :phase-correct t)))
+				       :cutoff-scale cutoff-scale :phase-correct-from t)))
 
 ;;; last-expectations, Charles Dickens undiscovered work from his secret life as a Lisp programmer...
 ;;; This is needed to throw away the time and break the last expectation out of the list.
-(defun last-expectations (rhythm-to-expect)
+(defun last-expectations (rhythm-to-expect &key (last-time (1- (duration-in-samples rhythm-to-expect))))
   "Return the list of expectations for the last moment in the rhythm"
-  (let ((last-time (1- (duration-in-samples rhythm-to-expect))))
-    (second (first (expectancies-of-rhythm-integrator rhythm-to-expect :times-to-check (list last-time))))))
+  (second (first (expectancies-of-rhythm-integrator rhythm-to-expect :times-to-check (list last-time)))))
 
 ;;; This is needed to throw away the time and break the last expectation out of the list.
 (defun last-onset-expectations (rhythm-to-expect)
   "Return the list of expectations for the last onset in the rhythm"
   (let ((last-time (last-onset-time rhythm-to-expect))) ; (1- (duration-in-samples rhythm-to-expect))
     (second (first (expectancies-of-rhythm rhythm-to-expect :times-to-check (list last-time))))))
+
+;;;;
+;;;; Expectancy File I/O
+;;;;
+
+;;; TODO this should produce XML
+(defmethod exchange-format ((expectation-to-exchange expectation) sample-rate)
+  "Returns the expectancy in the EmCAP interchange output format."
+  (format nil "~,5f ~,5f ~,5f;~:{~,5f,~,5f~:^ ~}" 
+	  (time-in-seconds expectation-to-exchange sample-rate) 
+	  (confidence expectation-to-exchange)
+	  (precision expectation-to-exchange)
+	  (expected-features expectation-to-exchange)))
 
 (defun write-expectancies-to-stream (expectancies sample-rate stream)
   "Write the expectancies to a stream with the labelling the MTG code needs."
@@ -342,9 +381,8 @@
 (defun last-expectancy-of-file (input-filepath output-filepath &key (sample-rate 200.0d0))
   "Computes the expectancies at the last moment in the file from the discrete onset times"
   (let* ((times-as-rhythm (rhythm-of-emcap-onset-file input-filepath sample-rate))
-	 (last-time (if nil
-			(1- (duration-in-samples times-as-rhythm)) ; take either last moment of window
-			(last-onset-time times-as-rhythm)))	   ; or last onset.
+	 (last-time (last-onset-time times-as-rhythm))  ; take either last onset
+	 ;; (1- (duration-in-samples times-as-rhythm))	; or last moment of window.
 	 (expectancies-at-last-time (expectancies-of-rhythm times-as-rhythm :times-to-check (list last-time))))
     (with-open-file (expectancy-file output-filepath :direction :output :if-exists :supersede)
       (write-expectancies-to-stream expectancies-at-last-time sample-rate expectancy-file))))

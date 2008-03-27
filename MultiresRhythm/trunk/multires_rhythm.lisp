@@ -111,7 +111,7 @@ This is weighted by absolute constraints, look in the 600ms period range."
     normalised-values))
 
 (defun phase-diff (phase)
-  "Compute the first order differences of a phase signal, such that we take into account
+  "Compute the first order differences of a phase signal (modulo +/- pi), such that we take into account
   wrap around at the pi and -pi boundaries."
   (let* ((dt-phase (.diff phase))
 	 (abs-dt-phase (.abs dt-phase))

@@ -113,17 +113,25 @@
 
 ;; (setf x (probed-random-rhythm-of-meter '(2 2 2 2)))
 
+(defun random-offset (max-length)
+  "Defines a random chunk of silence at the end of the rhythm to ensure it is not the
+  regularity of the analysis region which biases the ridge."
+  (let* ((region-length (random max-length)))
+    (make-instance 'rhythm 
+		   :name "offset"
+		   :time-signal (make-double-array region-length))))
+
 (defun create-metrical-set (candidate-meter size-of-rhythm-set &key (number-of-bars 6))
   "Return a set of unique metrical rhythms"
   (loop ; repeat size-of-rhythm-set ;; needs to be 
      while (< (length metrical-interval-set) size-of-rhythm-set)
      for (rhythm intervals) = (multiple-value-list (random-metrical-rhythm-of-meter candidate-meter 
 						    :number-of-bars number-of-bars))
-     ;; (append-rhythm (random-metrical-rhythm-of-meter candidate-meter)
-     ;;		    (rhythm-of-weighted-onsets "empty duration" '((0.0 1.0) (1.0 0.0))))))
      when (not (member intervals metrical-interval-set :test #'equal))
      collect intervals into metrical-interval-set
-     and collect rhythm into metrical-rhythm-set
+     ;; and collect rhythm into metrical-rhythm-set
+     and collect (append-rhythm rhythm (random-offset 100)) into metrical-rhythm-set
+     ;; (append rhythm (rhythm-of-weighted-onsets "empty duration" '((0.0 1.0) (1.0 0.0))))
      finally (return metrical-rhythm-set)))
 
 (defun write-rhythms (rhythms name)
@@ -145,37 +153,53 @@
  	  :title title)))
 
 ;;; Sum all values falling within the given bins ranges. Effectively integrate.
-;;; Could sort by time value. Need to add, rather than average the bins.
-(defun time-bins (expect-times &key (bin-size 0.1) (number-of-bins (ceiling (/ (range expect-times) bin-size))))
-  (let* ((bin-boundaries (.rseq (.min expect-times) (.max expect-times) number-of-bins))
+;;; Could sort by time value. Return the sum and the average of the confidences in the bins.
+(defun time-bins (all-expectations &key (bin-size 0.025))
+  (let* ((expect-times (make-narray (mapcar (lambda (expect) (time-in-seconds expect 200.0)) all-expectations)))
+	 (expect-confidences (make-narray (mapcar (lambda (expect) (confidence expect)) all-expectations)))
+	 (number-of-bins (ceiling (/ (range expect-times) bin-size)))
+	 (bin-boundaries (.rseq (.min expect-times) (.max expect-times) number-of-bins))
 	 (bins (make-double-array number-of-bins)))
     (loop
        for bin-index from 1 below number-of-bins
+       ;; determine which elements in expect-times (& therefore expect-confidences) are within the bin.
+       for in-bin = (.and (.>= expect-times (.aref bin-boundaries (1- bin-index)))
+			  (.< expect-times (.aref bin-boundaries bin-index)))
+       for in-bin-count = (.sum in-bin)
        do (progn
-	    (format t "from ~a to ~a ~%" (.aref bin-boundaries (1- bin-index))
-		    (.aref bin-boundaries bin-index))
-	    (setf (.aref bins bin-index) (.sum (.and (.>= expect-times (.aref bin-boundaries (1- bin-index)))
-						     (.< expect-times (.aref bin-boundaries bin-index))))))
+	    ;; (format t "from ~a to ~a ~a values~%" (.aref bin-boundaries (1- bin-index)) (.aref bin-boundaries bin-index) in-bin-count)
+	    (setf (.aref bins bin-index) (.sum (.* in-bin expect-confidences))))
+	    ;; (setf (.aref bins bin-index) (if (zerop in-bin-count)
+       ;; 				     in-bin-count
+       ;; 			     (/ (.sum (.* in-bin expect-confidences)) in-bin-count))))
        finally (return (values bins bin-boundaries)))))
 
 (defun plot-expectancies-histogram (all-expectations title)
   (multiple-value-bind (prediction-counts time-bins)
-      (time-bins (make-narray (mapcar (lambda (expect) (time-in-seconds expect 200.0)) all-expectations))) 
+      (time-bins all-expectations)
     (plot prediction-counts time-bins
- 	  :style "boxes" :xlabel "Time" :ylabel "Occurance" 
+ 	  :style "boxes fill solid 1.0 border -1"
+	  :xlabel "Time (Seconds)" 
+	  :ylabel "Accumulated Confidence" 
  	  :aspect-ratio 0.66
  	  :title title)))
 
 (defun metrical-rhythm-expectancies (candidate-meter &key (sample-size 40) (number-of-bars 2))
   "Given a meter, create a set of random metrical rhythms plot the confidences of each expectation"
   (let* ((random-metrical-rhythms (create-metrical-set candidate-meter sample-size :number-of-bars number-of-bars))
-	 (expectancy-set (mapcar (lambda (r) (last-expectations r)) random-metrical-rhythms))
+	 (expectancy-set (mapcar #'last-expectations random-metrical-rhythms))
+	 ;; (expectancy-set (mapcar (lambda (r) (last-expectations r :last-time (last-onset-time r))) random-metrical-rhythms))
+	 ;; (expectancy-set (mapcar (lambda (r) (last-expectations r :last-time 799)) random-metrical-rhythms))
 	 ;; Make all expectations into a single list for easy traversal.
 	 (all-expectations (reduce #'append expectancy-set)))
-    (plot-expectancies all-expectations (format nil "Expectation Confidences for ~a bars of ~a meter" 
-						number-of-bars candidate-meter))
-    (plot-expectancies-histogram all-expectations (format nil "Expectation Counts for ~a bars of ~a meter" 
-							  number-of-bars candidate-meter))))
+    (window)
+    (plot-expectancies all-expectations 
+		       (format nil "Expectation Confidences for ~a examples of ~a bars of ~a meter" 
+			       sample-size number-of-bars candidate-meter))
+    (window)
+    (plot-expectancies-histogram all-expectations 
+				 (format nil "Accumulated Expectation Confidences for ~a examples of ~a bars of ~a meter" 
+					 sample-size number-of-bars candidate-meter))))
 
 #|
 ;; zero valued last point to stretch the rhythm
@@ -321,8 +345,6 @@
 
 ;; (dolist (candidate-meter '((3 2) (2 2)))
 
-;; (metrical-rhythm-expectancies '(3 2) :number-of-bars 4 :sample-size 20)
-;; (metrical-rhythm-expectancies '(2 2) :number-of-bars 4 :sample-size 20)
 (setf short-ternary-meter (rhythm-of-weighted-onsets "ternary-meter" '((0.0   1.0) 
 								       (0.333 0.43) 
 								       (0.666 0.43) 
@@ -345,6 +367,16 @@
 (write-as-audio m
 		#P"/Volumes/iDisk/Research/Data/RicardsOnsetTests/test_sound.wav"
 		#P"/Volumes/iDisk/Research/Data/Handclap Examples/hihat_closed.aiff")
+;; Compare integrator vs. last-onset magnitude & phase.
 (last-expectations m)
+(last-onset-expectations m)
 
+;; (metrical-rhythm-expectancies '(3 2) :number-of-bars 4 :sample-size 60)
+;; (metrical-rhythm-expectancies '(2 2) :number-of-bars 4 :sample-size 60)
+
+(setf mo (append-rhythm m (random-offset 100)))
+(pushnew 'ridge-phase *plotting*)
+(list (last-expectations mo :last-time (last-onset-time mo)) ; last-onset-expect-mo
+      (last-expectations mo :last-time 799) ; last-meter-expect-mo
+      (last-expectations mo)) ; last-moment-expect-mo
 |#
