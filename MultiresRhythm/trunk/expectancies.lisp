@@ -142,42 +142,60 @@
   (let ((peaks (ridge-peaks analysis)))
     (.* peaks (most-precise peaks (ridge-troughs analysis)))))
 
-;; (defun normalized-phase (x) 
-;;   "Return a value between 0 and 1 for a phase value from 0 -> pi, -pi -> 0"
-;;   (let ((pi2 (* pi 2)))
-;;     (/ (+ x (if (minusp x) pi2 0)) pi2)))
-
-(defun normalized-phase (x) 
-  "Return a value between 0 -> 0.5, 0.5 -> 0 for a phase value from 0 -> pi, -pi -> 0.
-   This represents the maximum angular distance"
-  (/ (abs x) (* pi 2)))
-
-;; (defun normalized-phase (x) 
-;;   "Return a value between 0 -> 1 for a phase value from 0 -> pi, -pi -> 0.
-;;    This represents the maximum angular distance"
-;;   (/ (abs x) pi))
-
 (defun phase-diff-from-start (phase scale time)
   (format t "phase at time ~a phase at 0 ~a~%" (.aref phase scale time) (.aref phase scale 0))
   (.aref (phase-diff (make-narray (list (.aref phase scale time) (.aref phase scale 0)))) 0))
 
-(defun phase-correct (time-projection time phase-correct-from)
-  "Compute the time prediction, modified by the phase using multiple case scenarios"
-  ;; Calculate the number of periods of projection within the gap between last onset & the
-  ;; moment of expectancy projection.
-  (if (null phase-correct-from)
-      (+ time time-projection)
-      (multiple-value-bind (periods phase-offset)
-	  (floor (- time phase-correct-from) time-projection)
-	(format t "time projection ~a time ~a phase correct from ~a periods ~a phase-offset ~a~%" 
-		time-projection time phase-correct-from periods phase-offset)
-	(cond ((> periods 1)		; multiple projections within the gap.
-	       (+ time time-projection))
-	      ((= periods 1)		; a single projection fits within the gap
-	       (+ time time-projection (- phase-offset)))
-	      ((zerop periods)		; the projection exceeds the gap.
-	       (+ phase-correct-from time-projection))))))
-  
+(defun normalized-phase (phi) 
+  "Return a value between 0 and 1 for a phase value from 0 -> pi, -pi -> 0"
+  (let ((pi2 (* pi 2)))
+    (/ (+ phi (if (minusp phi) pi2 0)) pi2)))
+
+;;(defun phase-distance-from-zero
+;; Perhaps calc the relative length first
+
+;;; Phase goes 0 -> pi, -pi -> 0.
+(defun phase-corrected-time-computed (time-projection phase scale time)
+  "Compute the correction using the assumption the phase value progresses regularly
+   through the period. This doesn't happen in practice!"
+  (let* ((norm-phase (normalized-phase (.aref phase scale time)))
+	 (phase-offset (* time-projection norm-phase))
+	 (zero-index (round (- time phase-offset))))
+    (format t "time projection ~,3f phase zero index ~d norm-phase ~,3f phase-offset ~,3f~%" 
+	    time-projection zero-index norm-phase phase-offset)
+    (format t "value at expected phase zero index, & either side (~,3f ~,3f ~,3f)~%"
+	    (.aref phase scale (1- zero-index))
+	    (.aref phase scale zero-index)
+	    (if (= zero-index time) 0 (.aref phase scale (1+ zero-index))))
+    (+ time (* time-projection (- 1.0d0 norm-phase)))))
+
+;; (phase-corrected-time (+ time (* (time-support scale vpo) 
+;;			  (- 1.0d0 (normalized-phase (phase-diff-from-start phase scale time))))))
+;;    (format t "time projection ~,5f phase weighting ~,5f time ~a expected-time ~,3f weighted ~,3f unweighted ~,3f~%"
+;; (time-support scale vpo) (- 1.0d0 (normalized-phase phase-of-ridge)) time 
+;;	(time-support scale vpo) (- 1.0d0 (normalized-phase (phase-diff-from-start phase scale time))) time 
+;;	expected-time phase-corrected-time uncorrected-time)
+;;    (format t "phase-diff ~a~%" (phase-diff-from-start phase scale time))
+
+(defun phase-corrected-time-chasing (time-projection phase scale time)
+  "Returns the time-projection corrected by it's phase measure based on the most recent occurrance of zero phase. 
+   Chases for phase-zero values backwards from time."
+  (loop
+     for zero-index from time downto 1
+     until (and (not (minusp (.aref phase scale zero-index)))
+		(minusp (.aref phase scale (1- zero-index))))
+     finally (return 
+	       (progn (format t "Chasing: time projection ~,3f phase zero index ~d computed phase offset ~,3f~%" 
+			      time-projection zero-index (- time zero-index))
+;; 		      (format t "value at expected phase zero index, & either side (~,3f ~,3f ~,3f)~%"
+;; 			      (.aref phase scale (1- zero-index))
+;; 			      (.aref phase scale zero-index)
+;; 			      (if (= zero-index time) 0 (.aref phase scale (1+ zero-index))))
+		      (if (< (/ (- time zero-index) time-projection) 0.8)  ; check we did not wind back too far.
+			  (+ zero-index time-projection)
+			  (+ time time-projection))))))
+
+;;; The phase checking version  
 (defun expectancy-of-ridge-at-time (ridge time scaleogram all-precision 
 				    &key (time-limit-expectancies nil) (phase-correct-from nil))
   "Return an expectation instance holding the expection time, the confidence and the precision" 
@@ -185,8 +203,10 @@
 	 (max-time (if time-limit-expectancies (duration-in-samples scaleogram) most-positive-fixnum))
 	 (scale (scale-at-time ridge time))
 	 (magnitude (scaleogram-magnitude scaleogram))
+	 (phase (scaleogram-phase scaleogram))
+	 ;; Compute the time prediction, modified by the phase.
+	 (phase-corrected-time (phase-corrected-time-chasing (time-support scale vpo) phase scale time))
 	 (uncorrected-time (+ time (time-support scale vpo)))
-	 (phase-corrected-time (phase-correct (time-support scale vpo) time phase-correct-from))
 	 (expected-time (if phase-correct-from phase-corrected-time uncorrected-time))
 	 ;; energy = absolute height (of scaleogram or ridge-peaks)
 	 (energy (.aref magnitude scale time)))
@@ -197,6 +217,46 @@
 		   ;; :sample-rate (sample-rate ?) TODO sample rate of?
 		   :confidence energy
 		   :precision (.aref all-precision scale time))))
+
+#|
+(defun phase-corrected-time-hacky (time-projection time phase-correct-from)
+  "Compute the time prediction, modified by the phase using multiple case scenarios"
+  ;; Calculate the number of periods of projection within the gap between last onset & the
+  ;; moment of expectancy projection.
+  (if (null phase-correct-from)
+      (+ time time-projection)
+      (multiple-value-bind (periods phase-offset)
+	  (floor (- time phase-correct-from) time-projection)
+	(format t "Hacky: time projection ~,3f phase correct from ~a periods ~a phase-offset ~a~%" 
+		time-projection phase-correct-from periods phase-offset)
+	(cond ((> periods 1)		; multiple projections within the gap.
+	       (+ time time-projection))
+	      ((= periods 1)		; a single projection fits within the gap
+	       (+ time time-projection (- phase-offset)))
+	      ((zerop periods)		; the projection exceeds the gap.
+	       (+ phase-correct-from time-projection))))))
+
+;;; The clunky manual checking version.
+(defun expectancy-of-ridge-at-time (ridge time scaleogram all-precision 
+				    &key (time-limit-expectancies nil) (phase-correct-from nil))
+  "Return an expectation instance holding the expection time, the confidence and the precision" 
+  (let* ((vpo (voices-per-octave scaleogram))
+	 (max-time (if time-limit-expectancies (duration-in-samples scaleogram) most-positive-fixnum))
+	 (scale (scale-at-time ridge time))
+	 (magnitude (scaleogram-magnitude scaleogram))
+	 (uncorrected-time (+ time (time-support scale vpo)))
+	 (phase-corrected-time (phase-corrected-time-hacky (time-support scale vpo) time phase-correct-from))
+	 (expected-time (if phase-correct-from phase-corrected-time uncorrected-time))
+	 ;; energy = absolute height (of scaleogram or ridge-peaks)
+	 (energy (.aref magnitude scale time)))
+    (format t "time ~a time projection ~,3f phase-corrected ~,3f uncorrected ~,3f expected-time ~,3f~%"
+	    time (time-support scale vpo) phase-corrected-time uncorrected-time expected-time)
+    (make-instance 'expectation 
+		   :time (min expected-time max-time)
+		   ;; :sample-rate (sample-rate ?) TODO sample rate of?
+		   :confidence energy
+		   :precision (.aref all-precision scale time))))
+|#
 
 (defun expectancies-of-skeleton-at-times (skeleton times scaleogram precision &key
 					  (cutoff-scale 16) (phase-correct-from nil))
@@ -214,7 +274,8 @@
 							   :time-limit-expectancies nil)))))
 
 (defun expectancies-of-rhythm-integrator (rhythm-to-analyse 
-					  &key (times-to-check (nlisp::array-to-list (onsets-in-samples rhythm-to-analyse))))
+					  &key (times-to-check (nlisp::array-to-list (onsets-in-samples rhythm-to-analyse)))
+					  (phase-correct-from nil))
   "Return a list structure of expectancies. Computes the expectancies using the maximum
    value of the cumulative sum of the scaleogram energy" 
   (let* ((analysis (analysis-of-rhythm rhythm-to-analyse :padding #'causal-pad))
@@ -248,8 +309,11 @@
 	     (peak-scales (.find (.column weighted-scale-peaks last-time)))
 	     (phase (scaleogram-phase scaleogram))
 	     ;; (phases-to-plot (map 'list (lambda (s) (.row phase s)) (val peak-scales)))
-	     (peak-to-plot 1)
+	     (peak-to-plot 0)
 	     (phases-to-plot (list (time-signal rhythm-to-analyse) (.row phase (.aref peak-scales peak-to-plot)))))
+	(loop 
+	   for scale across (val peak-scales)
+	   do (format t "~a: " scale) (phase-corrected-time phase scale (1- (duration-in-samples rhythm-to-analyse)) 16))
 	(nplot phases-to-plot nil 
 	       :aspect-ratio 0.66 
 	       :title (format nil "plotting peak ~a~%" peak-to-plot)
@@ -262,7 +326,7 @@
 				       times-to-check
 				       scaleogram
 				       weighted-precision
-				       :phase-correct-from (last-onset-time rhythm-to-analyse))))
+				       :phase-correct-from phase-correct-from)))
 
 ;; (expectancies-of-rhythm-integrator rhythm-to-analyse :times-to-check (list (1- (duration-in-samples rhythm-to-analyse))))
 
@@ -294,7 +358,9 @@
 ;;; This is needed to throw away the time and break the last expectation out of the list.
 (defun last-expectations (rhythm-to-expect &key (last-time (1- (duration-in-samples rhythm-to-expect))))
   "Return the list of expectations for the last moment in the rhythm"
-  (second (first (expectancies-of-rhythm-integrator rhythm-to-expect :times-to-check (list last-time)))))
+  (second (first (expectancies-of-rhythm-integrator rhythm-to-expect 
+						    :times-to-check (list last-time)
+						    :phase-correct-from (last-onset-time rhythm-to-expect)))))
 
 ;;; This is needed to throw away the time and break the last expectation out of the list.
 (defun last-onset-expectations (rhythm-to-expect)

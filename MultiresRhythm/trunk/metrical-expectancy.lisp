@@ -132,7 +132,7 @@
      ;; and collect rhythm into metrical-rhythm-set
      and collect (append-rhythm rhythm (random-offset 100)) into metrical-rhythm-set
      ;; (append rhythm (rhythm-of-weighted-onsets "empty duration" '((0.0 1.0) (1.0 0.0))))
-     finally (return metrical-rhythm-set)))
+     finally (return (values metrical-rhythm-set metrical-interval-set))))
 
 (defun write-rhythms (rhythms name)
   (loop
@@ -177,11 +177,14 @@
 (defun plot-expectancies-histogram (all-expectations title)
   (multiple-value-bind (prediction-counts time-bins)
       (time-bins all-expectations)
+    (plot-command "set xtics 0.1")
     (plot prediction-counts time-bins
  	  :style "boxes fill solid 1.0 border -1"
 	  :xlabel "Time (Seconds)" 
-	  :ylabel "Accumulated Confidence" 
+	  :ylabel "Accumulated Confidence"
+	  :label "Relative accumulated confidence"
  	  :aspect-ratio 0.66
+	  :reset nil
  	  :title title)))
 
 (defun metrical-rhythm-expectancies (candidate-meter &key (sample-size 40) (number-of-bars 2))
@@ -196,10 +199,12 @@
     (plot-expectancies all-expectations 
 		       (format nil "Expectation Confidences for ~a examples of ~a bars of ~a meter" 
 			       sample-size number-of-bars candidate-meter))
+    (close-window)
     (window)
     (plot-expectancies-histogram all-expectations 
 				 (format nil "Accumulated Expectation Confidences for ~a examples of ~a bars of ~a meter" 
-					 sample-size number-of-bars candidate-meter))))
+					 sample-size number-of-bars candidate-meter))
+    (close-window)))
 
 #|
 ;; zero valued last point to stretch the rhythm
