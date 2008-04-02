@@ -160,17 +160,19 @@
   "Group the expectations into bins of time, specified by bin-size (in seconds)"
   (let* ((expect-times (make-narray (mapcar (lambda (expect) (time-in-seconds expect sample-rate)) all-expectations)))
 	 (expect-confidences (make-narray (mapcar (lambda (expect) (confidence expect)) all-expectations)))
-	 (number-of-bins (ceiling (/ (range expect-times) bin-size)))
-	 (bin-boundaries (.rseq (.min expect-times) (.max expect-times) number-of-bins))
+	 (number-of-bins (ceiling (range expect-times) bin-size)) ; round up to get all times 
+	 (last-bin (+ (.min expect-times) (* (1- number-of-bins) bin-size))) ; for low edge of bin.
+	 (bin-boundaries (.rseq (.min expect-times) last-bin number-of-bins))
 	 (accumulated-confidences (make-double-array number-of-bins))
 	 (bin-counts (make-double-array number-of-bins)))
     (loop
-       for bin-index from 1 below number-of-bins
+       for bin-index from 0 below number-of-bins
        ;; determine which elements in expect-times (& therefore expect-confidences) are within the bin.
-       for in-bin = (.or (.and (.= expect-times (.max expect-times)) ; catch the edge of last bin.
-			       (.= bin-index (1- number-of-bins)))
-			 (.and (.>= expect-times (.aref bin-boundaries (1- bin-index)))
-			       (.< expect-times (.aref bin-boundaries bin-index))))
+       for in-bin = (.and (.>= expect-times (.aref bin-boundaries bin-index))
+			  ;; catch the edge of last bin.
+			  (.< expect-times (if (= bin-index (1- number-of-bins))
+					       (+ last-bin bin-size) 
+					       (.aref bin-boundaries (1+ bin-index)))))
        for in-bin-count = (.sum in-bin)  ; number of occurances.
        do (progn
 	    ;; (format t "from ~a to ~a ~a values~%" (.aref bin-boundaries (1- bin-index)) (.aref bin-boundaries bin-index) in-bin-count)
@@ -185,7 +187,7 @@
 ;;     (plot-command "set title font \"Times,20\"")
 ;;     (plot-command "set xlabel font \"Times,20\"")
 ;;     (plot-command "set ylabel font \"Times,20\"")
-    (plot-command "set xtics 0.1")
+    (plot-command "set xtics 0.1 out")
     (plot prediction-counts time-bins
  	  :style "boxes fill solid 1.0 border -1"
 	  :xlabel "Time (Seconds)" 
@@ -196,7 +198,7 @@
  	  :title (format nil "Occurrence of Interval Expectations for ~a" title))
     (close-window)
     (window)
-    (plot-command "set xtics 0.1")
+    (plot-command "set xtics 0.1 out")
     (plot accumulated-confidences time-bins
  	  :style "boxes fill solid 1.0 border -1"
 	  :xlabel "Time (Seconds)" 
@@ -404,4 +406,5 @@
       (last-expectations mo :last-time 799) ; last-meter-expect-mo
       (last-expectations mo)) ; last-moment-expect-mo
 (plot-expectancies-histogram (last-expectations mo) (name mo))
+(mapcar (lambda (e) (time-in-seconds e 200.0)) (last-expectations mo))
 |#
