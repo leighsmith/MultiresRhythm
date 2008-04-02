@@ -147,45 +147,68 @@
 (defun plot-expectancies (all-expectations title)
   (let ((expect-times (make-narray (mapcar (lambda (expect) (time-in-seconds expect 200.0)) all-expectations)))
 	(expect-confidences (make-narray (mapcar (lambda (expect) (confidence expect)) all-expectations))))
-     (plot expect-confidences expect-times 
+    (window)
+    (plot expect-confidences expect-times 
  	  :style "points" :xlabel "Time" :ylabel "Confidence" 
  	  :aspect-ratio 0.66
- 	  :title title)))
+ 	  :title title)
+    (close-window)))
 
 ;;; Sum all values falling within the given bins ranges. Effectively integrate.
 ;;; Could sort by time value. Return the sum and the average of the confidences in the bins.
-(defun time-bins (all-expectations &key (bin-size 0.025))
-  (let* ((expect-times (make-narray (mapcar (lambda (expect) (time-in-seconds expect 200.0)) all-expectations)))
+(defun time-bins (all-expectations &key (bin-size 0.025) (sample-rate 200.0d0))
+  "Group the expectations into bins of time, specified by bin-size (in seconds)"
+  (let* ((expect-times (make-narray (mapcar (lambda (expect) (time-in-seconds expect sample-rate)) all-expectations)))
 	 (expect-confidences (make-narray (mapcar (lambda (expect) (confidence expect)) all-expectations)))
 	 (number-of-bins (ceiling (/ (range expect-times) bin-size)))
 	 (bin-boundaries (.rseq (.min expect-times) (.max expect-times) number-of-bins))
-	 (bins (make-double-array number-of-bins)))
+	 (accumulated-confidences (make-double-array number-of-bins))
+	 (bin-counts (make-double-array number-of-bins)))
     (loop
        for bin-index from 1 below number-of-bins
        ;; determine which elements in expect-times (& therefore expect-confidences) are within the bin.
-       for in-bin = (.and (.>= expect-times (.aref bin-boundaries (1- bin-index)))
-			  (.< expect-times (.aref bin-boundaries bin-index)))
-       for in-bin-count = (.sum in-bin)
+       for in-bin = (.or (.and (.= expect-times (.max expect-times)) ; catch the edge of last bin.
+			       (.= bin-index (1- number-of-bins)))
+			 (.and (.>= expect-times (.aref bin-boundaries (1- bin-index)))
+			       (.< expect-times (.aref bin-boundaries bin-index))))
+       for in-bin-count = (.sum in-bin)  ; number of occurances.
        do (progn
 	    ;; (format t "from ~a to ~a ~a values~%" (.aref bin-boundaries (1- bin-index)) (.aref bin-boundaries bin-index) in-bin-count)
-	    (setf (.aref bins bin-index) (.sum (.* in-bin expect-confidences))))
-	    ;; (setf (.aref bins bin-index) (if (zerop in-bin-count)
-       ;; 				     in-bin-count
-       ;; 			     (/ (.sum (.* in-bin expect-confidences)) in-bin-count))))
-       finally (return (values bins bin-boundaries)))))
+	    (setf (.aref accumulated-confidences bin-index) (.sum (.* in-bin expect-confidences)))
+	    (setf (.aref bin-counts bin-index) in-bin-count))
+       finally (return (values bin-counts bin-boundaries accumulated-confidences)))))
 
 (defun plot-expectancies-histogram (all-expectations title)
-  (multiple-value-bind (prediction-counts time-bins)
+  (multiple-value-bind (prediction-counts time-bins accumulated-confidences)
       (time-bins all-expectations)
+    (window)
+;;     (plot-command "set title font \"Times,20\"")
+;;     (plot-command "set xlabel font \"Times,20\"")
+;;     (plot-command "set ylabel font \"Times,20\"")
     (plot-command "set xtics 0.1")
     (plot prediction-counts time-bins
+ 	  :style "boxes fill solid 1.0 border -1"
+	  :xlabel "Time (Seconds)" 
+	  :ylabel "Occurrence"
+	  :label "Expected Interval Occurrence"
+ 	  :aspect-ratio 0.66
+	  :reset nil
+ 	  :title (format nil "Occurrence of Interval Expectations for ~a" title))
+    (close-window)
+    (window)
+    (plot-command "set xtics 0.1")
+    (plot accumulated-confidences time-bins
  	  :style "boxes fill solid 1.0 border -1"
 	  :xlabel "Time (Seconds)" 
 	  :ylabel "Accumulated Confidence"
 	  :label "Relative accumulated confidence"
  	  :aspect-ratio 0.66
 	  :reset nil
- 	  :title title)))
+ 	  :title (format nil "Accumulated Expectation Confidences for ~a" title))
+    (close-window)))
+
+;; (setf (.aref bins bin-index) (if (zerop in-bin-count) in-bin-count
+;; 			     (/ (.sum (.* in-bin expect-confidences)) in-bin-count))))
 
 (defun metrical-rhythm-expectancies (candidate-meter &key (sample-size 40) (number-of-bars 2))
   "Given a meter, create a set of random metrical rhythms plot the confidences of each expectation"
@@ -195,16 +218,12 @@
 	 ;; (expectancy-set (mapcar (lambda (r) (last-expectations r :last-time 799)) random-metrical-rhythms))
 	 ;; Make all expectations into a single list for easy traversal.
 	 (all-expectations (reduce #'append expectancy-set)))
-    (window)
-    (plot-expectancies all-expectations 
-		       (format nil "Expectation Confidences for ~a examples of ~a bars of ~a meter" 
-			       sample-size number-of-bars candidate-meter))
-    (close-window)
-    (window)
+;;     (plot-expectancies all-expectations 
+;; 		       (format nil "Expectation Confidences for ~a examples of ~a bars of ~a meter" 
+;; 			       sample-size number-of-bars candidate-meter))
     (plot-expectancies-histogram all-expectations 
-				 (format nil "Accumulated Expectation Confidences for ~a examples of ~a bars of ~a meter" 
-					 sample-size number-of-bars candidate-meter))
-    (close-window)))
+				 (format nil "~a examples of ~a bars of ~a meter" 
+					 sample-size number-of-bars candidate-meter))))
 
 #|
 ;; zero valued last point to stretch the rhythm
@@ -376,12 +395,13 @@
 (last-expectations m)
 (last-onset-expectations m)
 
-;; (metrical-rhythm-expectancies '(3 2) :number-of-bars 4 :sample-size 60)
-;; (metrical-rhythm-expectancies '(2 2) :number-of-bars 4 :sample-size 60)
+;; (metrical-rhythm-expectancies '(3 2) :number-of-bars 4 :sample-size 100)
+;; (metrical-rhythm-expectancies '(2 2) :number-of-bars 4 :sample-size 100)
 
 (setf mo (append-rhythm m (random-offset 100)))
 (pushnew 'ridge-phase *plotting*)
 (list (last-expectations mo :last-time (last-onset-time mo)) ; last-onset-expect-mo
       (last-expectations mo :last-time 799) ; last-meter-expect-mo
       (last-expectations mo)) ; last-moment-expect-mo
+(plot-expectancies-histogram (last-expectations mo) (name mo))
 |#
