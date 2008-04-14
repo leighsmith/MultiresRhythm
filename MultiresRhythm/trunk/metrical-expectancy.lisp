@@ -88,16 +88,20 @@
 
 ;;; Randomly generate metrical rhythms of a fixed meter, with no upbeats.
 ;;; TODO Need to specify tempo, either directly or with shortest-ioi.
-(defun random-metrical-rhythm-of-meter (meter &key (number-of-bars 2))
+(defun random-metrical-rhythm-of-meter (meter &key 
+					(number-of-bars 2) 
+					(quarter-note-IOI 0.600) 
+					(max-division-of-crotchet 4)
+					(sample-rate 200.0))
   (let* ((bar-length (reduce #'* meter))
 	 (rhythm-name (format nil "~d bar random rhythm in ~a meter" number-of-bars meter))
 	 (random-metrical-rhythm (shoe::pattern-from-grammar-long-segment 0 (* number-of-bars bar-length)
 									  bar-length meter)))
-    ;; An entire bar is 1 second = 200 samples. 180BPM
+    ;; Assume 16ths are the minimum division
     (values (iois-to-rhythm rhythm-name 
 			    random-metrical-rhythm 
-			    :shortest-ioi (/ 200.0 bar-length) 
-			    :sample-rate 200)
+			    :shortest-ioi (/ (* sample-rate quarter-note-IOI) max-division-of-crotchet)
+			    :sample-rate sample-rate)
 	    random-metrical-rhythm)))
 
 ;; (setf random-44 (random-metrical-rhythm-of-meter '(2 2 2 2)))
@@ -129,8 +133,8 @@
 						    :number-of-bars number-of-bars))
      when (not (member intervals metrical-interval-set :test #'equal))
      collect intervals into metrical-interval-set
-     ;; and collect rhythm into metrical-rhythm-set
-     and collect (append-rhythm rhythm (random-offset 100)) into metrical-rhythm-set
+     and collect rhythm into metrical-rhythm-set
+     ;; and collect (append-rhythm rhythm (random-offset 100)) into metrical-rhythm-set
      ;; (append rhythm (rhythm-of-weighted-onsets "empty duration" '((0.0 1.0) (1.0 0.0))))
      finally (return (values metrical-rhythm-set metrical-interval-set))))
 
@@ -144,23 +148,12 @@
 				       :type "wav")
 			#P"/Volumes/iDisk/Research/Data/Handclap Examples/hihat_closed.aiff")))
 
-(defun plot-expectancies (all-expectations title)
-  (let ((expect-times (make-narray (mapcar (lambda (expect) (time-in-seconds expect 200.0)) all-expectations)))
-	(expect-confidences (make-narray (mapcar (lambda (expect) (confidence expect)) all-expectations))))
-    (window)
-    (plot expect-confidences expect-times 
- 	  :style "points" :xlabel "Time" :ylabel "Confidence" 
- 	  :aspect-ratio 0.66
- 	  :title title)
-    (close-window)))
-
 ;;; Sum all values falling within the given bins ranges. Effectively integrate.
 ;;; Could sort by time value. Return the sum and the average of the confidences in the bins.
-(defun time-bins (all-expectations &key (bin-size 0.025) (sample-rate 200.0d0))
-  "Group the expectations into bins of time, specified by bin-size (in seconds)"
-  (let* ((expect-times (make-narray (mapcar (lambda (expect) (time-in-seconds expect sample-rate)) all-expectations)))
-	 (expect-confidences (make-narray (mapcar (lambda (expect) (confidence expect)) all-expectations)))
-	 (number-of-bins (ceiling (range expect-times) bin-size)) ; round up to get all times 
+(defun time-bins (expect-times expect-confidences &key (bin-size 0.025))
+  "Group the expectations into bins of time, specified by bin-size (in seconds). Returns
+   the number of elements in each bin, the accumulated confidences and the boundaries."
+  (let* ((number-of-bins (ceiling (range expect-times) bin-size)) ; round up to get all times 
 	 (last-bin (+ (.min expect-times) (* (1- number-of-bins) bin-size))) ; for low edge of bin.
 	 (bin-boundaries (.rseq (.min expect-times) last-bin number-of-bins))
 	 (accumulated-confidences (make-double-array number-of-bins))
@@ -180,9 +173,28 @@
 	    (setf (.aref bin-counts bin-index) in-bin-count))
        finally (return (values bin-counts bin-boundaries accumulated-confidences)))))
 
-(defun plot-expectancies-histogram (all-expectations title)
+(defun plot-expectancies (all-expectations title)
+  (let ((expect-times (make-narray (mapcar (lambda (expect) (time-in-seconds expect 200.0)) all-expectations)))
+	(expect-confidences (make-narray (mapcar (lambda (expect) (confidence expect)) all-expectations))))
+    (window)
+    (plot expect-confidences expect-times 
+ 	  :style "points" :xlabel "Time" :ylabel "Confidence" 
+ 	  :aspect-ratio 0.66
+ 	  :title title)
+    (close-window)))
+
+(defun plot-expectancies-histogram (all-expectations bar-duration-in-samples title)
+  (format t "all-expectations ~a~%times ~a (seconds)~%bar duration ~a~%bar divisions ~a~%"
+	  all-expectations
+	  (mapcar (lambda (expect) (time-in-seconds expect 200)) all-expectations)
+	  bar-duration-in-samples
+	  (mapcar (lambda (expect) (/ (expected-time expect) bar-duration-in-samples)) all-expectations))
   (multiple-value-bind (prediction-counts time-bins accumulated-confidences)
-      (time-bins all-expectations)
+      (time-bins 
+       ;; (make-narray (mapcar (lambda (expect) (time-in-seconds expect sample-rate)) all-expectations))
+       (make-narray (mapcar (lambda (expect) (/ (expected-time expect) bar-duration-in-samples)) all-expectations))
+       (make-narray (mapcar (lambda (expect) (confidence expect)) all-expectations)))
+    (format t "prediction count ~a~%" prediction-counts)
     (window)
 ;;     (plot-command "set title font \"Times,20\"")
 ;;     (plot-command "set xlabel font \"Times,20\"")
@@ -190,7 +202,7 @@
     (plot-command "set xtics 0.1 out")
     (plot prediction-counts time-bins
  	  :style "boxes fill solid 1.0 border -1"
-	  :xlabel "Time (Seconds)" 
+	  :xlabel "Divisions of a Measure" 
 	  :ylabel "Occurrence"
 	  :label "Expected Interval Occurrence"
  	  :aspect-ratio 0.66
@@ -201,7 +213,7 @@
     (plot-command "set xtics 0.1 out")
     (plot accumulated-confidences time-bins
  	  :style "boxes fill solid 1.0 border -1"
-	  :xlabel "Time (Seconds)" 
+	  :xlabel "Divisions of a Measure" 
 	  :ylabel "Accumulated Confidence"
 	  :label "Relative accumulated confidence"
  	  :aspect-ratio 0.66
@@ -219,13 +231,17 @@
 	 ;; (expectancy-set (mapcar (lambda (r) (last-expectations r :last-time (last-onset-time r))) random-metrical-rhythms))
 	 ;; (expectancy-set (mapcar (lambda (r) (last-expectations r :last-time 799)) random-metrical-rhythms))
 	 ;; Make all expectations into a single list for easy traversal.
-	 (all-expectations (reduce #'append expectancy-set)))
-;;     (plot-expectancies all-expectations 
-;; 		       (format nil "Expectation Confidences for ~a examples of ~a bars of ~a meter" 
-;; 			       sample-size number-of-bars candidate-meter))
-    (plot-expectancies-histogram all-expectations 
+	 (all-expectations (reduce #'append expectancy-set))
+	 ;; Generate one more rhythm to determine the duration in samples and therefore
+	 ;; the bar duration.
+	 (rhythm-duration (duration-in-samples (random-metrical-rhythm-of-meter candidate-meter :number-of-bars number-of-bars)))
+	 (bar-duration-in-samples (/ rhythm-duration number-of-bars)))
+    (plot-expectancies-histogram all-expectations bar-duration-in-samples
 				 (format nil "~a examples of ~a bars of ~a meter" 
 					 sample-size number-of-bars candidate-meter))))
+;; (plot-expectancies all-expectations 
+;; (format nil "Expectation Confidences for ~a examples of ~a bars of ~a meter" 
+;; sample-size number-of-bars candidate-meter))
 
 #|
 ;; zero valued last point to stretch the rhythm
@@ -387,18 +403,52 @@
 								     (2.0 1.0) 
 								     (3.0 0.0))))
 
-(multiple-value-setq (m r) (random-metrical-rhythm-of-meter '(3 2) :number-of-bars 4))
+;;;;
+
 (setf r '(2 1 1 2 6 1 1 1 1 1 1 1 1 1 1 2))
 (setf m (iois-to-rhythm "blah" r :shortest-ioi (/ 200.0 6) :sample-rate 200))
-(write-as-audio m
+
+;;; 4 bars of 3 crotchets each = 48 semiquavers
+(multiple-value-setq (m34 r34) (random-metrical-rhythm-of-meter '(3 2 2) :number-of-bars 4))
+(write-as-audio m34
 		#P"/Volumes/iDisk/Research/Data/RicardsOnsetTests/test_sound.wav"
 		#P"/Volumes/iDisk/Research/Data/Handclap Examples/hihat_closed.aiff")
+(plot-rhythm m34 :time-in-seconds t)
+(setf bar-duration-in-samples (/ (duration-in-samples m34) 4))
+(plot-expectancies-histogram (last-expectations m34) bar-duration-in-samples (name m34))
+
+(defun single-example (meter number-of-bars)
+  (multiple-value-setq (m r) (random-metrical-rhythm-of-meter meter :number-of-bars number-of-bars))
+  (write-as-audio m
+		  #P"/Volumes/iDisk/Research/Data/RicardsOnsetTests/test_sound.wav"
+		  #P"/Volumes/iDisk/Research/Data/Handclap Examples/hihat_closed.aiff")
+  (plot-rhythm m :time-in-seconds t)
+  (plot-expectancies-histogram (last-expectations m) (/ (duration-in-samples m) number-of-bars) (name m)))
+
+
+;;; 3 bars of 4 crotchets each = 48 semiquavers
+(setf number-of-bars 3)
+	(multiple-value-setq (m44 r44)
+	  (random-metrical-rhythm-of-meter '(2 2 2 2) :number-of-bars number-of-bars))
+	(setf rhythm-duration (duration-in-samples m44)) ; this needs to be before any random padding.
+      (setf bar-duration-in-samples (/ rhythm-duration number-of-bars))
+(write-as-audio m44
+		#P"/Volumes/iDisk/Research/Data/RicardsOnsetTests/test_sound.wav"
+		#P"/Volumes/iDisk/Research/Data/Handclap Examples/hihat_closed.aiff")
+(plot-rhythm m44 :time-in-seconds t)
+(setf expected-times (last-expectations m44))
+(mapcar (lambda (e) (/ (expected-time e) bar-duration-in-samples)) expected-times) 
+
 ;; Compare integrator vs. last-onset magnitude & phase.
 (last-expectations m)
-(last-onset-expectations m)
+ (last-onset-expectations m)
 
-;; (metrical-rhythm-expectancies '(3 2) :number-of-bars 4 :sample-size 100)
-;; (metrical-rhythm-expectancies '(2 2) :number-of-bars 4 :sample-size 100)
+;; (metrical-rhythm-expectancies '(3 2 2) :number-of-bars 4 :sample-size 40) ; 100
+;; (metrical-rhythm-expectancies '(2 2 2 2) :number-of-bars 3 :sample-size 40) ; 100
+
+;;; larger number of bars.
+;; (metrical-rhythm-expectancies '(3 2 2) :number-of-bars 8 :sample-size 10)
+;; (metrical-rhythm-expectancies '(2 2 2 2) :number-of-bars 6 :sample-size 10)
 
 (setf mo (append-rhythm m (random-offset 100)))
 (pushnew 'ridge-phase *plotting*)
@@ -407,4 +457,17 @@
       (last-expectations mo)) ; last-moment-expect-mo
 (plot-expectancies-histogram (last-expectations mo) (name mo))
 (mapcar (lambda (e) (time-in-seconds e 200.0)) (last-expectations mo))
+
+(setf iso-rhythm (rhythm-of-grid "Isochronous Rhythm" '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1) :shortest-ioi 256))
+
+(setf rhythm-offset (append-rhythm (random-offset 100) iso-rhythm))
+
+(pushnew 'weighted-beat-ridge *plotting*)
+(pushnew 'scale-energy-profile *plotting*)
+(pushnew 'unweighted-profile *plotting*)
+(expectancies-of-rhythm-integrator iso-rhythm :times-to-check (list (1- (duration-in-samples iso-rhythm))))
+
+(setf x (tempo-salience-weighting (preferred-tempo-scale 16 200) '(128 2) :octaves-per-stddev 1.0))
+
+
 |#
