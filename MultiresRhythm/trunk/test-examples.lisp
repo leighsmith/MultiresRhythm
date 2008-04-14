@@ -188,6 +188,7 @@
 	 (clap-at (clap-to-rhythm loaded-rhythm :tactus-selector tactus-selector)))
     (window)
     (plot-rhythm loaded-rhythm :time-in-seconds t)
+    (close-window)
     (save-rhythm-and-claps loaded-rhythm clap-at)
     clap-at))
 

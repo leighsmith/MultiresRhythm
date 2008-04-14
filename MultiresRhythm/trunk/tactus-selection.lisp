@@ -75,11 +75,9 @@
 							  :octaves-per-stddev 1.0))
  	 (weighted-persistency-profile (.* cumulative-scale-persistency tempo-beat-preference)))
     (diag-plot 'weighted-beat-ridge
-      (window)
       (plot-image #'magnitude-image (list weighted-persistency-profile) '((1.0 0.5) (0.0 0.3))
 		  (axes-labelled-in-seconds scaleogram sample-rate 4)
-		  :title (format nil "weighted persistency profile of ~a" (name rhythm-to-analyse)))
-      (close-window))
+		  :title (format nil "weighted persistency profile of ~a" (name rhythm-to-analyse))))
     (ridges-of-max-scales weighted-persistency-profile)))
 
 (defmethod unwindowed-weighted-beat-ridge ((rhythm-to-analyse rhythm) (analysis multires-analysis))
@@ -93,11 +91,9 @@
 							  :octaves-per-stddev 1.0))
  	 (weighted-magnitude (.* magnitude tempo-beat-preference)))
     (diag-plot 'weighted-beat-ridge
-      (window)
       (plot-image #'magnitude-image (list weighted-magnitude) '((1.0 0.5) (0.0 0.3))
 		  (axes-labelled-in-seconds scaleogram sample-rate 4)
-		  :title (format nil "weighted magnitude profile of ~a" (name rhythm-to-analyse)))
-      (close-window))
+		  :title (format nil "weighted magnitude profile of ~a" (name rhythm-to-analyse))))
     ;; TODO replace with (ridges-of-max-scales weighted-magnitude)?
     (loop
        for time from 0 below (duration-in-samples scaleogram)
