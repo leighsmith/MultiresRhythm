@@ -151,8 +151,22 @@
   (let ((pi2 (* pi 2)))
     (/ (+ phi (if (minusp phi) pi2 0)) pi2)))
 
-;;(defun phase-distance-from-zero
-;; Perhaps calc the relative length first
+(defun phase-corrected-time-from (time-projection time phase-correct-from)
+  "Compute the time prediction, modified by the phase from a given moment."
+  (if (null phase-correct-from)
+      (+ time time-projection)
+      ;; Calculate the number of periods of projection within the gap between phase-correct-from & the
+      ;; moment of expectancy projection (time).
+      (multiple-value-bind (periods phase-offset)
+	  (floor (- time phase-correct-from) time-projection)
+	(format t "From: time projection ~,3f phase correct from ~a periods ~a phase-offset ~a~%" 
+		time-projection phase-correct-from periods phase-offset)
+	(cond ((> periods 1)		; Multiple projections within the gap, implies the
+	       (+ time time-projection)) ; projection should apply from the analysis time.
+	      ((= periods 1)		; A single projection fits within the gap implies
+	       (+ time time-projection (- phase-offset))) ; the projection should be phase corrected.
+	      ((zerop periods)		; The projection exceeds the gap implies it originates
+	       (+ phase-correct-from time-projection)))))) ; from phase-correct-from (assumed the last onset).
 
 ;;; Phase goes 0 -> pi, -pi -> 0.
 (defun phase-corrected-time-computed (time-projection phase scale time)
@@ -161,7 +175,7 @@
   (let* ((norm-phase (normalized-phase (.aref phase scale time)))
 	 (phase-offset (* time-projection norm-phase))
 	 (zero-index (round (- time phase-offset))))
-    (format t "time projection ~,3f phase zero index ~d norm-phase ~,3f phase-offset ~,3f~%" 
+    (format t "Computed: time projection ~,3f phase zero index ~d norm-phase ~,3f phase-offset ~,3f~%" 
 	    time-projection zero-index norm-phase phase-offset)
     (format t "value at expected phase zero index, & either side (~,3f ~,3f ~,3f)~%"
 	    (.aref phase scale (1- zero-index))
@@ -169,6 +183,7 @@
 	    (if (= zero-index time) 0 (.aref phase scale (1+ zero-index))))
     (+ time (* time-projection (- 1.0d0 norm-phase)))))
 
+;; TODO phase change from start of time
 ;; (phase-corrected-time (+ time (* (time-support scale vpo) 
 ;;			  (- 1.0d0 (normalized-phase (phase-diff-from-start phase scale time))))))
 ;;    (format t "time projection ~,5f phase weighting ~,5f time ~a expected-time ~,3f weighted ~,3f unweighted ~,3f~%"
@@ -187,15 +202,10 @@
      finally (return 
 	       (progn (format t "Chasing: time projection ~,3f phase zero index ~d computed phase offset ~,3f~%" 
 			      time-projection zero-index (- time zero-index))
-;; 		      (format t "value at expected phase zero index, & either side (~,3f ~,3f ~,3f)~%"
-;; 			      (.aref phase scale (1- zero-index))
-;; 			      (.aref phase scale zero-index)
-;; 			      (if (= zero-index time) 0 (.aref phase scale (1+ zero-index))))
 		      (if (< (/ (- time zero-index) time-projection) 0.8)  ; check we did not wind back too far.
 			  (+ zero-index time-projection)
 			  (+ time time-projection))))))
 
-;;; The phase checking version  
 (defun expectancy-of-ridge-at-time (ridge time scaleogram all-precision 
 				    &key (time-limit-expectancies nil) (phase-correct-from nil))
   "Return an expectation instance holding the expection time, the confidence and the precision" 
@@ -204,9 +214,11 @@
 	 (scale (scale-at-time ridge time))
 	 (magnitude (scaleogram-magnitude scaleogram))
 	 (phase (scaleogram-phase scaleogram))
+	 (uncorrected-time (+ time (time-support scale vpo)))
 	 ;; Compute the time prediction, modified by the phase.
 	 (phase-corrected-time (phase-corrected-time-chasing (time-support scale vpo) phase scale time))
-	 (uncorrected-time (+ time (time-support scale vpo)))
+	 ;; (phase-corrected-time (phase-corrected-time-computed (time-support scale vpo) phase scale time))
+	 ;; (phase-corrected-time (phase-corrected-time-from (time-support scale vpo) time phase-correct-from))
 	 (expected-time (if phase-correct-from phase-corrected-time uncorrected-time))
 	 ;; energy = absolute height (of scaleogram or ridge-peaks)
 	 (energy (.aref magnitude scale time)))
@@ -217,46 +229,6 @@
 		   ;; :sample-rate (sample-rate ?) TODO sample rate of?
 		   :confidence energy
 		   :precision (.aref all-precision scale time))))
-
-#|
-(defun phase-corrected-time-hacky (time-projection time phase-correct-from)
-  "Compute the time prediction, modified by the phase using multiple case scenarios"
-  ;; Calculate the number of periods of projection within the gap between last onset & the
-  ;; moment of expectancy projection.
-  (if (null phase-correct-from)
-      (+ time time-projection)
-      (multiple-value-bind (periods phase-offset)
-	  (floor (- time phase-correct-from) time-projection)
-	(format t "Hacky: time projection ~,3f phase correct from ~a periods ~a phase-offset ~a~%" 
-		time-projection phase-correct-from periods phase-offset)
-	(cond ((> periods 1)		; multiple projections within the gap.
-	       (+ time time-projection))
-	      ((= periods 1)		; a single projection fits within the gap
-	       (+ time time-projection (- phase-offset)))
-	      ((zerop periods)		; the projection exceeds the gap.
-	       (+ phase-correct-from time-projection))))))
-
-;;; The clunky manual checking version.
-(defun expectancy-of-ridge-at-time (ridge time scaleogram all-precision 
-				    &key (time-limit-expectancies nil) (phase-correct-from nil))
-  "Return an expectation instance holding the expection time, the confidence and the precision" 
-  (let* ((vpo (voices-per-octave scaleogram))
-	 (max-time (if time-limit-expectancies (duration-in-samples scaleogram) most-positive-fixnum))
-	 (scale (scale-at-time ridge time))
-	 (magnitude (scaleogram-magnitude scaleogram))
-	 (uncorrected-time (+ time (time-support scale vpo)))
-	 (phase-corrected-time (phase-corrected-time-hacky (time-support scale vpo) time phase-correct-from))
-	 (expected-time (if phase-correct-from phase-corrected-time uncorrected-time))
-	 ;; energy = absolute height (of scaleogram or ridge-peaks)
-	 (energy (.aref magnitude scale time)))
-    (format t "time ~a time projection ~,3f phase-corrected ~,3f uncorrected ~,3f expected-time ~,3f~%"
-	    time (time-support scale vpo) phase-corrected-time uncorrected-time expected-time)
-    (make-instance 'expectation 
-		   :time (min expected-time max-time)
-		   ;; :sample-rate (sample-rate ?) TODO sample rate of?
-		   :confidence energy
-		   :precision (.aref all-precision scale time))))
-|#
 
 (defun expectancies-of-skeleton-at-times (skeleton times scaleogram precision &key
 					  (cutoff-scale 16) (phase-correct-from nil))
@@ -273,9 +245,24 @@
 							   :phase-correct-from phase-correct-from
 							   :time-limit-expectancies nil)))))
 
+(defun weighted-integration (scaleogram &key (sample-rate 200.0))
+  "Return a list structure of expectancies. Computes the expectancies using the maximum
+   value of the cumulative sum of the scaleogram energy" 
+  (let* ((cumulative-scale-persistency (cumsum (scaleogram-magnitude scaleogram)))
+	 (vpo (voices-per-octave scaleogram))
+	 (salient-scale (preferred-tempo-scale vpo sample-rate))
+	 (tempo-beat-preference (tempo-salience-weighting-log salient-scale 
+							  (.array-dimensions cumulative-scale-persistency)))
+ 	 (weighted-persistency-profile (./ (.* cumulative-scale-persistency tempo-beat-preference)
+					   (duration-in-samples scaleogram))))
+    (make-instance 'scaleogram 
+		   :magnitude weighted-persistency-profile
+		   :phase (scaleogram-phase scaleogram)
+		   :voices-per-octave vpo)))
+
 (defun expectancies-of-rhythm-integrator (rhythm-to-analyse 
 					  &key (times-to-check (nlisp::array-to-list (onsets-in-samples rhythm-to-analyse)))
-					  (phase-correct-from nil))
+					  (phase-correct-from t))
   "Return a list structure of expectancies. Computes the expectancies using the maximum
    value of the cumulative sum of the scaleogram energy" 
   (let* ((analysis (analysis-of-rhythm rhythm-to-analyse :padding #'causal-pad))
@@ -283,24 +270,37 @@
 	 (cumulative-scale-persistency (cumsum (scaleogram-magnitude scaleogram)))
 	 (vpo (voices-per-octave scaleogram))
 	 (sample-rate (sample-rate rhythm-to-analyse))
-	 (salient-scale (preferred-tempo-scale vpo sample-rate))
-	 (tempo-beat-preference (tempo-salience-weighting salient-scale 
-							  (.array-dimensions cumulative-scale-persistency)
-							  :octaves-per-stddev 1.0))
- 	 (weighted-persistency-profile (.* cumulative-scale-persistency tempo-beat-preference))
+	 ;; Use Parncutt's tempo salience peak measure at 720mS
+	 (salient-scale (preferred-tempo-scale vpo sample-rate :tempo-salience-peak 0.72))
+;;	 (tempo-beat-preference (tempo-salience-weighting salient-scale 
+;;							  (.array-dimensions cumulative-scale-persistency)
+;;							  :octaves-per-stddev 1.0))
+	 (tempo-beat-preference (tempo-salience-weighting-log salient-scale (.array-dimensions cumulative-scale-persistency)))
+ 	 (weighted-persistency-profile (./ (.* cumulative-scale-persistency tempo-beat-preference)
+					   (duration-in-samples rhythm-to-analyse)))
 	 (weighted-scale-peaks (determine-scale-peaks weighted-persistency-profile))
 	 (weighted-scale-troughs (extrema-points weighted-persistency-profile :extrema :min))
 	 (weighted-precision (normalized-precision weighted-scale-peaks weighted-scale-troughs))
-       	 (weighted-skeleton (skeleton-of-ridge-peaks scaleogram weighted-scale-peaks)))
+       	 (weighted-skeleton (skeleton-of-ridge-peaks scaleogram weighted-scale-peaks))
+	 (weighted-scaleogram (make-instance 'scaleogram 
+					     :magnitude weighted-persistency-profile
+					     :phase (scaleogram-phase scaleogram)
+					     :voices-per-octave (voices-per-octave scaleogram))))
     (diag-plot 'weighted-beat-ridge
-      (window)
       (plot-image #'magnitude-image (list weighted-persistency-profile) '((1.0 0.5) (0.0 0.3))
 		  (axes-labelled-in-seconds scaleogram sample-rate 4)
-		  :title (format nil "weighted persistency profile of ~a" (name rhythm-to-analyse)))
-      (close-window))
-    (diag-plot 'scale-energy-profile
+		  :title (format nil "weighted persistency profile of ~a" (name rhythm-to-analyse))))
+    (diag-plot 'tempo-preference
+      (plot (.reverse (.column tempo-beat-preference 0)) nil :aspect-ratio 0.2))
+    (diag-plot 'unweighted-profile 
       (plot-scale-energy+peaks-at-time (make-instance 'scaleogram 
-						      :magnitude weighted-persistency-profile)
+						      :magnitude (./ cumulative-scale-persistency (duration-in-samples rhythm-to-analyse))
+						      :phase (scaleogram-phase scaleogram)
+						      :voices-per-octave (voices-per-octave scaleogram))
+				       (first (last times-to-check))
+				       (.normalise weighted-scale-peaks)))
+    (diag-plot 'scale-energy-profile
+      (plot-scale-energy+peaks-at-time weighted-scaleogram
 				       (first (last times-to-check))
 				       (.normalise weighted-scale-peaks)))
 				       ;; :sample-rate (sample-rate rhythm-to-analyse)))
@@ -313,7 +313,9 @@
 	     (phases-to-plot (list (time-signal rhythm-to-analyse) (.row phase (.aref peak-scales peak-to-plot)))))
 	(loop 
 	   for scale across (val peak-scales)
-	   do (format t "~a: " scale) (phase-corrected-time phase scale (1- (duration-in-samples rhythm-to-analyse)) 16))
+	   do
+	     (format t "~a: " scale) 
+	     (phase-corrected-time-chasing 0 phase scale (1- (duration-in-samples rhythm-to-analyse))))
 	(nplot phases-to-plot nil 
 	       :aspect-ratio 0.66 
 	       :title (format nil "plotting peak ~a~%" peak-to-plot)
@@ -324,7 +326,7 @@
 	       :styles '("impulses" "lines"))))
     (expectancies-of-skeleton-at-times weighted-skeleton
 				       times-to-check
-				       scaleogram
+				       weighted-scaleogram
 				       weighted-precision
 				       :phase-correct-from phase-correct-from)))
 
@@ -359,8 +361,8 @@
 (defun last-expectations (rhythm-to-expect &key (last-time (1- (duration-in-samples rhythm-to-expect))))
   "Return the list of expectations for the last moment in the rhythm"
   (second (first (expectancies-of-rhythm-integrator rhythm-to-expect 
-						    :times-to-check (list last-time)
-						    :phase-correct-from (last-onset-time rhythm-to-expect)))))
+						    :times-to-check (list last-time)))))
+;;						    :phase-correct-from (last-onset-time rhythm-to-expect)))))
 
 ;;; This is needed to throw away the time and break the last expectation out of the list.
 (defun last-onset-expectations (rhythm-to-expect)
@@ -447,9 +449,10 @@
 (defun last-expectancy-of-file (input-filepath output-filepath &key (sample-rate 200.0d0))
   "Computes the expectancies at the last moment in the file from the discrete onset times"
   (let* ((times-as-rhythm (rhythm-of-emcap-onset-file input-filepath sample-rate))
-	 (last-time (last-onset-time times-as-rhythm))  ; take either last onset
-	 ;; (1- (duration-in-samples times-as-rhythm))	; or last moment of window.
-	 (expectancies-at-last-time (expectancies-of-rhythm times-as-rhythm :times-to-check (list last-time))))
+	 ;; (last-time (last-onset-time times-as-rhythm))  ; take either last onset
+	 (last-time (1- (duration-in-samples times-as-rhythm)))	; or last moment of window.
+	 (expectancies-at-last-time (expectancies-of-rhythm-integrator times-as-rhythm 
+								       :times-to-check (list last-time))))
     (with-open-file (expectancy-file output-filepath :direction :output :if-exists :supersede)
       (write-expectancies-to-stream expectancies-at-last-time sample-rate expectancy-file))))
 
