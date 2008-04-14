@@ -120,7 +120,7 @@ start-onset, these measures are in samples"
  	 (weighted-persistency-profile (.* ridge-persistency-profile tempo-beat-preference))
 	 (beat-scale (position (.max weighted-persistency-profile) (val weighted-persistency-profile)))
 	 (beat-period (time-support beat-scale vpo)))
-    (format t "Computed beat (with tempo weighting) as scale ~a, period ~a samples, ~a seconds~%" 
+    (format t "Computed beat (with tempo weighting) as scale ~a, period ~,3f samples, ~,3f seconds~%" 
 	    beat-scale beat-period (/ beat-period sample-rate))
     (diag-plot 'beat-period 
       ;; (plot-command "set xtics (~{~{\"~d\" ~5d~}~^, ~})~%" (label-scale-as-time-support skeleton-to-analyse))
@@ -149,7 +149,7 @@ start-onset, these measures are in samples"
  	 (weighted-persistency-profile (.* ridge-persistency-profile tempo-beat-preference))
 	 (beat-scale (position (.max weighted-persistency-profile) (val weighted-persistency-profile)))
 	 (beat-period (time-support beat-scale vpo)))
-    (format t "Computed beat (with tempo weighting) as scale ~a, period ~a samples, ~a seconds~%" 
+    (format t "Computed beat (with tempo weighting) as scale ~a, period ~,3f samples, ~,3f seconds~%" 
 	    beat-scale beat-period (/ beat-period sample-rate))
     (window)
     ;; (plot-command "set xtics (~{~{\"~d\" ~5d~}~^, ~})~%" (label-scale-as-time-support skeleton-to-analyse))
@@ -173,7 +173,7 @@ start-onset, these measures are in samples"
 	 (sample-rate (sample-rate rhythm-to-analyse))
 	 (beat-scale (position (.max ridge-persistency-profile) (val ridge-persistency-profile)))
 	 (beat-period (time-support beat-scale vpo)))
-    (format t "Computed beat (without tempo weighting) as scale ~a, period ~a samples, ~a seconds~%" 
+    (format t "Computed beat (without tempo weighting) as scale ~a, period ~,3f samples, ~,3f seconds~%" 
 	    beat-scale beat-period (/ beat-period sample-rate))
     (window)
     ;; (plot-command "set xtics (~{~{\"~d\" ~5d~}~^, ~})~%" (label-scale-as-time-support skeleton-to-analyse))
@@ -197,7 +197,7 @@ start-onset, these measures are in samples"
 	 (sample-rate (sample-rate rhythm-to-analyse))
 	 (beat-scale (position (.max scale-persistency-profile) (val scale-persistency-profile)))
 	 (beat-period (time-support beat-scale vpo)))
-    (format t "Computed beat (without tempo weighting) as scale ~a, period ~a samples, ~a seconds~%" 
+    (format t "Computed beat (without tempo weighting) as scale ~a, period ~,3f samples, ~,3f seconds~%" 
 	    beat-scale beat-period (/ beat-period sample-rate))
     (diag-plot 'beat-period
       ;; (plot-command "set xtics (~{~{\"~d\" ~5d~}~^, ~})~%" (label-scale-as-time-support skeleton-to-analyse))

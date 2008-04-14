@@ -58,24 +58,11 @@
 ;; (intervals-in-samples (nlisp::array-to-list (.column perceptual-onsets 0)) :sample-rate 100)
 ;; (onsets-to-grid (nlisp::array-to-list (.floor (.column perceptual-onsets 0))))
 
-(defun compute-perceptual-versions (salience-filename onsets-filename original-sound-filename 
+(defun clap-to-salience-rhythm-files (saliency-path onsets-path original-sound-path accompaniment-sound-path
 				    &key 
 				    (start-from-beat 0) 
-				    (beat-multiple 1 multiple-supplied-p)
-				    (data-directory "/Volumes/iDisk/Research/Data/PerceptualOnsets/"))
-  (let* ((original-sound-path (make-pathname :directory (list :absolute data-directory)
-					     :name original-sound-filename
-					     :type "wav"))
-	 (accompaniment-sound-path (make-pathname :directory "/Volumes/iDisk/Research/Data/Handclap Examples"
-						  :name (concatenate 'string original-sound-filename "_mixed")
-						  :type "wav"))
-	 (saliency-path (make-pathname :directory (list :absolute data-directory) 
-				       :name salience-filename
-				       :type "saliency"))
-	 (onsets-path (make-pathname :directory (list :absolute data-directory) 
-				     :name onsets-filename
-				     :type "onsets"))
-	 (salience-trace-rhythm (perceptual-salience-rhythm saliency-path onsets-path :weighted nil))
+				    (beat-multiple 1 multiple-supplied-p))
+  (let* ((salience-trace-rhythm (perceptual-salience-rhythm saliency-path onsets-path :weighted nil))
 	 (salience-trace-claps (if multiple-supplied-p 
 				   (clap-to-rhythm salience-trace-rhythm 
 						   :start-from-beat start-from-beat
@@ -106,11 +93,32 @@
     ;; salience-trace-rhythm that uses the weighted onsets rhythm so that we know the
     ;; onsets are as the detector computes them.
     ;; (save-rhythm-and-claps salience-trace-rhythm salience-trace-claps)
+    ;; (format t "Wrote rhythm as scorefile ~a~%" ) ; TODO
     (format t "Beat times of ~a in seconds:~%~a~%" (name salience-trace-rhythm) clap-times-in-seconds)
     ; (save-rhythm salience-trace-claps)	; just write out the claps as a scorefile alone.
     (save-rhythm-mix accompaniment-sound-path original-sound-path clap-times-in-seconds)
-    (format t "Wrote rhythm as scorefile ~a~%" salience-filename)
     (format t "Wrote mix as soundfile ~a~%" accompaniment-sound-path)))
+
+(defun compute-perceptual-versions (salience-filename onsets-filename original-sound-filename 
+				    &key 
+				    (start-from-beat 0) 
+				    (beat-multiple 1)
+				    (data-directory "/Volumes/iDisk/Research/Data/PerceptualOnsets/"))
+  (let* ((original-sound-path (make-pathname :directory (list :absolute data-directory)
+					     :name original-sound-filename
+					     :type "wav"))
+	 (accompaniment-sound-path (make-pathname :directory "/Volumes/iDisk/Research/Data/Handclap Examples"
+						  :name (concatenate 'string original-sound-filename "_mixed")
+						  :type "wav"))
+	 (saliency-path (make-pathname :directory (list :absolute data-directory) 
+				       :name salience-filename
+				       :type "saliency"))
+	 (onsets-path (make-pathname :directory (list :absolute data-directory) 
+				     :name onsets-filename
+				     :type "onsets")))
+    (clap-to-salience-rhythm-files saliency-path onsets-path original-sound-path accompaniment-sound-path
+				   :start-from-beat start-from-beat
+				   :beat-multiple beat-multiple)))
 
 ;;; TODO This should be replaced when we integrate Plymouth's onsets thresholding function
 ;;; into our code.

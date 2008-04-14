@@ -81,7 +81,7 @@
   "Compute a beat multiple we should clap at, based on the chosen tactus beat period compared to the preferred tempo"
   (let* ((preferred-beat-period (time-support (preferred-tempo-scale vpo sample-rate) vpo))
 	 (tactus-beat-period (time-support (average-scale (first tactus)) vpo))) ; TODO using first is a hack
-    (format t "Preferred clapping beat period ~f seconds actual tactus beat period ~f seconds, ratio ~f~%" 
+    (format t "Preferred clapping beat period ~,3f seconds actual tactus beat period ~,3f seconds, ratio ~,4f~%" 
 	    (/ preferred-beat-period sample-rate)
 	    (/ tactus-beat-period sample-rate)
 	    (/ preferred-beat-period tactus-beat-period))
