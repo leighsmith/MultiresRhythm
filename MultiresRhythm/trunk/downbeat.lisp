@@ -82,16 +82,15 @@ start-onset, these measures are in samples"
 ;; (setf scaleogram (scaleogram-of-rhythm-silence rhythm))
 ;; (plot-cwt scaleogram)
 ;; (multiple-value-setq (skeleton ridge-peaks) (skeleton-of-scaleogram scaleogram (sample-rate rhythm)))
-;; (plot-highlighted-ridges scaleogram nil ridge-peaks :sample-rate (sample-rate rhythm))
-;; (plot-highlighted-ridges scaleogram (subseq (longest-tactus-candidates skeleton) 0 9) ridge-peaks :sample-rate (sample-rate rhythm))
+;; (plot-cwt+skeleton-of analysis nil rhythm)
+;; (plot-cwt+skeleton-of analysis (subseq (longest-tactus-candidates skeleton) 0 9) rhythm)
 
 ;; (setf scaleogram (scaleogram-of-rhythm rhythm))
 ;; (multiple-value-setq (skeleton ridge-peaks) (skeleton-of-scaleogram scaleogram (sample-rate rhythm)))
-;; (plot-highlighted-ridges scaleogram 
+;; (plot-cwt+skeleton-of analysis
 ;; 			 (list (ridge-containing-scale-and-time skeleton 120 0)
 ;; 			       (ridge-containing-scale-and-time skeleton 122 6104))
-;; 			 ridge-peaks 
-;; 			 :sample-rate (sample-rate rhythm))
+;; 			 rhythm)
 
 
 ;; (clap-to-rhythm rhythm :tactus-selector (lambda (skeleton) 

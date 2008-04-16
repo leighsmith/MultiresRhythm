@@ -237,19 +237,12 @@
 	 (chosen-tactus-list (if (listp chosen-tactus) chosen-tactus (list chosen-tactus))))
     (format t "Chosen tactus ~a using ~a~%" chosen-tactus-list tactus-selector)
     (diag-plot 'cwt+skeleton
-      (plot-cwt+skeleton-of-analysis analysis chosen-tactus-list analysis-rhythm))
+      (plot-cwt+skeleton-of analysis chosen-tactus-list analysis-rhythm))
     (diag-plot 'cwt
       (plot-cwt+ridges (scaleogram analysis) chosen-tactus-list analysis-rhythm
 		       ;; :phase-palette :greyscale
 		       ;; :magnitude-palette :jet
 		       :title (name analysis-rhythm)))
-    (diag-plot 'tactus
-      (plot-highlighted-ridges (scaleogram analysis)
-			       chosen-tactus-list
-			       (ridge-peaks analysis)
-			       :title (name analysis-rhythm)
-			       :sample-rate (sample-rate analysis-rhythm))
-      (format t "Finished plotting scalograms~%"))
     chosen-tactus-list))
 
 (defmethod tactus-for-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16)

@@ -31,16 +31,17 @@
 (defgeneric plot-cwt+ridges (scaleogram ridges rhythm &key title time-axis-decimation)
   (:documentation "Plot the magnitude in greyscale overlaid with the computed tactus in red, the phase overlaid with the tactus in black."))
 
+(defgeneric plot-cwt+ridges-of (scaleogram-to-plot highlighted-ridges analysis-rhythm 
+						   &key title time-axis-decimation)
+  (:documentation "Plot highlighted ridges over the magnitude and ridges plots of the given rhythm."))
+
+(defgeneric plot-cwt+skeleton-of (analysis highlighted-ridges analysis-rhythm 
+					   &key title time-axis-decimation)
+  (:documentation "Plot all ridges in greyscale and the highlighted ridges in red."))
+
 (defgeneric plot-scale-energy-at-times (scaleogram times &key description)
   (:documentation "Plot a cross-section of the magnitude at a given time point so we can spot the highest activated scales."))
 
-(defgeneric plot-highlighted-ridges (scaleogram highlighted-ridges ridge-peaks 
-						&key title time-axis-decimation sample-rate)
-  (:documentation "Plot all ridges in greyscale and the highlighted ridges in red."))
-
-(defgeneric plot-highlighted-ridges-of-rhythm (scaleogram-to-plot highlighted-ridges ridge-peaks analysis-rhythm 
-					      &key title time-axis-decimation)
-  (:documentation "Plot highlighted ridges over the magnitude and ridges plots of the given rhythm."))
 
 ;; (defgeneric label-scale-as-time-support (scaleogram)
 ;;   (:documentation "Returns a list of plotting labels giving the time support for each scale"))
@@ -150,7 +151,7 @@
   ;; plot-images, or we create a delayed promise of invocation, in this case by passing in
   ;; the commands for later transfer to gnuplot.
   (let ((axes-labels (axes-labelled-in-seconds scaleogram-to-plot (sample-rate analysis-rhythm) time-axis-decimation)))
-    ;; TODO (plot-rhythm analysis-rhythm))
+    ;; TODO ideally use (plot-rhythm analysis-rhythm)) for plotting the rhythm
     ;; Put the magnitude plot above the phase on the same window.
     (plot-images (list (list #'rhythm-plot
  			     (list analysis-rhythm)
@@ -167,12 +168,17 @@
 		 :title title
 		 :time-axis-decimation time-axis-decimation)))
 
-(defmethod plot-cwt+ridges ((scaleogram-to-plot scaleogram) (ridges list) (analysis-rhythm rhythm)
-			    &key (title "unnamed") (time-axis-decimation 4))
+;;; TODO this should be plot-cwt specialised on scaleogram 
+(defmethod plot-cwt+ridges ((scaleogram-to-plot scaleogram)
+			    (ridges list)
+			    (analysis-rhythm rhythm)
+			    &key 
+			    (title (name analysis-rhythm))
+			    (time-axis-decimation 4))
 ;;			    (magnitude-palette :greyscale)
 ;;			    (phase-palette :spectral)
   "Plot the magnitude in greyscale overlaid with the computed tactus in red, the phase
-   overlaid with the tactus in black."
+   overlaid with the tactus in white."
   (let ((axes-labels (axes-labelled-in-seconds scaleogram-to-plot (sample-rate analysis-rhythm) time-axis-decimation)))
     (plot-images (list  ;(list #'rhythm-plot
  			;     (list analysis-rhythm)
@@ -194,74 +200,43 @@
 		 :title title
 		 :time-axis-decimation time-axis-decimation)))
 
-(defmethod plot-highlighted-ridges ((scaleogram-to-plot scaleogram) 
-				    (highlighted-ridges list)
-				    (tf-plane n-double-array) 
-				    &key 
-				    (sample-rate nil)
-				    (title "unnamed")
-				    (time-axis-decimation 4))
-  "Plot the ridges in greyscale and the highlighted ridges in red."
-  ;; We make a copy of the tactus since decimate modifies the object (it is, after all, an instance method)
-  (plot-image #'highlighted-ridges-image 
-	      (list (mapcar #'copy-object highlighted-ridges) tf-plane)
-	      '((1.0 0.5) (0.0 0.0))
-	      (if sample-rate 
-		  (axes-labelled-in-seconds scaleogram-to-plot sample-rate time-axis-decimation)
-		  (axes-labelled-in-samples scaleogram-to-plot time-axis-decimation) )
-	      :title title
-	      :time-axis-decimation time-axis-decimation))
-
-;;   		       (list #'ridges-on-phase-image
-;;   			     (list (mapcar #'copy-object highlighted-ridges) 
-;; 				   (scaleogram-phase scaleogram-to-plot)
-;; 				   (scaleogram-magnitude scaleogram-to-plot))
-;;  			     '((1.0 0.5) (0.0 0.0))
-;;   			     axes-labels)
-
-(defmethod plot-highlighted-ridges-of-rhythm ((scaleogram-to-plot scaleogram)
-					      (highlighted-ridges list)
-					      (ridge-peaks n-double-array)
-					      (analysis-rhythm rhythm)
-					      &key 
-					      (title "unnamed")
-					      (time-axis-decimation 4))
-  "Plot the ridges in greyscale and the highlighted ridges in red."
+;;; TODO this may not be necessary at all.
+(defmethod plot-cwt+ridges-of ((scaleogram-to-plot scaleogram)
+			       (highlighted-ridges list)
+			       (analysis-rhythm rhythm)
+			       &key 
+			       (title "unnamed")
+			       (time-axis-decimation 4))
+  "Plot the magnitude in greyscale and the highlighted ridges in red."
   (let ((axes-labels (axes-labelled-in-seconds scaleogram-to-plot (sample-rate analysis-rhythm) time-axis-decimation)))
-    (plot-images (list (list #'magnitude-image 
-			     (list (scaleogram-magnitude scaleogram-to-plot))
-			     '((1.0 0.5) (0.0 0.6))
-			     axes-labels)
-		       (list #'highlighted-ridges-image 
+    (plot-images (list (list #'highlighted-ridges-image 
 			     (list (mapcar #'copy-object highlighted-ridges)
 				   (scaleogram-magnitude scaleogram-to-plot))
 			     '((1.0 0.5) (0.0 0.3))
-			     axes-labels)
-  		       (list #'highlighted-ridges-image
-  			     (list (mapcar #'copy-object highlighted-ridges) ridge-peaks)
- 			     '((1.0 0.5) (0.0 0.0))
-  			     axes-labels))
+			     axes-labels))
 		 :title title
 		 :time-axis-decimation time-axis-decimation)))
 
-(defmethod plot-cwt+skeleton-of-analysis ((analysis multires-analysis)
-					  (highlighted-ridges list)
-					  (analysed-rhythm rhythm))
+(defmethod plot-cwt+skeleton-of ((analysis multires-analysis)
+				 (highlighted-ridges list)
+				 (analysed-rhythm rhythm)
+				 &key 
+				 (title (name analysed-rhythm))
+				 (time-axis-decimation 4))
   "Plot the ridges in greyscale and the highlighted ridges in red."
   (let* ((rhythm-scaleogram (scaleogram analysis))
 	 (correlated-ridge-scale-peaks (ridge-peaks analysis))
-	 (time-axis-decimation 4)
 	 (formatting "set title font \"Times,20\"~%set xlabel font \"Times,20\"~%set ylabel font \"Times,20\"")
 	 (axes-labels (axes-labelled-in-seconds rhythm-scaleogram (sample-rate analysed-rhythm) time-axis-decimation)))
       (plot-images (list (list #'magnitude-image 
 			       (list (scaleogram-magnitude rhythm-scaleogram))
-			       '((1.0 1.0) (0.0 0.3))
+			       '((1.0 0.5) (0.0 0.3))
 			       (concatenate 'string axes-labels formatting))
 			 (list #'highlighted-ridges-image
 			       (list (mapcar #'copy-object highlighted-ridges) correlated-ridge-scale-peaks)
-			       '((1.0 1.0) (0.0 0.0))
+			       '((1.0 0.5) (0.0 0.0))
 			       (concatenate 'string axes-labels formatting))) ; ':xlabel "Time (Seconds)"
-		   :title (name analysed-rhythm)
+		   :title title
 		   :time-axis-decimation time-axis-decimation)))
 
 (defmethod plot-scale-energy-at-times ((scaleogram-to-plot scaleogram) times &key

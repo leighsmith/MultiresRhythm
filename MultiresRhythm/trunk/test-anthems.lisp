@@ -83,17 +83,8 @@
 ;; (bar-ridges-for-anthem (anthem-named 'sweden))
 ;; (bar-ridges-for-anthem (anthem-named 'netherlands))
 
-;; (plot-highlighted-ridges scaleogram matching-ridges peaks)
-;; (plot-highlighted-ridges scaleogram matching-ridges (scaleogram-magnitude scaleogram))
-;; (plot-highlighted-ridges-of-rhythm scaleogram matching-ridges peaks (anthem-rhythm (anthem# 3)))
-
-;; (plot-highlighted-ridges-of-rhythm scaleogram 
-;; 				   (list (canonical-bar-ridge (anthem# 3) scaleogram))
-;; 				   peaks
-;; 				   (anthem-rhythm (anthem# 3)))
-
-;; (plot-highlighted-ridges rhythm-scaleogram matching-ridges (scaleogram-magnitude rhythm-scaleogram) :title (name anthem-rhythm))
-;; (plot-highlighted-ridges rhythm-scaleogram matching-ridges correlated-ridge-scale-peaks :title (name anthem-rhythm))
+;; (plot-cwt+skeleton-of analysis matching-ridges (anthem-rhythm (anthem# 3)))
+;; (plot-cwt+skeleton-of analysis (list (canonical-bar-ridge (anthem# 3) scaleogram)) (anthem-rhythm (anthem# 3)))
 
 ;; (defun bar-scale-for-anthem (anthem &key (tactus-selector #'select-longest-lowest-tactus))
 ;;   "Returns the scale of the given anthem matching the bar duration"
@@ -393,14 +384,9 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
     (let ((anthem-rhythm (anthem-rhythm anthem))
 	  (rhythm-scaleogram (scaleogram rhythm-analysis))
 	  (correlated-ridge-scale-peaks (ridge-peaks rhythm-analysis)))
-      (plot-highlighted-ridges-of-rhythm rhythm-scaleogram
-					 matching-ridges 
-					 correlated-ridge-scale-peaks
-					 anthem-rhythm :title (name anthem-rhythm))
-      (plot-highlighted-ridges-of-rhythm rhythm-scaleogram 
-					 (list (canonical-bar-ridge anthem rhythm-scaleogram))
-					 correlated-ridge-scale-peaks
-					 anthem-rhythm :title (name anthem-rhythm))
+      (plot-cwt+skeleton-of rhythm-analysis matching-ridges anthem-rhythm :title (name anthem-rhythm))
+      (plot-cwt+skeleton-of rhythm-analysis (list (canonical-bar-ridge anthem rhythm-scaleogram))
+			    anthem-rhythm :title (name anthem-rhythm))
       (plot-scale-energy+peaks-at-time rhythm-scaleogram 500 correlated-ridge-scale-peaks))))
 
 (defun plot-scaleogram-skeleton-of-anthem (anthem)
@@ -409,7 +395,7 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
     (declare (ignore matching-ridges))
     (let* ((highlighted-ridges (list (canonical-bar-ridge anthem (scaleogram rhythm-analysis)))))
       (format t "Plotting images~%")
-      (plot-cwt+skeleton-of-analysis rhythm-analysis highlighted-ridges (anthem-rhythm anthem)))))
+      (plot-cwt+skeleton-of rhythm-analysis highlighted-ridges (anthem-rhythm anthem)))))
 
 ;; (plot-scaleogram-skeleton-of-anthem (anthem-named 'tunisia))
 ;; (plot-scaleogram-skeleton-of-anthem (anthem-named 'vietnam))
@@ -554,7 +540,7 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
     (format t "phase congruency at notes ~a~%" (.arefs pc anacrusis-note-times))
     (format t "summed local phase congruency at notes ~a~%" (.arefs lpc-at-time anacrusis-note-times))
     (format t "ridge ratios ~a~%" (ridge-ratios-at-time (first ridges-on-notes) (caar ridges-on-notes) (first times-in-samples)))
-    (plot-highlighted-ridges scaleogram '() (ridge-peaks analysis) :title description)
+    (plot-cwt+skeleton-of analysis '() (anthem-rhythm anthem) :title description)
     (window)
     (nplot (list pc) nil :title (format nil "phase congruency of ~a" description) :aspect-ratio 0.66)
     (window)

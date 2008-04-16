@@ -412,7 +412,7 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
   (scale-persistency (ridge-peaks analysis)))
 
 ;;; To verify the ridge extraction accuracy:
-;;; (plot-highlighted-ridges-of-rhythm scaleogram (ridges skeleton) correlated-ridge-scale-peaks analysis-rhythm)
+;;; (plot-cwt+skeleton-of analysis (ridges skeleton) analysis-rhythm)
 ;;; No black ridges should be shown, only red highlighted ridges.
 
 ;;; TODO We could set any ill-conditioned phase (negligible magnitude) to zero using this function

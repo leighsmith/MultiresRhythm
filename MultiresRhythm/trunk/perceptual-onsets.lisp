@@ -59,11 +59,11 @@
 ;; (onsets-to-grid (nlisp::array-to-list (.floor (.column perceptual-onsets 0))))
 
 (defun clap-to-salience-rhythm-files (saliency-path onsets-path original-sound-path accompaniment-sound-path
-				    &key 
-				    (start-from-beat 0) 
-				    (beat-multiple 1 multiple-supplied-p))
+				      &key 
+				      (start-from-beat 0) 
+				      (beat-multiple 1))
   (let* ((salience-trace-rhythm (perceptual-salience-rhythm saliency-path onsets-path :weighted nil))
-	 (salience-trace-claps (if multiple-supplied-p 
+	 (salience-trace-claps (if (/= beat-multiple 1)
 				   (clap-to-rhythm salience-trace-rhythm 
 						   :start-from-beat start-from-beat
 						   :beat-multiple beat-multiple
@@ -94,9 +94,11 @@
     ;; onsets are as the detector computes them.
     ;; (save-rhythm-and-claps salience-trace-rhythm salience-trace-claps)
     ;; (format t "Wrote rhythm as scorefile ~a~%" ) ; TODO
+    ;; just write out the claps as a scorefile alone:
+    ;; (save-rhythm (make-instance 'rhythm salience-trace-claps))
     (format t "Beat times of ~a in seconds:~%~a~%" (name salience-trace-rhythm) clap-times-in-seconds)
-    ; (save-rhythm salience-trace-claps)	; just write out the claps as a scorefile alone.
-    (save-rhythm-mix accompaniment-sound-path original-sound-path clap-times-in-seconds)
+    (save-rhythm-mix accompaniment-sound-path original-sound-path clap-times-in-seconds
+		     :clap-sample-file #P"/Volumes/iDisk/Research/Data/Handclap Examples/cowbell.aiff")
     (format t "Wrote mix as soundfile ~a~%" accompaniment-sound-path)))
 
 (defun compute-perceptual-versions (salience-filename onsets-filename original-sound-filename 

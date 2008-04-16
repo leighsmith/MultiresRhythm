@@ -63,8 +63,8 @@
 	 (scaleogram (cwt rising-harmonic-signal 8)))
     (plot rising-harmonic-signal nil :title "Rising Harmonic Signal" :xlabel "Time" :ylabel "Amplitude" :aspect-ratio 0.66)
     (window)
-    (plot-cwt scaleogram :title "rising-harmonic")
-    (plot-highlighted-ridges scaleogram () (scale-peaks-of-scaleogram scaleogram 200))))
+    (plot-cwt scaleogram :title "rising-harmonic")))
+    ;; (plot-cwt+ridges scaleogram () (scale-peaks-of-scaleogram scaleogram 200))))
 
 ;; (plot-rising-harmonic)
 ;; (time (cwt (rising-harmonic-test) 16))
