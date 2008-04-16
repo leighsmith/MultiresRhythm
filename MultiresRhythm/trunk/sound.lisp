@@ -58,6 +58,9 @@
 		   :sound-signal sound-signal
 		   :sample-rate sample-rate)))
 
+(defmethod save-to-file ((sound-to-save sound) (path pathname))
+  (save-audio path (sound-signal sound-to-save) :sample-rate (sample-rate sound-to-save)))
+
 (defmethod onset-times ((sound-to-analyse sound))
   (./ (.* (.find (sound-signal sound-to-analyse)) 1d0) (sample-rate sound-to-analyse)))
 
@@ -65,16 +68,18 @@
 (defmethod sound-length ((sound-to-analyse sound))
   (.length (sound-signal sound-to-analyse)))
 
-;; TODO SHould accept arbitary # of sounds.
+;; TODO Should accept arbitary # of sounds.
 (defmethod sound-mix ((sound-to-mix1 sound) (sound-to-mix2 sound)) ; &rest sounds
   (make-instance 'sound
 		 :sound-signal (.+ (sound-signal sound-to-mix1) (sound-signal sound-to-mix2))
 		 :sample-rate (sample-rate sound-to-mix1))) ; TODO should test SRs are all equal.
 
+(defmethod normalise ((sound-to-normalise sound))
+  "Normalise over the entire sound to a bipolar range (between -1.0 and 1.0)"
+  (let* ((sound-vector (sound-signal sound-to-normalise))
+	 (maximum-displacement (max (.max sound-vector) (abs (.min sound-vector)))))
+    (setf (sound-signal sound-to-normalise) (./ sound-vector maximum-displacement))))
 		 
-(defmethod save-to-file ((sound-to-save sound) (path pathname))
-  (save-audio path (sound-signal sound-to-save) :sample-rate (sample-rate sound-to-save)))
-
 (defun sample-at-times (length-of-sound sample-sound times-in-seconds 
 			&key (amplitudes (make-double-array (.length times-in-seconds) :initial-element 1.0d0)))
   "Returns a sound with sample-sound placed beginning at each time specified in seconds. Uses the sample rate of the sample-sound."
@@ -105,6 +110,7 @@
 	 ;; create an sound vector with our clap-sample
 	 (clapping-sound (sample-at-times (sound-length original-rhythm-sound) clap-sample clap-times))
 	 (clapping-mix (sound-mix original-rhythm-sound clapping-sound)))
+    (normalise clapping-mix)
     (save-to-file clapping-mix filename-to-write)))
 
 ;; (save-rhythm-mix #P"/Users/leigh/test-hats.wav" #P"/Volumes/iDisk/Research/Data/PerceptualOnsets/res1/res1_3.wav" (make-narray '(0.0 0.33 0.66 0.8)))
