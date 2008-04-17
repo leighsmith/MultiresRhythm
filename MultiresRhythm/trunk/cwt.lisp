@@ -101,6 +101,17 @@
 ;; (plot (gaussian-envelope 150) (.rseq -5.d0 +5.0 150))
 ;; (plot (gaussian-envelope 144 :scaling 1d0) (.rseq -5.d0 +5.0 144))
 
+(defun skewed-gaussian-envelope (width &key (mean 0d0) (stddev 1d0) 
+				 (scaling (/ 1d0 (* (sqrt (* 2d0 pi)) stddev))))
+  "Compute a gaussian envelope skewed so that the scales higher than the mean are half as
+   likely as scales lower than the mean." 
+  (let* ((half-width (/ width 2))
+	 (skew 2.0)			; factor to skew the higher frequencies by.
+	 (x (.concatenate (.rseq (- -5.0 mean) 0 half-width) 
+			  (.rseq 0 (- (* 5.0 skew) mean) half-width))))
+    (.* scaling
+ 	(.exp (.- (./ (.expt x 2.0) (.* 2d0 stddev stddev)))))))
+
 (defun morlet-wavelet-fourier (signal-time-period wavelet-scale &key (omega0 6.2))
   "Construct a Morlet wavelet filter in the Fourier domain within the length of the signal (so we can multiply).
 
