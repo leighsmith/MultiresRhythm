@@ -33,7 +33,8 @@
   :license "Copyright (c) 2005-2007"
   :components ((:file "national anthems")
 	       (:file "anthem-accessors" :depends-on ("national anthems"))
-	       (:file "EsAC")))
+	       (:file "EsAC")
+	       (:file "essen-meter-list")))
 
 #|
 
