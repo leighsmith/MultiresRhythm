@@ -192,6 +192,13 @@
 ;;	expected-time phase-corrected-time uncorrected-time)
 ;;    (format t "phase-diff ~a~%" (phase-diff-from-start phase scale time))
 
+(defun phase-zero-samples (phase scale)
+  "Returns the location of each phase 0 crossing index for a given scale"
+  (let ((phase-at-scale (.row phase scale))
+	(time-length (.array-dimension phase 1)))
+    (.find (.and (.subarray (.>= phase-at-scale 0) (list 0 (list 1 (1- time-length))))
+		 (.subarray (.< phase-at-scale 0) (list 0 (list 0 (- time-length 2))))))))
+	
 (defun phase-corrected-time-chasing (time-projection phase scale time)
   "Returns the time-projection corrected by it's phase measure based on the most recent occurrance of zero phase. 
    Chases for phase-zero values backwards from time."
@@ -291,8 +298,17 @@
 		  (axes-labelled-in-seconds scaleogram sample-rate 4)
 		  :title (format nil "weighted persistency profile of ~a" (name rhythm-to-analyse))))
     (diag-plot 'tempo-preference
-      (plot (.reverse (.column tempo-beat-preference 0)) nil :aspect-ratio 0.2))
-    (diag-plot 'unweighted-profile 
+      (plot-command "set xtics (~{~{\"~d\" ~5d~}~^, ~})~%" (label-scale-as-time-support scaleogram))
+      (format t "max plot ~a~%" (.max weighted-persistency-profile))
+      (nplot (list (.reverse (.* (.column tempo-beat-preference (first (last times-to-check)))
+				 0.07))
+			;;	 ))
+		   (.reverse (.column (./ cumulative-scale-persistency (duration-in-samples rhythm-to-analyse))
+				      (first (last times-to-check)))))
+	     nil 
+	     :aspect-ratio 0.2 
+	     :reset nil))
+     (diag-plot 'unweighted-profile 
       (plot-scale-energy+peaks-at-time (make-instance 'scaleogram 
 						      :magnitude (./ cumulative-scale-persistency (duration-in-samples rhythm-to-analyse))
 						      :phase (scaleogram-phase scaleogram)
@@ -412,7 +428,7 @@
   (destructuring-bind (onset features) (split-string emcap-data-line #\;)
     (list (mapcar #'read-from-string (split-string onset #\Space))
 	  (mapcar (lambda (feature-string) (mapcar #'read-from-string (split-string feature-string #\,))) 
-		  (split-string features #\Space)))))
+		  (if (zerop (length features)) nil (split-string features #\Space))))))
 
 (defun summarise-features-to-accent (features)
   (reduce #'+ (mapcar #'car features)))
@@ -463,4 +479,3 @@
 	 (expectancies-at-times (expectancies-of-rhythm times-as-rhythm)))
     (with-open-file (expectancy-file output-filepath :direction :output :if-exists :supersede)
       (write-expectancies-to-stream (last expectancies-at-times) sample-rate expectancy-file))))
-

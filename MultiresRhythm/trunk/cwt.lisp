@@ -87,7 +87,7 @@
 
 (defun gaussian-envelope (width &key (mean 0d0) (stddev 1d0) 
 			    (scaling (/ 1d0 (* (sqrt (* 2d0 pi)) stddev))))
-  "Compute a gaussian envelope.
+  "Compute a Gaussian envelope.
    width is the sampling range of an envelope over +/-5 standard deviations.
    mean determines the position of the envelope within the width number of samples.
    stddev determines the standard deviation and therefore the variance of the distribution.
@@ -103,14 +103,13 @@
 
 (defun skewed-gaussian-envelope (width &key (mean 0d0) (stddev 1d0) 
 				 (scaling (/ 1d0 (* (sqrt (* 2d0 pi)) stddev))))
-  "Compute a gaussian envelope skewed so that the scales higher than the mean are half as
+  "Compute a Gaussian envelope skewed so that the scales higher than the mean are half as
    likely as scales lower than the mean." 
-  (let* ((half-width (/ width 2))
-	 (skew 2.0)			; factor to skew the higher frequencies by.
-	 (x (.concatenate (.rseq (- -5.0 mean) 0 half-width) 
-			  (.rseq 0 (- (* 5.0 skew) mean) half-width))))
+  (let* ((skew 2.0)			; factor to skew the higher frequencies by.
+	 (x (.rseq (- -5.0d0 mean) (- 5.0d0 mean) width))
+	 (skewed-x (.* x (.+ (.* (.< x 0) skew) (.>= x 0)))))
     (.* scaling
- 	(.exp (.- (./ (.expt x 2.0) (.* 2d0 stddev stddev)))))))
+ 	(.exp (.- (./ (.expt skewed-x 2.0) (.* 2d0 stddev stddev)))))))
 
 (defun morlet-wavelet-fourier (signal-time-period wavelet-scale &key (omega0 6.2))
   "Construct a Morlet wavelet filter in the Fourier domain within the length of the signal (so we can multiply).
@@ -138,7 +137,8 @@
 
 ;;; Plot the gaussian envelope in the Fourier domain
 ;;; (plot (.realpart (morlet-wavelet-fourier 1024 8)) nil)
-;;; (plot (.realpart (morlet-wavelet-fourier 1024 16)) nil)
+;;; (nplot (list (.realpart (morlet-wavelet-fourier 1024 16 :omega0 6.2)) 
+;;; 	     (.realpart (morlet-wavelet-fourier 1024 16 :omega0 6.45))) nil)
 ;;; (plot (.realpart (morlet-wavelet-fourier 1024 128)) nil)
 
 (defun plot-time-domain-kernel (signal-time-period wavelet-scale &key (omega0 6.2))
@@ -150,8 +150,10 @@
 			       (.subseq time-wavelet 0 zero-frequency))))
    (nplot (list (.realpart swapped-time-wavelet) (.imagpart swapped-time-wavelet)) 
 	  nil ; TODO (.rseq ? ? signal-time-period)
-	  :legends (list "Real Part" "Imaginary Part"))))
+	  :legends (list "Real Part" "Imaginary Part")
+	  :title (format nil "Time domain kernel for omega0 = ~a" omega0))))
 
+;;; (plot-time-domain-kernel 1024 128 :omega0 6.45)
 ;;; (plot-time-domain-kernel 1024 128 :omega0 6.2)
 ;;; (plot-time-domain-kernel 1024 128 :omega0 6)
 ;;; (plot-time-domain-kernel 1024 128 :omega0 5.3364)
@@ -211,8 +213,7 @@
     (loop 
        for scale-index from 0 below number-of-scales
        do 
-;;	 (let* ((scaled-wavelet (funcall fourier-domain-wavelet time-in-samples (.aref period scale-index) :omega0 6.45d0))
-	 (let* ((scaled-wavelet (funcall fourier-domain-wavelet time-in-samples (.aref period scale-index)))
+	 (let* ((scaled-wavelet (funcall fourier-domain-wavelet time-in-samples (.aref period scale-index) :omega0 6.45d0))
 		;; Construct the scaled wavelet in the frequency domain. It will be the same length
 		;; as the input-data, but mostly zero outside the Gaussian shape.
 		;; Multiply in the Fourier domain and take the inverse FFT, thereby producing the convolution.

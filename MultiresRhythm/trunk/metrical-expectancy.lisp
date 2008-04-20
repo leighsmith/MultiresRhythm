@@ -24,10 +24,14 @@
 		  (.rseq amplitude amplitude sustain-samples)
 		  (.rseq amplitude 0.0 release-samples))))
 
-(defun rhythm-of-part (name note-list &key (sample-rate 200) (attack 0.020) (release 0.020))
-  "Generate a rhythm by modualting the articulation"
+(defun rhythm-of-part (name note-list &key 
+		       (sample-rate 200) 
+		       (attack 0.020) 
+		       (release 0.020)
+		       (make-envelope-p nil))
+  "Generate a rhythm from a note-list specifying time, duration (both in seconds) & amplitude"
   (let* ((last-note (first (last note-list)))
-	 (rhythm-length (1+ (round (* (+ (first last-note) (second last-note)) sample-rate))))
+	 (rhythm-length (ceiling (* (+ (first last-note) (second last-note)) sample-rate)))
 	 (time-signal (make-double-array rhythm-length))
 	 (attack-samples (round (* attack sample-rate)))
 	 (release-samples (round (* release sample-rate))))
@@ -36,17 +40,45 @@
        for onset-time-in-samples = (round (* time sample-rate))
        for duration-samples = (round (* duration sample-rate))
        for sustain-samples = (- duration-samples attack-samples release-samples)
-       for envelope = (.concatenate (.rseq 0.0 amplitude attack-samples) 
- 				    (.rseq amplitude amplitude sustain-samples)
- 				    (.rseq amplitude 0.0 release-samples))
-       do (setf (.subarray time-signal (list 0 (list onset-time-in-samples 
- 						     (+ onset-time-in-samples duration-samples))))
- 		envelope))
+       do (if make-envelope-p
+	      ;; TODO replace with make-envelope if we want it.
+	      (let ((envelope (.concatenate (.rseq 0.0 amplitude attack-samples) 
+					    (.rseq amplitude amplitude sustain-samples)
+					    (.rseq amplitude 0.0 release-samples))))
+		(setf (.subarray time-signal (list 0 (list onset-time-in-samples 
+							   (+ onset-time-in-samples duration-samples))))
+		      envelope))
+	      (setf (.aref time-signal onset-time-in-samples) (coerce amplitude 'double-float))))
     (make-instance 'rhythm
 		   :name name
 		   :description name
 		   :time-signal time-signal
 		   :sample-rate sample-rate)))
+
+;; Read Temperley's Melisma "notefiles". These are described as:
+;;  in "notelist" format, "Note [ontime] [offtime] [pitch]", where ontime and offtime
+;; are in milliseconds and pitch is an integer, middle C = 60.
+;; There are however, other lines in the file, which need pruning.
+(defun part-of-melisma-file (filepath)
+  "Reads the data file, creates a note-list"
+  (with-open-file (input-stream filepath)
+    (loop
+       for note-type = (read input-stream nil)
+       while note-type
+       if (string-equal note-type "Note")
+       collect
+	 (let ((on-time (read input-stream))
+	       (off-time (read input-stream))
+	       (midi-note (read input-stream)))
+	   ;; (format t "~a, ~a, ~a, ~a~%" note-type on-time off-time midi-note)
+	   (list (/ on-time 1000.0d0) (/ (- off-time on-time) 1000.0d0) 1.0 midi-note))
+       else
+       do (read-line input-stream nil))))
+
+(defun rhythm-of-melisma-file (filepath)
+  "Returns a rhythm object from the melisma file"
+  (let ((melisma-note-list (part-of-melisma-file filepath)))
+    (rhythm-of-part (pathname-name filepath) melisma-note-list)))
 
 (defun create-probe-rhythms (name weighted-onsets &key (probe-base-time 3.0d0) 
 			    (probe-note-ratios '(1/6 1/4 1/3 1/2 2/3 3/4 5/6)))
@@ -465,9 +497,21 @@
 (pushnew 'weighted-beat-ridge *plotting*)
 (pushnew 'scale-energy-profile *plotting*)
 (pushnew 'unweighted-profile *plotting*)
+(pushnew 'tempo-preference *plotting*)
 (expectancies-of-rhythm-integrator iso-rhythm :times-to-check (list (1- (duration-in-samples iso-rhythm))))
+
 
 (setf x (tempo-salience-weighting (preferred-tempo-scale 16 200) '(128 2) :octaves-per-stddev 1.0))
 
+(defun process-rhythms (files)
+  (loop 
+     for (filename m meter d description) in files
+     for filepath = (make-pathname :directory "/Volumes/iDisk/Research/Data/Temperley/essen-perf" 
+				   :name filename 
+				   :type "notes")
+     collect (rhythm-of-melisma-file filepath)))
+(setf rs (process-rhythms (subseq dorys::*essen-perf-meters* 0 5)))
 
+(setf m (scaleogram-magnitude (scaleogram (analysis-of-rhythm iso-rhythm))))
+(plot (.subseq (.column m 2048) 75 86) (.iseq 75 85) :aspect-ratio 0.66)
 |#
