@@ -56,7 +56,7 @@
 (defgeneric save-rhythm (rhythm-to-save &key directory)
   (:documentation "Writes the rhythm to a MusicKit scorefile."))
 
-(defgeneric plot-rhythm (rhythm-to-plot &key reset)
+(defgeneric plot-rhythm (rhythm-to-plot &key reset time-in-seconds)
   (:documentation "Plot locations of notes of the given rhythm."))
 
 (defgeneric scale-amplitude (rhythm-to-scale scale-factor)

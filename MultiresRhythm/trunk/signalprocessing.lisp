@@ -25,6 +25,7 @@
 ;;  (/ (.sum a) (.length a)))
 
 (defun prune-to-limit (a limit)
+  "Remove any elements which are above the limit value"
   (make-instance (class-of a) :ival (remove-if-not (lambda (x) (<= x limit)) (val a))))
 
 ;;thresholdMag = magnitude > threshold;

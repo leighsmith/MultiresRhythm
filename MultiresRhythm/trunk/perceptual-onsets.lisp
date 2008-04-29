@@ -43,7 +43,7 @@
 ;; (setf ps (perceptual-salience-rhythm "/Volumes/iDisk/Research/Sources/OtherResearchers/UoP/AuditorySaliencyModel/ines1.saliency" "/Volumes/iDisk/Research/Sources/OtherResearchers/UoP/AuditorySaliencyModel/ines1.onsets" :weighted t))
 ;; (setf res1 (perceptual-onsets-to-rhythm "res1/res1_1_resp_text" "res1/res1_1_pOnsets" :weighted t))
 
-(defmethod plot-rhythm ((rhythm-to-plot salience-trace-rhythm) &key (reset t))
+(defmethod plot-rhythm ((rhythm-to-plot salience-trace-rhythm) &key (reset t) (time-in-seconds nil))
   ;; TODO add (onsets-time-signal rhythm-to-plot) when we can plot different sized signals.
   (nplot (list (time-signal rhythm-to-plot)) nil 
 	:aspect-ratio 0.66 
@@ -131,7 +131,7 @@
 				       :sample-rate (sample-rate rhythm))))
     (onset-time-of-note onsets-rhythm note-numbers)))
 
-
+#|
 (defun pOnset-times (onsets-filename)
   (let* ((data-directory "/Volumes/iDisk/Research/Data/PerceptualOnsets/")
 	 (perceptual-onsets (.load (make-pathname :directory (list :absolute data-directory)
@@ -150,4 +150,4 @@
 						  :type "wav"))
 	 (onset-times-in-seconds (pOnset-times (concatenate 'string original-sound-filename "_pOnsets_text"))))
     (save-rhythm-mix accompaniment-sound-path original-sound-path onset-times-in-seconds)))
-
+|#
