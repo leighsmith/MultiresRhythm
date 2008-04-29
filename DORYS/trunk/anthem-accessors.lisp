@@ -69,34 +69,6 @@
 ;; (length (anthems-of-meter "3/4"))
 ;; (length (anthems-of-meter "2/2"))
 
-(defun make-histogram (data)
-  "Returns each unique value in data along with the count of it's occurrence in a hash-table"
-  (let ((element-count-hash (make-hash-table :size (length data))))
-    (map nil (lambda (element) (incf (gethash element element-count-hash 0))) data)
-    element-count-hash))
-
-(defun display-interval-counts (histogram-hash-table)
-  (maphash (lambda (key count) (format t "duration ~a count ~a~%" key count)) histogram-hash-table))
-
-;; (display-interval-counts (make-histogram (second (anthem-named 'america))))
-
-(defun make-histogram-of-anthem-intervals (&key (anthems *national-anthems*))
-  "Returns each unique value in data along with the count of it's occurrence in a hash-table"
-  (let ((element-count-hash (make-hash-table)))
-    (dolist (anthem anthems)
-      (map nil
-	   (lambda (element) (incf (gethash element element-count-hash 0)))
-	   (mapcar (lambda (x) (/ x (float (anthem-beat-duration anthem) 1d0))) (second anthem))))
-    element-count-hash))
-
-(defun histogram-intervals (histogram-hash-table)
-  "Returns a sorted list of histogram intervals from the hash-table"
-  (let ((all-keys '()))
-    (maphash #'(lambda (key value) (push key all-keys)) histogram-hash-table)
-    (sort all-keys #'<)))
-
-;; (display-interval-counts (make-histogram-of-anthem-intervals :anthems (anthems-of-meter "3/4")))
-
 (defun crochets-of-anthems (anthems)
   "Returns the crotchet ratios of the intervals sorted in ascending order"
   (let ((b '())) 

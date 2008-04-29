@@ -74,3 +74,6 @@
 ("ussr25" :meter "4/4" :meter-description "simple quadruple")
 ("ussr26" :meter "2/4" :meter-description "simple duple")
 ("ussr36" :meter "6/8" :meter-description "compound duple")))
+
+(defun essen-of-meter (meter) 
+  (remove-if-not (lambda (x) (equal x meter)) *essen-perf-meters* :key #'third))

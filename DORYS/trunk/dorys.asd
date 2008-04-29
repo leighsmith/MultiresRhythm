@@ -32,7 +32,8 @@
   :author "Leigh M. Smith"
   :license "Copyright (c) 2005-2007"
   :components ((:file "national anthems")
-	       (:file "anthem-accessors" :depends-on ("national anthems"))
+	       (:file "histogram")
+	       (:file "anthem-accessors" :depends-on ("national anthems" "histogram"))
 	       (:file "EsAC")
 	       (:file "essen-meter-list")))
 
