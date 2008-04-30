@@ -1,6 +1,6 @@
 ;;;; -*- Lisp -*-
 ;;;;
-;;;; $Id:$
+;;;; $Id$
 ;;;;
 ;;;; Functions for testing using National Anthem data-base.
 ;;;;
@@ -76,12 +76,27 @@
       (push (sort (mapcar (lambda (x) (/ x (float (anthem-beat-duration anthem) 1d0))) (second anthem)) #'<)
 	    b))))
 
+(defun number-of-bars-in-anthem (anthem)
+  "Returns the rounded number of bars in an anthem (including anacrusis)"
+  (round (/ (reduce #'+ (second anthem)) (anthem-bar-duration anthem))))
+
 (defun bar-period-in-anthem-intervals (&key (anthems *national-anthems*))
   "Returns the counts of the given anthem matching the bar duration"
   (loop
      for anthem in anthems
      do (format t "~a~%" (anthem-name anthem))
      collect (gethash (anthem-bar-duration anthem) (make-histogram (second anthem)))))
+
+(defun make-histogram-of-anthem-intervals (&key (anthems *national-anthems*))
+  "Returns a histogram of intervals in the anthems as ratios to the beat duration"
+  (let ((interval-histogram (make-histogram '())))
+    (dolist (anthem anthems)
+      (add-to-histogram interval-histogram
+			(mapcar (lambda (x) (/ x (float (anthem-beat-duration anthem) 1d0)))
+				(second anthem))))
+    interval-histogram))
+
+;; (print-elements-and-counts (make-histogram-of-anthem-intervals :anthems (anthems-of-meter "3/4")))
 
 ;; (bar-period-in-anthem-intervals :anthems (anthems-of-meter "4/4"))
 
