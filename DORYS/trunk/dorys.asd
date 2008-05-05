@@ -22,7 +22,10 @@
 		     :anthem-beat-duration :anthem-bar-duration :anthem-anacrusis-duration
 		     :anthems-of-meter
 		     :evaluation-of-anthems
-		     :read-esac-file))
+		     :read-esac-file
+		     :make-histogram
+		     :add-to-histogram
+		     :get-histogram))
 
 (in-package :dorys)
 
