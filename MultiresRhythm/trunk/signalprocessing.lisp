@@ -28,6 +28,11 @@
   "Remove any elements which are above the limit value"
   (make-instance (class-of a) :ival (remove-if-not (lambda (x) (<= x limit)) (val a))))
 
+(defun pad-end-to-length (vector length)
+  "Pad a vector with zeros out the length given"
+  (let ((pad-length (- length (.length vector))))
+    (.concatenate vector (make-double-array pad-length))))
+
 ;;thresholdMag = magnitude > threshold;
 ;;newphase = (thresholdMag .* phase) + (!thresholdMag .* clamp);
 (defun clamp-to-bounds (signal test-signal 
@@ -85,6 +90,14 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 	  (setf (aref r-val r+1 c) (if (and (funcall comparison-fn center (aref a-val r c)) 
 					    (funcall comparison-fn center (aref a-val (+ r 2) c))) 1d0 0d0)))))
     r))
+
+;;; We have to use two columns since NLISP otherwise reduces a 1 row x n column matrix
+;;; into a vector.
+(defun extrema-points-vector (vector &rest arguments)
+  "Find the extrema points of a vector by making it a two column matrix"
+  (let* ((two-column-matrix (make-double-array (list 2 (.length vector)))))
+    (setf (.subarray two-column-matrix '(t t)) vector)
+    (.column (apply #'extrema-points (.transpose two-column-matrix) arguments) 0)))
 
 (defun cumsum (a)
   "Computes the cumulative summation across each row of the matrix"
