@@ -73,7 +73,7 @@
 
 (defun fitting-beat-durations (time-signature bar-duration &optional (allow-sub-beats t))
   (let ((divs (time-sig-divs time-signature)))
-    (when (null divs)(warn "unkown time-signature ~A" time-signature))
+    (when (null divs)(warn "unknown time-signature ~A" time-signature))
     (metre-to-durations divs bar-duration allow-sub-beats)))
 
 (defun time-sig-divs (time-signature)
@@ -86,7 +86,7 @@
                                 ("9/8" 3 3)
                                 ("12/8" 3 2))
                    :test #'string=))
-      (error "unkown time-signature ~A" time-signature)))
+      (error "unknown time-signature ~A" time-signature)))
   
 
 ;(fitting-beats "4/4" 48 36)
@@ -201,13 +201,11 @@
            (position (if phase phase (random bar))))
       (pattern-from-grammar-long-segment position dur bar meter))))
 
-#|
-(loop for metre in (all-metres)
-      collect (metre-to-durations metre 48))
+;; (loop for metre in (all-metres)
+;;      collect (metre-to-durations metre 48))
 
-|#
-;(metric-pattern-with-certain-duration 40)
-;(check-any-metre (metric-pattern-with-certain-duration :duration 40))
+;;(metric-pattern-with-certain-duration 40)
+;;(check-any-metre (metric-pattern-with-certain-duration :duration 40))
 
 ;**************************************************************************
 
@@ -236,6 +234,7 @@
         and do (setf count 0)))
 
 (defun pattern-from-grammar-long-segment (phase duration size divs)
+  "Given a phase, duration of the measure, measure size and meter, generate a metrical pattern"
   (let* ((head (- size phase))
          (only-head (<= duration head))
          (head-end-phase (if only-head (+ phase duration) size))
@@ -329,7 +328,9 @@
 
 (defun pattern-from-grammar (size divs &optional (n (number-of-patterns-from-grammar size divs)))
   (cond ((null divs) (list size))
-        ((zerop (random n))
+        ;((zerop (random n)) ;; 1 in n chances of a time span without further subdivision.
+        ; (list size))
+        ((<= (random 1.0) 0.4) ;; 40% chances of a time span without further subdivision.
          (list size))
         (t (loop repeat (first divs)
                  append (pattern-from-grammar (/ size (first divs)) 
@@ -379,6 +380,7 @@
 ;(metres 4 '(2 3))
 
 (defun a-metre (size &optional (divs '(2 3)))
+  "Randomly select a meter from the common divisors of the bar size"
   (when (> size 1)
     (let ((div ( pick-random (loop for div in divs when (zerop (mod size div)) collect div))))
       (cons div (a-metre (/ size div) divs)))))
