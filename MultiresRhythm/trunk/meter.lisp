@@ -44,6 +44,56 @@
   (if (zerop (mod (meter-of-analysis analysis tactus) 2)) 2 3))
 
 
+(defun scales-of-meter (candidate-meters beat-period vpo max-scale)
+  "Given a set of candidate meters and a beat period, return the scales that the meters should have energy at"
+  (declare (ignore candidate-meters))
+  (loop
+     for meter-multiples in '((2 4 12) (2 4 8 16) (2 6 12)) ; TODO kludged for (3/4 4/4 6/8)
+     ;; for meter in candidate-meters
+     ;; for meter-multiples = (make-narray (reverse (apply #'* meter))))
+     ;; (apply #'* '(2 2 3) '(2 3 1))
+     for meter-periods = (.* (make-narray meter-multiples) beat-period)
+     ;; clip below the lowest freq. scale.
+     collect (prune-to-limit (.round (scale-from-period meter-periods vpo)) max-scale)))
+
+;;; TODO Perhaps should be meter-of-analysis
+(defun meter-of-rhythm (rhythm-to-analyse &key (candidate-meters '((3 2 2) (2 2 2 2) (2 3 2))))
+  "Computes the expectancies using the maximum
+   value of the cumulative sum of the scaleogram energy" 
+  (let* ((last-time (1- (duration-in-samples rhythm-to-analyse)))
+	 (analysis (analysis-of-rhythm rhythm-to-analyse :padding #'causal-pad))
+	 (scaleogram (scaleogram analysis))
+	 (vpo (voices-per-octave scaleogram))
+ 	 (persistency-profile (./ (cumsum (scaleogram-magnitude scaleogram))
+				  (duration-in-samples rhythm-to-analyse)))
+	 (final-persistency-profile (.column persistency-profile last-time))
+	 (scale-peaks (determine-scale-peaks persistency-profile))
+	 (last-peaks (.column scale-peaks last-time))
+	 (beat-period (time-support (argmax last-peaks) vpo))
+	 (scales-to-check (scales-of-meter candidate-meters beat-period vpo (1- (number-of-scales scaleogram))))
+	 (persistency-for-scales (mapcar (lambda (scales) (.arefs final-persistency-profile scales)) scales-to-check))
+	 (evidence-for-meters (make-narray (mapcar #'mean persistency-for-scales))))
+    (format t "beat period of maximum last cumulative scale peaks ~a~%" beat-period)
+    (format t "scales to check ~a~%" scales-to-check)
+    ;; Must normalize by the number of multipliers used otherwise 4/4 will always outgun 3/4.
+    (format t "persistency ~a~%mean ~a~%" persistency-for-scales evidence-for-meters)
+    (nth (argmax evidence-for-meters) candidate-meters)))
+
+(defparameter *meter-names* (make-hash-table))
+
+;(setf (gethash "3/4" *meter-names*) '(3 2 2))
+;(setf (gethash "4/4" *meter-names*) '(2 2 2 2))
+;(setf (gethash "6/8" *meter-names*) '(2 3 2))
+;(setf (gethash "2/4" *meter-names*) '(2 2 2))
+;(setf (gethash "3/8" *meter-names*) '(3 2))
+;(setf (gethash "6/4" *meter-names*) '(2 3 2))
+;(setf (gethash "3/2" *meter-names*) '(2 3 2))
+
+
+(defun meter-for-name (meter-name)
+  "Returns the metrical subdivisions that the name of the meter implies"
+  (gethash meter-name *meter-names*))
+
 #|
 
 ;; Problem is, 6 times the beat-period is typically longer than the maximum scale, so
