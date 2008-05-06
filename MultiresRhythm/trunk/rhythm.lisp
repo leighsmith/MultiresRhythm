@@ -198,7 +198,7 @@
   (let* ((note-positions (onsets-in-samples rhythm-to-analyse)))
     (.aref note-positions note-number)))
 
-(defmethod onset-time-of-note ((rhythm-to-analyse rhythm) (note-numbers n-fixnum-array))
+(defmethod onset-time-of-note ((rhythm-to-analyse rhythm) (note-numbers n-array))
   "Returns the sample number of the note-number'th note in the given rhythm"
   (let* ((note-positions (onsets-in-samples rhythm-to-analyse)))
     (.arefs note-positions note-numbers)))
