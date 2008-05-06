@@ -295,10 +295,6 @@ since it's small and fast to read rather than the entire analysis files."
 ;; (mean beat-ratios)
 ;; (.save beat-ratios "/Users/leigh/Data/anthem-beat-ratios.octave" :format :octave)
 
-(defun histogram-counts (histogram-hash-table intervals)
-  (make-narray (loop for interval across (val intervals)
-			   collect (float (gethash interval histogram-hash-table)))))
-
 (defun check-integrity-of-anthems (anthems)
   "Returns any anthems which have intervals longer than more than 4 crochets.
 Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
@@ -313,21 +309,18 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
   "Returns an narray of scales with the relative occurrence of each interval over the duration of the anthem rhythm"
   (let* ((scale-histogram (make-double-array (number-of-scales-for-period max-time-limit :voices-per-octave vpo)))
 	 (duration-histogram (dorys::make-histogram (second anthem)))
-	 (intervals (make-narray (dorys::histogram-intervals duration-histogram)))
+	 (intervals (make-narray (dorys::get-histogram-elements duration-histogram)))
 	 ;; Multiply the intervals by the counts to measure the time over which each interval spans.
-	 (spans (.* intervals (histogram-counts duration-histogram intervals)))
-	 (relative-occurrence (./ spans (.sum spans))) ; make it a relative measure wrt time.
+	 (spans (.* intervals (make-narray (dorys::get-histogram-counts duration-histogram))))
+	 (relative-occurrence (./ spans (* (.sum spans) 1d0))) ; make it a relative measure wrt time.
 	 (crochet-ratios (./ intervals (float (anthem-beat-duration anthem) 1d0))))
     ;; TODO .floor should be .round
     (setf (.arefs scale-histogram (.floor (scale-from-period (.* crochet-ratios crochet-duration) vpo)))
 	  relative-occurrence)))
 
-(defun pad-end-to-length (vector length)
-  (let ((pad-length (- length (.length vector))))
-    (.concatenate vector (make-double-array pad-length))))
-
-(defun average-ridge-persistency (&key (anthems *national-anthems*) (max-time-limit 16384))
-  "Sum the ridge persistencies over each meter and plot the average ridges."
+;;; TODO perhaps this can just use the average-ridge-persistency (of rhythms) function?
+(defun average-ridge-persistency-of-anthems (anthems &key (max-time-limit 16384))
+  "Sum the ridge persistencies over each meter and return the average ridges."
   (loop
      for anthem in anthems
      ;; Since some rhythms are shorter than the maximum, we need to pad the ridge-persistency responses.
@@ -341,10 +334,10 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 ;;   (let* ((anthem-duration (duration-in-samples (anthem-rhythm (first anthems))))
 ;; 	 (scale-histogram (make-double-array (number-of-scales-for-period anthem-duration :voices-per-octave vpo)))
 ;; 	 (histogram-hash-table (dorys::make-histogram-of-anthem-intervals :anthems anthems))
-;; 	 (intervals (histogram-intervals histogram-hash-table)))
+;; 	 (intervals (make-narray (get-histogram-elements histogram-hash-table))))
 ;;     ;; TODO should be .round
 ;;     (setf (.arefs scale-histogram (.floor (scale-from-period (.* intervals crochet-duration) vpo)))
-;; 			       (.normalise (histogram-counts histogram-hash-table intervals)))
+;; 			       (.normalise (get-histogram-counts histogram-hash-table intervals)))
 ;;     scale-histogram))
 
 ;;; TODO need to time limit histograms
@@ -425,7 +418,7 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 ;; (plot-anthem-bar-presence)
 
 (defun plot-ridge-persistency-for-anthems (anthems description &key (vpo 16) (crochet-duration 100))
-  (let* ((arp (average-ridge-persistency :anthems anthems :max-time-limit 16384)) ; (* 48 25)
+  (let* ((arp (average-ridge-persistency-of-anthems anthems :max-time-limit 16384)) ; (* 48 25)
 	 (anthem-bar-scale (bar-scale (first anthems) vpo))
 	 (prominent-scale-indices (.+ (.find (.> arp 0.20)) 1)))
     (format t "anthem bar scale ~a prominent scale indices ~a~%period ~a~%"
@@ -454,7 +447,7 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 (defun plot-histogram-of-anthems (anthems description &key (crochet-duration 100) (vpo 16))
   "Plots a comparison between the histogram of intervals and the multiresolution ridge presence"
   (let* ((bar-scale-index (round (bar-scale (first anthems) vpo)))
-	 (average-ridge-presence (average-ridge-persistency :anthems anthems))
+	 (average-ridge-presence (average-ridge-persistency-of-anthems anthems))
 	 (interval-histogram (scale-histogram-of-anthems anthems))
 	 ;; Scales the histogram to match the highest average ridge presence
 	 (histogram-scaling (/ (.max average-ridge-presence) (.max interval-histogram))))
@@ -484,7 +477,7 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 ;; (plot-histogram-of-anthems (dorys:anthems-of-meter "2/2") "in 2/2 Meter")
 
 ;; To scale the histogram to match the 
-;; (setf arp (average-ridge-persistency :anthems (dorys:anthems-of-meter "2/2")))
+;; (setf arp (average-ridge-persistency-of-anthems (dorys:anthems-of-meter "2/2")))
 ;; (setf h (scale-histogram-of-anthems (dorys:anthems-of-meter "2/2")))
 ;; (setf scaling (/ (.max arp) (.max h)))
 
