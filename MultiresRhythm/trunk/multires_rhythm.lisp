@@ -73,6 +73,7 @@ This is weighted by absolute constraints, look in the 600ms period range."
 				 (octaves-per-stddev 1.0)
 				 (envelope #'gaussian-envelope))
   "Produce a weighting matching the analysis window using tempo preference."
+  (format t "tempo-salience-weighting Salient scale is ~a~%" salient-scale)
   (let* ((number-of-scales (first time-frequency-dimensions))
 	 (time-in-samples (second time-frequency-dimensions))
 	 (tempo-weighting-over-time (make-double-array time-frequency-dimensions))
@@ -389,6 +390,10 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
 		   :ridge-peaks correlated-ridge-scale-peaks
 		   :ridge-troughs (extrema-points (scaleogram-magnitude scaleogram) :extrema :min)
 		   :sample-rate sample-rate)))
+
+(defmethod unweighted-ridge-persistency-of ((analysis multires-analysis))
+  "Return the ridge persistency (normalised occurrence) of a given multires analysis"
+  (ridge-persistency-of (skeleton analysis)))
 
 (defmethod ridge-persistency-of ((analysis multires-analysis))
   "Returns the ridge persistency of the precomputed ridge peaks"

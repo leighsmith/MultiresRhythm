@@ -179,6 +179,16 @@
   "Given a sampling rate in Hz, return the IOI in seconds."
   (./ (time-support scales wavelets-per-octave) sample-rate))
 
+(defun uncertainty-of-period (time-periods voices-per-octave)
+  "Return the time range of uncertainty between the two scales spanning a given time period"
+  (let* ((exact-scales (scale-from-period time-periods voices-per-octave))
+	 (lowest-scales (.floor exact-scales))
+	 (highest-scales (.ceiling exact-scales)))
+    (list (.- (time-support highest-scales voices-per-octave) time-periods)
+	  (.- (time-support lowest-scales voices-per-octave) time-periods))))
+
+;; (.+ 360 (make-narray (uncertainty-of-period 360 16)))   
+
 ;;; Dyadic version assumes the input data is a power of 2.
 (defun dyadic-cwt (input-data wavelets-per-octave maximum-time-period 
 		   &key (fourier-domain-wavelet #'morlet-wavelet-fourier))

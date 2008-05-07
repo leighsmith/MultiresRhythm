@@ -354,8 +354,7 @@
 
 (defmethod scales-as-array ((the-ridge ridge))
   "Returns the scales list as an nlisp array"
-  (make-instance 'n-fixnum-array :ival (make-array (duration-in-samples the-ridge)
-						   :initial-contents (scales the-ridge))))
+  (make-narray (scales the-ridge)))
 
 (defmethod insert-ridge ((ridge-to-insert ridge) (time-frequency-plane n-double-array)
 			 &key (constant-value 1.0d0)) 

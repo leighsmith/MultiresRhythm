@@ -104,7 +104,8 @@
     (dotimes (to-find-index element-length)
       (setf next-position (position (.aref x to-find-index) (val a) :test #'<=))
       (vector-push (if next-position next-position (.length a)) found-indexes))
-    (make-instance 'n-fixnum-array :ival (adjust-array found-indexes (fill-pointer found-indexes)))))
+    ;; TODO this should be able to be done without declaring the type of the array.
+    (make-instance 'n-integer-array :ival (adjust-array found-indexes (fill-pointer found-indexes)))))
 
 (defun linear-segmented-channel (map-length channel-linear-segments)
   "Create an 1-d lookup table with map-length elements.
