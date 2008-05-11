@@ -218,6 +218,11 @@
 (defmethod rhythm-iois-samples ((rhythm-to-analyse rhythm))
   (.diff (onsets-in-samples rhythm-to-analyse)))
 
+(defmethod intervals-as-ratios ((rhythm-to-analyse rhythm))
+  "Return the IOIs of the rhythm as ratios to the shortest interval"
+  (let* ((iois-in-samples (rhythm-iois-samples rhythm-to-analyse)))
+    (./ iois-in-samples (.min iois-in-samples) 1d0)))
+
 (defmethod plot-rhythm ((rhythm-to-plot rhythm) &key 
 			(reset t)
 			(time-in-seconds nil)

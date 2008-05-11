@@ -114,8 +114,7 @@ start-onset, these measures are in samples"
 	 (vpo (voices-per-octave skeleton-to-analyse))
 	 (sample-rate (sample-rate rhythm-to-analyse))
 	 (salient-scale (preferred-tempo-scale vpo sample-rate))
-	 (tempo-beat-preference (.column (tempo-salience-weighting salient-scale 
-								   (list (.length ridge-persistency-profile) 1)) 0))
+	 (tempo-beat-preference (tempo-salience-weighting-vector salient-scale (.length ridge-persistency-profile)))
  	 (weighted-persistency-profile (.* ridge-persistency-profile tempo-beat-preference))
 	 (beat-scale (position (.max weighted-persistency-profile) (val weighted-persistency-profile)))
 	 (beat-period (time-support beat-scale vpo)))
@@ -140,8 +139,7 @@ start-onset, these measures are in samples"
 	 (vpo (voices-per-octave skeleton-to-analyse))
 	 (sample-rate (sample-rate rhythm-to-analyse))
 	 (salient-scale (preferred-tempo-scale vpo sample-rate))
-	 (tempo-beat-preference (.column (tempo-salience-weighting salient-scale 
-								   (list (.length ridge-persistency-profile) 1)) 0))
+	 (tempo-beat-preference (tempo-salience-weighting-vector salient-scale (.length ridge-persistency-profile)))
 	 ;; Perhaps use a scale-persistency as a weighting?
 	 (scale-persistency-profile (scale-persistency (scaleogram-magnitude (scaleogram rhythm-analysis))))
 

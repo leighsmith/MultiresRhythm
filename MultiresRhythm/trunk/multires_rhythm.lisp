@@ -67,31 +67,37 @@ This is weighted by absolute constraints, look in the 600ms period range."
     (floor (scale-from-period salient-IOI voices-per-octave))))
 
 ;;; Scale index 0 is the highest frequency (smallest dilation) scale.
-;;; TODO this should be weighted by the log scale character, rather than symmetrical.
-(defun tempo-salience-weighting (salient-scale time-frequency-dimensions &key (voices-per-octave 16)
-				 ;; Define a doubling in frequency, 1 octave as 1 stddev.
-				 (octaves-per-stddev 1.0)
-				 (envelope #'gaussian-envelope))
+(defun tempo-salience-weighting-vector (salient-scale number-of-scales &key (voices-per-octave 16)
+					;; Define a doubling in frequency, 1 octave as 1 stddev.
+					(octaves-per-stddev 1.0)
+					(envelope #'gaussian-envelope))
+  "Returns a tempo weighting vector"
+  (format t "tempo-salience-weighting-vector salient scale is ~a~%" salient-scale)
+  (let* ((stddev-span 10.0)) ; Match the mean to a span across -5 < mean < 5 standard deviations.
+    ;; Create a Gaussian envelope spanning the number of scales.
+    (funcall envelope number-of-scales 
+	     :mean (- (/ (* stddev-span salient-scale) number-of-scales) 
+		      (/ stddev-span 2.0))
+	     :stddev (/ (* voices-per-octave stddev-span octaves-per-stddev) number-of-scales)
+	     :scaling 1d0)))
+
+;;; Scale index 0 is the highest frequency (smallest dilation) scale.
+(defun tempo-salience-weighting (salient-scale time-frequency-dimensions &rest tempo-arguments)
   "Produce a weighting matching the analysis window using tempo preference."
-  (format t "tempo-salience-weighting Salient scale is ~a~%" salient-scale)
   (let* ((number-of-scales (first time-frequency-dimensions))
 	 (time-in-samples (second time-frequency-dimensions))
 	 (tempo-weighting-over-time (make-double-array time-frequency-dimensions))
-	 (stddev-span 10.0) ; Match the mean to a span across -5 < mean < 5 standard deviations.
 	 ;; Create a Gaussian envelope spanning the number of scales.
-	 (tempo-scale-weighting (funcall envelope number-of-scales 
-					 :mean (- (/ (* stddev-span salient-scale) number-of-scales) 
-						  (/ stddev-span 2.0))
-					 :stddev (/ (* voices-per-octave stddev-span octaves-per-stddev) number-of-scales)
-					 :scaling 1d0)))
+	 (tempo-scale-weighting (apply #'tempo-salience-weighting-vector salient-scale number-of-scales tempo-arguments)))
     (dotimes (time time-in-samples)
       (setf (.subarray tempo-weighting-over-time (list t time))
 	    (.reshape tempo-scale-weighting (list number-of-scales 1))))
     tempo-weighting-over-time))
 
-;; (plot (.column (tempo-salience-weighting 78 '(144 1) :voices-per-octave 16.0) 0) nil :title "Preferred tempo weighting profile" :aspect-ratio 0.66)
+;; (plot (tempo-salience-weighting-vector 78 144 :voices-per-octave 16.0) nil :title "Preferred tempo weighting profile" :aspect-ratio 0.66)
 
 ;;; Scale index 0 is the highest frequency (smallest dilation) scale.
+;;; this is weighted by the log scale character, rather than symmetrical.
 (defun tempo-salience-weighting-log (salient-scale time-frequency-dimensions &key (voices-per-octave 16))
   "Produce a weighting matching the analysis window using tempo preference. This weighting
    is skewed so that the scales higher than the mean are half as likely as scales lower than the mean."
