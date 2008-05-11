@@ -182,26 +182,27 @@
 
 ;;; Sum all values falling within the given bins ranges. Effectively integrate.
 ;;; Could sort by time value. Return the sum and the average of the confidences in the bins.
-(defun time-bins (expect-times expect-confidences &key (bin-size 0.025))
+(defun time-bins (times values-at-times &key (bin-size 0.025))
   "Group the expectations into bins of time, specified by bin-size (in seconds). Returns
    the number of elements in each bin, the accumulated confidences and the boundaries."
-  (let* ((number-of-bins (ceiling (range expect-times) bin-size)) ; round up to get all times 
-	 (last-bin (+ (.min expect-times) (* (1- number-of-bins) bin-size))) ; for low edge of bin.
-	 (bin-boundaries (.rseq (.min expect-times) last-bin number-of-bins))
+  ;; round up to capture all times, including a perfectly dividing edge.
+  (let* ((number-of-bins (1+ (floor (range times) bin-size)))
+	 (last-bin (+ (.min times) (* (1- number-of-bins) bin-size))) ; for low edge of bin.
+	 (bin-boundaries (.rseq (.min times) last-bin number-of-bins))
 	 (accumulated-confidences (make-double-array number-of-bins))
 	 (bin-counts (make-double-array number-of-bins)))
     (loop
        for bin-index from 0 below number-of-bins
-       ;; determine which elements in expect-times (& therefore expect-confidences) are within the bin.
-       for in-bin = (.and (.>= expect-times (.aref bin-boundaries bin-index))
+       ;; determine which elements in times (& therefore values-at-times) are within the bin.
+       for in-bin = (.and (.>= times (.aref bin-boundaries bin-index))
 			  ;; catch the edge of last bin.
-			  (.< expect-times (if (= bin-index (1- number-of-bins))
-					       (+ last-bin bin-size) 
-					       (.aref bin-boundaries (1+ bin-index)))))
+			  (.< times (if (= bin-index (1- number-of-bins))
+					(+ last-bin bin-size) 
+					(.aref bin-boundaries (1+ bin-index)))))
        for in-bin-count = (.sum in-bin)  ; number of occurances.
        do (progn
 	    ;; (format t "from ~a to ~a ~a values~%" (.aref bin-boundaries (1- bin-index)) (.aref bin-boundaries bin-index) in-bin-count)
-	    (setf (.aref accumulated-confidences bin-index) (.sum (.* in-bin expect-confidences)))
+	    (setf (.aref accumulated-confidences bin-index) (.sum (.* in-bin values-at-times)))
 	    (setf (.aref bin-counts bin-index) in-bin-count))
        finally (return (values bin-counts bin-boundaries accumulated-confidences)))))
 
@@ -215,19 +216,41 @@
  	  :title title)
     (close-window)))
 
-(defun plot-expectancies-histogram (times confidences title)
-  (multiple-value-bind (prediction-counts time-bins accumulated-confidences)
-      (time-bins times confidences)
-    ;;(format t "prediction count ~a~%time-bins ~a~%accumulated-confidences ~a~%" 
-    ;;	    prediction-counts time-bins accumulated-confidences)
-    (let ((dividable-counts (.+ (.not prediction-counts) prediction-counts)))
-      ;; (format t "averaged confidences ~a~%" (./ accumulated-confidences dividable-counts))
+(defun plot-time-histogram (times title &key (bin-size 0.025))
+  (multiple-value-bind (counts time-bins)
+      (time-bins times (make-integer-array (.length times) :initial-element 1) :bin-size bin-size)
+    (format t "count ~a~%time-bins ~a~%" counts time-bins)
+    (window)
+    (reset-plot)
+    (plot-command "set title font \"Times,24\"")
+    (plot-command "set xlabel font \"Times,24\"")
+    (plot-command "set ylabel font \"Times,24\"")
+    (plot-command "set xtics ~a out" (max bin-size 0.2))
+    ;; Downsample the time bin lables.
+    ;; (.arefs time-bins (.* (.iseq 0 (/ (.length time-bins) 2)) 2))
+    (plot counts time-bins
+	  :style "boxes fill solid 1.0 border -1"
+	  :xlabel title
+	  :ylabel "Occurrence"
+	  :label (format nil "~a Occurrence" title)
+	  :aspect-ratio 0.66
+	  :reset nil
+	  :title (format nil "Occurrence of ~a" title)))
+  (close-window))
+
+(defun plot-expectancies-histogram (times time-values title)
+  (multiple-value-bind (counts time-bins accumulated-time-values)
+      (time-bins times time-values)
+    ;;(format t "prediction count ~a~%time-bins ~a~%accumulated-time-values ~a~%" 
+    ;;	    counts time-bins accumulated-time-values)
+    (let ((dividable-counts (.+ (.not counts) counts)))
+      ;; (format t "averaged time-values ~a~%" (./ accumulated-time-values dividable-counts))
       (plot-command "set title font \"Times,20\"")
       (plot-command "set xlabel font \"Times,20\"")
       (plot-command "set ylabel font \"Times,20\"")
       (diag-plot 'interval-occurrence
 	(plot-command "set xtics 0.1 out")
-	(plot prediction-counts time-bins
+	(plot counts time-bins
 	      :style "boxes fill solid 1.0 border -1"
 	      :xlabel "Divisions of a Measure" 
 	      :ylabel "Occurrence"
@@ -237,26 +260,26 @@
 	      :title (format nil "Occurrence of Interval Expectations for ~a" title)))
       (window)
       (plot-command "set xtics 0.1 out")
-      ;;     (plot accumulated-confidences time-bins
+      ;;     (plot accumulated-time-values time-bins
       ;; 	  :style "boxes fill solid 1.0 border -1"
       ;; 	  :xlabel "Divisions of a Measure" 
       ;; 	  :ylabel "Accumulated Confidence"
       ;; 	  :label "Relative accumulated confidence"
       ;; 	  :aspect-ratio 0.66
       ;; 	  :reset nil
-      ;; 	  :title (format nil "Accumulated Expectation Confidences for ~a" title))
-      (plot (./ accumulated-confidences dividable-counts) time-bins
+      ;; 	  :title (format nil "Accumulated Expectation Time-Values for ~a" title))
+      (plot (./ accumulated-time-values dividable-counts) time-bins
 	    :style "boxes fill solid 1.0 border -1"
 	    :xlabel "Divisions of a Measure" 
 	    :ylabel "Average Confidence"
 	    :label "Average Confidence per Measure Division"
 	    :aspect-ratio 0.66
 	    :reset nil
-	    :title (format nil "Average Expectation Confidences for ~a" title))
+	    :title (format nil "Average Expectation Time-Values for ~a" title))
       (close-window))))
 
 ;; (setf (.aref bins bin-index) (if (zerop in-bin-count) in-bin-count
-;; 			     (/ (.sum (.* in-bin expect-confidences)) in-bin-count))))
+;; 			     (/ (.sum (.* in-bin expect-time-values)) in-bin-count))))
 
 (defun metrical-rhythm-expectancies (metrical-rhythms meter number-of-bars title
 				     ;; #'last-onset-expectations last-expectations-no-integrate
@@ -355,50 +378,78 @@
     (let* ((meter-length (reduce #'* meter))
 	   (all-metrical-positions (make-integer-array meter-length)))
       (setf (.arefs all-metrical-positions (make-narray metrical-position)) (make-narray counts))
+      (reset-plot)
+      (plot-command "set title font \"Times,24\"")
+      (plot-command "set xlabel offset 0,-1 font \"Times,24\"")
+      (plot-command "set ylabel font \"Times,24\"")
       (plot all-metrical-positions (.iseq 1 meter-length)
 	    :style "boxes fill solid 1.0 border -1"
 	    :xlabel "Semiquavers of a Measure" 
 	    :ylabel "Occurrence"
 	    :label "Metrical Profile"
 	    :aspect-ratio 0.66
-	    :reset t
-	    :title (format nil "Metrical Profile for ~a ~a rhythms of ~a meter"
+	    :reset nil
+	    :title (format nil "Metrical Profile for ~a ~a rhythms in ~a meter"
 			   (length list-of-rhythm-iois) "random" meter)))))
 
 (defun interval-histogram (list-of-rhythm-iois)
   "Create a histogram on the intervals, not the metrical position"
-  (let* ((interval-histogram (dorys::make-histogram '())))
+  (let* ((interval-histogram (dorys:make-histogram '())))
     (dolist (rhythm-iois list-of-rhythm-iois)
-      (dorys::add-to-histogram interval-histogram rhythm-iois))
-    (dorys::get-histogram interval-histogram)))
+      (dorys:add-to-histogram interval-histogram rhythm-iois))
+    interval-histogram))
 
-;; (defun plot-interval-histogram (anthems description &key (crochet-duration 100) (vpo 16))
-;;   "Plots a comparison between the histogram of intervals and the multiresolution ridge presence"
-;;   (let* ((bar-scale-index (round (bar-scale (first anthems) vpo)))
-;; 	 (average-ridge-presence (average-ridge-persistency-of-anthems anthems))
-;; 	 (interval-histogram (scale-histogram-of-anthems anthems))
-;; 	 ;; Scales the histogram to match the highest average ridge presence
-;; 	 (histogram-scaling (/ (.max average-ridge-presence) (.max interval-histogram))))
-;;     (reset-plot)
-;;     (plot-command "set title font \"Times,24\"")
-;;     (plot-command "set xlabel offset 0,-1 font \"Times,24\"")
-;;     ;; (plot-command "set y2label 'Proportion of Interval Present'")
-;;     (plot-command "set ylabel font \"Times,24\"")
-;;     (plot-command "set xtics border (~{~{\"~a\" ~d~}~^, ~}) font \"Sonata,28\"~%" 
-;; 		  (x-axis-pad (label-scale-as-rhythmic-beat vpo crochet-duration)))
-;;     (plot-command "set arrow 1 from ~d,0.40 to ~d,0.35" bar-scale-index bar-scale-index)
-;;     (plot-command "show arrow 1")
-;;     (nplot (list (.* interval-histogram histogram-scaling) average-ridge-presence)
-;; 	   nil
-;; 	   :styles '("boxes fill solid border 9" "lines linetype 3 linewidth 2")
-;; 	   :legends '("Relative Frequency of Occurrence of Intervals" "Time-Frequency Scale Presence")
-;; 	   :xlabel "Dilation Scales in Units of Musical Time"
-;; 	   :ylabel "Proportion of Interval Present"
-;; 	   :title (format nil "Skeleton Scale Presence vs. Occurrence of Intervals For ~d Anthems ~a"
-;; 			  (length anthems) description)
-;; 	   :reset nil
-;; 	   :aspect-ratio 0.66)))
+(defun plot-interval-comparison (interval-histogram average-ridge-persistency description
+				&key (crochet-duration 120) (vpo 16))
+  "Plots a comparison between the histogram of intervals and the multiresolution ridge persistency"
+  (format t "histogram of intervals ~a~%" (multiple-value-list (dorys:get-histogram interval-histogram)))
+  (let* ((interval-counts (make-narray (dorys:get-histogram-counts interval-histogram)))
+	 ;; Scale the histogram to match the highest average ridge persistency
+	 (histogram-scaling (/ (.max average-ridge-persistency) 
+			       (.max interval-counts))))
+    (reset-plot)
+    (plot-command "set title font \"Times,24\"")
+    (plot-command "set xlabel offset 0,-1 font \"Times,24\"")
+    ;; (plot-command "set y2label 'Proportion of Interval Present'")
+    (plot-command "set ylabel font \"Times,24\"")
+    (plot-command "set xtics border (~{~{\"~a\" ~d~}~^, ~}) font \"Sonata,28\"~%" 
+		  (x-axis-pad (label-scale-as-rhythmic-beat vpo crochet-duration)))
+    (nplot (list (.* interval-counts histogram-scaling) average-ridge-persistency)
+	   nil
+	   :styles '("boxes fill solid border 9" "lines linetype 3 linewidth 2")
+	   :legends '("Relative Frequency of Occurrence of Intervals" "Time-Frequency Scale Persistency")
+	   :xlabel "Dilation Scales in Units of Musical Time"
+	   :ylabel "Proportion of Interval Present"
+	   :title (format nil "Skeleton Scale Persistency vs. Occurrence of Intervals For ~a" description)
+	   :reset nil
+	   :aspect-ratio 0.66)))
 
+;; (plot-interval-comparison (interval-histogram rhythm-iois) (average-ridge-persistency rhythms)
+
+(defun plot-interval-histogram (interval-histogram description)
+  "Plots a comparison between the histogram of intervals and the multiresolution ridge persistency"
+  (format t "histogram of intervals ~a~%" (multiple-value-list (dorys:get-histogram interval-histogram)))
+  (multiple-value-bind (elements counts) (dorys:get-histogram interval-histogram)
+    (let* ((element-counts (make-narray counts))
+	   (intervals (make-narray elements))
+	   (largest-interval (.max intervals))
+	   (interval-counts (make-integer-array largest-interval)))
+      (setf (.arefs interval-counts (.- intervals 1)) element-counts)
+      (reset-plot)
+      (plot-command "set title font \"Times,24\"")
+      (plot-command "set xlabel offset 0,-1 font \"Times,24\"")
+      ;; (plot-command "set y2label 'Proportion of Interval Present'")
+      (plot-command "set ylabel font \"Times,24\"")
+      (plot interval-counts (.iseq 1 largest-interval)
+	    :style "boxes fill solid border 9"
+	    :label "Relative Frequency of Occurrence of Intervals"
+	    :xlabel "Intervals in semiquavers"
+	    :ylabel "Proportion of Interval Present"
+	    :title (format nil "Occurrence of Intervals For ~a" description)
+	    :reset nil
+	    :aspect-ratio 0.66))))
+
+;; (plot-interval-histogram (interval-histogram rhythm-iois) "")
 
 (defun plot-profile-and-persistency-of-rhythm (rhythm-to-plot iois-of-rhythm meter number-of-bars)
   (format t "rhythm ~a is:~%~a~%" (name rhythm-to-plot) iois-of-rhythm)
@@ -407,7 +458,9 @@
     (write-as-audio rhythm-to-plot
 		    #P"/Volumes/iDisk/Research/Data/RicardsOnsetTests/test_sound.wav"
 		    #P"/Volumes/iDisk/Research/Data/Handclap Examples/hihat_closed.aiff")
-    (format t "histogram of intervals ~a~%" (multiple-value-list (interval-histogram (list iois-of-rhythm))))
+    ;; (plot-interval-histogram (interval-histogram (list iois-of-rhythm)) (name rhythm-to-plot)) 
+    (plot-time-histogram (make-narray iois-of-rhythm) 
+			 (format nil "Intervals in ~a" (name rhythm-to-plot)) :bin-size 1)
     (window)
     (plot-rhythm rhythm-to-plot :time-in-seconds t)
     (close-window)
@@ -447,28 +500,31 @@
     ;; TODO should produce the analysis of all the rhythms, then compute the arp &
     ;; expectancies from those.
     (let ((analysis (analysis-of-rhythm (first random-rhythms)))
-	  (arp (average-ridge-persistency random-rhythms)))
+	  (arp (average-ridge-persistency random-rhythms))
+	  (description (format nil "~a random rhythms in ~a meter of ~a measures"
+			       (length random-rhythms) meter number-of-bars)))
       (window)
       (plot-metrical-profile random-iois meter)
       (close-window)
+      ;; (plot-interval-histogram (interval-histogram random-iois) description)
+      (plot-time-histogram (make-narray random-iois) description :bin-size 1)
       (plot-ridge-persistency arp
 			      (scaleogram analysis)
-			      (format nil "Average ridge persistency of ~a random rhythms in ~a meter of ~a measures"
-				      (length random-rhythms) meter number-of-bars))
+			      (format nil "Average ridge persistency of ~a" description))
       (metrical-rhythm-expectancies random-rhythms
 				    meter
 				    number-of-bars 
-				    (format nil "expectancies with ridge persistency of ~a random rhythms in ~a meter" (length random-rhythms) meter)
+				    (format nil "expectancies with ridge persistency of ~a" description)
 				    :expectation-generator #'expectancies-of-rhythm-ridge-persistency)
       (metrical-rhythm-expectancies random-rhythms
 				    meter
 				    number-of-bars 
-				    (format nil "expectancies from ending scaleogram peaks of ~a random rhythms in ~a meter" (length random-rhythms) meter)
+				    (format nil "expectancies from ending scaleogram peaks of ~a" description)
 				    :expectation-generator #'expectancies-of-rhythm)
       (metrical-rhythm-expectancies random-rhythms
 				    meter
 				    number-of-bars 
-				    (format nil "expectancies with integration of ~a random rhythms in ~a meter" (length random-rhythms) meter)
+				    (format nil "expectancies with integration of ~a" description)
 				    :expectation-generator #'expectancies-of-rhythm-integrator))))
 
 #|
@@ -555,12 +611,18 @@
 				   :phase-correct-from nil)
 
 
-(setf x (tempo-salience-weighting (preferred-tempo-scale 16 200) '(128 2) :octaves-per-stddev 1.0))
+(setf x (tempo-salience-weighting-vector (preferred-tempo-scale 16 200) 128 :octaves-per-stddev 1.0))
 
 (setf m (scaleogram-magnitude (scaleogram (analysis-of-rhythm iso-rhythm))))
 (plot (.subseq (.column m 2048) 75 86) (.iseq 75 85) :aspect-ratio 0.66)
+|#
 
+
+;;;;
 ;;;; Comparison to anthems:
+;;;;
+
+#|
 
 (defun strip-anthem-of-anacrusis (anthem)
   "Returns the IOIs with the anacrusis removed."
@@ -586,7 +648,6 @@
       (plot-metrical-profile (list anthem-iois) meter)
       (read-line))))
 
-
 (defun metrical-profile-of-anthem (anthem meter)
   (let ((anthem-rhythm (anthem-rhythm anthem))
 	(anthem-iois (strip-anthem-of-anacrusis anthem)))
@@ -600,6 +661,23 @@
 
 ;; (metrical-profile-of-anthem (anthem-named 'dorys::america) '(3 2 2))
 
+;;; Compare frequency of intervals against the generated versions.
+(dorys:get-histogram (interval-histogram (list (second (anthem-named 'dorys::america)))))
+
+;;; to check the IOI isn't a problem.
+(defun anthem-minimum-duration (anthem &key (crochet-duration 120))
+  "Returns the duration of the smallest interval in the anthem, in samples, given a fixed tempo."
+  (/ crochet-duration (anthem-beat-duration anthem)))
+
+;;; Most anthems don't demonstrate a canonical metrical profile, often lacking any beats
+;;; falling on minor metrical positions.
+(plot-ridge-persistency (average-ridge-persistency waltz-anthem-rhythms)
+			(scaleogram-of-rhythm (first waltz-anthem-rhythms))
+			"Average ridge persistency of waltz anthem rhythms")
+
+|#
+
+#|
 ;;; We've verified the collection of random rhythms produce correct metrical profiles.
 ;;; Yet while the average ridge persistency shows ridges for 30 & 60 samples (semiquaver &
 ;;; quaver) we don't get good values for crotchet etc.
@@ -613,15 +691,7 @@
 
 ;;; Need minimum of 1 rhythm of 16 bars to get a good metrical profile
 (setf one-34-rhythm (one-rhythm '(3 2 2) 16))
-
-(multiple-value-bind (one-long-34-rhythm one-long-34-iois) 
-    (random-rhythm-of-meter '(3 2 2) 30)
-  (plot-profile-and-persistency-of-rhythm one-long-34-rhythm one-long-34-iois '(3 2 2) 30))
 (one-rhythm '(3 2 2) 30)
-
-(multiple-value-bind (one-long-44-rhythm one-long-44-iois) 
-    (random-rhythm-of-meter '(2 2 2 2) 30)
-  (plot-profile-and-persistency-of-rhythm one-long-44-rhythm one-long-44-iois '(2 2 2 2) 30))
 (one-rhythm '(2 2 2 2) 30)
 
 ;;; About 1 rhythm of 30 bars, or 5 rhythms of 6 bars each is minimally necessary to produce a
@@ -634,28 +704,31 @@
 (plot-profile-and-persistency 7 18 '(3 2 2))
 
 
-;;; Most anthems don't demonstrate a canonical metrical profile, often lacking any beats
-;;; falling on minor metrical positions.
-(plot-ridge-persistency (average-ridge-persistency waltz-anthem-rhythms)
-			(scaleogram-of-rhythm (first waltz-anthem-rhythms))
-			"Average ridge persistency of waltz anthem rhythms")
-
-
-;;; to check the IOI isn't a problem.
-(defun anthem-minimum-duration (anthem &key (crochet-duration 120))
-  "Returns the duration of the smallest interval in the anthem, in samples, given a fixed tempo."
-  (/ crochet-duration (anthem-beat-duration anthem)))
-
 ;;; Test the meter determination code.
 (dolist (rhythm random-34-rhythms)
   (format t "proposed meter ~a~%" (meter-of-rhythm rhythm)))
-
-;;; Compare frequency of intervals against the generated versions.
-(interval-histogram (list (second (anthem-named 'dorys::america))))
-
-|#
 
 ;;; TODO each scale should have it's own summation (leaky integration) constant when
 ;;; determining the influence and tracking of each peak at each moment. This
 ;;; should be the differentiation between expectancies-of-rhythm-integrator and
 ;;; expectancies-of-rhythm-ridge-persistency
+
+;;;; Performed rhythms
+(let* ((rhythms (load-essen-rhythms performed-44))
+       (relative-intervals (intervals-as-ratios r))
+	   (counts (make-integer-array (.length relative-intervals) :initial-element 1)))
+      ;; Misnamed:
+      (plot-expectancies-histogram relative-intervals counts )
+      (time-bins relative-intervals counts)))
+(setf rhythm (first rhythms))
+
+
+(plot-time-histogram (intervals-as-ratios r) "Relative Intervals")
+(plot-time-histogram (make-narray one-iois) "IOIs" :bin-size 1)
+
+(plot-interval-histogram (interval-histogram (list (nlisp::array-to-list
+						    (intervals-as-ratios r))))
+			 "performed-44")
+
+|#
+
