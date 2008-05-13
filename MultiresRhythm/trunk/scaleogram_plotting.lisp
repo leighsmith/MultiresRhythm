@@ -297,3 +297,23 @@
 	   :title "Select wavelet voice behaviours to non-isochronous rhythms"
 	   :aspect-ratio 0.15)))
 
+(defun plot-tempo-preference (tempo-preference scaleogram sample-rate &key (weighting 1d0))
+  "Plots the tempo weighting profile used"
+  (reset-plot)
+  (plot-command "set title font \"Times,24\"")
+  (plot-command "set xlabel font \"Times,24\"")
+  (plot-command "set ylabel font \"Times,24\"")
+  (plot-command "set key off")
+  (plot-command "set xtics out (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
+		(label-scale-as-time-support-seconds scaleogram sample-rate))
+  ;; (format t "max plot ~a~%" (.max tempo-preference))
+  (plot (.reverse (.* tempo-preference weighting))
+	nil 
+	:title "Tempo Preference Weighting Profile"
+	:xlabel "Scale as IOI Range in Seconds"
+	:ylabel "Preference Weight"
+	:aspect-ratio 0.2 
+	:reset nil))
+
+
+

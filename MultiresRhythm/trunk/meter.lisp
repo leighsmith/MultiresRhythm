@@ -79,16 +79,16 @@
     (format t "persistency ~a~%mean ~a~%" persistency-for-scales evidence-for-meters)
     (nth (argmax evidence-for-meters) candidate-meters)))
 
-(defparameter *meter-names* (make-hash-table))
-
-;(setf (gethash "3/4" *meter-names*) '(3 2 2))
-;(setf (gethash "4/4" *meter-names*) '(2 2 2 2))
-;(setf (gethash "6/8" *meter-names*) '(2 3 2))
-;(setf (gethash "2/4" *meter-names*) '(2 2 2))
-;(setf (gethash "3/8" *meter-names*) '(3 2))
-;(setf (gethash "6/4" *meter-names*) '(2 3 2))
-;(setf (gethash "3/2" *meter-names*) '(2 3 2))
-
+(defparameter *meter-names* 
+  (let ((meter-names (make-hash-table :test #'equal)))
+    (setf (gethash "3/4" meter-names) '(3 2 2))
+    (setf (gethash "4/4" meter-names) '(2 2 2 2))
+    (setf (gethash "6/8" meter-names) '(2 3 2))
+    (setf (gethash "2/4" meter-names) '(2 2 2))
+    (setf (gethash "3/8" meter-names) '(3 2))
+    (setf (gethash "6/4" meter-names) '(2 3 2))
+    (setf (gethash "3/2" meter-names) '(2 3 2))
+    meter-names))
 
 (defun meter-for-name (meter-name)
   "Returns the metrical subdivisions that the name of the meter implies"

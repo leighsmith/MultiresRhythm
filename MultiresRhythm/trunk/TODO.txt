@@ -70,3 +70,29 @@ Just set up a server, perhaps even the MCG server if the garbage bug is fixed.
 * Rhythms in non equal ratios but repeating the ratio as a rhythm.
 
 * Should ritard modulating rhythm.
+
+* ICMPC-2008
+** End of scaleogram projections
+Don't work too well because the peaks which are found are too locally dependent.
+*** Check phase correction.
+*** Check absolute tempo selectivity.
+
+** Integration
+Doesn't work too well some values seem skewed off, i.e. 8.3 rather than 8.33, 8.6 rather
+than 8.66 probably since the integration tends to average out the peaks causing them to shift.
+*** Check phase correction.
+*** Check absolute tempo selectivity.
+
+** Put de Martin tree structure on top of the average ridge persistency graphs.
+
+** Plot Histogram of intervals
+
+** Precision width calculation with ridge persistency.
+
+** plot width of Gaussian rather than histogram.
+
+** Tempo weighting of ridge persistency.
+
+** Reduce the amount of recomputation of analyses
+*** Use a caching mechanism using rhythms as a key.
+*** Refactor the functions to use a list of analyses.

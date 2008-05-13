@@ -398,5 +398,5 @@
     (make-instance 'rhythm 
 		   :name (concatenate 'string "Noisy " (name rhythm-to-noise))
 		   :sample-rate (sample-rate rhythm-to-noise)
-		   :time-signal (make-instance 'n-fixnum-array :ival rhythm-vector))))
+		   :time-signal (make-instance 'n-integer-array :ival rhythm-vector))))
 

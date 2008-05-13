@@ -238,16 +238,14 @@
 	  :title (format nil "Occurrence of ~a" title)))
   (close-window))
 
-(defun plot-expectancies-histogram (times time-values title)
+(defun plot-expectancies-histogram (times time-values title &key (bin-size 0.025))
   (multiple-value-bind (counts time-bins accumulated-time-values)
-      (time-bins times time-values)
+      (time-bins times time-values :bin-size bin-size)
     ;;(format t "prediction count ~a~%time-bins ~a~%accumulated-time-values ~a~%" 
     ;;	    counts time-bins accumulated-time-values)
-    (let ((dividable-counts (.+ (.not counts) counts)))
+    (let ((dividable-counts (.+ (.not counts) counts))
+	  (minimum-tics 0.1))
       ;; (format t "averaged time-values ~a~%" (./ accumulated-time-values dividable-counts))
-      (plot-command "set title font \"Times,20\"")
-      (plot-command "set xlabel font \"Times,20\"")
-      (plot-command "set ylabel font \"Times,20\"")
       (diag-plot 'interval-occurrence
 	(plot-command "set xtics 0.1 out")
 	(plot counts time-bins
@@ -259,15 +257,26 @@
 	      :reset nil
 	      :title (format nil "Occurrence of Interval Expectations for ~a" title)))
       (window)
-      (plot-command "set xtics 0.1 out")
-      ;;     (plot accumulated-time-values time-bins
-      ;; 	  :style "boxes fill solid 1.0 border -1"
-      ;; 	  :xlabel "Divisions of a Measure" 
-      ;; 	  :ylabel "Accumulated Confidence"
-      ;; 	  :label "Relative accumulated confidence"
-      ;; 	  :aspect-ratio 0.66
-      ;; 	  :reset nil
-      ;; 	  :title (format nil "Accumulated Expectation Time-Values for ~a" title))
+      (reset-plot)
+      (plot-command "set title font \"Times,22\"")
+      (plot-command "set xlabel font \"Times,24\"")
+      (plot-command "set ylabel font \"Times,24\"")
+      (plot-command "set xtics ~a out" (max bin-size minimum-tics))
+      (plot accumulated-time-values time-bins
+	    :style "boxes fill solid 1.0 border -1"
+	    :xlabel "Divisions of a Measure" 
+	    :ylabel "Accumulated Confidence"
+	    :label "Relative accumulated confidence"
+	    :aspect-ratio 0.66
+	    :reset nil
+	    :title (format nil "Accumulated Expectation Confidences for ~a" title))
+      (close-window)
+      (window)
+      (reset-plot)
+      (plot-command "set title font \"Times,22\"")
+      (plot-command "set xlabel font \"Times,24\"")
+      (plot-command "set ylabel font \"Times,24\"")
+      (plot-command "set xtics ~a out" (max bin-size minimum-tics))
       (plot (./ accumulated-time-values dividable-counts) time-bins
 	    :style "boxes fill solid 1.0 border -1"
 	    :xlabel "Divisions of a Measure" 
@@ -275,7 +284,7 @@
 	    :label "Average Confidence per Measure Division"
 	    :aspect-ratio 0.66
 	    :reset nil
-	    :title (format nil "Average Expectation Time-Values for ~a" title))
+	    :title (format nil "Average Expectation Confidences for ~a" title))
       (close-window))))
 
 ;; (setf (.aref bins bin-index) (if (zerop in-bin-count) in-bin-count
@@ -307,6 +316,75 @@
 	      (- (expected-time e) rhythm-duration)))
     ;; (format t "bar-times ~a~%" bar-times) 
     (plot-expectancies-histogram bar-times confidences title)))
+
+(defun plot-interval-expectancies-histogram (times time-values title &key (bin-size 0.025))
+  (multiple-value-bind (counts time-bins accumulated-time-values)
+      (time-bins times time-values :bin-size bin-size)
+    (format t "prediction count ~a~%time-bins ~a~%accumulated-time-values ~a~%" 
+    	    counts time-bins accumulated-time-values)
+    (let ((dividable-counts (.+ (.not counts) counts))
+	  (minimum-tics (round (.max time-bins) 20)))
+      ;; (format t "averaged time-values ~a~%" (./ accumulated-time-values dividable-counts))
+      (window)
+      (reset-plot)
+      (plot-command "set title font \"Times,24\"")
+      (plot-command "set xlabel font \"Times,24\"")
+      (plot-command "set ylabel font \"Times,24\"")
+      (plot-command "set xtics out 0,~a" (max bin-size minimum-tics))
+      (plot accumulated-time-values time-bins
+	    :style "boxes fill solid 1.0 border -1"
+	    :xlabel "Tatums (Units of Minimum IOI)" 
+	    :ylabel "Accumulated Confidence"
+	    :label "Relative accumulated confidence"
+	    :aspect-ratio 0.66
+	    :reset nil
+	    :title (format nil "Accumulated Expectation Time-Values for ~a" title))
+      (close-window)
+      (window)
+      (reset-plot)
+      (plot-command "set title font \"Times,24\"")
+      (plot-command "set xlabel font \"Times,24\"")
+      (plot-command "set ylabel font \"Times,24\"")
+      (plot-command "set xtics out 0,~a" (max bin-size minimum-tics))
+      (plot (./ accumulated-time-values dividable-counts) time-bins
+	    :style "boxes fill solid 1.0 border -1"
+	    :xlabel "Tatums (Units of Minimum IOI)" 
+	    :ylabel "Average Confidence"
+	    :label "Average Confidence per Tatum"
+	    :aspect-ratio 0.66
+	    :reset nil
+	    :title (format nil "Average Expectation Time-Values for ~a" title))
+      (close-window))))
+
+(defun intervals-of-performed-rhythms (rhythm
+				     ;; #'last-onset-expectations last-expectations-no-integrate
+				     &key (expectation-generator #'expectancies-of-rhythm-ridge-persistency))
+  "Given a performed rhythm, plot the confidences of each expectation"
+  (let* ((expectancies (last-expectations rhythm :expectancies-generator expectation-generator))
+	 (rhythm-duration (duration-in-samples rhythm))
+	 (minimum-ioi (.min (rhythm-iois-samples rhythm))) ; i.e. tatum
+	 (interval-times (make-narray (mapcar 
+				  (lambda (expect) (/ (- (expected-time expect) rhythm-duration) minimum-ioi)) 
+				  expectancies)))
+	 (confidences (make-narray (mapcar (lambda (expect) (confidence expect)) expectancies))))
+    (format t "interval-times ~a~%" interval-times)
+    (list interval-times confidences)))
+
+(defun performed-rhythm-expectancies (performed-rhythms title
+				     ;; #'last-onset-expectations last-expectations-no-integrate
+				     &key (expectation-generator #'expectancies-of-rhythm-ridge-persistency))
+  "Given a set of performed rhythms, plot the confidences of each expectation"
+  (format t "~a~%" title)
+  (loop 
+     for rhythm in performed-rhythms
+     for expectancies = (last-expectations rhythm :expectancies-generator expectation-generator)
+     for rhythm-duration = (duration-in-samples rhythm)
+     for tatum = (.min (rhythm-iois-samples rhythm))
+     append (mapcar (lambda (expect) (/ (- (expected-time expect) rhythm-duration) tatum)) expectancies) into interval-ratios
+     append (mapcar (lambda (expect) (confidence expect)) expectancies) into confidences
+     finally (plot-interval-expectancies-histogram (make-narray interval-ratios) 
+						   (make-narray confidences) 
+						   title :bin-size 0.25)))
 
 (defun random-metrical-rhythm-expectancies (candidate-meter &key (sample-size 40) (number-of-bars 2))
   "Given a meter, create a set of random metrical rhythms plot the confidences of each expectation"
@@ -372,7 +450,7 @@
 	(dorys::add-to-histogram metrical-position-histogram (val metrical-positions))))
     (dorys::get-histogram metrical-position-histogram)))
 
-(defun plot-metrical-profile (list-of-rhythm-iois meter)
+(defun plot-metrical-profile (list-of-rhythm-iois meter title)
   "Plot the histogram of the IOIs according to their metrical position, given the meter"
   (multiple-value-bind (metrical-position counts) (generate-metrical-profile list-of-rhythm-iois meter)
     (let* ((meter-length (reduce #'* meter))
@@ -389,8 +467,7 @@
 	    :label "Metrical Profile"
 	    :aspect-ratio 0.66
 	    :reset nil
-	    :title (format nil "Metrical Profile for ~a ~a rhythms in ~a meter"
-			   (length list-of-rhythm-iois) "random" meter)))))
+	    :title (format nil "Metrical Profile for ~a" title)))))
 
 (defun interval-histogram (list-of-rhythm-iois)
   "Create a histogram on the intervals, not the metrical position"
@@ -468,7 +545,7 @@
     (plot-cwt+skeleton-of analysis '() rhythm-to-plot)
     (close-window)
     (window)
-    (plot-metrical-profile (list iois-of-rhythm) meter)
+    (plot-metrical-profile (list iois-of-rhythm) meter (format nil "random rhythm in ~a meter" meter))
     (close-window)
     (window)
     (plot-ridge-persistency ridge-persistency
@@ -477,14 +554,58 @@
 				    (name rhythm-to-plot)))
     (close-window)
     (metrical-rhythm-expectancies (list rhythm-to-plot) meter number-of-bars 
-				  (format nil "expectancies with ridge persistency of ~a" (name rhythm-to-plot))
+				  (format nil "~a (RP)" (name rhythm-to-plot))
 				  :expectation-generator #'expectancies-of-rhythm-ridge-persistency)
+;;     (metrical-rhythm-expectancies (list rhythm-to-plot) meter number-of-bars
+;; 				  (format nil "~a (ending peaks)" (name rhythm-to-plot))
+;; 				  :expectation-generator #'expectancies-of-rhythm)
     (metrical-rhythm-expectancies (list rhythm-to-plot) meter number-of-bars
-				  (format nil "expectancies from ending scaleogram peaks of ~a" (name rhythm-to-plot))
-				  :expectation-generator #'expectancies-of-rhythm)
-    (metrical-rhythm-expectancies (list rhythm-to-plot) meter number-of-bars
-				  (format nil "expectancies with integration of ~a" (name rhythm-to-plot))
+				  (format nil "~a (integration)" (name rhythm-to-plot))
 				  :expectation-generator #'expectancies-of-rhythm-integrator)
+    analysis))
+
+(defun find-tactus (rhythm ridge-persistency &key (vpo 16))
+  (let* ((minimum-interval (.min (rhythm-iois-samples rhythm)))
+	 (persistent-intervals (time-support (most-persistent-scales ridge-persistency) vpo))
+	 (minimum-period (.min persistent-intervals))
+	 (period-ratios (./ persistent-intervals minimum-period))
+	 (interval-ratios (./ persistent-intervals minimum-interval)))
+    (format t "persistent intervals ~a~%period-ratios ~a~%"
+	    persistent-intervals period-ratios)
+    (format t "interval-ratios ~a~%" interval-ratios)
+    (format t "minimum interval ~a minimum-period ~a~%" minimum-interval minimum-period)))
+    
+(defun plot-persistency-of-performed-rhythm (rhythm-to-plot)
+  (let* ((analysis (analysis-of-rhythm rhythm-to-plot :padding #'causal-pad))
+	 (relative-iois (intervals-as-ratios rhythm-to-plot))
+	 (ridge-persistency (unweighted-ridge-persistency-of analysis)))
+    (write-as-audio rhythm-to-plot
+		    #P"/Volumes/iDisk/Research/Data/RicardsOnsetTests/test_sound.wav"
+		    #P"/Volumes/iDisk/Research/Data/Handclap Examples/hihat_closed.aiff")
+    ;; (plot-interval-histogram (interval-histogram (list iois-of-rhythm)) (name rhythm-to-plot)) 
+    (plot-time-histogram relative-iois 
+			 (format nil "Intervals in ~a" (name rhythm-to-plot)) :bin-size 1)
+    (window)
+    (plot-rhythm rhythm-to-plot :time-in-seconds t)
+    (close-window)
+    (window)
+    (plot-cwt+skeleton-of analysis '() rhythm-to-plot)
+    (close-window)
+    ;; (window)
+    ;; (plot-metrical-profile (list relative-iois) meter)
+    ;; (close-window)
+    (window)
+    (plot-ridge-persistency ridge-persistency
+			    (scaleogram analysis)
+			    (format nil "Ridge persistency of sample random rhythm in ~a meter"
+				    (name rhythm-to-plot)))
+    (close-window)
+    (performed-rhythm-expectancies rhythm-to-plot
+				   (format nil "RP of ~a" (name rhythm-to-plot))
+				   :expectation-generator #'expectancies-of-rhythm-ridge-persistency)
+;;     (metrical-rhythm-expectancies (list rhythm-to-plot) meter number-of-bars
+;; 				  (format nil "integration of ~a" (name rhythm-to-plot))
+;; 				  :expectation-generator #'expectancies-of-rhythm-integrator)
     analysis))
 
 (defun one-rhythm (meter number-of-bars)
@@ -492,40 +613,64 @@
       (random-rhythm-of-meter meter number-of-bars)
     (plot-profile-and-persistency-of-rhythm one-rhythm one-iois meter number-of-bars)))
 
-(defun plot-profile-and-persistency (sample-size number-of-bars meter)
+(defun plot-profile-and-persistency (sample-size number-of-bars meter-name)
   "Display the combined metrical profile and combined ridge persistency measures"
-  (multiple-value-bind (random-rhythms random-iois) (make-metrical-set meter sample-size number-of-bars)
-    ;; Need an analysis instance to pass in the scaleogram to label the axes, This is way
-    ;; too wasteful!
-    ;; TODO should produce the analysis of all the rhythms, then compute the arp &
-    ;; expectancies from those.
-    (let ((analysis (analysis-of-rhythm (first random-rhythms)))
-	  (arp (average-ridge-persistency random-rhythms))
-	  (description (format nil "~a random rhythms in ~a meter of ~a measures"
-			       (length random-rhythms) meter number-of-bars)))
-      (window)
-      (plot-metrical-profile random-iois meter)
-      (close-window)
-      ;; (plot-interval-histogram (interval-histogram random-iois) description)
-      (plot-time-histogram (make-narray random-iois) description :bin-size 1)
-      (plot-ridge-persistency arp
-			      (scaleogram analysis)
-			      (format nil "Average ridge persistency of ~a" description))
-      (metrical-rhythm-expectancies random-rhythms
-				    meter
-				    number-of-bars 
-				    (format nil "expectancies with ridge persistency of ~a" description)
-				    :expectation-generator #'expectancies-of-rhythm-ridge-persistency)
-      (metrical-rhythm-expectancies random-rhythms
-				    meter
-				    number-of-bars 
-				    (format nil "expectancies from ending scaleogram peaks of ~a" description)
-				    :expectation-generator #'expectancies-of-rhythm)
-      (metrical-rhythm-expectancies random-rhythms
-				    meter
-				    number-of-bars 
-				    (format nil "expectancies with integration of ~a" description)
-				    :expectation-generator #'expectancies-of-rhythm-integrator))))
+  (let ((meter (meter-for-name meter-name)))
+    (multiple-value-bind (random-rhythms random-iois) (make-metrical-set meter sample-size number-of-bars)
+      ;; Need an analysis instance to pass in the scaleogram to label the axes, This is way
+      ;; too wasteful!
+      ;; TODO should produce the analysis of all the rhythms, then compute the arp &
+      ;; expectancies from those.
+      (let (;;(analysis (analysis-of-rhythm (first random-rhythms)))
+	    ;; (arp (average-ridge-persistency random-rhythms))
+	    (description (format nil "~a random rhythms in ~a meter of ~a measures"
+				 (length random-rhythms) meter-name number-of-bars)))
+	(window)
+	(plot-metrical-profile random-iois meter 
+			       (format nil "~a random rhythms in ~a meter" (length random-iois) meter-name))
+	(close-window)
+	(window)
+	(plot-interval-histogram (interval-histogram random-iois) description)
+	(close-window)
+	;; (plot-time-histogram (make-narray random-iois) description :bin-size 1)
+	;; (plot-ridge-persistency arp
+	;; 				(scaleogram analysis)
+	;; 				(format nil "Average ridge persistency of ~a" description))
+	(metrical-rhythm-expectancies random-rhythms
+				      meter
+				      number-of-bars 
+				      description ; (format nil "~a (RP)" description)
+				      :expectation-generator #'expectancies-of-rhythm-ridge-persistency)
+	;; (metrical-rhythm-expectancies random-rhythms
+	;;		    meter
+	;;		    number-of-bars 
+	;;		    (format nil "~a (ending peaks)" description)
+	;;		    :expectation-generator #'expectancies-of-rhythm)
+	(metrical-rhythm-expectancies random-rhythms
+				      meter
+				      number-of-bars 
+				      (format nil "~a (integration)" description)
+				      :expectation-generator #'expectancies-of-rhythm-integrator)))))
+
+(defun essen-named (name)
+  (find name dorys::*essen-perf-meters* :test #'equal :key #'first))
+
+(defun time-limited-rhythm-named (name &key (sample-rate 200))
+  (mapcar (lambda (x) (limit-rhythm x :maximum-samples (* 15 sample-rate)))
+	  (load-essen-rhythms (list (essen-named name)))))
+
+(defun performed-rhythms-of-meter (meter)
+  (let ((rhythm-set (time-limited-rhythms-of-meter meter)))
+    (performed-rhythm-expectancies rhythm-set 
+				   (format nil "~a Performed Rhythms in ~a Meter"
+					   (length rhythm-set) meter))))
+
+(defun time-limited-rhythms-of-meter (meter &key (sample-rate 200))
+      (mapcar (lambda (x) (limit-rhythm x :maximum-samples (* 15 sample-rate)))
+		      (load-essen-rhythms (dorys::essen-of-meter meter))))
+
+;; (time-limited-rhythms-of-meter "3/4")
+
 
 #|
 
@@ -538,7 +683,7 @@
 	   (ridge-persistencies (mapcar #'unweighted-ridge-persistency-of all-analyses))
 	   (arp (average-ridge-persistency-of ridge-persistencies)))
       (window)
-      (plot-metrical-profile random-iois meter)
+      (plot-metrical-profile random-iois meter "")
       (close-window)
       (window)
       (plot-ridge-persistency arp
@@ -636,9 +781,9 @@
 
 ;;; The profile is not quite canonical for the anthems, when looked at across all anthems.
 ;;; 3/4
-(plot-metrical-profile (mapcar #'strip-anthem-of-anacrusis waltz-anthems-16ths) '(3 2 2))
+(plot-metrical-profile (mapcar #'strip-anthem-of-anacrusis waltz-anthems-16ths) "3/4" "")
 ;;; 4/4
-(plot-metrical-profile (mapcar #'strip-anthem-of-anacrusis common-anthems-16ths) '(2 2 2 2))
+(plot-metrical-profile (mapcar #'strip-anthem-of-anacrusis common-anthems-16ths) "4/4" "")
 
 ;;; and individually
 (defun each-metrical-profile (anthems-in-16ths meter)
@@ -694,11 +839,6 @@
 (one-rhythm '(3 2 2) 30)
 (one-rhythm '(2 2 2 2) 30)
 
-;;; About 1 rhythm of 30 bars, or 5 rhythms of 6 bars each is minimally necessary to produce a
-;;; canonical metrical profile.
-(plot-profile-and-persistency 20 8 '(3 2 2))
-(plot-profile-and-persistency 20 6 '(2 2 2 2))
-
 ;;; The average number of bars in an anthem is 18, so we create the same to match the waltz-anthem-16ths
 ;;; Produces a very nice profile.
 (plot-profile-and-persistency 7 18 '(3 2 2))
@@ -714,14 +854,6 @@
 ;;; expectancies-of-rhythm-ridge-persistency
 
 ;;;; Performed rhythms
-(let* ((rhythms (load-essen-rhythms performed-44))
-       (relative-intervals (intervals-as-ratios r))
-	   (counts (make-integer-array (.length relative-intervals) :initial-element 1)))
-      ;; Misnamed:
-      (plot-expectancies-histogram relative-intervals counts )
-      (time-bins relative-intervals counts)))
-(setf rhythm (first rhythms))
-
 
 (plot-time-histogram (intervals-as-ratios r) "Relative Intervals")
 (plot-time-histogram (make-narray one-iois) "IOIs" :bin-size 1)
@@ -730,5 +862,22 @@
 						    (intervals-as-ratios r))))
 			 "performed-44")
 
+
+(mapcar #'intervals-as-ratios (load-essen-rhythms performed-44))
+(mapcar (lambda (x) (plot-time-histogram (intervals-as-ratios x) (name x))) (load-essen-rhythms performed-44))
+
 |#
 
+;;;; ICMPC plots.
+(defun icmpc-plots ()
+  (pushnew 'tempo-beat-preference *plotting*)
+  ;; About 1 rhythm of 30 bars, or 5 rhythms of 6 bars each is minimally necessary to produce a
+  ;; canonical metrical profile.
+  (plot-profile-and-persistency 20 8 "3/4")
+  (pop *plotting*)
+  (plot-profile-and-persistency 20 6 "4/4")
+  
+  ;; "4/4" "6/8"
+  (performed-rhythms-of-meter "4/4")
+  (performed-rhythms-of-meter "3/4"))
+  
