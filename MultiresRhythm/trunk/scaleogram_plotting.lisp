@@ -304,16 +304,15 @@
   (plot-command "set xlabel font \"Times,24\"")
   (plot-command "set ylabel font \"Times,24\"")
   (plot-command "set key off")
-  (plot-command "set xtics out (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
+  (plot-command "set ytics 0.25 font \"Times,18\"")
+  (plot-command "set xtics out font \"Times,18\" (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
 		(label-scale-as-time-support-seconds scaleogram sample-rate))
   ;; (format t "max plot ~a~%" (.max tempo-preference))
   (plot (.reverse (.* tempo-preference weighting))
 	nil 
+	:style "lines linetype 3 linewidth 2"
 	:title "Tempo Preference Weighting Profile"
 	:xlabel "Scale as IOI Range in Seconds"
 	:ylabel "Preference Weight"
 	:aspect-ratio 0.2 
 	:reset nil))
-
-
-

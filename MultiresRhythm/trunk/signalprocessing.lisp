@@ -130,3 +130,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
     cumsum))
 
 ;; (setf a (window-integration (make-double-array '(2 100) :initial-element 1d0) 10))
+
+(defmethod normalise ((vector n-array))
+  "Normalisation"
+  (./ vector (.max vector)))
