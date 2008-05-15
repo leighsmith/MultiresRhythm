@@ -11,7 +11,7 @@
 ;;;; Copyright (c) 2006
 ;;;;
 
-(in-package :dorys)
+(in-package :multires-rhythm)
 
 (defun add-to-histogram (element-count-hash data)
   (map nil (lambda (element) (incf (gethash element element-count-hash 0))) data)

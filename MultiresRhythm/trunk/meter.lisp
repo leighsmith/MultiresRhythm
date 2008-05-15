@@ -86,8 +86,8 @@
     (setf (gethash "6/8" meter-names) '(2 3 2))
     (setf (gethash "2/4" meter-names) '(2 2 2))
     (setf (gethash "3/8" meter-names) '(3 2))
-    (setf (gethash "6/4" meter-names) '(2 3 2))
-    (setf (gethash "3/2" meter-names) '(2 3 2))
+    (setf (gethash "6/4" meter-names) '(3 2 2 2))
+    (setf (gethash "3/2" meter-names) '(3 2 2 2))
     meter-names))
 
 (defun meter-for-name (meter-name)

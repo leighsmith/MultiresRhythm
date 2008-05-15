@@ -23,12 +23,10 @@
 
 (require 'nlisp)			; For mathematics
 (require 'cli-parser)			; For command line option interpretation.
-(require 'dorys)			; For databases to test against.
-(require 'shoe)				; For anthem comparisons. TODO should be factored out.
 
 ;; (setf (logical-pathname-translations "rhythm") '(("data;*.*.*" "/Volumes/iDisk/Research/Data/")))
 
-(defpackage #:multires-rhythm (:use #:cl #:asdf #:nlisp #:dorys #:cli-parser)
+(defpackage #:multires-rhythm (:use #:cl #:asdf #:nlisp #:cli-parser)
 	    (:export :rhythm 
 		     :skeleton-of-rhythm
 		     :tactus-for-rhythm
@@ -37,13 +35,18 @@
 		     :rhythm-of-grid
 		     :clap-to-rhythm
 		     :save-scorefile
-		     :generate-executable))
+		     :generate-executable
+		     :make-histogram
+		     :add-to-histogram
+		     :get-histogram
+		     :get-histogram-counts
+		     :get-histogram-elements))
 
 (in-package :multires-rhythm)
 
 (defsystem :multiresrhythm
   :description "A Multiresolution Time-Frequency Analysis and Interpretation of Musical Rhythm"
-  :version "2.6.2"
+  :version "2.7"
   :author "Leigh M. Smith"
   :license "Copyright (c) 2005-2008"
   :depends-on (:nlisp)
@@ -55,6 +58,7 @@
 	       (:file "ridges")
 	       (:file "scorefile")
 	       (:file "sound")
+	       (:file "histogram")
 	       (:file "martin-trees")
 	       (:file "skeleton" :depends-on ("ridges"))
 	       (:file "plotting" :depends-on ("ridges" "signalprocessing"))
@@ -69,6 +73,4 @@
 	       (:file "perceptual-onsets" :depends-on ("clapping" "sound"))
 	       (:file "expectancies" :depends-on ("clapping"))
 	       (:file "metrical-expectancy" :depends-on ("expectancies" "martin-trees"))
-	       (:file "test-examples" :depends-on ("rhythm" "multires_rhythm" "clapping"))
-	       (:file "test-anthems" :depends-on ("multires_rhythm" "clapping" "meter"))
 	       (:file "commandline" :depends-on ("expectancies"))))
