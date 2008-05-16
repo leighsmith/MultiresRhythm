@@ -11,9 +11,7 @@
 ;;;; In nlisp (Matlab-alike Common Lisp library www.nlisp.info)
 ;;;;
 
-(require 'dorys)
-
-(defpackage #:shoe (:use #:cl #:asdf #:dorys))
+(defpackage #:shoe (:use #:cl #:asdf))
 
 (in-package :shoe)
 
@@ -28,8 +26,7 @@
 	       (:file "10 LHL82 microversion")
 	       (:file "pattern_trees")
 	       (:file "correct_fraction")
-	       (:file "random_generators")
-	       (:file "anthem-evaluation")))
+	       (:file "random_generators")))
 
 ;;; Original files:
 ;; "00 shoe-graphics"
