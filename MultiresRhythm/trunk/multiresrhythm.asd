@@ -24,8 +24,6 @@
 (require 'nlisp)			; For mathematics
 (require 'cli-parser)			; For command line option interpretation.
 
-;; (setf (logical-pathname-translations "rhythm") '(("data;*.*.*" "/Volumes/iDisk/Research/Data/")))
-
 (defpackage #:multires-rhythm (:use #:cl #:asdf #:nlisp #:cli-parser)
 	    (:export :rhythm 
 		     :skeleton-of-rhythm
@@ -40,7 +38,8 @@
 		     :add-to-histogram
 		     :get-histogram
 		     :get-histogram-counts
-		     :get-histogram-elements))
+		     :get-histogram-elements
+		     :*plotting*))
 
 (in-package :multires-rhythm)
 

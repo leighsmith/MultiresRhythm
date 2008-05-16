@@ -2,7 +2,7 @@ MultiresRhythm V2.7 README
 Leigh M. Smith <lsmith@science.uva.nl>
 2008/05/15
 
-$Id:$
+$Id$
 
 This is the Common Lisp implementation of MultiresRhythm, a representation of musical
 rhythm using continuous wavelet transforms. The distribution consists of a library
