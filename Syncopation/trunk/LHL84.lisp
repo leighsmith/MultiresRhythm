@@ -93,11 +93,11 @@
   (plot-command "set title font \"Times,24\"")
   (plot-command "set xlabel font \"Times,24\"")
   (plot-command "set ylabel font \"Times,24\"")
-  (plot-command "set boxwidth 0.9 relative")
+  ;(plot-command "set boxwidth 0.9 relative")
   (plot-command "set linetype 6")
   (plot-command "set style fill solid 1.0 border -1")
   (plot-command "set xtics 1,1") ;; TODO kludged, not general!
-  (plot (nlisp::list-to-array (lh-metric-salience meter))
+  (plot (make-narray (lh-metric-salience meter))
 	(.iseq 1 16) ; nil
 	:xlabel "Metrical location" 
 	:ylabel "Salience"
