@@ -19,8 +19,8 @@
 ;;;;   annote =  {\url{http://www.leighsmith.com/Research/Papers/MultiresRhythm.pdf}}
 ;;;;
 
-(in-package :multires-rhythm)
-(use-package :nlisp)
+(in-package :dorys)
+(use-package :multires-rhythm)
 
 (defun fm-test (&key (signal-length 2048))
   "Frequency modulating signal for wavelet analysis."

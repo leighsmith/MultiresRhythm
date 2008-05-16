@@ -19,9 +19,8 @@
 ;;;;   annote =  {\url{http://www.leighsmith.com/Research/Papers/MultiresRhythm.pdf}}
 ;;;;
 
-(in-package :multires-rhythm)
-(use-package :dorys)
-(use-package :nlisp)
+(in-package :dorys)
+(use-package :multires-rhythm)
 
 (defparameter *anthem-analysis-path* "/Users/leigh/Data/Anthems")
 
@@ -787,4 +786,50 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 		 :directory "/Users/leigh/Research/Data/Anthems/MIDI")))
 
 ;; foreach f (*.score); convertscore -m `basename $f score`midi $f; end
+
+(defun strip-anthem-of-anacrusis (anthem)
+  "Returns the IOIs with the anacrusis removed."
+  (onsets-to-iois (remove-if #'minusp 
+			     (iois-to-onsets (second anthem) 
+					     (- (dorys::anthem-anacrusis-duration anthem))))))
+
+;;; Only test anthems that are measured to minimum IOI of 16ths.
+;;; (setf waltz-anthems-16ths (remove-if-not (lambda (a) (equal (anthem-beat-duration a) 4)) (anthems-of-meter "3/4")))
+;;; (setf common-anthems-16ths (remove-if-not (lambda (a) (equal (anthem-beat-duration a) 4)) (anthems-of-meter "4/4")))
+
+;;; The profile is not quite canonical for the anthems, when looked at across all anthems.
+;;; 3/4
+;; (plot-metrical-profile (mapcar #'strip-anthem-of-anacrusis waltz-anthems-16ths) "3/4" "")
+;;; 4/4
+;; (plot-metrical-profile (mapcar #'strip-anthem-of-anacrusis common-anthems-16ths) "4/4" "")
+
+;;; and individually
+(defun each-metrical-profile (anthems-in-16ths meter)
+  (let ((anthem-number -1))
+    (dolist (anthem-iois (mapcar #'strip-anthem-of-anacrusis anthems-in-16ths))
+      (format t "anthem ~a~%" (nth (incf anthem-number) anthems-in-16ths))
+      (plot-metrical-profile (list anthem-iois) meter)
+      (read-line))))
+
+(defun metrical-profile-of-anthem (anthem meter)
+  (let ((anthem-rhythm (anthem-rhythm anthem))
+	(anthem-iois (strip-anthem-of-anacrusis anthem)))
+    (format t "iois ~a~%" anthem-iois)
+    ;; 25 samples per semiquaver.
+    ;; (onsets-in-samples anthem-rhythm)
+    ;; (plot-ridge-persistency-for-anthems (list anthem) (anthem-name anthem))
+    (plot-metrical-profile (list anthem-iois) meter)
+    ;; We get a nice peak at 300.4 corresponding to 3 crotchets.
+    (ridge-persistency-of anthem-rhythm)))
+
+;; (metrical-profile-of-anthem (anthem-named 'dorys::america) '(3 2 2))
+
+;;; Compare frequency of intervals against the generated versions.
+;; (dorys:get-histogram (interval-histogram (list (second (anthem-named 'dorys::america)))))
+
+;;; Most anthems don't demonstrate a canonical metrical profile, often lacking any beats
+;;; falling on minor metrical positions.
+;; (plot-ridge-persistency (average-ridge-persistency waltz-anthem-rhythms)
+;;			(scaleogram-of-rhythm (first waltz-anthem-rhythms))
+;;			"Average ridge persistency of waltz anthem rhythms")
 

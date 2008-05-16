@@ -16,29 +16,35 @@
 ;;;; Known to work on SBCL 1.0.10
 ;;;;
 
-(defpackage #:dorys (:use #:cl #:asdf)
+(require 'shoe)				; For anthem comparisons.
+(require 'multiresrhythm)		; For multires-rhythm library.
+
+;; (setf (logical-pathname-translations "rhythm") '(("data;*.*.*" "/Volumes/iDisk/Research/Data/")))
+
+(defpackage #:dorys (:use #:cl #:asdf #:multires-rhythm #:shoe)
 	    (:export :*national-anthems*
 		     :anthem-named :meter-numerator :anthem-name
 		     :anthem-beat-duration :anthem-bar-duration :anthem-anacrusis-duration
 		     :anthems-of-meter
 		     :evaluation-of-anthems
-		     :read-esac-file
-		     :make-histogram
-		     :add-to-histogram
-		     :get-histogram))
+		     :read-esac-file))
 
 (in-package :dorys)
 
 (defsystem :dorys
   :description "A Database of Rhythmic Stimuli"
-  :version "1.0"
+  :version "1.1"
   :author "Leigh M. Smith"
-  :license "Copyright (c) 2005-2007"
+  :license "Copyright (c) 2005-2008"
+  :depends-on (:multiresrhythm :shoe)
   :components ((:file "national anthems")
-	       (:file "histogram")
-	       (:file "anthem-accessors" :depends-on ("national anthems" "histogram"))
+	       (:file "anthem-accessors" :depends-on ("national anthems"))
+	       (:file "anthem-evaluation" :depends-on ("anthem-accessors"))
 	       (:file "EsAC")
-	       (:file "essen-meter-list")))
+	       (:file "essen-meter-list")
+	       (:file "test-multires-rhythm")
+	       (:file "test-anthems")
+	       (:file "metrical-expectancy")))
 
 #|
 
@@ -49,71 +55,71 @@ From the common music version
 ;;; The output instruments are typically a rhythm-onset instrument
 ;;; which is nominally an impulse at the onset time of the beat.
 ;;; check if this needs recompiling.
-(load "rhythms.fas")
+(:file "rhythms.fas")
 
 ;;; TODO use a common rhythm instrument that can be substituted for
 ;;; midi-note, rhythm-tone, sampler etc.
 
 ;; Functions for defining accents
-(load "accentfns.cm")
+(:file "accentfns")
 
 ;; Examples from published rhythm psychology literature
-(load "rhythm_psych.cm")
+(:file "rhythm_psych")
 
 ;; Examples of computed rhythms demonstrating various grouping and accenting
-(load "synthetic_rhythms.cm")
+(:file "synthetic_rhythms")
 
 ;; Examples demonstrating rhythmic difference (beating) frequencies 
-(load "badcock_beating.cm")
+(:file "badcock_beating")
 
 ;; rhythms demonstrating the limits of perceptible tempos, streaming etc.
-(load "tempo_limits.cm")
+(:file "tempo_limits")
 
 ;; rhythms demonstrating agogic accentuation
-(load "agogics.cm")
+(:file "agogics")
 
-(load "expression.cm")
-(load "isochronous_drumming.cm")
+(:file "expression")
+(:file "isochronous_drumming")
 
-(load "polyrhythms.cm")
+(:file "polyrhythms")
 
 ;; This seems to have just been a conversion from MIDI
-;(load "periodicity-pitch.cm")
+;(:file "periodicity-pitch")
 
-(load "ExampleRhythms/FromTheRepertory/PinkPanther.cm")
+(:file "ExampleRhythms/FromTheRepertory/PinkPanther")
 
 ;; A quantized example exhibiting triplets and rests
 ;; there is a performance equivalent.
-(load "ExampleRhythms/FromTheRepertory/ThreeBlindMice.cm")
+(:file "ExampleRhythms/FromTheRepertory/ThreeBlindMice")
 
 ;; A set of item streams containing versions of quantized Greensleeves rhythms
-(load "ExampleRhythms/FromTheRepertory/Greensleeves/greensleeves-item.cm")
+(:file "ExampleRhythms/FromTheRepertory/Greensleeves/greensleeves-item")
 
 ;; an incorrect version of the greensleeves rhythm
-(load "ExampleRhythms/FromTheRepertory/Greensleeves/greensleeves_near_performed.cm")
+(:file "ExampleRhythms/FromTheRepertory/Greensleeves/greensleeves_near_performed")
 
-(load "ExampleRhythms/FromTheRepertory/Greensleeves/greensleeves_performed.cm")
+(:file "ExampleRhythms/FromTheRepertory/Greensleeves/greensleeves_performed")
 
 ;; A set of three performances of the greensleeves rhythm at different
 ;; tempos.
-(load "ExampleRhythms/FromTheRepertory/Greensleeves/Performances/greensleeves_performed_new.cm")
+(:file "ExampleRhythms/FromTheRepertory/Greensleeves/Performances/greensleeves_performed_new")
 
-(load "ExampleRhythms/FromTheRepertory/Greensleeves/greensleeves-rhy-gauss.cm")
+(:file "ExampleRhythms/FromTheRepertory/Greensleeves/greensleeves-rhy-gauss")
 
-;(load "ExampleRhythms/FromTheRepertory/Greensleeves/greensleeves_accent_missing_midi.cm")
-;(load "ExampleRhythms/FromTheRepertory/Greensleeves/greensleeves_accent_midi.cm")
+;(:file "ExampleRhythms/FromTheRepertory/Greensleeves/greensleeves_accent_missing_midi")
+;(:file "ExampleRhythms/FromTheRepertory/Greensleeves/greensleeves_accent_midi")
 
 ;; MusicKit conversion...?
-(load "ExampleRhythms/FromTheRepertory/Greensleeves/greensleeves_drumming.cm")
+(:file "ExampleRhythms/FromTheRepertory/Greensleeves/greensleeves_drumming")
 
 
 ;;; Recordings of Human Performances
-;(load "ExampleRhythms/Performances/Quantised.cm")
+;(:file "ExampleRhythms/Performances/Quantised")
 
 ;;; Classical performance data by H. Christopher Longuet-Higgins.
-(load "ExampleRhythms/Performances/LonguetHiggins.cm")
+(:file "ExampleRhythms/Performances/LonguetHiggins")
 
-;(load "ExampleRhythms/ComparativeExamples/LaMarseillaise.cm")
-;(load "ExampleRhythms/ComparativeExamples/TurkishFolk.cm")
+;(:file "ExampleRhythms/ComparativeExamples/LaMarseillaise")
+;(:file "ExampleRhythms/ComparativeExamples/TurkishFolk")
 
 |#

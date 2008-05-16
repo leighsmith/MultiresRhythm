@@ -77,3 +77,7 @@
 
 (defun essen-of-meter (meter) 
   (remove-if-not (lambda (x) (equal x meter)) *essen-perf-meters* :key #'third))
+
+(defun essen-named (name)
+  (find name dorys::*essen-perf-meters* :test #'equal :key #'first))
+
