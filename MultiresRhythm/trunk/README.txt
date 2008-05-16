@@ -1,9 +1,12 @@
-MultiresRhythm V2.1 README
+MultiresRhythm V2.7 README
 Leigh M. Smith <lsmith@science.uva.nl>
-2007/11/20
+2008/05/15
+
+$Id:$
 
 This is the Common Lisp implementation of MultiresRhythm, a representation of musical
-rhythm using continuous wavelet transforms.
+rhythm using continuous wavelet transforms. The distribution consists of a library
+(MultiresRhythm) and a test suite (DORYS). 
 
 Requirements:
 
@@ -33,17 +36,13 @@ Installation:
 
 3. Install MultiresRhythm packages
 
-3.1 Unarchive the rhythm packages:
+3.1 Unarchive the rhythm package:
 
-% unzip DORYS-0.1.zip
-% unzip LHL_BeatInduction-1.0.zip
-% unzip MultiresRhythm-2.1.zip
+% unzip MultiresRhythm-2.7.zip
 
-3.2 Create symbolic links to them in .sbcl/systems:
+3.2 Create symbolic links to it in .sbcl/systems:
 
-% ln -s ~/your_dir/DORYS_0.1/dorys.asd ~/.sbcl/systems/dorys.asd
-% ln -s ~/your_dir/LHL_BeatInduction_1.0/shoe.asd ~/.sbcl/systems/shoe.asd
-% ln -s ~/your_dir/MultiresRhythm_2.1/multiresrhythm.asd ~/.sbcl/systems/multiresrhythm.asd
+% ln -s ~/your_dir/MultiresRhythm_2.7/multiresrhythm.asd ~/.sbcl/systems/multiresrhythm.asd
 
 4. Install libraries.
 
@@ -61,9 +60,14 @@ prior to running (require 'multiresrhythm):
 
 CL-USER> (pushnew "/path/to/your/dorys.asd" "/path/to/your/multiresrhythm.asd" asdf:*central-registry*)
 
-Testing:
+Testing with DORYS:
 
-Test routines are in test-examples.lisp. You will need to change to the MULTIRES-RHYTHM
+% unzip DORYS-1.1.zip
+% unzip LHL_BeatInduction-1.0.zip
+% ln -s ~/your_dir/DORYS_0.1/dorys.asd ~/.sbcl/systems/dorys.asd
+% ln -s ~/your_dir/LHL_BeatInduction_1.0/shoe.asd ~/.sbcl/systems/shoe.asd
+
+Test routines are in test-multires-rhythm.lisp. You will need to change to the MULTIRES-RHYTHM
 package in order to test these:
 
 CL-USER> (in-package :multires-rhythm)
@@ -71,5 +75,5 @@ MULTIRES-RHYTHM> (clap-to-iois "local-timing" '(17 17 20.5 13.5 17 17))
 
 Distribution:
 
-Copyright (c) 2006-2007 All rights reserved. Leigh M. Smith
+Copyright (c) 2006-2008 All rights reserved. Leigh M. Smith
 Please contact me before distributing beyond the EmCAP web site.
