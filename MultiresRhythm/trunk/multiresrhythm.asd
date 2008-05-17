@@ -39,7 +39,8 @@
 		     :get-histogram
 		     :get-histogram-counts
 		     :get-histogram-elements
-		     :*plotting*))
+		     :*plotting*
+		     :meter-for-name))
 
 (in-package :multires-rhythm)
 
