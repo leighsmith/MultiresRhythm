@@ -26,62 +26,6 @@
 		  (.rseq amplitude amplitude sustain-samples)
 		  (.rseq amplitude 0.0 release-samples))))
 
-(defun rhythm-of-part (name note-list &key 
-		       (sample-rate 200) 
-		       (attack 0.020) 
-		       (release 0.020)
-		       (make-envelope-p nil))
-  "Generate a rhythm from a note-list specifying time, duration (both in seconds) & amplitude"
-  (let* ((last-note (first (last note-list)))
-	 (rhythm-length (ceiling (* (+ (first last-note) (second last-note)) sample-rate)))
-	 (time-signal (make-double-array rhythm-length))
-	 (attack-samples (round (* attack sample-rate)))
-	 (release-samples (round (* release sample-rate))))
-    (loop
-       for (time duration amplitude) in note-list
-       for onset-time-in-samples = (round (* time sample-rate))
-       for duration-samples = (round (* duration sample-rate))
-       for sustain-samples = (- duration-samples attack-samples release-samples)
-       do (if make-envelope-p
-	      ;; TODO replace with make-envelope if we want it.
-	      (let ((envelope (.concatenate (.rseq 0.0 amplitude attack-samples) 
-					    (.rseq amplitude amplitude sustain-samples)
-					    (.rseq amplitude 0.0 release-samples))))
-		(setf (.subarray time-signal (list 0 (list onset-time-in-samples 
-							   (+ onset-time-in-samples duration-samples))))
-		      envelope))
-	      (setf (.aref time-signal onset-time-in-samples) (coerce amplitude 'double-float))))
-    (make-instance 'rhythm
-		   :name name
-		   :description name
-		   :time-signal time-signal
-		   :sample-rate sample-rate)))
-
-;; Read Temperley's Melisma "notefiles". These are described as:
-;;  in "notelist" format, "Note [ontime] [offtime] [pitch]", where ontime and offtime
-;; are in milliseconds and pitch is an integer, middle C = 60.
-;; There are however, other lines in the file, which need pruning.
-(defun part-of-melisma-file (filepath)
-  "Reads the data file, creates a note-list"
-  (with-open-file (input-stream filepath)
-    (loop
-       for note-type = (read input-stream nil)
-       while note-type
-       if (string-equal note-type "Note")
-       collect
-	 (let ((on-time (read input-stream))
-	       (off-time (read input-stream))
-	       (midi-note (read input-stream)))
-	   ;; (format t "~a, ~a, ~a, ~a~%" note-type on-time off-time midi-note)
-	   (list (/ on-time 1000.0d0) (/ (- off-time on-time) 1000.0d0) 1.0 midi-note))
-       else
-       do (read-line input-stream nil))))
-
-(defun rhythm-of-melisma-file (filepath)
-  "Returns a rhythm object from the melisma file"
-  (let ((melisma-note-list (part-of-melisma-file filepath)))
-    (rhythm-of-part (pathname-name filepath) melisma-note-list)))
-
 (defun make-probe-rhythms (name weighted-onsets &key (probe-base-time 3.0d0) 
 			    (probe-note-ratios '(1/6 1/4 1/3 1/2 2/3 3/4 5/6)))
   "Returns a list of rhythms with the probe notes inserted at each location from weighted onsets"
@@ -93,10 +37,11 @@
 	  probe-note-ratios))
 
 (defun analyse-rhythms (rhythms)
-  (mapcar (lambda (probe-rhythm)
-	    (let* ((probe-analysis (analysis-of-rhythm probe-rhythm :padding #'causal-pad)))
-	      (plot-cwt-of-rhythm (scaleogram probe-analysis) probe-rhythm)
-	      probe-analysis)) rhythms))
+  (mapcar (lambda (rhythm)
+	    (let* ((analysis (analysis-of-rhythm rhythm :padding #'causal-pad)))
+	      (plot-cwt-of-rhythm (scaleogram analysis) rhythm) 
+	      analysis))
+	  rhythms))
 
 (defun write-rhythms (rhythms name)
   (loop
@@ -133,6 +78,70 @@
 	    (setf (.aref accumulated-confidences bin-index) (.sum (.* in-bin values-at-times)))
 	    (setf (.aref bin-counts bin-index) in-bin-count))
        finally (return (values bin-counts bin-boundaries accumulated-confidences)))))
+
+(defun intervals-of-performed-rhythms (rhythm
+				     ;; #'last-onset-expectations last-expectations-no-integrate
+				     &key (expectation-generator #'expectancies-of-rhythm-ridge-persistency))
+  "Given a performed rhythm, return the confidences of each expectation"
+  (let* ((expectancies (last-expectations rhythm :expectancies-generator expectation-generator))
+	 (rhythm-duration (duration-in-samples rhythm))
+	 (minimum-ioi (.min (rhythm-iois-samples rhythm))) ; i.e. tatum
+	 (interval-times (make-narray (mapcar 
+				  (lambda (expect) (/ (- (expected-time expect) rhythm-duration) minimum-ioi)) 
+				  expectancies)))
+	 (confidences (make-narray (mapcar (lambda (expect) (confidence expect)) expectancies))))
+    (format t "interval-times ~a~%" interval-times)
+    (list interval-times confidences)))
+
+(defmethod ridge-persistency-of ((rhythm-to-analyse rhythm))
+  "Return the ridge persistency (normalised occurrence) of a given rhythm"
+  (let* ((analysis (analysis-of-rhythm rhythm-to-analyse :padding #'causal-pad)))
+    (unweighted-ridge-persistency-of analysis)))
+
+;;; TODO make this a defmethod?
+;;; TODO factor into determining the arp from a list of ridge-persistency-of results.
+(defun average-ridge-persistency (rhythms)
+  "Sum the ridge persistencies over the list of rhythms and return the average ridges persistency measure."
+  (loop
+     for rhythm in rhythms
+     ;; Since some rhythms are shorter than the maximum, we need to pad the ridge-persistency responses. 
+     with max-time-limit = (.max (make-narray (mapcar #'duration-in-samples rhythms)))
+     with max-dilation = (number-of-scales-for-period max-time-limit)
+     with total-persistency = (make-double-array max-dilation)
+     do (setf total-persistency (.+ total-persistency 
+				    (pad-end-to-length (ridge-persistency-of rhythm) max-dilation)))
+     finally (return (./ total-persistency (length rhythms)))))
+
+(defun generate-metrical-profile (list-of-rhythm-iois meter)
+  "Return a histogram of the metrical position of each onset within the given meter"
+  (let* ((measure-length (reduce #'* meter))
+	 (metrical-position-histogram (make-histogram '())))
+    (dolist (rhythm-iois list-of-rhythm-iois)
+      (let* ((metrical-positions (.mod (make-narray (iois-to-onsets rhythm-iois)) measure-length)))
+	(add-to-histogram metrical-position-histogram (val metrical-positions))))
+    (get-histogram metrical-position-histogram)))
+
+(defun interval-histogram (list-of-rhythm-iois)
+  "Create a histogram on the intervals, not the metrical position"
+  (let* ((interval-histogram (make-histogram '())))
+    (dolist (rhythm-iois list-of-rhythm-iois)
+      (add-to-histogram interval-histogram rhythm-iois))
+    interval-histogram))
+
+(defun find-tactus (rhythm ridge-persistency &key (vpo 16))
+  (let* ((minimum-interval (.min (rhythm-iois-samples rhythm)))
+	 (persistent-intervals (time-support (most-persistent-scales ridge-persistency) vpo))
+	 (minimum-period (.min persistent-intervals))
+	 (period-ratios (./ persistent-intervals minimum-period))
+	 (interval-ratios (./ persistent-intervals minimum-interval)))
+    (format t "persistent intervals ~a~%period-ratios ~a~%"
+	    persistent-intervals period-ratios)
+    (format t "interval-ratios ~a~%" interval-ratios)
+    (format t "minimum interval ~a minimum-period ~a~%" minimum-interval minimum-period)))
+
+;;;;
+;;;; Plot routines
+;;;;
 
 (defun plot-expectancies (all-expectations title)
   (let ((expect-times (make-narray (mapcar (lambda (expect) (time-in-seconds expect 200.0)) all-expectations)))
@@ -223,6 +232,7 @@
 ;; (setf (.aref bins bin-index) (if (zerop in-bin-count) in-bin-count
 ;; 			     (/ (.sum (.* in-bin expect-time-values)) in-bin-count))))
 
+
 (defun metrical-rhythm-expectancies (metrical-rhythms meter number-of-bars title
 				     ;; #'last-onset-expectations last-expectations-no-integrate
 				     &key (expectation-generator #'expectancies-of-rhythm-ridge-persistency))
@@ -248,6 +258,23 @@
 	      (- (expected-time e) rhythm-duration)))
     ;; (format t "bar-times ~a~%" bar-times) 
     (plot-expectancies-histogram bar-times confidences meter title)))
+
+(defun performed-rhythm-expectancies (performed-rhythms meter title
+				     ;; #'last-onset-expectations last-expectations-no-integrate
+				     &key (expectation-generator #'expectancies-of-rhythm-ridge-persistency))
+  "Given a set of performed rhythms, plot the confidences of each expectation"
+  (format t "~a~%" title)
+  (loop 
+     for rhythm in performed-rhythms
+     for expectancies = (last-expectations rhythm :expectancies-generator expectation-generator)
+     for rhythm-duration = (duration-in-samples rhythm)
+     for tatum = (.min (rhythm-iois-samples rhythm))
+     append (mapcar (lambda (expect) (/ (- (expected-time expect) rhythm-duration) tatum)) expectancies) into interval-ratios
+     append (mapcar (lambda (expect) (confidence expect)) expectancies) into confidences
+     finally (plot-interval-expectancies-histogram (make-narray interval-ratios) 
+						   (make-narray confidences) 
+						   meter
+						   title :bin-size 0.25)))
 
 (defun plot-interval-expectancies-histogram (times time-values meter title &key (bin-size 0.025))
   (multiple-value-bind (counts time-bins accumulated-time-values)
@@ -293,37 +320,6 @@
 	    :title (format nil "Average Expectation Time-Values for ~a" title))
       (close-window))))
 
-(defun intervals-of-performed-rhythms (rhythm
-				     ;; #'last-onset-expectations last-expectations-no-integrate
-				     &key (expectation-generator #'expectancies-of-rhythm-ridge-persistency))
-  "Given a performed rhythm, plot the confidences of each expectation"
-  (let* ((expectancies (last-expectations rhythm :expectancies-generator expectation-generator))
-	 (rhythm-duration (duration-in-samples rhythm))
-	 (minimum-ioi (.min (rhythm-iois-samples rhythm))) ; i.e. tatum
-	 (interval-times (make-narray (mapcar 
-				  (lambda (expect) (/ (- (expected-time expect) rhythm-duration) minimum-ioi)) 
-				  expectancies)))
-	 (confidences (make-narray (mapcar (lambda (expect) (confidence expect)) expectancies))))
-    (format t "interval-times ~a~%" interval-times)
-    (list interval-times confidences)))
-
-(defun performed-rhythm-expectancies (performed-rhythms meter title
-				     ;; #'last-onset-expectations last-expectations-no-integrate
-				     &key (expectation-generator #'expectancies-of-rhythm-ridge-persistency))
-  "Given a set of performed rhythms, plot the confidences of each expectation"
-  (format t "~a~%" title)
-  (loop 
-     for rhythm in performed-rhythms
-     for expectancies = (last-expectations rhythm :expectancies-generator expectation-generator)
-     for rhythm-duration = (duration-in-samples rhythm)
-     for tatum = (.min (rhythm-iois-samples rhythm))
-     append (mapcar (lambda (expect) (/ (- (expected-time expect) rhythm-duration) tatum)) expectancies) into interval-ratios
-     append (mapcar (lambda (expect) (confidence expect)) expectancies) into confidences
-     finally (plot-interval-expectancies-histogram (make-narray interval-ratios) 
-						   (make-narray confidences) 
-						   meter
-						   title :bin-size 0.25)))
-
 ;; (plot-expectancies all-expectations (format nil "Expectation Confidences for ~a examples of ~a bars of ~a meter"  sample-size number-of-bars candidate-meter))
 
 (defun plot-ridge-persistency (ridge-persistency scaleogram title)
@@ -337,34 +333,6 @@
 	:aspect-ratio 0.66 
 	:reset nil 
 	:title title))
-
-(defmethod ridge-persistency-of ((rhythm-to-analyse rhythm))
-  "Return the ridge persistency (normalised occurrence) of a given rhythm"
-  (let* ((analysis (analysis-of-rhythm rhythm-to-analyse :padding #'causal-pad)))
-    (unweighted-ridge-persistency-of analysis)))
-
-;;; TODO make this a defmethod?
-;;; TODO factor into determining the arp from a list of ridge-persistency-of results.
-(defun average-ridge-persistency (rhythms)
-  "Sum the ridge persistencies over the list of rhythms and return the average ridges persistency measure."
-  (loop
-     for rhythm in rhythms
-     ;; Since some rhythms are shorter than the maximum, we need to pad the ridge-persistency responses. 
-     with max-time-limit = (.max (make-narray (mapcar #'duration-in-samples rhythms)))
-     with max-dilation = (number-of-scales-for-period max-time-limit)
-     with total-persistency = (make-double-array max-dilation)
-     do (setf total-persistency (.+ total-persistency 
-				    (pad-end-to-length (ridge-persistency-of rhythm) max-dilation)))
-     finally (return (./ total-persistency (length rhythms)))))
-
-(defun generate-metrical-profile (list-of-rhythm-iois meter)
-  "Return a histogram of the metrical position of each onset within the given meter"
-  (let* ((measure-length (reduce #'* meter))
-	 (metrical-position-histogram (make-histogram '())))
-    (dolist (rhythm-iois list-of-rhythm-iois)
-      (let* ((metrical-positions (.mod (make-narray (iois-to-onsets rhythm-iois)) measure-length)))
-	(add-to-histogram metrical-position-histogram (val metrical-positions))))
-    (get-histogram metrical-position-histogram)))
 
 (defun plot-metrical-profile (list-of-rhythm-iois meter title)
   "Plot the histogram of the IOIs according to their metrical position, given the meter"
@@ -387,13 +355,6 @@
 	    :aspect-ratio 0.66
 	    :reset nil
 	    :title (format nil "Metrical Profile for ~a" title)))))
-
-(defun interval-histogram (list-of-rhythm-iois)
-  "Create a histogram on the intervals, not the metrical position"
-  (let* ((interval-histogram (make-histogram '())))
-    (dolist (rhythm-iois list-of-rhythm-iois)
-      (add-to-histogram interval-histogram rhythm-iois))
-    interval-histogram))
 
 (defun plot-interval-comparison (interval-histogram average-ridge-persistency description
 				&key (crochet-duration 120) (vpo 16))
@@ -485,17 +446,6 @@
 				  :expectation-generator #'expectancies-of-rhythm-integrator)
     analysis))
 
-(defun find-tactus (rhythm ridge-persistency &key (vpo 16))
-  (let* ((minimum-interval (.min (rhythm-iois-samples rhythm)))
-	 (persistent-intervals (time-support (most-persistent-scales ridge-persistency) vpo))
-	 (minimum-period (.min persistent-intervals))
-	 (period-ratios (./ persistent-intervals minimum-period))
-	 (interval-ratios (./ persistent-intervals minimum-interval)))
-    (format t "persistent intervals ~a~%period-ratios ~a~%"
-	    persistent-intervals period-ratios)
-    (format t "interval-ratios ~a~%" interval-ratios)
-    (format t "minimum interval ~a minimum-period ~a~%" minimum-interval minimum-period)))
-    
 (defun plot-persistency-of-performed-rhythm (rhythm-to-plot)
   (let* ((analysis (analysis-of-rhythm rhythm-to-plot :padding #'causal-pad))
 	 (relative-iois (intervals-as-ratios rhythm-to-plot))
@@ -608,8 +558,7 @@
 (plot-time-histogram (intervals-as-ratios r) "Relative Intervals")
 (plot-time-histogram (make-narray one-iois) "IOIs" :bin-size 1)
 
-(plot-interval-histogram (interval-histogram (list (nlisp::array-to-list
-						    (intervals-as-ratios r))))
+(plot-interval-histogram (interval-histogram (list (nlisp::array-to-list (intervals-as-ratios r))))
 			 "performed-44")
 
 |#

@@ -337,3 +337,35 @@
 		 :description (name (first rhythms))
 		 :time-signal (apply #'.concatenate (mapcar #'time-signal rhythms))
 		 :sample-rate (sample-rate (first rhythms))))
+
+(defun rhythm-of-part (name note-list &key 
+		       (sample-rate 200) 
+		       (attack 0.020) 
+		       (release 0.020)
+		       (make-envelope-p nil))
+  "Generate a rhythm from a note-list specifying time, duration (both in seconds) & amplitude"
+  (let* ((last-note (first (last note-list)))
+	 (rhythm-length (ceiling (* (+ (first last-note) (second last-note)) sample-rate)))
+	 (time-signal (make-double-array rhythm-length))
+	 (attack-samples (round (* attack sample-rate)))
+	 (release-samples (round (* release sample-rate))))
+    (loop
+       for (time duration amplitude) in note-list
+       for onset-time-in-samples = (round (* time sample-rate))
+       for duration-samples = (round (* duration sample-rate))
+       for sustain-samples = (- duration-samples attack-samples release-samples)
+       do (if make-envelope-p
+	      ;; TODO replace with make-envelope if we want it.
+	      (let ((envelope (.concatenate (.rseq 0.0 amplitude attack-samples) 
+					    (.rseq amplitude amplitude sustain-samples)
+					    (.rseq amplitude 0.0 release-samples))))
+		(setf (.subarray time-signal (list 0 (list onset-time-in-samples 
+							   (+ onset-time-in-samples duration-samples))))
+		      envelope))
+	      (setf (.aref time-signal onset-time-in-samples) (coerce amplitude 'double-float))))
+    (make-instance 'rhythm
+		   :name name
+		   :description name
+		   :time-signal time-signal
+		   :sample-rate sample-rate)))
+

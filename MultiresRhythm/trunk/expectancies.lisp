@@ -498,8 +498,8 @@
 				       :cutoff-scale cutoff-scale :phase-correct-from phase-correct-from)))
 
 ;;; Accumulation of onset expectations.
-(defun projected-onset-expectations (all-expectations)
-  "Given all the expectations calculated at each onset, sum the overlapping confidences, return an array spanning the projection time"
+(defun onsets-of-expectations (all-expectations)
+  "Given a set of expectations, sum the confidences (when overlapping), returns an array spanning the projection time"
   (let* ((all-expect-times (make-narray (mapcar (lambda (e) (expected-time e)) all-expectations)))
 	 (maximum-expect-time (ceiling (.max all-expect-times)))
 	 (projection-confidences (make-double-array maximum-expect-time)))
@@ -512,7 +512,7 @@
   (let* ((all-expectations-of-rhythm (expectancies-of-rhythm rhythm-to-expect :phase-correct-from nil :time-limit-expectancies nil))
 	 ;; rearrange all the expectations into a single list.
 	 (all-expectations (reduce #'append (mapcar #'second all-expectations-of-rhythm)))
-	 (expectancy-confidences (projected-onset-expectations all-expectations))
+	 (expectancy-confidences (onsets-of-expectations all-expectations))
 	 (projections-into-future (.subarray expectancy-confidences 
 					     (list 0 (list
 						      (duration-in-samples rhythm-to-expect)
