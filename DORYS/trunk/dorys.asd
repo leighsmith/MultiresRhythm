@@ -43,7 +43,7 @@
 	       (:file "EsAC")
 	       (:file "essen-meter-list")
 	       (:file "test-multires-rhythm")
-	       (:file "test-anthems")
+	       (:file "test-anthems" :depends-on ("national anthems"))
 	       (:file "metrical-expectancy")))
 
 #|

@@ -92,6 +92,31 @@
 
 ;; (plot-expectancies all-expectations (format nil "Expectation Confidences for ~a examples of ~a bars of ~a meter"  sample-size number-of-bars candidate-meter))
 
+;; Read Temperley's Melisma "notefiles". These are described as:
+;;  in "notelist" format, "Note [ontime] [offtime] [pitch]", where ontime and offtime
+;; are in milliseconds and pitch is an integer, middle C = 60.
+;; There are however, other lines in the file, which need pruning.
+(defun part-of-melisma-file (filepath)
+  "Reads the data file, creates a note-list"
+  (with-open-file (input-stream filepath)
+    (loop
+       for note-type = (read input-stream nil)
+       while note-type
+       if (string-equal note-type "Note")
+       collect
+	 (let ((on-time (read input-stream))
+	       (off-time (read input-stream))
+	       (midi-note (read input-stream)))
+	   ;; (format t "~a, ~a, ~a, ~a~%" note-type on-time off-time midi-note)
+	   (list (/ on-time 1000.0d0) (/ (- off-time on-time) 1000.0d0) 1.0 midi-note))
+       else
+       do (read-line input-stream nil))))
+
+(defun rhythm-of-melisma-file (filepath)
+  "Returns a rhythm object from the melisma file"
+  (let ((melisma-note-list (part-of-melisma-file filepath)))
+    (rhythm-of-part (pathname-name filepath) melisma-note-list)))
+
 (defun load-essen-rhythms (essen-scores)
   "Reads in the files from the score descriptions passed in, returns a list of rhythm instances."
   (loop 
