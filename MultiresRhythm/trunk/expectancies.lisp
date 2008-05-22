@@ -213,30 +213,41 @@
 			  (+ zero-index time-projection)
 			  (+ time time-projection))))))
 
+;;; Or just for one scale?
+(defun expectation-of-scale-at-time (scale time scaleogram confidence precision 
+				     &key (phase-correct-from nil) (time-limit-expectancies nil))
+  "Effectively a factory method including phase correction of expectation time"
+  (let* ((vpo (voices-per-octave scaleogram))
+	 (max-time (if time-limit-expectancies (duration-in-samples scaleogram) most-positive-fixnum))
+	 (projection (time-support scale vpo))
+	 (uncorrected-time (+ time projection))
+	 ;; Compute the time prediction, modified by the phase.
+	 (phase-corrected-time (phase-corrected-time-chasing projection (scaleogram-phase scaleogram) scale time))
+	 ;; (phase-corrected-time (phase-corrected-time-computed projection phase scale time))
+	 ;; (phase-corrected-time (phase-corrected-time-from projection time phase-correct-from))
+	 ;; Add 1 for projection from the next sample.
+	 (expected-time (1+ (if phase-correct-from phase-corrected-time uncorrected-time))))
+    (format t "time ~a time projection ~,3f phase-corrected ~,3f uncorrected ~,3f expected-time ~,3f~%"
+	    time projection phase-corrected-time uncorrected-time expected-time)
+    (make-instance 'expectation 
+		   ;; +1 for projection beyond end of rhythm
+		   :time (min expected-time max-time)
+		   ;; :sample-rate (sample-rate analysis)
+		   :confidence (.aref confidence scale)
+		   :precision (.aref precision scale))))
+
 (defun expectancy-of-ridge-at-time (ridge time scaleogram all-precision all-peaks 
 				    &key (time-limit-expectancies nil) (phase-correct-from nil))
   "Return an expectation instance holding the expection time, the confidence and the precision" 
-  (let* ((vpo (voices-per-octave scaleogram))
-	 (max-time (if time-limit-expectancies (duration-in-samples scaleogram) most-positive-fixnum))
-	 (scale (scale-at-time ridge time))
-	 (phase (scaleogram-phase scaleogram))
-	 (uncorrected-time (+ time (time-support scale vpo)))
-	 ;; Compute the time prediction, modified by the phase.
-	 (phase-corrected-time (phase-corrected-time-chasing (time-support scale vpo) phase scale time))
-	 ;; (phase-corrected-time (phase-corrected-time-computed (time-support scale vpo) phase scale time))
-	 ;; (phase-corrected-time (phase-corrected-time-from (time-support scale vpo) time phase-correct-from))
-	 ;; Add 1 for projection from the next sample.
-	 (expected-time (1+ (if phase-correct-from phase-corrected-time uncorrected-time)))
-	 ;; energy = absolute height of scaleogram or ridge-peaks (depending on what's
-	 ;; passed into all-peaks)
-	 (energy (.aref all-peaks scale time)))
-    (format t "time ~a time projection ~,3f phase-corrected ~,3f uncorrected ~,3f expected-time ~,3f~%"
-	    time (time-support scale vpo) phase-corrected-time uncorrected-time expected-time)
-    (make-instance 'expectation 
-		   :time (min expected-time max-time)
-		   ;; :sample-rate (sample-rate ?) TODO sample rate of?
-		   :confidence energy
-		   :precision (.aref all-precision scale time))))
+  (expectation-of-scale-at-time (scale-at-time ridge time) 
+				time
+				scaleogram 
+				;; energy = absolute height of scaleogram or ridge-peaks (depending on what's
+				;; passed into all-peaks)
+				(.column all-peaks time)
+				(.column all-precision time)
+				:phase-correct-from phase-correct-from
+				:time-limit-expectancies time-limit-expectancies))
 
 (defun expectancies-of-skeleton-at-times (skeleton times scaleogram precision ridge-peaks &key
 					  (cutoff-scale 16) (phase-correct-from nil))
@@ -394,10 +405,11 @@
 	 (peak-persistencies (.arefs ridge-persistency most-likely-scales))
 	 (above-average-peaks (+ (mean peak-persistencies) (* worthwhile (stddev peak-persistencies)))) 
 	 ;; threshold the scales used to only those above half the most persistent.
-	 ;; check (> scale cutoff-scale) ; TODO unneeded with weighting?
 	 (number-likely (min (position above-average-peaks (val peak-persistencies) :test #'>=) memory-limit)))
     (format t "above-average peaks threshold ~a~%" above-average-peaks)
     (.subarray most-likely-scales (list 0 (list 0 (1- number-likely))))))
+    ;; TODO unneeded since we are weighting by tempo?
+    ;; (remove-if (lambda (scale) (<= scale cutoff-scale)) (val most-likely-scales))
 
 ;;; TODO Surely there must exist something similar already?
 (defun impulses-at (peak-scales total-number-of-scales)
@@ -410,9 +422,9 @@
 						 (phase-correct-from nil))
   "Return a list structure of expectancies. Computes the expectancies using the maximum
    value of the ridge persistency" 
-  ;; Allows sldb to find our problems quicker.
-  (declare (optimize (debug 3)) (ignore phase-correct-from))
+  (declare (ignore phase-correct-from))
   (let* ((analysis (analysis-of-rhythm rhythm-to-analyse :padding #'causal-pad))
+	 (scaleogram (scaleogram analysis))
 	 (tempo-weighted-ridge-persistency (tempo-weighted-ridge-persistency-of analysis))
 	 (most-likely-scales (most-likely-scales tempo-weighted-ridge-persistency))
 	 ;; Make a new peak profile of just the most likely scales for the precision calculation.
@@ -424,19 +436,13 @@
 	 (precision (normalized-precision-profile likely-persistency-peaks persistency-troughs))
 	 (time (first times-to-check)))
     (diag-plot 'tempo-ridge-persistency
-      (plot-ridge-persistency tempo-weighted-ridge-persistency (scaleogram analysis) (name rhythm-to-analyse)))
+      (plot-ridge-persistency tempo-weighted-ridge-persistency scaleogram (name rhythm-to-analyse)))
     (list ; over times
      (list time
 	   (loop
-	      with vpo = (voices-per-octave (scaleogram analysis))
 	      for scale across (val most-likely-scales)
-	      ;; TODO replace with a modified version of expectancy-of-ridge-at-time including phase correction.
-	      collect (make-instance 'expectation 
-				     ;; +1 for projection beyond end of rhythm
-				     :time (1+ (+ time (time-support scale vpo)))
-				     :sample-rate (sample-rate rhythm-to-analyse)
-				     :confidence (.aref tempo-weighted-ridge-persistency scale)
-				     :precision (.aref precision scale)))))))
+	      collect (expectation-of-scale-at-time scale time scaleogram
+						    tempo-weighted-ridge-persistency precision))))))
 
 (defun expectancies-of-rhythm (rhythm &key (times-to-check (nlisp::array-to-list (onsets-in-samples rhythm)))
 			       (time-limit-expectancies nil) (phase-correct-from nil))
