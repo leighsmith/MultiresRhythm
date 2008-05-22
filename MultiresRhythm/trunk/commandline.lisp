@@ -54,14 +54,16 @@
 ;;; This is generated as the top-level interpreter from a SBCL not run within SLIME with (generate-executable)
 (defun expectancy-command-line-parser ()
   "Function which is run instead of the top-level interpreter for standalone operation"
-  ;; (format t "argv ~a~%" sb-ext:*posix-argv*)
-  (let* ((parsed-cli (cli-parser:cli-parse sb-ext:*posix-argv* *expectancy-options*))
+  (let* ((argv #+sbcl sb-ext:*posix-argv*
+	       #+ecl '(""))
+	 (parsed-cli (cli-parser:cli-parse argv *expectancy-options*))
 	 (sample-rate (if (null (gethash "sample-rate" parsed-cli)) 
 			  200.0d0 
 			  (read-from-string (first (gethash "sample-rate" parsed-cli))))))
-    (cond ((< (length sb-ext:*posix-argv*) 2)
+    ;; (format t "argv ~a~%" argv)
+    (cond ((< (length argv) 2)
 	   (info-banner) 
-	   (cli-parser:cli-usage (first sb-ext:*posix-argv*) *expectancy-options*))
+	   (cli-parser:cli-usage (first argv) *expectancy-options*))
 	  ((gethash "saliency-trace" parsed-cli)
 	   (last-expectancy-of-salience (first (gethash "saliency-file" parsed-cli)) 
 					(first (gethash "onset-times" parsed-cli))
@@ -72,10 +74,10 @@
 				    (first (gethash "output-file" parsed-cli))
 				    :sample-rate sample-rate))
 	  (t
-	   (last-expectancy-of-file (second sb-ext:*posix-argv*))))
+	   (last-expectancy-of-file (second argv))))
     0))
 
 ;;; This must be run using an SBCL not run within SLIME.
 (defun generate-executable ()
   "Call this to generate an executable and die"
-  (sb-ext:save-lisp-and-die "emem-expect-mrr" :executable t :toplevel #'expectancy-command-line-parser))
+  #+sbcl (sb-ext:save-lisp-and-die "emem-expect-mrr" :executable t :toplevel #'expectancy-command-line-parser))

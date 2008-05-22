@@ -548,11 +548,6 @@
 				 (floor (scale-from-period 480 16))
 				 (ceiling (scale-from-period 480 16)))) 16)
 
-;;; Need minimum of 1 rhythm of 16 bars to get a good metrical profile
-(setf one-34-rhythm (one-rhythm '(3 2 2) 16))
-(one-rhythm '(3 2 2) 30)
-(one-rhythm '(2 2 2 2) 30)
-
 ;;;; Performed rhythms
 
 (plot-time-histogram (intervals-as-ratios r) "Relative Intervals")
