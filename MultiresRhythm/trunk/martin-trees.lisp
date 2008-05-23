@@ -63,9 +63,27 @@
       (dotimes (arrow arrow-count)
 	(plot-command "show arrow ~a" arrow)))))
 
-(defun test-tree (meter)
-  (window)
-  (reset-plot)
-  (plot-martin-tree meter 1.0 0.5 :start-x 8)
-  (plot (.rseq 0 1 20) nil :reset nil)
-  (close-window))
+(defun plot-tree-of-meter (meter)
+  (let ((meter-length (reduce #'* meter))
+	(meter-height (1+ (length meter))))
+    (window)
+    (reset-plot)
+    (plot-martin-tree meter meter-length meter-height :start-x 1)
+    (plot-command "set title font \"Times,24\"")
+    (plot-command "set xlabel font \"Times,24\"")
+    (plot-command "set ylabel font \"Times,24\"")
+    (plot-command "set xrange [0:~a]" (1+ meter-length))
+    (plot-command "set yrange [0:~a]" meter-height)
+    (plot-command "set key off")
+    (plot (make-double-array meter-length) (.iseq 1 meter-length) 
+	  :xlabel "Metrical Position (semiquavers)" 
+	  :ylabel "Salience"
+	  :title (format nil "Salience Hierarchy for ~a meter" meter)
+	  :reset nil 
+	  :aspect-ratio 0.66)
+    (close-window)))
+
+;; (plot-tree-of-meter '(3 2 2))
+;; (plot-tree-of-meter '(2 2 2 2))
+
+;; (plot-martin-tree meter 1.0 0.5 :start-x 8)

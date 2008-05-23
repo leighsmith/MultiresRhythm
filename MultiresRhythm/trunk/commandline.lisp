@@ -28,6 +28,12 @@
                        :description "The input file in a format consisting of sampled saliency traces"
                        :example "--saliency-trace=music.saliency")
         (make-instance 'cli-option
+                       :abbr "e"
+                       :full "ending-peaks"
+                       :requires-arguments nil
+                       :description "Calculates expectancy from the ending peaks, not the ridge persistency"
+                       :example "--ending-peaks")
+        (make-instance 'cli-option
                        :abbr "r"
                        :full "sample-rate"
                        :requires-arguments t
@@ -72,6 +78,9 @@
 	  ((gethash "onset-times" parsed-cli)
 	   (last-expectancy-of-file (first (gethash "onset-times" parsed-cli))
 				    (first (gethash "output-file" parsed-cli))
+				    :expectancies-generator (if (nth-value 1 (gethash "ending-peaks" parsed-cli))
+								#'expectancies-of-rhythm
+								#'expectancies-of-rhythm-ridge-persistency)
 				    :sample-rate sample-rate))
 	  (t
 	   (last-expectancy-of-file (second argv))))

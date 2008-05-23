@@ -403,9 +403,10 @@
   "Returns a list of scales given the ridge persistency which are most likely to be expectation periods"
   (let* ((most-likely-scales (most-persistent-scales ridge-persistency))
 	 (peak-persistencies (.arefs ridge-persistency most-likely-scales))
-	 (above-average-peaks (+ (mean peak-persistencies) (* worthwhile (stddev peak-persistencies)))) 
+	 (above-average-peaks (+ (mean peak-persistencies) (* worthwhile (stddev peak-persistencies))))
 	 ;; threshold the scales used to only those above half the most persistent.
-	 (number-likely (min (position above-average-peaks (val peak-persistencies) :test #'>=) memory-limit)))
+	 (number-above-average (or (position above-average-peaks (val peak-persistencies) :test #'>=) 0))
+	 (number-likely (min number-above-average memory-limit)))
     (format t "above-average peaks threshold ~a~%" above-average-peaks)
     (.subarray most-likely-scales (list 0 (list 0 (1- number-likely))))))
     ;; TODO unneeded since we are weighting by tempo?
@@ -504,6 +505,7 @@
 			  &key (last-time (1- (duration-in-samples rhythm-to-expect)))
 			  (expectancies-generator #'expectancies-of-rhythm-integrator))
   "Return the list of expectations for the last moment in the rhythm"
+  (format t "Using ~a~%" expectancies-generator)
   (let ((expectations (funcall expectancies-generator rhythm-to-expect 
 			       :times-to-check (list last-time)
 			       ;; Do no phase correction when testing metrical expectancies.
@@ -594,13 +596,19 @@
     (with-open-file (expectancy-file output-filepath :direction :output :if-exists :supersede)
       (write-expectancies-to-stream expectancies-at-times sample-rate expectancy-file))))
 
-(defun last-expectancy-of-file (input-filepath output-filepath &key (sample-rate 200.0d0))
+(defun last-expectancy-of-file (input-filepath output-filepath 
+				&key (sample-rate 200.0d0)
+				(expectancies-generator #'expectancies-of-rhythm-ridge-persistency))
   "Computes the expectancies at the last moment in the file from the discrete onset times"
+  (format t "Using ~a~%" expectancies-generator)
   (let* ((times-as-rhythm (rhythm-of-emcap-onset-file input-filepath sample-rate))
 	 ;; (last-time (last-onset-time times-as-rhythm))  ; take either last onset
 	 (last-time (1- (duration-in-samples times-as-rhythm)))	; or last moment of window.
-	 (expectancies-at-last-time (expectancies-of-rhythm-integrator times-as-rhythm 
-								       :times-to-check (list last-time))))
+	 (expectancies-at-last-time (funcall expectancies-generator times-as-rhythm
+					     :times-to-check (list last-time)
+					     ;; :phase-correct-from (last-onset-time times-as-rhythm))))
+					     ;; Do no phase correction when testing metrical expectancies.
+					     :phase-correct-from nil)))
     (with-open-file (expectancy-file output-filepath :direction :output :if-exists :supersede)
       (write-expectancies-to-stream expectancies-at-last-time sample-rate expectancy-file))))
 
