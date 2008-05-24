@@ -17,6 +17,7 @@
 ;;;;
 
 (require 'shoe)				; For anthem comparisons.
+(require 'nlisp)			; For mathematics functions.
 (require 'multiresrhythm)		; For multires-rhythm library.
 
 ;; (setf (logical-pathname-translations "rhythm") '(("data;*.*.*" "/Volumes/iDisk/Research/Data/")))
@@ -36,7 +37,7 @@
   :version "1.1"
   :author "Leigh M. Smith"
   :license "Copyright (c) 2005-2008"
-  :depends-on (:multiresrhythm :shoe)
+  :depends-on (:multiresrhythm :shoe :nlisp)
   :components ((:file "national anthems")
 	       (:file "anthem-accessors" :depends-on ("national anthems"))
 	       (:file "anthem-evaluation" :depends-on ("anthem-accessors"))

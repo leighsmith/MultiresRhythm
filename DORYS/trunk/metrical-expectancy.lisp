@@ -11,8 +11,9 @@
 ;;;; Copyright (c) 2007
 ;;;;
 
-(in-package :dorys)
+(use-package :nlisp)
 (use-package :multires-rhythm)
+(in-package :dorys)
 
 #|
 ;;; Just needs the syncopation package loaded.
@@ -115,7 +116,7 @@
 (defun rhythm-of-melisma-file (filepath)
   "Returns a rhythm object from the melisma file"
   (let ((melisma-note-list (part-of-melisma-file filepath)))
-    (rhythm-of-part (pathname-name filepath) melisma-note-list)))
+    (multires-rhythm::rhythm-of-part (pathname-name filepath) melisma-note-list)))
 
 (defun load-essen-rhythms (essen-scores)
   "Reads in the files from the score descriptions passed in, returns a list of rhythm instances."
@@ -156,20 +157,20 @@
 	;; (plot-ridge-persistency arp
 	;; 				(scaleogram analysis)
 	;; 				(format nil "Average ridge persistency of ~a" description))
-	;; (metrical-rhythm-expectancies random-rhythms
-	;;		    meter
-	;;		    number-of-bars 
-	;;		    (format nil "~a (ending peaks)" description)
-	;;		    :expectation-generator #'expectancies-of-rhythm)
-	;; (metrical-rhythm-expectancies random-rhythms
-	;; 				      meter
-	;; 				      number-of-bars 
-	;; 				      (format nil "~a (integration)" description)
-	;; 				      :expectation-generator #'expectancies-of-rhythm-integrator)
 	(metrical-rhythm-expectancies random-rhythms
 				      meter
 				      number-of-bars 
-				      description ; (format nil "~a (RP)" description)
+				      (format nil "~a (ending peaks)" description)
+				      :expectation-generator #'expectancies-of-rhythm)
+	(metrical-rhythm-expectancies random-rhythms
+				      meter
+				      number-of-bars 
+				      (format nil "~a (integration)" description)
+				      :expectation-generator #'expectancies-of-rhythm-integrator)
+	(metrical-rhythm-expectancies random-rhythms
+				      meter
+				      number-of-bars 
+				      (format nil "~a (RP)" description)
 				      :expectation-generator #'expectancies-of-rhythm-ridge-persistency)))))
 
 (defun time-limited-rhythm-named (name &key (sample-rate 200))
@@ -177,16 +178,16 @@
 	  (load-essen-rhythms (list (essen-named name)))))
 
 (defun time-limited-rhythms-of-meter (meter &key (sample-rate 200))
-      (mapcar (lambda (x) (limit-rhythm x :maximum-samples (* 15 sample-rate)))
-		      (load-essen-rhythms (dorys::essen-of-meter meter))))
+      (mapcar (lambda (x) (multires-rhythm::limit-rhythm x :maximum-samples (* 15 sample-rate)))
+		      (load-essen-rhythms (essen-of-meter meter))))
 
 ;; (time-limited-rhythms-of-meter "3/4")
 
 (defun performed-rhythms-of-meter (meter-name)
   (let ((rhythm-set (time-limited-rhythms-of-meter meter-name)))
-    (performed-rhythm-expectancies rhythm-set (meter-for-name meter-name)
-				   (format nil "~a Performed Rhythms in ~a Meter"
-					   (length rhythm-set) meter-name))))
+    (multires-rhythm::performed-rhythm-expectancies rhythm-set (meter-for-name meter-name)
+						    (format nil "~a Performed Rhythms in ~a Meter"
+							    (length rhythm-set) meter-name))))
 
 (defun one-rhythm (meter number-of-bars)
   (multiple-value-bind (one-rhythm one-iois) 
@@ -213,8 +214,13 @@
 ;; (performed-rhythms-of-meter "2/4")
 ;; (performed-rhythms-of-meter "6/4")
 ;; (performed-rhythms-of-meter "3/2")
-  
+
 #|
+
+;;; Need minimum of 1 rhythm of 16 bars to get a good metrical profile
+(setf one-34-rhythm (one-rhythm '(3 2 2) 16))
+(one-rhythm '(3 2 2) 30)
+(one-rhythm '(2 2 2 2) 30)
 
 (defun plot-profile-and-persistency-new (sample-size number-of-bars meter)
   "Display the combined metrical profile and combined ridge persistency measures"

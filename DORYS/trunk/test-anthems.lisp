@@ -19,8 +19,9 @@
 ;;;;   annote =  {\url{http://www.leighsmith.com/Research/Papers/MultiresRhythm.pdf}}
 ;;;;
 
-(in-package :dorys)
+(use-package :nlisp)
 (use-package :multires-rhythm)
+(in-package :dorys)
 
 (defparameter *anthem-analysis-path* "/Users/leigh/Data/Anthems")
 
@@ -307,10 +308,10 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 						(vpo 16) (crochet-duration 100) (max-time-limit 16384))
   "Returns an narray of scales with the relative occurrence of each interval over the duration of the anthem rhythm"
   (let* ((scale-histogram (make-double-array (number-of-scales-for-period max-time-limit :voices-per-octave vpo)))
-	 (duration-histogram (dorys::make-histogram (second anthem)))
-	 (intervals (make-narray (dorys::get-histogram-elements duration-histogram)))
+	 (duration-histogram (multires-rhythm::make-histogram (second anthem)))
+	 (intervals (make-narray (multires-rhythm::get-histogram-elements duration-histogram)))
 	 ;; Multiply the intervals by the counts to measure the time over which each interval spans.
-	 (spans (.* intervals (make-narray (dorys::get-histogram-counts duration-histogram))))
+	 (spans (.* intervals (make-narray (multires-rhythm::get-histogram-counts duration-histogram))))
 	 (relative-occurrence (./ spans (* (.sum spans) 1d0))) ; make it a relative measure wrt time.
 	 (crochet-ratios (./ intervals (float (anthem-beat-duration anthem) 1d0))))
     ;; TODO .floor should be .round
@@ -332,7 +333,7 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 ;;   "Returns an narray of scales based on histogram counts"
 ;;   (let* ((anthem-duration (duration-in-samples (anthem-rhythm (first anthems))))
 ;; 	 (scale-histogram (make-double-array (number-of-scales-for-period anthem-duration :voices-per-octave vpo)))
-;; 	 (histogram-hash-table (dorys::make-histogram-of-anthem-intervals :anthems anthems))
+;; 	 (histogram-hash-table (multires-rhythm::make-histogram-of-anthem-intervals :anthems anthems))
 ;; 	 (intervals (make-narray (get-histogram-elements histogram-hash-table))))
 ;;     ;; TODO should be .round
 ;;     (setf (.arefs scale-histogram (.floor (scale-from-period (.* intervals crochet-duration) vpo)))
@@ -745,11 +746,11 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
     (format t "computed anacrusis duration ~a computed bar period ~a~%" downbeat-in-note-units bar-period-in-note-units)
     (shoe::correct-from-anthem-tree pattern downbeat-in-note-units bar-period-in-note-units))))
 
-;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'dorys::australia))
-;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'dorys::america))
-;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'dorys::yugoslavia))
-;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'dorys::vietnam))
-;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'dorys::yemen))
+;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'australia))
+;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'america))
+;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'yugoslavia))
+;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'vietnam))
+;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'yemen))
 
 ;;; (setf bad-beat-or-phase (evaluation-of-anthems #'evaluate-mrr-with-tree-on-anthem))
 ;; #<FUNCTION EVALUATE-MRR-WITH-TREE-ON-ANTHEM> 69 failed, correct 34.285713%
@@ -791,7 +792,7 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
   "Returns the IOIs with the anacrusis removed."
   (onsets-to-iois (remove-if #'minusp 
 			     (iois-to-onsets (second anthem) 
-					     (- (dorys::anthem-anacrusis-duration anthem))))))
+					     (- (anthem-anacrusis-duration anthem))))))
 
 ;;; Only test anthems that are measured to minimum IOI of 16ths.
 ;;; (setf waltz-anthems-16ths (remove-if-not (lambda (a) (equal (anthem-beat-duration a) 4)) (anthems-of-meter "3/4")))
@@ -822,10 +823,10 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
     ;; We get a nice peak at 300.4 corresponding to 3 crotchets.
     (ridge-persistency-of anthem-rhythm)))
 
-;; (metrical-profile-of-anthem (anthem-named 'dorys::america) '(3 2 2))
+;; (metrical-profile-of-anthem (anthem-named 'america) '(3 2 2))
 
 ;;; Compare frequency of intervals against the generated versions.
-;; (dorys:get-histogram (interval-histogram (list (second (anthem-named 'dorys::america)))))
+;; (dorys:get-histogram (interval-histogram (list (second (anthem-named 'america)))))
 
 ;;; Most anthems don't demonstrate a canonical metrical profile, often lacking any beats
 ;;; falling on minor metrical positions.

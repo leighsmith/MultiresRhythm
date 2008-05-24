@@ -12,6 +12,7 @@
 ;;;;
 
 (in-package :dorys)
+(use-package :multires-rhythm)
 
 ;;; The *national-anthems* symbol is interned into :dorys package by loading.
 
