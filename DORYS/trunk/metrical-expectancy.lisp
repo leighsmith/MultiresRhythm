@@ -11,9 +11,9 @@
 ;;;; Copyright (c) 2007
 ;;;;
 
+(in-package :dorys)
 (use-package :nlisp)
 (use-package :multires-rhythm)
-(in-package :dorys)
 
 #|
 ;;; Just needs the syncopation package loaded.
@@ -33,6 +33,7 @@
 	 (times (nlisp::array-to-list (.rseq 0 1.0d0 (1+ (reduce #'* meter))))))
     (rhythm-of-weighted-onsets "metrical scaling" (mapcar #'list times metrical-weights))))
 |#
+
 ;;;; 
 
 ;;; Randomly generate metrical rhythms of a fixed meter, with no upbeats.
@@ -147,31 +148,31 @@
 	    (description (format nil "~a random rhythms in ~a meter of ~a measures"
 				 (length random-rhythms) meter-name number-of-bars)))
 	(window)
-	(plot-metrical-profile random-iois meter 
+	(multires-rhythm::plot-metrical-profile random-iois meter 
 			       (format nil "~a random rhythms in ~a meter" (length random-iois) meter-name))
 	(close-window)
 	(window)
-	(plot-interval-histogram (interval-histogram random-iois) description)
+	(multires-rhythm::plot-interval-histogram (multires-rhythm::interval-histogram random-iois) description)
 	(close-window)
 	;; (plot-time-histogram (make-narray random-iois) description :bin-size 1)
 	;; (plot-ridge-persistency arp
 	;; 				(scaleogram analysis)
 	;; 				(format nil "Average ridge persistency of ~a" description))
-	(metrical-rhythm-expectancies random-rhythms
+	(multires-rhythm::metrical-rhythm-expectancies random-rhythms
 				      meter
 				      number-of-bars 
 				      (format nil "~a (ending peaks)" description)
-				      :expectation-generator #'expectancies-of-rhythm)
-	(metrical-rhythm-expectancies random-rhythms
+				      :expectation-generator #'multires-rhythm::expectancies-of-rhythm)
+	(multires-rhythm::metrical-rhythm-expectancies random-rhythms
 				      meter
 				      number-of-bars 
 				      (format nil "~a (integration)" description)
-				      :expectation-generator #'expectancies-of-rhythm-integrator)
-	(metrical-rhythm-expectancies random-rhythms
+				      :expectation-generator #'multires-rhythm::expectancies-of-rhythm-integrator)
+	(multires-rhythm::metrical-rhythm-expectancies random-rhythms
 				      meter
 				      number-of-bars 
 				      (format nil "~a (RP)" description)
-				      :expectation-generator #'expectancies-of-rhythm-ridge-persistency)))))
+				      :expectation-generator #'multires-rhythm::expectancies-of-rhythm-ridge-persistency)))))
 
 (defun time-limited-rhythm-named (name &key (sample-rate 200))
   (mapcar (lambda (x) (limit-rhythm x :maximum-samples (* 15 sample-rate)))

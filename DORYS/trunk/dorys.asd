@@ -22,7 +22,7 @@
 
 ;; (setf (logical-pathname-translations "rhythm") '(("data;*.*.*" "/Volumes/iDisk/Research/Data/")))
 
-(defpackage #:dorys (:use #:cl #:asdf #:multires-rhythm #:shoe)
+(defpackage #:dorys (:use #:cl #:asdf #:nlisp #:multires-rhythm #:shoe)
 	    (:export :*national-anthems*
 		     :anthem-named :meter-numerator :anthem-name
 		     :anthem-beat-duration :anthem-bar-duration :anthem-anacrusis-duration
