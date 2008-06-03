@@ -24,9 +24,6 @@
    (sample-rate       :initarg :sample-rate :accessor sample-rate)) ; not yet used.
   (:documentation "Defines the expectation to the next point in time."))
 
-(defgeneric time-in-seconds (expectation sample-rate)
-  (:documentation "Returns the expected time in seconds, given the sample rate."))
-
 (defgeneric list-in-seconds (expectation sample-rate)
  (:documentation "Returns the expectation as a list, times in seconds, given the sample rate."))
 
@@ -48,35 +45,41 @@
 	      (- (expected-time expectation) (first expectation-from-time))
 	      expectation))))
 
-(defmethod time-in-seconds ((expectation-to-report expectation) sample-rate)
-  (/ (expected-time expectation-to-report) (float sample-rate)))
+(defmacro time-in-seconds (time-in-samples sample-rate)
+  "Returns the expected time in seconds, given the sample rate."
+  `(/ ,time-in-samples (float ,sample-rate)))
 
-;;; TODO obsolete.
-(defmethod list-in-seconds ((expectation-to-list expectation) sample-rate)
-  "Returns the expectancy as a list, times in seconds"
-  (list (time-in-seconds expectation-to-list sample-rate) 
+(defmethod expectation-in-seconds ((expectation-to-list expectation) sample-rate)
+  "Returns the expectancy as a list of expectation time, confidence and precision, all times in seconds"
+  (list (time-in-seconds (expected-time expectation-to-list) sample-rate) 
 	(confidence expectation-to-list)
-	(precision expectation-to-list)))
+	(time-in-seconds (precision expectation-to-list) sample-rate)))
 
-(defun width-of-peaks (peaks minima number-of-scales)
-  "Returns the widths of the peaks, by finding the distance between two minima either side of each peak"
+(defun pad-minima (minima number-of-scales)
+  "Inserts the zero index and the last scale index either end of the minima as boundaries
+  to the search for the peak locations"
+  (.concatenate (make-narray '(0)) minima (make-narray (list (1- number-of-scales)))))
+
+(defun width-of-peaks (peaks minima &key (minima-distances minima))
+  "Returns the widths of the peaks (by default measured in scales), by finding the distance between two minima either side of each peak"
   (let* ((minima-val (val minima))
-	 (minima-length (length minima-val))
-	 (minima-widths (make-integer-array (.array-dimensions peaks)))
-	 (last-minima (if (zerop minima-length) 0 (.aref minima (1- minima-length))))
-	 (minima-diffs (.diff minima)))
+	 (minima-widths (nlisp::narray-of-type minima-distances (.array-dimensions peaks)))
+	 (minima-diffs (.diff minima-distances)))
     (loop
        for peak across (val peaks)
        for peak-index = 0 then (1+ peak-index)
        for right-position = (position peak minima-val :test #'<=)
-       do (setf (.aref minima-widths peak-index) 
-		(cond ((null right-position)  ; peak exceeds last minima.
-		       (- number-of-scales last-minima 1)) ; difference is between last minima and the last scale.
-		      ((zerop right-position) ; peak preceded first minima.
-		       (.aref minima 0))      ; the first element is the difference.
-		      (t
-		       (.aref minima-diffs (1- right-position))))))
+       do (setf (.aref minima-widths peak-index) (.aref minima-diffs (1- right-position))))
     minima-widths))
+
+;; (sample-width-of-peaks (make-narray '(30 46 68 76 88 103 111)) (make-narray '(26 37 67 71 81 95 106)) 128)
+
+(defun sample-width-of-peaks (peaks minima number-of-scales voices-per-octave)
+  "Returns the widths of the peaks in samples, by finding the distance between two minima either side of each peak"
+  (let ((padded-minima (pad-minima minima number-of-scales)))
+    (width-of-peaks peaks padded-minima :minima-distances (time-support padded-minima voices-per-octave))))
+
+;; (sample-width-of-peaks (make-narray '(20 27)) (make-narray '(18 23 27 29)) 40 16)
 
 ;;; Precision = sharpness of peak. We calculate this as the area under the peak
 ;;; between the other peaks. Do this by calculating the distance from the ridge
@@ -85,12 +88,42 @@
   "Returns the precision of each ridge at the given time"
   (let* ((maxima (ridge-peaks analysis))
 	 (minima (ridge-troughs analysis))
-	 (widths (width-of-peaks (.find (.column maxima time)) (.find (.column minima time)) (.row-count maxima))))
+	 (widths (width-of-peaks (.find (.column maxima time))
+				 (pad-minima (.find (.column minima time)) (.row-count maxima)))))
     ;; Determine the widths in relative measures of scale span and from the inverse of
     ;; those, the precision.
     (.- 1d0 (./ widths (* (.row-count maxima) 1d0)))))
 
-;;; This returns the normalized maximum value for each of the peaks. We could calculate
+(defun precision-profile (ridge-peak-profile ridge-trough-profile voices-per-octave)
+  "Determine the precision in samples, given the peaks and troughs expressed as vectors of scale indices"
+  (diag-plot 'precision-profiles
+    (nplot (list ridge-peak-profile ridge-trough-profile) nil :styles '("impulses lw 2" "impulses lw 2")))
+  (let* ((number-of-scales (.length ridge-peak-profile))
+	 (peak-scales (.find ridge-peak-profile))
+	 (trough-scales (.find ridge-trough-profile))
+	 ;; Determine the widths between peaks in sample times.
+	 (peak-widths (sample-width-of-peaks peak-scales trough-scales
+					     number-of-scales voices-per-octave))
+	 (precision-profile (make-double-array number-of-scales)))
+;;     (format t "peaks at scales ~a~%troughs at scales ~a~%widths in scales ~a~%in samples ~a~%"
+;; 	    peak-scales trough-scales
+;; 	    (width-of-peaks peak-scales (pad-minima trough-scales number-of-scales))
+;; 	    peak-widths)
+    (setf (.arefs precision-profile peak-scales) peak-widths)
+    precision-profile))
+
+(defun precision-in-samples (maxima minima vpo)
+  "Returns a matrix of the measure of precision of each peak in samples, with respect to the
+  total number of scales, given the maxima and minima of the scaleogram."
+  (let* ((time-freq-dimensions (.array-dimensions maxima))
+	 (precision (make-double-array time-freq-dimensions)))
+    (dotimes (time (.column-count maxima)) ; loop over the duration
+      ;; (format t "precision of ~a~%" time)
+      (setf (.column precision time) 
+	    (precision-profile (.column maxima time) (.column minima time) vpo)))
+    precision))
+
+;;; This returns the normalised maximum value for each of the peaks. We could calculate
 ;;; this by (./ normalised-precision (.partial-sum normalised-precision)) to choose from
 ;;; the most precise peaks (and ignoring those regions that are not a peak), but this is
 ;;; more efficient.
@@ -103,38 +136,13 @@
     (dotimes (time duration)
       (let* ((ridge-peak-profile (.column maxima time))
 	     (peak-scales (.find ridge-peak-profile))
-	     (peak-widths (width-of-peaks peak-scales (.find (.column minima time)) number-of-scales))
+	     (peak-widths (width-of-peaks peak-scales (pad-minima (.find (.column minima time)) number-of-scales)))
 	     ;; Determine the widths in relative measures of scale span and from the inverse of
 	     ;; those, the precision.
-	     (normalized-precision (.- 1d0 (./ peak-widths (* 1d0 (.sum peak-widths)))))
+	     (normalised-precision (.- 1d0 (./ peak-widths (* 1d0 (.sum peak-widths)))))
 	     (precision-profile (make-double-array number-of-scales)))
-	(setf (.arefs precision-profile peak-scales) normalized-precision)
+	(setf (.arefs precision-profile peak-scales) normalised-precision)
 	(setf (.column precision time) precision-profile)))
-    precision))
-
-(defun normalized-precision-profile (ridge-peak-profile ridge-trough-profile)
-  "Determine the precision given the peak and troughs expressed as vectors"
-  (diag-plot 'precision-profiles
-    (nplot (list ridge-peak-profile ridge-trough-profile) nil :styles '("impulses lw 2" "impulses lw 2")))
-  (let* ((number-of-scales (.length ridge-peak-profile))
-	 (peak-scales (.find ridge-peak-profile))
-	 (peak-widths (width-of-peaks peak-scales (.find ridge-trough-profile) number-of-scales))
-	 ;; Determine the widths in relative measures of scale span and from the inverse of
-	 ;; those, the precision.
-	 (normalized-precision (./ peak-widths (coerce number-of-scales 'double-float)))
-	 (precision-profile (make-double-array number-of-scales)))
-    (setf (.arefs precision-profile peak-scales) normalized-precision)
-    precision-profile))
-
-(defun normalized-precision (maxima minima)
-  "Returns a matrix of the relative measure of precision of each peak, with respect to the
-  total number of scales, given the maxima and minima of the scaleogram."
-  (let* ((time-freq-dimensions (.array-dimensions maxima))
-	 (precision (make-double-array time-freq-dimensions)))
-    (dotimes (time (.column-count maxima)) ; loop over the duration
-      ;; (format t "precision of ~a~%" time)
-      (setf (.column precision time) 
-	    (normalized-precision-profile (.column maxima time) (.column minima time))))
     precision))
 
 (defun confidence-and-precision (analysis)
@@ -146,7 +154,7 @@
   (format t "phase at time ~a phase at 0 ~a~%" (.aref phase scale time) (.aref phase scale 0))
   (.aref (phase-diff (make-narray (list (.aref phase scale time) (.aref phase scale 0)))) 0))
 
-(defun normalized-phase (phi) 
+(defun normalised-phase (phi) 
   "Return a value between 0 and 1 for a phase value from 0 -> pi, -pi -> 0"
   (let ((pi2 (* pi 2)))
     (/ (+ phi (if (minusp phi) pi2 0)) pi2)))
@@ -172,7 +180,7 @@
 (defun phase-corrected-time-computed (time-projection phase scale time)
   "Compute the correction using the assumption the phase value progresses regularly
    through the period. This doesn't happen in practice!"
-  (let* ((norm-phase (normalized-phase (.aref phase scale time)))
+  (let* ((norm-phase (normalised-phase (.aref phase scale time)))
 	 (phase-offset (* time-projection norm-phase))
 	 (zero-index (round (- time phase-offset))))
     (format t "Computed: time projection ~,3f phase zero index ~d norm-phase ~,3f phase-offset ~,3f~%" 
@@ -185,10 +193,10 @@
 
 ;; TODO phase change from start of time
 ;; (phase-corrected-time (+ time (* (time-support scale vpo) 
-;;			  (- 1.0d0 (normalized-phase (phase-diff-from-start phase scale time))))))
+;;			  (- 1.0d0 (normalised-phase (phase-diff-from-start phase scale time))))))
 ;;    (format t "time projection ~,5f phase weighting ~,5f time ~a expected-time ~,3f weighted ~,3f unweighted ~,3f~%"
-;; (time-support scale vpo) (- 1.0d0 (normalized-phase phase-of-ridge)) time 
-;;	(time-support scale vpo) (- 1.0d0 (normalized-phase (phase-diff-from-start phase scale time))) time 
+;; (time-support scale vpo) (- 1.0d0 (normalised-phase phase-of-ridge)) time 
+;;	(time-support scale vpo) (- 1.0d0 (normalised-phase (phase-diff-from-start phase scale time))) time 
 ;;	expected-time phase-corrected-time uncorrected-time)
 ;;    (format t "phase-diff ~a~%" (phase-diff-from-start phase scale time))
 
@@ -198,7 +206,9 @@
 	(time-length (.array-dimension phase 1)))
     (.find (.and (.subarray (.>= phase-at-scale 0) (list 0 (list 1 (1- time-length))))
 		 (.subarray (.< phase-at-scale 0) (list 0 (list 0 (- time-length 2))))))))
-	
+
+;; (nplot (list (impulses-at (phase-zero-samples phase scale) (.array-dimension phase 1)) (.row phase scale)) nil)
+
 (defun phase-corrected-time-chasing (time-projection phase scale time)
   "Returns the time-projection corrected by it's phase measure based on the most recent occurrance of zero phase. 
    Chases for phase-zero values backwards from time."
@@ -213,24 +223,36 @@
 			  (+ zero-index time-projection)
 			  (+ time time-projection))))))
 
-;;; Or just for one scale?
+(defun phase-histogram (scaleogram scale times)
+  (let* ((phase (scaleogram-phase scaleogram))
+	(phases-at-times (.arefs (.row phase scale) times)))
+    (plot-binned-histogram phases-at-times (format nil "Phases of Select Times for Scale ~a" scale))))
+
+(defun phase-histogram-of-rhythm (rhythm)
+  (let* ((a (analysis-of-rhythm rhythm :padding #'causal-pad))
+	 (mls (most-likely-scales (tempo-weighted-ridge-persistency-of a))))
+    (loop 
+       for likely-scale across (val mls)
+       do (phase-histogram (scaleogram a) likely-scale (onsets-in-samples rhythm)))))
+
 (defun expectation-of-scale-at-time (scale time scaleogram confidence precision 
 				     &key (phase-correct-from nil) (time-limit-expectancies nil))
-  "Effectively a factory method including phase correction of expectation time"
+  "Returns an expectation instance. Effectively a factory method with phase correction of expectation time"
   (let* ((vpo (voices-per-octave scaleogram))
 	 (max-time (if time-limit-expectancies (duration-in-samples scaleogram) most-positive-fixnum))
 	 (projection (time-support scale vpo))
 	 (uncorrected-time (+ time projection))
 	 ;; Compute the time prediction, modified by the phase.
 	 (phase-corrected-time (phase-corrected-time-chasing projection (scaleogram-phase scaleogram) scale time))
-	 ;; (phase-corrected-time (phase-corrected-time-computed projection phase scale time))
+	 ;; (phase-corrected-time (phase-corrected-time-computed projection (scaleogram-phase scaleogram) scale time))
 	 ;; (phase-corrected-time (phase-corrected-time-from projection time phase-correct-from))
-	 ;; Add 1 for projection from the next sample.
-	 (expected-time (1+ (if phase-correct-from phase-corrected-time uncorrected-time))))
+	 (expected-time (if phase-correct-from phase-corrected-time uncorrected-time)))
+    (format t "phase zero samples at: ~a~%diffs ~a~%" 
+	    (phase-zero-samples (scaleogram-phase scaleogram) scale)
+	    (.diff (phase-zero-samples (scaleogram-phase scaleogram) scale)))
     (format t "time ~a time projection ~,3f phase-corrected ~,3f uncorrected ~,3f expected-time ~,3f~%"
 	    time projection phase-corrected-time uncorrected-time expected-time)
     (make-instance 'expectation 
-		   ;; +1 for projection beyond end of rhythm
 		   :time (min expected-time max-time)
 		   ;; :sample-rate (sample-rate analysis)
 		   :confidence (.aref confidence scale)
@@ -295,7 +317,7 @@
 					   (duration-in-samples rhythm-to-analyse)))
 	 (weighted-scale-peaks (determine-scale-peaks weighted-persistency-profile))
 	 (weighted-scale-troughs (extrema-points weighted-persistency-profile :extrema :min))
-	 (weighted-precision (normalized-precision weighted-scale-peaks weighted-scale-troughs))
+	 (weighted-precision (precision-in-samples weighted-scale-peaks weighted-scale-troughs vpo))
        	 (weighted-skeleton (skeleton-of-ridge-peaks scaleogram weighted-scale-peaks))
 	 (weighted-scaleogram (make-instance 'scaleogram 
 					     :magnitude weighted-persistency-profile
@@ -325,7 +347,7 @@
 	 (scale-peaks (determine-scale-peaks cumulative-persistency))
 	 (scale-troughs (extrema-points cumulative-persistency :extrema :min))
 	 (weighted-scale-peaks (.* tempo-beat-preference scale-peaks))
-	 (precision (normalized-precision scale-peaks scale-troughs))
+	 (precision (precision-in-samples scale-peaks scale-troughs vpo))
        	 (weighted-skeleton (skeleton-of-ridge-peaks scaleogram weighted-scale-peaks))
 	 (cumulative-scaleogram (make-instance 'scaleogram 
 					       :magnitude cumulative-persistency
@@ -412,18 +434,12 @@
     ;; TODO unneeded since we are weighting by tempo?
     ;; (remove-if (lambda (scale) (<= scale cutoff-scale)) (val most-likely-scales))
 
-;;; TODO Surely there must exist something similar already?
-(defun impulses-at (peak-scales total-number-of-scales)
-  (let ((new-vector (make-double-array total-number-of-scales)))
-    (setf (.arefs new-vector peak-scales) 
-	  (make-double-array (.length peak-scales) :initial-element 1d0))))
-
 (defun expectancies-of-rhythm-ridge-persistency (rhythm-to-analyse 
 						 &key (times-to-check (list (1- (duration-in-samples rhythm-to-analyse))))
 						 (phase-correct-from nil))
   "Return a list structure of expectancies. Computes the expectancies using the maximum
    value of the ridge persistency" 
-  (declare (ignore phase-correct-from))
+  ;; (declare (ignore phase-correct-from))
   (let* ((analysis (analysis-of-rhythm rhythm-to-analyse :padding #'causal-pad))
 	 (scaleogram (scaleogram analysis))
 	 (tempo-weighted-ridge-persistency (tempo-weighted-ridge-persistency-of analysis))
@@ -434,7 +450,8 @@
 	 ;; catch corners, only minima, including locations of zeros tightens the precision estimation.
 	 (persistency-troughs (.or (extrema-points-vector tempo-weighted-ridge-persistency :extrema :min) 
 				   (.not tempo-weighted-ridge-persistency))) 
-	 (precision (normalized-precision-profile likely-persistency-peaks persistency-troughs))
+	 (precision (precision-profile likely-persistency-peaks persistency-troughs
+				       (voices-per-octave scaleogram)))
 	 (time (first times-to-check)))
     (diag-plot 'tempo-ridge-persistency
       (plot-ridge-persistency tempo-weighted-ridge-persistency scaleogram (name rhythm-to-analyse)))
@@ -443,7 +460,9 @@
 	   (loop
 	      for scale across (val most-likely-scales)
 	      collect (expectation-of-scale-at-time scale time scaleogram
-						    tempo-weighted-ridge-persistency precision))))))
+						    tempo-weighted-ridge-persistency
+						    precision
+						    :phase-correct-from phase-correct-from))))))
 
 (defun expectancies-of-rhythm (rhythm &key (times-to-check (nlisp::array-to-list (onsets-in-samples rhythm)))
 			       (time-limit-expectancies nil) (phase-correct-from nil))
@@ -454,7 +473,8 @@
 	 (rhythm-scaleogram (scaleogram rhythm-analysis))
 	 ;; The skeleton has already picked scale peaks at each time.
 	 (skeleton (skeleton rhythm-analysis))
-	 (precision (normalized-precision (ridge-peaks rhythm-analysis) (ridge-troughs rhythm-analysis)))
+	 (precision (precision-in-samples (ridge-peaks rhythm-analysis) (ridge-troughs rhythm-analysis) 
+					  (voices-per-octave rhythm-scaleogram)))
 	 (preferred-tempo-scale (preferred-tempo-scale (voices-per-octave rhythm-scaleogram) (sample-rate rhythm)))
 	 ;; Cut off freq above 3 stddev's from preferred-scale = 3 octaves.
 	 (cutoff-scale (- preferred-tempo-scale (* 3 (voices-per-octave rhythm-scaleogram)))))
@@ -503,13 +523,13 @@
 ;;; This is needed to throw away the time and break the last expectation out of the list.
 (defun last-expectations (rhythm-to-expect 
 			  &key (last-time (1- (duration-in-samples rhythm-to-expect)))
-			  (expectancies-generator #'expectancies-of-rhythm-integrator))
+			  (expectancies-generator #'expectancies-of-rhythm-ridge-persistency))
   "Return the list of expectations for the last moment in the rhythm"
   (format t "Using ~a~%" expectancies-generator)
   (let ((expectations (funcall expectancies-generator rhythm-to-expect 
 			       :times-to-check (list last-time)
 			       ;; Do no phase correction when testing metrical expectancies.
-			       ;; :phase-correct-from nil))))
+			       ;; :phase-correct-from nil)))
 			       :phase-correct-from (last-onset-time rhythm-to-expect))))
     (print-expectations expectations)
     (second (first expectations))))
@@ -527,10 +547,8 @@
 ;;; TODO this should produce XML
 (defmethod exchange-format ((expectation-to-exchange expectation) sample-rate)
   "Returns the expectancy in the EmCAP interchange output format."
-  (format nil "~,5f ~,5f ~,5f;~:{~,5f,~,5f~:^ ~}" 
-	  (time-in-seconds expectation-to-exchange sample-rate) 
-	  (confidence expectation-to-exchange)
-	  (precision expectation-to-exchange)
+  (format nil "~{~,5f~^ ~};~:{~,5f,~,5f~:^ ~}" 
+	  (expectation-in-seconds expectation-to-exchange sample-rate) 
 	  (expected-features expectation-to-exchange)))
 
 (defun write-expectancies-to-stream (expectancies sample-rate stream)

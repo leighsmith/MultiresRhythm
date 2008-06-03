@@ -137,3 +137,11 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 
 (defun map-narray (func vector)
   (make-instance 'n-double-array :ival (map (type-of (val vector)) func (val vector))))
+
+;;; TODO Surely there must exist something similar already?
+(defun impulses-at (impulse-indices total-vector-length)
+  "Return a vector with impulses at the locations in an array of total length"
+  (let ((new-vector (make-double-array total-vector-length)))
+    (setf (.arefs new-vector impulse-indices) 
+	  (make-double-array (.length impulse-indices) :initial-element 1d0))))
+
