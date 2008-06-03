@@ -179,6 +179,11 @@
   "Given a sampling rate in Hz, return the IOI in seconds."
   (./ (time-support scales wavelets-per-octave) sample-rate))
 
+(defun uncertainty-of-scale-range (high-scale low-scale voices-per-octave)
+  "Return the time range of uncertainty between the two given scales"
+  (list (time-support high-scale voices-per-octave) 
+	(time-support low-scale voices-per-octave)))
+
 (defun uncertainty-of-period (time-periods voices-per-octave)
   "Return the time range of uncertainty between the two scales spanning a given time period"
   (let* ((exact-scales (scale-from-period time-periods voices-per-octave))

@@ -40,7 +40,8 @@
 		     :get-histogram-counts
 		     :get-histogram-elements
 		     :*plotting*
-		     :meter-for-name))
+		     :meter-for-name
+		     :analysis-of-rhythm))
 
 (in-package :multires-rhythm)
 
@@ -72,5 +73,5 @@
 	       (:file "clapping" :depends-on ("multires_rhythm" "downbeat" "tactus-selection"))
 	       (:file "perceptual-onsets" :depends-on ("clapping" "sound"))
 	       (:file "expectancies" :depends-on ("clapping"))
-	       (:file "metrical-expectancy" :depends-on ("expectancies" "martin-trees"))
+	       (:file "metrical-expectancy" :depends-on ("expectancies" "martin-trees" "histogram"))
 	       (:file "commandline" :depends-on ("expectancies"))))

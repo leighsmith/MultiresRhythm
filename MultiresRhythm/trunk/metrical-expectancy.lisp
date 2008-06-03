@@ -53,32 +53,6 @@
 				       :type "wav")
 			#P"/Volumes/iDisk/Research/Data/Handclap Examples/hihat_closed.aiff")))
 
-;;; Sum all values falling within the given bins ranges. Effectively integrate.
-;;; TODO Could sort by time value, then total. Return the sum and the average of the confidences in the bins.
-(defun time-bins (times values-at-times &key (bin-size 0.025))
-  "Group the expectations into bins of time, specified by bin-size (in seconds). Returns
-   the number of elements in each bin, the accumulated confidences and the boundaries."
-  ;; round up to capture all times, including a perfectly dividing edge.
-  (let* ((number-of-bins (1+ (floor (range times) bin-size)))
-	 (last-bin (+ (.min times) (* (1- number-of-bins) bin-size))) ; for low edge of bin.
-	 (bin-boundaries (.rseq (.min times) last-bin number-of-bins))
-	 (accumulated-confidences (make-double-array number-of-bins))
-	 (bin-counts (make-double-array number-of-bins)))
-    (loop
-       for bin-index from 0 below number-of-bins
-       ;; determine which elements in times (& therefore values-at-times) are within the bin.
-       for in-bin = (.and (.>= times (.aref bin-boundaries bin-index))
-			  ;; catch the edge of last bin.
-			  (.< times (if (= bin-index (1- number-of-bins))
-					(+ last-bin bin-size) 
-					(.aref bin-boundaries (1+ bin-index)))))
-       for in-bin-count = (.sum in-bin)  ; number of occurances.
-       do (progn
-	    ;; (format t "from ~a to ~a ~a values~%" (.aref bin-boundaries (1- bin-index)) (.aref bin-boundaries bin-index) in-bin-count)
-	    (setf (.aref accumulated-confidences bin-index) (.sum (.* in-bin values-at-times)))
-	    (setf (.aref bin-counts bin-index) in-bin-count))
-       finally (return (values bin-counts bin-boundaries accumulated-confidences)))))
-
 (defun intervals-of-performed-rhythms (rhythm
 				     ;; #'last-onset-expectations last-expectations-no-integrate
 				     &key (expectation-generator #'expectancies-of-rhythm-ridge-persistency))
@@ -153,36 +127,16 @@
  	  :title title)
     (close-window)))
 
-(defun plot-time-histogram (times title &key (bin-size 0.025))
-  (multiple-value-bind (counts time-bins)
-      (time-bins times (make-integer-array (.length times) :initial-element 1) :bin-size bin-size)
-    (format t "count ~a~%time-bins ~a~%" counts time-bins)
-    (window)
-    (reset-plot)
-    (plot-command "set title font \"Times,24\"")
-    (plot-command "set xlabel font \"Times,24\"")
-    (plot-command "set ylabel font \"Times,24\"")
-    (plot-command "set xtics ~a out" (max bin-size 0.2))
-    ;; Downsample the time bin lables.
-    ;; (.arefs time-bins (.* (.iseq 0 (/ (.length time-bins) 2)) 2))
-    (plot counts time-bins
-	  :style "boxes fill solid 1.0 border -1"
-	  :xlabel title
-	  :ylabel "Occurrence"
-	  :label (format nil "~a Occurrence" title)
-	  :aspect-ratio 0.66
-	  :reset nil
-	  :title (format nil "Occurrence of ~a" title)))
-  (close-window))
-
-(defun plot-expectancies-histogram (times time-values meter title &key (bin-size 0.025))
+(defun plot-expectancies-histogram (times time-values meter title 
+				    &key (bin-size 0.025)
+				    (maximum-confidence 5.0 confidence-supplied))
   (multiple-value-bind (counts time-bins accumulated-time-values)
-      (time-bins times time-values :bin-size bin-size)
+      (binned-values times time-values :bin-size bin-size)
     ;;(format t "prediction count ~a~%time-bins ~a~%accumulated-time-values ~a~%" 
     ;;	    counts time-bins accumulated-time-values)
     (let ((dividable-counts (.+ (.not counts) counts))
 	  (minimum-tics 0.1)
-	  (maximum-confidence 5.0)
+	  (maximum-confidence (if confidence-supplied maximum-confidence (* 1.1 (.max accumulated-time-values))))
 	  (start-time (floor (.min time-bins))))
       ;; (format t "averaged time-values ~a~%" (./ accumulated-time-values dividable-counts))
       ;; 
@@ -278,7 +232,7 @@
 
 (defun plot-interval-expectancies-histogram (times time-values meter title &key (bin-size 0.025))
   (multiple-value-bind (counts time-bins accumulated-time-values)
-      (time-bins times time-values :bin-size bin-size)
+      (binned-values times time-values :bin-size bin-size)
     (format t "prediction count ~a~%time-bins ~a~%accumulated-time-values ~a~%" 
     	    counts time-bins accumulated-time-values)
     (let ((dividable-counts (.+ (.not counts) counts))
@@ -322,15 +276,24 @@
 
 ;; (plot-expectancies all-expectations (format nil "Expectation Confidences for ~a examples of ~a bars of ~a meter"  sample-size number-of-bars candidate-meter))
 
-(defun plot-ridge-persistency (ridge-persistency scaleogram title)
+(defun plot-ridge-persistency (ridge-persistency scaleogram title &key (sample-rate 200.0 sample-rate-supplied))
   (format t "~a sorted prominent ridges of duration:~%~a~%" 
 	  title (time-support (most-persistent-scales ridge-persistency) (voices-per-octave scaleogram)))
   (reset-plot)
-  (plot-command "set xtics (~{~{\"~d\" ~5d~}~^, ~}) out~%" (label-scale-as-time-support scaleogram))
+  (plot-command "set title font \"Times,24\"")
+  (plot-command "set xlabel offset 0,-1 font \"Times,24\"")
+  (plot-command "set ylabel font \"Times,24\"")
+  (plot-command "set key off")
+  (plot-command "set xtics (~{~{\"~d\" ~5d~}~^, ~}) out~%" 
+		(if sample-rate-supplied 
+		    (label-scale-as-time-support-seconds scaleogram sample-rate)
+		    (label-scale-as-time-support scaleogram)))
   (plot (.reverse ridge-persistency) 
 	nil 
 	:style "boxes fill solid 1.0 border -1"
 	:aspect-ratio 0.66 
+	:xlabel (if sample-rate-supplied "Time (Seconds)" "Time (Samples)")
+	:ylabel "Ridge Presence"
 	:reset nil 
 	:title title))
 
@@ -418,8 +381,8 @@
 		    #P"/Volumes/iDisk/Research/Data/RicardsOnsetTests/test_sound.wav"
 		    #P"/Volumes/iDisk/Research/Data/Handclap Examples/hihat_closed.aiff")
     ;; (plot-interval-histogram (interval-histogram (list iois-of-rhythm)) (name rhythm-to-plot)) 
-    (plot-time-histogram (make-narray iois-of-rhythm) 
-			 (format nil "Intervals in ~a" (name rhythm-to-plot)) :bin-size 1)
+    (plot-binned-histogram (make-narray iois-of-rhythm) 
+			   (format nil "Intervals in ~a" (name rhythm-to-plot)) :bin-size 1)
     (window)
     (plot-rhythm rhythm-to-plot :time-in-seconds t)
     (close-window)
@@ -432,15 +395,15 @@
     (window)
     (plot-ridge-persistency ridge-persistency
 			    (scaleogram analysis)
-			    (format nil "Ridge persistency of sample random rhythm in ~a meter"
-				    (name rhythm-to-plot)))
+			    (format nil "Ridge persistency of ~a" (name rhythm-to-plot))
+			    :sample-rate (sample-rate rhythm-to-plot))
     (close-window)
     (metrical-rhythm-expectancies (list rhythm-to-plot) meter number-of-bars 
 				  (format nil "~a (RP)" (name rhythm-to-plot))
 				  :expectation-generator #'expectancies-of-rhythm-ridge-persistency)
-;;     (metrical-rhythm-expectancies (list rhythm-to-plot) meter number-of-bars
-;; 				  (format nil "~a (ending peaks)" (name rhythm-to-plot))
-;; 				  :expectation-generator #'expectancies-of-rhythm)
+    (metrical-rhythm-expectancies (list rhythm-to-plot) meter number-of-bars
+ 				  (format nil "~a (ending peaks)" (name rhythm-to-plot))
+ 				  :expectation-generator #'expectancies-of-rhythm)
     (metrical-rhythm-expectancies (list rhythm-to-plot) meter number-of-bars
 				  (format nil "~a (integration)" (name rhythm-to-plot))
 				  :expectation-generator #'expectancies-of-rhythm-integrator)
@@ -454,8 +417,8 @@
 		    #P"/Volumes/iDisk/Research/Data/RicardsOnsetTests/test_sound.wav"
 		    #P"/Volumes/iDisk/Research/Data/Handclap Examples/hihat_closed.aiff")
     ;; (plot-interval-histogram (interval-histogram (list iois-of-rhythm)) (name rhythm-to-plot)) 
-    (plot-time-histogram relative-iois 
-			 (format nil "Intervals in ~a" (name rhythm-to-plot)) :bin-size 1)
+    (plot-binned-histogram relative-iois 
+			   (format nil "Intervals in ~a" (name rhythm-to-plot)) :bin-size 1)
     (window)
     (plot-rhythm rhythm-to-plot :time-in-seconds t)
     (close-window)
@@ -550,8 +513,8 @@
 
 ;;;; Performed rhythms
 
-(plot-time-histogram (intervals-as-ratios r) "Relative Intervals")
-(plot-time-histogram (make-narray one-iois) "IOIs" :bin-size 1)
+(plot-binned-histogram (intervals-as-ratios r) "Relative Intervals")
+(plot-binned-histogram (make-narray one-iois) "IOIs" :bin-size 1)
 
 (plot-interval-histogram (interval-histogram (list (nlisp::array-to-list (intervals-as-ratios r))))
 			 "performed-44")

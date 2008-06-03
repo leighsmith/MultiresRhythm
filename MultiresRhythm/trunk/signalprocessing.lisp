@@ -134,3 +134,6 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 (defmethod normalise ((vector n-array))
   "Normalisation"
   (./ vector (.max vector)))
+
+(defun map-narray (func vector)
+  (make-instance 'n-double-array :ival (map (type-of (val vector)) func (val vector))))
