@@ -40,6 +40,12 @@
                        :description "The sample rate (in Hz) used for sampled saliency traces (see option saliency)"
                        :example "--sample-rate=[200]")
         (make-instance 'cli-option
+                       :abbr "p"
+                       :full "plotting"
+                       :requires-arguments t
+                       :description "Enable plotting of specific diagnostic plots"
+                       :example "--plotting=\"PHASE-HISTOGRAM TEMPO-RIDGE-PERSISTENCY\"")
+        (make-instance 'cli-option
                        :abbr "o"
                        :full "output-file"
                        :requires-arguments :optional
@@ -67,6 +73,10 @@
 			  200.0d0 
 			  (read-from-string (first (gethash "sample-rate" parsed-cli))))))
     ;; (format t "argv ~a~%" argv)
+    ;; The hash of plotting will return a list of strings, so we read them first.
+    (setf *plotting* (mapcar (lambda (x) (intern (string-upcase x) "MULTIRES-RHYTHM"))
+			     (gethash "plotting" parsed-cli)))
+    (unless (null *plotting*) (format t "Plotting ~a~%" *plotting*))
     (cond ((< (length argv) 2)
 	   (info-banner) 
 	   (cli-parser:cli-usage (first argv) *expectancy-options*))
