@@ -28,12 +28,16 @@
 (defgeneric list-in-seconds (expectation sample-rate)
  (:documentation "Returns the expectation as a list, times in seconds, given the sample rate."))
 
+(defgeneric absolute-duration-confidence (expectation rhythm)
+  (:documentation "Scales the confidence of the expectation by the absolute duration of the rhythm"))
+
 ;;; Implementation
 
 (defmethod print-object ((expectation-to-print expectation) stream)
   (call-next-method expectation-to-print stream) ;; print the superclass
-  (format stream " expected time: ~,3f confidence: ~,3f precision: ~,3f" 
-	  (expected-time expectation-to-print) 
+  (format stream " expected time: ~,3f projection: ~,3f confidence: ~,3f precision: ~,3f" 
+	  (expected-time expectation-to-print)
+	  (period expectation-to-print)
 	  (confidence expectation-to-print)
 	  (precision expectation-to-print)))
 
@@ -55,6 +59,21 @@
   (list (time-in-seconds (expected-time expectation-to-list) sample-rate) 
 	(confidence expectation-to-list)
 	(time-in-seconds (precision expectation-to-list) sample-rate)))
+
+(defmethod absolute-duration-confidence ((expectation-to-modify expectation) (rhythm-expected rhythm))
+  "Scales the confidence of the expectation prediction by the absolute duration of the rhythm"
+  (let* ((duration (duration rhythm-expected))
+	 (confidence-threshold 2.0)	; number of seconds of listening before listeners are confident of expectation.
+	 (confidence-weighting (if (> duration confidence-threshold) 1.0 (/ duration confidence-threshold))))
+    (setf (confidence expectation-to-modify) (* (confidence expectation-to-modify) confidence-weighting)))
+  expectation-to-modify)
+
+(defmethod absolute-duration-confidence ((expectations list) (rhythm-expected rhythm))
+  (list 
+   (list (first (first expectations))
+	 (loop 
+	    for expect in (second (first expectations))
+	    collect (absolute-duration-confidence expect rhythm-expected)))))
 
 (defun pad-minima (minima number-of-scales)
   "Inserts the zero index and the last scale index either end of the minima as boundaries
@@ -487,7 +506,7 @@
     (format t "cutoff scale ~a period ~a~%" 
 	    cutoff-scale (time-support cutoff-scale (voices-per-octave rhythm-scaleogram)))
     (expectancies-of-skeleton-at-times skeleton times-to-check rhythm-scaleogram 
-				       precision (scaleogram-magnitude rhythm-scaleogram)
+				       precision (.normalise (scaleogram-magnitude rhythm-scaleogram))
 				       :cutoff-scale cutoff-scale :phase-correct-from phase-correct-from)))
 
 ;;; Accumulation of onset expectations.
@@ -625,9 +644,11 @@
 					     :times-to-check (list last-time)
 					     ;; :phase-correct-from (last-onset-time times-as-rhythm))))
 					     ;; Do no phase correction when testing metrical expectancies.
-					     :phase-correct-from nil)))
+					     :phase-correct-from nil))
+	 ;; Weight the expectation by absolute duration of the rhythm.
+	 (duration-weighted-expectancies (absolute-duration-confidence expectancies-at-last-time times-as-rhythm)))
     (with-open-file (expectancy-file output-filepath :direction :output :if-exists :supersede)
-      (write-expectancies-to-stream expectancies-at-last-time sample-rate expectancy-file))))
+      (write-expectancies-to-stream duration-weighted-expectancies sample-rate expectancy-file))))
 
 (defun last-expectancy-of-salience (saliency-filepath onset-times-filepath output-filepath
 				    &key (sample-rate 200.0d0)) 
