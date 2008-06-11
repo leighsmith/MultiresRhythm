@@ -299,9 +299,9 @@
 	 ;; (phase-corrected-time (phase-corrected-time-computed projection (scaleogram-phase scaleogram) scale time))
 	 ;; (phase-corrected-time (phase-corrected-time-from projection time phase-correct-from))
 	 (expected-time (if phase-correct-from phase-corrected-time uncorrected-time)))
-    (format t "phase zero samples at: ~a~%diffs ~a~%" 
-	    (phase-zero-samples (scaleogram-phase scaleogram) scale)
-	    (.diff (phase-zero-samples (scaleogram-phase scaleogram) scale)))
+    ;; (format t "phase zero samples at: ~a~%diffs ~a~%" 
+    ;; 	    (phase-zero-samples (scaleogram-phase scaleogram) scale)
+    ;; 	    (.diff (phase-zero-samples (scaleogram-phase scaleogram) scale)))
     (format t "time ~a time projection ~,3f phase-corrected ~,3f uncorrected ~,3f expected-time ~,3f~%"
 	    time projection phase-corrected-time uncorrected-time expected-time)
     (make-instance 'expectation 
@@ -447,7 +447,7 @@
 	 ;; threshold the scales used to only those above half the most persistent.
 	 (number-above-average (or (position above-average-peaks (val peak-persistencies) :test #'>=) 0))
 	 (number-likely (min number-above-average memory-limit)))
-    (format t "above-average peaks threshold ~a~%" above-average-peaks)
+    ;; (format t "above-average peaks threshold ~a~%" above-average-peaks)
     (.subarray most-likely-scales (list 0 (list 0 (1- number-likely))))))
     ;; TODO unneeded since we are weighting by tempo?
     ;; (remove-if (lambda (scale) (<= scale cutoff-scale)) (val most-likely-scales))
