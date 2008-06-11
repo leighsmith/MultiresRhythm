@@ -18,6 +18,7 @@
 
 (defclass expectation ()
   ((expected-time     :initarg :time        :accessor expected-time :initform 0)
+   (period            :initarg :period      :accessor period)
    (confidence        :initarg :confidence  :accessor confidence)
    (precision         :initarg :precision   :accessor precision)
    (expected-features :initarg :features    :accessor expected-features :initform '())
@@ -217,16 +218,48 @@
      until (and (not (minusp (.aref phase scale zero-index)))
 		(minusp (.aref phase scale (1- zero-index))))
      finally (return 
-	       (progn (format t "Chasing: time projection ~,3f phase zero index ~d computed phase offset ~,3f~%" 
-			      time-projection zero-index (- time zero-index))
-		      (if (< (/ (- time zero-index) time-projection) 0.8)  ; check we did not wind back too far.
-			  (+ zero-index time-projection)
-			  (+ time time-projection))))))
+	       (let ((number-of-projections (/ (- time zero-index) time-projection)))
+		 (format t "Chasing: time projection ~,3f phase zero index ~d computed phase offset ~,3f # of projections ~,3f~%" 
+			 time-projection zero-index (- time zero-index) number-of-projections)
+		 ;; if we chase back so far that the projection falls before time, we
+		 ;; project enough multiples of the period beyond time.
+		 (cond ((> number-of-projections 1.0)
+			(+ zero-index (* (ceiling number-of-projections) time-projection)))
+		       ;; If the projection extends sufficiently beyond time, just use the projection.
+		       ((< number-of-projections 0.9)
+			(+ zero-index time-projection))
+		       ;; Otherwise the projection is falling practically on time, so we
+		       ;; need a further time projection.
+		       (t 
+			(+ zero-index time-projection time-projection)))))))
 
 (defun phase-histogram (scaleogram scale times)
   (let* ((phase (scaleogram-phase scaleogram))
-	(phases-at-times (.arefs (.row phase scale) times)))
-    (plot-binned-histogram phases-at-times (format nil "Phases of Select Times for Scale ~a" scale))))
+	 (magnitude-at-times (.arefs (.row (scaleogram-magnitude scaleogram) scale) times))
+	 (phases-at-times (.arefs (.row phase scale) times))
+	 (title (format nil "Phases of Select Times for Scale ~a" scale)))
+;;     (plot-binned-histogram (.* magnitude-at-times phases-at-times)
+;; 			   (format nil "Phases of Select Times for Scale ~a" scale))))
+    (multiple-value-bind (counts time-bins accumulated-likelihood)
+	(binned-values phases-at-times magnitude-at-times)
+      (window)
+      (reset-plot)
+      (plot-command "set title font \"Times,24\"")
+      (plot-command "set xlabel font \"Times,24\"")
+      (plot-command "set ylabel font \"Times,24\"")
+      (plot-command "set xtics ~a out" 0.2)
+      ;; Downsample the bin labels.
+      ;; (.arefs time-bins (.* (.iseq 0 (/ (.length time-bins) 2)) 2))
+      (plot accumulated-likelihood time-bins
+	    :style "boxes fill solid 1.0 border -1"
+	    :xlabel title
+	    :ylabel "Occurrence"
+	    :label (format nil "~a Occurrence" title)
+	    :aspect-ratio 0.66
+	    :reset nil
+	    :title (format nil "Occurrence of ~a" title)))
+    (close-window)))
+
 
 (defun phase-histogram-of-rhythm (rhythm)
   (let* ((a (analysis-of-rhythm rhythm :padding #'causal-pad))
@@ -254,6 +287,7 @@
 	    time projection phase-corrected-time uncorrected-time expected-time)
     (make-instance 'expectation 
 		   :time (min expected-time max-time)
+		   :period projection
 		   ;; :sample-rate (sample-rate analysis)
 		   :confidence (.aref confidence scale)
 		   :precision (.aref precision scale))))
@@ -294,41 +328,6 @@
 		   :magnitude cumulative-scale-persistency
 		   :phase (scaleogram-phase scaleogram)
 		   :voices-per-octave (voices-per-octave scaleogram))))
-
-#|
-
-(defun expectancies-of-rhythm-integrator (rhythm-to-analyse 
-					  &key (times-to-check (nlisp::array-to-list (onsets-in-samples rhythm-to-analyse)))
-					  (phase-correct-from nil))
-  "Return a list structure of expectancies. Computes the expectancies using the maximum
-   value of the cumulative sum of the scaleogram energy" 
-  (let* ((analysis (analysis-of-rhythm rhythm-to-analyse :padding #'causal-pad))
-	 (scaleogram (scaleogram analysis))
-	 (cumulative-scale-persistency (cumsum (scaleogram-magnitude scaleogram)))
-	 (vpo (voices-per-octave scaleogram))
-	 (sample-rate (sample-rate rhythm-to-analyse))
-	 ;; Use Parncutt's tempo salience peak measure at 720mS
-	 (salient-scale (preferred-tempo-scale vpo sample-rate :tempo-salience-peak 0.72))
-;;	 (tempo-beat-preference (tempo-salience-weighting salient-scale 
-;;							  (.array-dimensions cumulative-scale-persistency)
-;;							  :octaves-per-stddev 1.0))
-	 (tempo-beat-preference (tempo-salience-weighting-log salient-scale (.array-dimensions cumulative-scale-persistency)))
- 	 (weighted-persistency-profile (./ (.* cumulative-scale-persistency tempo-beat-preference)
-					   (duration-in-samples rhythm-to-analyse)))
-	 (weighted-scale-peaks (determine-scale-peaks weighted-persistency-profile))
-	 (weighted-scale-troughs (extrema-points weighted-persistency-profile :extrema :min))
-	 (weighted-precision (precision-in-samples weighted-scale-peaks weighted-scale-troughs vpo))
-       	 (weighted-skeleton (skeleton-of-ridge-peaks scaleogram weighted-scale-peaks))
-	 (weighted-scaleogram (make-instance 'scaleogram 
-					     :magnitude weighted-persistency-profile
-					     :phase (scaleogram-phase scaleogram)
-					     :voices-per-octave (voices-per-octave scaleogram))))
-    (expectancies-of-skeleton-at-times weighted-skeleton
-				       times-to-check
-				       weighted-scaleogram
-				       weighted-precision
-				       :phase-correct-from phase-correct-from)))
-|#
 
 (defun expectancies-of-rhythm-integrator (rhythm-to-analyse 
 					  &key (times-to-check (nlisp::array-to-list (onsets-in-samples rhythm-to-analyse)))

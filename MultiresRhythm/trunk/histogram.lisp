@@ -87,7 +87,7 @@
 
 (defun plot-binned-histogram (times title &key (bin-size 0.025))
   (multiple-value-bind (counts time-bins)
-      (time-bins times (make-integer-array (.length times) :initial-element 1) :bin-size bin-size)
+      (binned-values times (make-integer-array (.length times) :initial-element 1) :bin-size bin-size)
     (format t "count ~a~%time-bins ~a~%" counts time-bins)
     (window)
     (reset-plot)

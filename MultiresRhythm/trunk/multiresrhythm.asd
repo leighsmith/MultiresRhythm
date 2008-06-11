@@ -72,6 +72,6 @@
 	       (:file "downbeat" :depends-on ("multires_rhythm"))
 	       (:file "clapping" :depends-on ("multires_rhythm" "downbeat" "tactus-selection"))
 	       (:file "perceptual-onsets" :depends-on ("clapping" "sound"))
-	       (:file "expectancies" :depends-on ("clapping"))
+	       (:file "expectancies" :depends-on ("clapping" "signalprocessing"))
 	       (:file "metrical-expectancy" :depends-on ("expectancies" "martin-trees" "histogram"))
 	       (:file "commandline" :depends-on ("expectancies"))))
