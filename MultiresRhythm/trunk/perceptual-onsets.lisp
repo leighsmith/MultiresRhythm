@@ -29,15 +29,17 @@
 	 ;; Assumes onset times are in seconds, converts to samples
 	 (onset-times (.floor (.* (.column perceptual-onsets 0) sample-rate)))
 	 ;; TODO perhaps rhythm-of-weighted-onsets can be used instead?
-	 (binary-grid (make-narray (onsets-to-grid (nlisp::array-to-list onset-times))))
-	 (weighted-grid (.* binary-grid 1d0)))
-    (setf (.arefs weighted-grid onset-times) (.column perceptual-onsets 1))
+	 (onsets-time-signal (make-double-array (.length perceptual-salience))))
+    (setf (.arefs onsets-time-signal onset-times)
+	  (if weighted
+	      (.column perceptual-onsets 1)
+	      (make-double-array (.length onset-times) :initial-element 1.0d0)))
     ;; Even though we have assumed rhythm is a set of dirac fns, we can cheat a bit.
     (make-instance 'salience-trace-rhythm 
 		   :name (pathname-name salience-filepath)
 		   :description description
 		   :time-signal perceptual-salience
-		   :onsets-time-signal (if weighted weighted-grid binary-grid)
+		   :onsets-time-signal onsets-time-signal
 		   :sample-rate sample-rate)))
 
 ;; (setf ps (perceptual-salience-rhythm "/Volumes/iDisk/Research/Sources/OtherResearchers/UoP/AuditorySaliencyModel/ines1.saliency" "/Volumes/iDisk/Research/Sources/OtherResearchers/UoP/AuditorySaliencyModel/ines1.onsets" :weighted t))
@@ -45,11 +47,14 @@
 
 (defmethod plot-rhythm ((rhythm-to-plot salience-trace-rhythm) &key (reset t) (time-in-seconds nil))
   ;; TODO add (onsets-time-signal rhythm-to-plot) when we can plot different sized signals.
-  (nplot (list (time-signal rhythm-to-plot)) nil 
+  (nplot (list (time-signal rhythm-to-plot) 
+	       (.* (onsets-time-signal rhythm-to-plot) (.max (time-signal rhythm-to-plot))))
+	 nil 
 	:aspect-ratio 0.66 
-	:styles '("lines" "impulses") 
+	:styles '("lines" "impulses linetype 3")
+	:legends '("Saliency" "Onsets")
 	:reset reset
-	:title (format nil "salience trace of ~a" (name rhythm-to-plot))))
+	:title (format nil "Salience trace of ~a" (name rhythm-to-plot))))
 
 ;; (plot-rhythm res1)
 ;; (plot (time-signal res1) nil :aspect-ratio 0.66)
@@ -60,9 +65,11 @@
 
 (defun clap-to-salience-rhythm-files (saliency-path onsets-path original-sound-path accompaniment-sound-path
 				      &key 
+				      (sample-rate 200)
 				      (start-from-beat 0) 
 				      (beat-multiple 1))
-  (let* ((salience-trace-rhythm (perceptual-salience-rhythm saliency-path onsets-path :weighted nil))
+  (let* ((salience-trace-rhythm (perceptual-salience-rhythm saliency-path onsets-path
+							    :weighted nil :sample-rate sample-rate))
 	 (salience-trace-claps (if (/= beat-multiple 1)
 				   (clap-to-rhythm salience-trace-rhythm 
 						   :start-from-beat start-from-beat
@@ -121,6 +128,14 @@
     (clap-to-salience-rhythm-files saliency-path onsets-path original-sound-path accompaniment-sound-path
 				   :start-from-beat start-from-beat
 				   :beat-multiple beat-multiple)))
+
+;;; TODO incomplete!
+(defun onsets-of-salience (salience)
+  "Attempt to determine the onset times from rapid changes in the salience trace"
+  (let* ((abs-diff (.abs (.diff salience)))
+	 (mean-difference (mean abs-diff))
+	 (stddev-difference (stddev abs-diff)))
+    (.find (.> abs-diff (+ mean-difference stddev-difference)))))
 
 ;;; TODO This should be replaced when we integrate Plymouth's onsets thresholding function
 ;;; into our code.
