@@ -1,4 +1,3 @@
-;;; $Id$
 ;;; Routines to test the Klapuri onset detector with the multiresrhythm model.
 
 ;; (clap-to-salience-rhythm-files saliency-path
@@ -27,6 +26,7 @@
  #P"/Volumes/iDisk/Research/Data/EvaluationOfKlapuriOnsetDetector/df/OGL18103_annotated.wav_Th4.500.onsets"
  #P"/Volumes/iDisk/Research/Data/PerceptualOnsets/res4/res4_2.wav"
  #P"/Volumes/iDisk/Research/Data/EvaluationOfKlapuriOnsetDetector/handclapping/res4_2_mixed.wav"
+ :start-from-beat 1
  :sample-rate 245)
 
 ;; res4_3
@@ -35,7 +35,6 @@
  #P"/Volumes/iDisk/Research/Data/EvaluationOfKlapuriOnsetDetector/df/OGL36012_annotated.wav_Th4.500.onsets"
  #P"/Volumes/iDisk/Research/Data/PerceptualOnsets/res4/res4_3.wav"
  #P"/Volumes/iDisk/Research/Data/EvaluationOfKlapuriOnsetDetector/handclapping/res4_3_mixed.wav"
- :start-from-beat 5
  :sample-rate 245)
 
 ;; res1_1
@@ -44,6 +43,7 @@
  #P"/Volumes/iDisk/Research/Data/EvaluationOfKlapuriOnsetDetector/df/emcap1_annotated.wav_Th4.500.onsets"
  #P"/Volumes/iDisk/Research/Data/PerceptualOnsets/res1/res1_1.wav"
  #P"/Volumes/iDisk/Research/Data/EvaluationOfKlapuriOnsetDetector/handclapping/res1_1_mixed.wav"
+ :start-from-beat 1
  :sample-rate 245)
 
 ;; res1_2
@@ -52,6 +52,7 @@
  #P"/Volumes/iDisk/Research/Data/EvaluationOfKlapuriOnsetDetector/df/emcap4_annotated.wav_Th4.500.onsets"
  #P"/Volumes/iDisk/Research/Data/PerceptualOnsets/res1/res1_2.wav"
  #P"/Volumes/iDisk/Research/Data/EvaluationOfKlapuriOnsetDetector/handclapping/res1_2_mixed.wav"
+ :start-from-beat 2
  :sample-rate 245)
 
 ;; res1_3
