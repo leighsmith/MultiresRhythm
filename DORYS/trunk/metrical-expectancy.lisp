@@ -195,6 +195,31 @@
       (random-rhythm-of-meter meter number-of-bars)
     (multires-rhythm::plot-profile-and-persistency-of-rhythm one-rhythm one-iois meter number-of-bars)))
 
+(defun test-phase-correction (r)
+  (format t "rhythm ~a~%onsets at samples ~a~%" r (multires-rhythm::onsets-in-samples r))
+  ;; trim the end of the rhythm
+  (let ((trimmed-rhythm (multires-rhythm::limit-rhythm r :maximum-samples (- (multires-rhythm::duration-in-samples r) 
+									     (random 100)))))
+    (multires-rhythm::last-expectations r :expectancies-generator #'multires-rhythm::expectancies-of-rhythm-ridge-persistency) 
+    ;; With a limited rhythm, the phase is the same for a highly persistent ridge upto the
+    ;; region which is trimmed. Actually the phase zero points match even on low
+    ;; persistency ridges. The projection from the zero phase value of the limited rhythm won't necessarily
+    ;; match that of the longer rhythm since the phase warps in and out over the extra
+    ;; region. Need to test what the projection point would be if we used the phase value,
+    ;; not chasing.
+    (multires-rhythm::last-expectations trimmed-rhythm)))
+
+(defun test-phase-offset (r)
+  "Tests where the expectancies fall with an inserted space at the start of the rhythm"
+  (format t "rhythm ~a~%onsets at samples ~a~%" r (multires-rhythm::onsets-in-samples r))
+  (multires-rhythm::last-expectations r :expectancies-generator #'multires-rhythm::expectancies-of-rhythm-ridge-persistency) 
+  (multires-rhythm::last-expectations (multires-rhythm::append-rhythm (random-offset 100) r) ; shift the start of the rhythm
+				      :expectancies-generator #'multires-rhythm::expectancies-of-rhythm-ridge-persistency))
+
+;; (defun x (meter number-of-bars) (test-phase-correction (random-rhythm-of-meter meter number-of-bars)))
+;; (test-phase-correction (rhythm-of-grid "Isochronous Rhythm" '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1) :shortest-ioi 256))
+
+
 ;;;; ICMPC plots.
 (defun icmpc-plots ()
   ;;; Generate the tempo profile.
@@ -220,8 +245,8 @@
 
 ;;; Need minimum of 1 rhythm of 16 bars to get a good metrical profile
 (setf one-34-rhythm (one-rhythm '(3 2 2) 16))
-(one-rhythm '(3 2 2) 30)
-(one-rhythm '(2 2 2 2) 30)
+(one-rhythm '(3 2 2) 8)
+(one-rhythm '(2 2 2 2) 6)
 
 (defun plot-profile-and-persistency-new (sample-size number-of-bars meter)
   "Display the combined metrical profile and combined ridge persistency measures"
