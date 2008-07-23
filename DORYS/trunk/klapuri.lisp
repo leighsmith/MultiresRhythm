@@ -1,3 +1,4 @@
+;;; $Id$
 ;;; Routines to test the Klapuri onset detector with the multiresrhythm model.
 
 ;; (clap-to-salience-rhythm-files saliency-path

@@ -66,13 +66,12 @@
 
 ;; (setf x (probed-random-rhythm-of-meter '(2 2 2 2)))
 
+;; Used to ensure it is not the regularity of the analysis region which biases the ridge.
 (defun random-offset (max-length)
-  "Defines a random chunk of silence at the end of the rhythm to ensure it is not the
-  regularity of the analysis region which biases the ridge."
-  (let* ((region-length (random max-length)))
-    (make-instance 'rhythm 
-		   :name "offset"
-		   :time-signal (make-double-array region-length))))
+  "Defines a rhythm of a random chunk of silence."
+  (make-instance 'rhythm 
+		 :name "offset"
+		 :time-signal (make-double-array (random max-length)))) ; region-length
 
 (defun make-metrical-set (candidate-meter size-of-rhythm-set number-of-bars)
   "Return a set of unique metrical rhythms"
@@ -241,6 +240,13 @@
 ;; (performed-rhythms-of-meter "6/4")
 ;; (performed-rhythms-of-meter "3/2")
 
+(defun test-meter-classifier (number-of-tests)
+  (let* ((metrical-rhythms (make-metrical-set '(2 2 2 2) number-of-tests 16)))
+    (loop
+       for rhythm in metrical-rhythms
+       for analysis = (analysis-of-rhythm rhythm :padding #'multires-rhythm::causal-pad)
+       do (format t "meter is ~a~%" (multires-rhythm::meter-of-analysis-likely analysis)))))
+
 #|
 
 ;;; Need minimum of 1 rhythm of 16 bars to get a good metrical profile
@@ -342,7 +348,7 @@
 
 ;;; Test the meter determination code.
 (dolist (rhythm random-34-rhythms)
-  (format t "proposed meter ~a~%" (meter-of-rhythm rhythm)))
+  (format t "proposed meter ~a~%" (meter-of-analysis (analysis-of-rhythm rhythm :padding #'causal-pad))))
 
 ;;; TODO each scale should have it's own summation (leaky integration) constant when
 ;;; determining the influence and tracking of each peak at each moment. This
@@ -351,6 +357,7 @@
 
 (mapcar #'intervals-as-ratios (load-essen-rhythms performed-44))
 (mapcar (lambda (x) (plot-time-histogram (intervals-as-ratios x) (name x))) (load-essen-rhythms performed-44))
+
 
 |#
 
