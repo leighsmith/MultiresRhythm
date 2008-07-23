@@ -412,6 +412,7 @@
     (make-instance (class-of prominent-scales) 
 		   :ival (sort (val prominent-scales) #'> :key (lambda (x) (.aref ridge-persistency x))))))
 
+;;; TODO Could be moved out of expectancies.
 (defun tempo-weighted-ridge-persistency-of (analysis)
   "Returns the ridge persistency of the analysis, weighted by the absolute tempo sensitivity"
   (let* ((ridge-persistency (unweighted-ridge-persistency-of analysis))

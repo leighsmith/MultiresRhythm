@@ -17,7 +17,7 @@
 (use-package :nlisp)
 
 ;; Calculates the persistency of period multiples in the skeleton.
-(defun meter-of-analysis (analysis tactus &key (meters '(3 4)))
+(defun meter-of-analysis-and-tactus (analysis tactus &key (meters '(3 4)))
   "Returns the evidence of harmonicity of the beat to the given beat-multiple."
   ;; Get the scales in the ridge and their relative ratios.
   ;; TODO using the first ridge in the list is a hack.
@@ -39,12 +39,7 @@
       ;; (format t "meter evidence ~a~%" evidence)
       (nth (position (apply #'max evidence) evidence) meters))))
 
-(defun meter-division (analysis tactus)
-  "Returns whether the meter is duple or triple"
-  (if (zerop (mod (meter-of-analysis analysis tactus) 2)) 2 3))
-
-
-(defun scales-of-meter (candidate-meters beat-period vpo max-scale)
+(defun scales-of-meter (candidate-meters tactus-units beat-period vpo max-scale)
   "Given a set of candidate meters and a beat period, return the scales that the meters should have energy at"
   (declare (ignore candidate-meters))
   (loop
@@ -52,32 +47,70 @@
      ;; for meter in candidate-meters
      ;; for meter-multiples = (make-narray (reverse (apply #'* meter))))
      ;; (apply #'* '(2 2 3) '(2 3 1))
-     for meter-periods = (.* (make-narray meter-multiples) beat-period)
+     for units-per-beat in tactus-units
+     for meter-periods = (./ (.* (make-narray meter-multiples) beat-period) units-per-beat)
      ;; clip below the lowest freq. scale.
      collect (prune-to-limit (.round (scale-from-period meter-periods vpo)) max-scale)))
 
-;;; TODO Perhaps should be meter-of-analysis
-(defun meter-of-rhythm (rhythm-to-analyse &key (candidate-meters '((3 2 2) (2 2 2 2) (2 3 2))))
-  "Computes the expectancies using the maximum
-   value of the cumulative sum of the scaleogram energy" 
-  (let* ((last-time (1- (duration-in-samples rhythm-to-analyse)))
-	 (analysis (analysis-of-rhythm rhythm-to-analyse :padding #'causal-pad))
-	 (scaleogram (scaleogram analysis))
+(defun meter-of-analysis (analysis &key (candidate-meters '((3 2 2) (2 2 2 2) (2 3 2)))
+			  (tactus-units '(4 4 2)))
+  "Determines meter using the maximum value of the cumulative sum of the scaleogram energy" 
+  (let* ((scaleogram (scaleogram analysis))
 	 (vpo (voices-per-octave scaleogram))
- 	 (persistency-profile (./ (cumsum (scaleogram-magnitude scaleogram))
-				  (duration-in-samples rhythm-to-analyse)))
-	 (final-persistency-profile (.column persistency-profile last-time))
-	 (scale-peaks (determine-scale-peaks persistency-profile))
-	 (last-peaks (.column scale-peaks last-time))
-	 (beat-period (time-support (argmax last-peaks) vpo))
-	 (scales-to-check (scales-of-meter candidate-meters beat-period vpo (1- (number-of-scales scaleogram))))
-	 (persistency-for-scales (mapcar (lambda (scales) (.arefs final-persistency-profile scales)) scales-to-check))
-	 (evidence-for-meters (make-narray (mapcar #'mean persistency-for-scales))))
-    (format t "beat period of maximum last cumulative scale peaks ~a~%" beat-period)
+	 (persistency-profile (tempo-weighted-ridge-persistency-of analysis))
+	 (most-likely-scales (most-likely-scales persistency-profile))
+	 ;; TODO perhaps we should factor out the beat-period determination?
+	 (beat-period (time-support (.aref most-likely-scales 0) vpo)) ; tactus
+	 (scales-to-check (scales-of-meter candidate-meters tactus-units beat-period vpo (1- (number-of-scales scaleogram))))
+	 (persistency-for-scales (mapcar (lambda (scales) (.arefs persistency-profile scales)) scales-to-check))
+	 (evidence-for-meters (make-narray (mapcar #'mean persistency-for-scales)))
+	 (likely-beat-ratios (./ (time-support most-likely-scales vpo) beat-period)))
+    (plot-ridge-persistency persistency-profile scaleogram "(name analysis)")   
+    (format t "beat period of maximally persistent ridge (~a) = ~a~%" (.aref most-likely-scales 0) beat-period)
+    (format t "most likely scales ~a~%" (time-support most-likely-scales vpo))
+    (format t "ratios of likely time periods to beat period ~a~%" likely-beat-ratios)
     (format t "scales to check ~a~%" scales-to-check)
+    (format t "beat periods ~a~%" (mapcar (lambda (scales) (time-support scales vpo)) scales-to-check))
     ;; Must normalize by the number of multipliers used otherwise 4/4 will always outgun 3/4.
     (format t "persistency ~a~%mean ~a~%" persistency-for-scales evidence-for-meters)
     (nth (argmax evidence-for-meters) candidate-meters)))
+
+(defun beat-multiple-distance (likely-beat-ratios beat-multiple)
+  "Returns the distance of the likely beat ratios (ordered in decreasing likelihood) from
+  multiples of the beat multiple. Smaller the value, closer the beat ratios are to the beat-multiple."
+  (let ((multiple-distance (./ likely-beat-ratios beat-multiple))
+	(likelihood-weighting (.rseq 1 (.length likely-beat-ratios) (.length likely-beat-ratios))))
+    (format t "div by ~a ~a~%" beat-multiple multiple-distance)
+    ;; TODO perhaps (.* likelihood-weighting (.abs (.- multiple--distance (.round multiple-distance)))))))
+    ;; TODO but ideally use the actual weight values (or normalised) to compute the impact.
+    (reduce #'* (val (.abs (.- multiple-distance (.round multiple-distance)))))))
+
+(defun meter-of-analysis-likely (analysis &key (candidate-meters '((3 2 2) (2 2 2 2) (2 3 2)))
+			  (tactus-units '(4 4 2)))
+  "Determines meter using the maximum value of the cumulative sum of the scaleogram energy" 
+  (let* ((scaleogram (scaleogram analysis))
+	 (vpo (voices-per-octave scaleogram))
+	 (persistency-profile (tempo-weighted-ridge-persistency-of analysis))
+	 (most-likely-scales (most-likely-scales persistency-profile))
+	 ;; TODO perhaps we should factor out the beat-period determination?
+	 (beat-period (time-support (.aref most-likely-scales 0) vpo)) ; tactus
+	 (likely-beat-ratios (./ (time-support most-likely-scales vpo) beat-period))
+	 (nearest-multiple (.round likely-beat-ratios)))
+    ;; (plot-ridge-persistency persistency-profile scaleogram "(name analysis)")   
+    (format t "beat period of maximally persistent ridge (~a) = ~a~%" (.aref most-likely-scales 0) beat-period)
+    (format t "most likely scales ~a~%" (time-support most-likely-scales vpo))
+    (format t "ratios of likely time periods to beat period ~a~%" likely-beat-ratios)
+    (format t "rounded ratios ~a~%" nearest-multiple)
+    (format t "total distance from beat multiple 3 ~a~%total distance from beat multiple 2 ~a~%"
+	    (beat-multiple-distance likely-beat-ratios 3.0) 
+	    (beat-multiple-distance likely-beat-ratios 2.0))
+    (if (< (beat-multiple-distance likely-beat-ratios 3.0) (beat-multiple-distance likely-beat-ratios 2.0))
+	'(3 2 2)
+	'(2 2 2 2))))
+
+(defun meter-division (analysis tactus)
+  "Returns 2 or 3 depending on whether the meter is duple or triple"
+  (if (zerop (mod (meter-of-analysis-and-tactus analysis tactus) 2)) 2 3))
 
 (defparameter *meter-names* 
   (let ((meter-names (make-hash-table :test #'equal)))

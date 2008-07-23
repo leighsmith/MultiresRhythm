@@ -276,9 +276,10 @@
 
 ;; (plot-expectancies all-expectations (format nil "Expectation Confidences for ~a examples of ~a bars of ~a meter"  sample-size number-of-bars candidate-meter))
 
+;;; TODO should be moved into multires-rhythm.lisp
 (defun plot-ridge-persistency (ridge-persistency scaleogram title &key (sample-rate 200.0 sample-rate-supplied))
-  (format t "~a sorted prominent ridges of duration:~%~a~%" 
-	  title (time-support (most-persistent-scales ridge-persistency) (voices-per-octave scaleogram)))
+;;   (format t "~a sorted prominent ridges of duration:~%~a~%" 
+;; 	  title (time-support (most-persistent-scales ridge-persistency) (voices-per-octave scaleogram)))
   (reset-plot)
   (plot-command "set title font \"Times,24\"")
   (plot-command "set xlabel offset 0,-1 font \"Times,24\"")

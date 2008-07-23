@@ -39,6 +39,7 @@
 		     :get-histogram
 		     :get-histogram-counts
 		     :get-histogram-elements
+		     :plot-rhythm
 		     :*plotting*
 		     :meter-for-name
 		     :analysis-of-rhythm))
@@ -68,10 +69,10 @@
 	       (:file "multires_rhythm" :depends-on ("cwt" "skeleton" "plotting" "rhythm" "signalprocessing"))
 	       (:file "scaleogram_plotting" :depends-on ("multires_rhythm" "cwt" "rhythm" "plotting"))
 	       (:file "tactus-selection" :depends-on ("multires_rhythm" "scaleogram_plotting"))
-	       (:file "meter" :depends-on ("multires_rhythm" "tactus-selection"))
 	       (:file "downbeat" :depends-on ("multires_rhythm"))
 	       (:file "clapping" :depends-on ("multires_rhythm" "downbeat" "tactus-selection"))
 	       (:file "perceptual-onsets" :depends-on ("clapping" "sound"))
 	       (:file "expectancies" :depends-on ("clapping" "signalprocessing"))
+	       (:file "meter" :depends-on ("multires_rhythm" "tactus-selection" "expectancies"))
 	       (:file "metrical-expectancy" :depends-on ("expectancies" "martin-trees" "histogram"))
 	       (:file "commandline" :depends-on ("expectancies"))))

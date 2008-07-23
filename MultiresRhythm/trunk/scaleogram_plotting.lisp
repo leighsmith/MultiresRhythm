@@ -232,10 +232,17 @@
 			       (list (scaleogram-magnitude rhythm-scaleogram))
 			       '((1.0 0.5) (0.0 0.3))
 			       (concatenate 'string axes-labels formatting))
-			 (list #'highlighted-ridges-image
-			       (list (mapcar #'copy-object highlighted-ridges) correlated-ridge-scale-peaks)
-			       '((1.0 0.5) (0.0 0.0))
-			       (concatenate 'string axes-labels formatting)))
+			 ;; If highlighted-ridges list is empty, just plot the ridge scale
+			 ;; peaks without the highlighted palette.
+			 (if highlighted-ridges
+			     (list #'highlighted-ridges-image
+				   (list (mapcar #'copy-object highlighted-ridges) correlated-ridge-scale-peaks)
+				   '((1.0 0.5) (0.0 0.0))
+				   (concatenate 'string axes-labels formatting))
+			     (list #'magnitude-image
+				   (list correlated-ridge-scale-peaks)
+				   '((1.0 0.5) (0.0 0.0))
+				   (concatenate 'string axes-labels formatting))))
 		   :title title
 		   :time-axis-decimation time-axis-decimation)))
 
