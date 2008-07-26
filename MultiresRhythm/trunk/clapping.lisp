@@ -23,6 +23,22 @@
 (defgeneric clap-to-rhythm (rhythm-to-analyse &key tactus-selector start-from-beat beat-multiple)
   (:documentation "Returns a set of sample times to clap to given the supplied rhythm"))
 
+;;; TODO this could be a problem on the last phase point before 2 pi wrap.
+;;; TODO This is the same as phase correction chasing!
+(defun phase-occurrances (phases-to-find phase)
+  "Find locations where the given phase values would fall"
+  (loop
+     with time-in-samples = (.length phase)
+     with prev = (list 0 (list 0 (- time-in-samples 2)))
+     with next = (list 0 (list 1 (- time-in-samples 1)))
+     for phase-datum in phases-to-find
+     ;; check phase-datum >= current and < next phase measure.
+     for phase-occurrance = (.and (.>= phase-datum (.subarray phase prev)) 
+				  (.< phase-datum (.subarray phase next)))
+     then (.or phase-occurrance (.and (.>= phase-datum (.subarray phase prev)) 
+				      (.< phase-datum (.subarray phase next))))
+     finally (return (.find phase-occurrance))))
+
 ;; TODO Return ((time intensity) (time intensity) ...)
 ;; use constant intensity claps but weight the amplitude for when we mix in Common Music.
 (defun clap-to-tactus-phase (original-rhythm rhythm-scaleogram tactus 
@@ -30,7 +46,6 @@
   "Function to compute times to clap and how hard from the extracted tactus.
    Returns a matrix where row 1 is the time to tap at, row 2 is the intensity."
   (let* ((time-frequency-dimensions (.array-dimensions (scaleogram-magnitude rhythm-scaleogram)))
-	 (time-in-samples (second time-frequency-dimensions))
 
 	 ;; The right way to do this is with a tight (well, two octave)
 	 ;; Gaussian envelope over it.
@@ -56,17 +71,13 @@
 	 (down-beat-sample (onset-time-of-note original-rhythm start-from-beat))
 	 (clap-on-phase-datum (.aref foot-tap-phase down-beat-sample))
 
-	 ;; check clap-on-phase-datum >= current and < next phase measure.
-	 ;; TODO this could be a problem on the last phase point before 2 pi wrap.
-	 ;; identify reoccurance of the initial clap phase across the translation (time) axis
-	 (phase-reoccured (.and (.>= clap-on-phase-datum 
-				     (.subarray foot-tap-phase (list 0 (list 0 (- time-in-samples 2))))) 
-				(.< clap-on-phase-datum 
-				    (.subarray foot-tap-phase (list 0 (list 1 (1- time-in-samples)))))))
+	 ;; identify reoccurrance of the initial clap phase across the translation (time) axis
+	 (phase-occurrances (phase-occurrances (list clap-on-phase-datum) foot-tap-phase)) 
 	 ;; Stops any clapping before the downbeat.
-	 (valid-phase (.and phase-reoccured 
-			    (.>= (.rseq 0d0 (1- (.length phase-reoccured)) (.length phase-reoccured)) down-beat-sample)))
-	 (valid-claps (.find valid-phase))
+	 (valid-claps-start (position down-beat-sample (val phase-occurrances) :test #'<=))
+	 (valid-claps (.subarray phase-occurrances (list 0 
+							 (list valid-claps-start (1- (.length phase-occurrances))))))
+
 	 (subdivided-beats (.* (.iseq 0 (1- (floor (.length valid-claps) beat-multiple))) beat-multiple))
 	 (clap-at (.arefs valid-claps subdivided-beats))
 	 ;; Create a clapping rhythm
@@ -106,7 +117,7 @@
 							       (voices-per-octave scaleogram) 
 							       (sample-rate performed-rhythm))))
       (format t "Suggested beat multiple ~f~%" clapping-beat-multiple)
-      (format t "Possible metrical divisor ~a~%" (meter-of-analysis rhythm-analysis computed-tactus))
+      (format t "Possible metrical divisor ~a~%" (meter-of-analysis-and-tactus rhythm-analysis computed-tactus))
       ;; TODO find-downbeat is inclined to crash horribly because of the comparison - must fix.
       ;; (format t "Found downbeat is ~d~%" (find-downbeat performed-rhythm beat-period :strategy #'is-greater-rhythmic-period))
       (clap-to-tactus-phase performed-rhythm scaleogram computed-tactus
