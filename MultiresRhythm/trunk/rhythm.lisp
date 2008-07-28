@@ -155,7 +155,7 @@
   (make-instance 'rhythm 
 		 :name name
 		 :description name ; TODO transliterate '-' for ' '.
-		 :time-signal (make-narray (onsets-to-grid (nlisp::array-to-list (.round (.* onsets sample-rate)))))
+		 :time-signal (.* 1d0 (make-narray (onsets-to-grid (nlisp::array-to-list (.round (.* onsets sample-rate))))))
 		 :sample-rate sample-rate))
 
 (defun rhythm-of-grid (name grid &key (tempo 80 tempo-supplied-p)
@@ -285,7 +285,8 @@
 (defmethod sound-of ((rhythm-to-sonify rhythm) (clap-pathname pathname))
   "Create a sound instance from the rhythm"
   (let* ((clap-sound (sound-from-file clap-pathname))
-	 (length-of-sound (round (* (duration rhythm-to-sonify) (sample-rate clap-sound))))
+	 (length-of-sound (round (+ (* (duration rhythm-to-sonify) (sample-rate clap-sound))
+				    (sound-length clap-sound))))
 	 (note-times (onsets-in-seconds rhythm-to-sonify))
 	 (note-amplitudes (.arefs (time-signal rhythm-to-sonify) (onsets-in-samples rhythm-to-sonify))))
     (sample-at-times length-of-sound clap-sound note-times :amplitudes note-amplitudes)))
