@@ -145,3 +145,6 @@ Anything clipped will be set to the clamp-low, clamp-high values"
     (setf (.arefs new-vector impulse-indices) 
 	  (make-double-array (.length impulse-indices) :initial-element 1d0))))
 
+(defun phase-wrap (phase-value-to-wrap)
+  "Wraps values within a modulo +/- pi (phase system)."
+  (.- (.mod (.+ phase-value-to-wrap pi) (* 2 pi)) pi))
