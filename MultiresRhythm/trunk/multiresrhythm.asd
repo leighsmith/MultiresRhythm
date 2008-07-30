@@ -42,7 +42,9 @@
 		     :plot-rhythm
 		     :*plotting*
 		     :meter-for-name
-		     :analysis-of-rhythm))
+		     :analysis-of-rhythm
+		     :hear
+		     :.subseq))
 
 (in-package :multires-rhythm)
 

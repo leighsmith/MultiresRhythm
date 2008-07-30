@@ -41,6 +41,7 @@
 
 ;; TODO Return ((time intensity) (time intensity) ...)
 ;; use constant intensity claps but weight the amplitude for when we mix in Common Music.
+;; TODO add key (event-shift 0.0) to allow clapping ahead or behind the beat by a constant phase shift.
 (defun clap-to-tactus-phase (original-rhythm rhythm-scaleogram tactus 
 			     &key (start-from-beat 0) (beat-multiple 1))
   "Function to compute times to clap and how hard from the extracted tactus.
@@ -70,23 +71,29 @@
 	 ;; Note the phase of the oscillating sinusoid at the beat to start tapping from.
 	 (down-beat-sample (onset-time-of-note original-rhythm start-from-beat))
 	 (clap-on-phase-datum (.aref foot-tap-phase down-beat-sample))
+	 (phases-to-find (if (< beat-multiple 1.0)
+			     ;; TODO need 1 / beat-multiple number of extra entries
+			     (nlisp::array-to-list (phase-wrap (.+ clap-on-phase-datum (.rseq 0 (* 2 pi) (1+ (floor 1 beat-multiple))))))
+			     (list clap-on-phase-datum)))
 
 	 ;; identify reoccurrance of the initial clap phase across the translation (time) axis
-	 (phase-occurrances (phase-occurrances (list clap-on-phase-datum) foot-tap-phase)) 
+	 (phase-occurrances (phase-occurrances phases-to-find foot-tap-phase))
 	 ;; Stops any clapping before the downbeat.
 	 (valid-claps-start (position down-beat-sample (val phase-occurrances) :test #'<=))
-	 (valid-claps (.subarray phase-occurrances (list 0 
-							 (list valid-claps-start (1- (.length phase-occurrances))))))
-
-	 (subdivided-beats (.* (.iseq 0 (1- (floor (.length valid-claps) beat-multiple))) beat-multiple))
-	 (clap-at (.arefs valid-claps subdivided-beats))
-	 ;; Create a clapping rhythm
-	 ;; (clap-rhythm (rhythm-of-onsets (name original-rhythm) clap-at))
-	 )
+	 (valid-claps (.subarray phase-occurrances (list 0 (list valid-claps-start (1- (.length phase-occurrances))))))
+	 (subdivided-beats (if (<= beat-multiple 1.0)
+			       (.iseq 0 (1- (.length valid-claps)))
+			       (.* (.iseq 0 (1- (floor (.length valid-claps) beat-multiple))) beat-multiple)))
+	 (clap-at (.arefs valid-claps subdivided-beats)))
+    (diag-plot 'tap-phase (plot foot-tap-phase nil))
+    (format t "maximum foot tap phase ~a~%" (.max foot-tap-phase))
+    (format t "phase values to search for ~a~%" phases-to-find)
     (format t "Handclapping every ~d beats from beat ~d of original rhythm, sample ~d~%"
 	    beat-multiple start-from-beat down-beat-sample)
     (diag-plot 'claps (plot-claps original-rhythm clap-at foot-tap-phase))
     clap-at))
+
+;; To create a clapping rhythm: (setf clap-rhythm (rhythm-of-onsets (name original-rhythm) clap-at))
 
 (defun beat-multiple-for-clapping (tactus vpo sample-rate)
   "Compute a beat multiple we should clap at, based on the chosen tactus beat period compared to the preferred tempo"
@@ -123,10 +130,6 @@
       (clap-to-tactus-phase performed-rhythm scaleogram computed-tactus
 			   :start-from-beat found-downbeat
 			   :beat-multiple (if multiple-supplied-p beat-multiple clapping-beat-multiple)))))
-
-;;; Needs to have remaining time 
-(defun clap-to-iois (name iois &key (shortest-ioi (/ 120 17)))
-  (clap-to-rhythm (iois-to-rhythm name iois :shortest-ioi shortest-ioi)))
 
 (defun save-rhythm-and-claps (original-rhythm clap-at)
   "Writes out the rhythm and the handclaps to a scorefile"

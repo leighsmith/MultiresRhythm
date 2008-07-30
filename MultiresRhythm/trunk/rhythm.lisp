@@ -68,6 +68,9 @@
 (defgeneric write-as-audio (rhythm-to-save filepath-to-save clap-pathname)
   (:documentation "Write the rhythm to the filename, using the clapping sound."))
 
+(defgeneric hear (rhythm-to-hear)
+  (:documentation "Convenience function to make a rhythm audible"))
+
 ;;;; Implementation
 
 (defmethod print-object ((rhythm-to-print rhythm) stream)
@@ -294,6 +297,14 @@
 (defmethod write-as-audio ((rhythm-to-save rhythm) (filepath-to-save pathname) (clap-pathname pathname))
   "Write the given rhythm as an audio file"
   (save-to-file (sound-of rhythm-to-save clap-pathname) filepath-to-save))
+
+(defmethod hear ((rhythm-to-hear rhythm))
+  "Convenience function to make a rhythm audible"
+  (write-as-audio rhythm-to-hear 
+		  (make-pathname :directory "/Volumes/iDisk/Research/Data/Handclap Examples/"
+				 :name (name rhythm-to-hear)
+				 :type "wav")
+		  #P"/Volumes/iDisk/Research/Data/Handclap Examples/cowbell.aiff"))
 
 (defun add-rhythm (&rest rhythms-to-add)
   "Adds multiple rhythms together. Returns the shortest? longest? rhythm."
