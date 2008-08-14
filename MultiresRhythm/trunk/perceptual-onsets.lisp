@@ -46,14 +46,18 @@
 ;; (setf res1 (perceptual-onsets-to-rhythm "res1/res1_1_resp_text" "res1/res1_1_pOnsets" :weighted t))
 
 (defmethod plot-rhythm ((rhythm-to-plot salience-trace-rhythm) &key (reset t) (time-in-seconds nil))
-  ;; TODO add (onsets-time-signal rhythm-to-plot) when we can plot different sized signals.
+  (if reset (reset-plot))
+  (if time-in-seconds
+      (plot-command "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
+		    (label-samples-as-seconds (duration-in-samples rhythm-to-plot)
+					      (sample-rate rhythm-to-plot))))
   (nplot (list (time-signal rhythm-to-plot) 
 	       (.* (onsets-time-signal rhythm-to-plot) (.max (time-signal rhythm-to-plot))))
 	 nil 
 	:aspect-ratio 0.66 
 	:styles '("lines" "impulses linetype 3")
 	:legends '("Saliency" "Onsets")
-	:reset reset
+	:reset nil
 	:title (format nil "Salience trace of ~a" (name rhythm-to-plot))))
 
 ;; (plot-rhythm res1)

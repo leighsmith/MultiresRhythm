@@ -80,6 +80,25 @@
 		  :title (format nil "weighted persistency profile of ~a" (name rhythm-to-analyse))))
     (ridges-of-max-scales weighted-persistency-profile)))
 
+(defmethod weighted-persistency-beat-ridge ((rhythm-to-analyse rhythm) (analysis multires-analysis))
+  "Creates a ridge using the maximum value of the cumulative sum of the normalised ridges"
+  (let* ((scaleogram (scaleogram analysis))
+	 (cumulative-ridge-persistency (cumsum (make-ridge-plane (skeleton analysis))))
+	 (vpo (voices-per-octave scaleogram))
+	 (sample-rate (sample-rate rhythm-to-analyse))
+	 (salient-tempo-scale (preferred-tempo-scale vpo sample-rate))
+	 ;; Tuned filter that gives the future projections more space.
+	 (tempo-beat-preference (tempo-salience-weighting salient-tempo-scale 
+							  (.array-dimensions cumulative-ridge-persistency)
+							  :envelope #'skewed-gaussian-envelope
+							  :octaves-per-stddev 2.0))
+ 	 (weighted-persistency-profile (.* cumulative-ridge-persistency tempo-beat-preference)))
+    (diag-plot 'weighted-beat-ridge
+      (plot-image #'magnitude-image (list weighted-persistency-profile) '((1.0 0.5) (0.0 0.3))
+		  (axes-labelled-in-seconds scaleogram sample-rate 4)
+		  :title (format nil "weighted persistency profile of ~a" (name rhythm-to-analyse))))
+    (ridges-of-max-scales weighted-persistency-profile)))
+
 (defmethod unwindowed-weighted-beat-ridge ((rhythm-to-analyse rhythm) (analysis multires-analysis))
   "Creates a ridge using the maximum value of the cumulative sum of the scaleogram energy"
   (let* ((scaleogram (scaleogram analysis))

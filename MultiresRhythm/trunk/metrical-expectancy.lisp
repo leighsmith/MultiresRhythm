@@ -16,16 +16,6 @@
 
 ;; (declare (optimize (debug 3))) ;; Allows sldb to find our problems quicker.
 
-;; 20mS
-(defun make-envelope (amplitude &key (sample-rate 200) (attack 0.020) (decay 0.0) (sustain 0.0) (release 0.020))
-  (let* ((attack-samples (round (* attack sample-rate)))
-	 (release-samples (round (* release sample-rate)))
-	 (duration-samples (round (* sustain sample-rate)))
-	 (sustain-samples (- duration-samples attack-samples release-samples)))
-    (.concatenate (.rseq 0.0 amplitude attack-samples) 
-		  (.rseq amplitude amplitude sustain-samples)
-		  (.rseq amplitude 0.0 release-samples))))
-
 (defun make-probe-rhythms (name weighted-onsets &key (probe-base-time 3.0d0) 
 			    (probe-note-ratios '(1/6 1/4 1/3 1/2 2/3 3/4 5/6)))
   "Returns a list of rhythms with the probe notes inserted at each location from weighted onsets"

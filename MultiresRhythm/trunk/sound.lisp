@@ -131,3 +131,29 @@
 ;; (setf noisy-dialog-scaleogram (cwt noisy-dialog-initial 8))
 ;; (plot-cwt noisy-dialog-scaleogram)
 ;; (plot-scale-energy-at-times noisy-dialog-scaleogram (list 2048 8192))
+
+;; 20mS
+(defun make-envelope (amplitude &key (sample-rate 200) (attack 0.020) (decay 0.0) (sustain 0.0) (release 0.020))
+  "Returns a non-exponential ADSR envelope."
+  (declare (ignore decay))
+  (let* ((attack-samples (round (* attack sample-rate)))
+	 (release-samples (round (* release sample-rate)))
+	 (duration-samples (round (* sustain sample-rate)))
+	 (sustain-samples (- duration-samples attack-samples release-samples)))
+    (.concatenate (.rseq 0.0 amplitude attack-samples) 
+		  (.rseq amplitude amplitude sustain-samples)
+		  (.rseq amplitude 0.0 release-samples))))
+
+(defun square-wave (frequency duration sample-rate)
+  "Returns a full amplitude square wave"
+  (let* ((wavelength-in-samples (/ sample-rate frequency))
+	 (half-wavelength (/ wavelength-in-samples 2.0))
+	 (duration-in-samples (floor (* sample-rate duration)))
+	 (sound-signal (make-double-array duration-in-samples)))
+    (loop
+       for sample-index from 0 below duration-in-samples
+       do (setf (.aref sound-signal sample-index) (if (> (mod sample-index wavelength-in-samples)
+							 half-wavelength)
+						      1.0d0
+						      -1.0d0))
+       finally (return sound-signal))))

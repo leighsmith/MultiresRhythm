@@ -358,22 +358,15 @@
   "Generate a rhythm from a note-list specifying time, duration (both in seconds) & amplitude"
   (let* ((last-note (first (last note-list)))
 	 (rhythm-length (ceiling (* (+ (first last-note) (second last-note)) sample-rate)))
-	 (time-signal (make-double-array rhythm-length))
-	 (attack-samples (round (* attack sample-rate)))
-	 (release-samples (round (* release sample-rate))))
+	 (time-signal (make-double-array rhythm-length)))
     (loop
        for (time duration amplitude) in note-list
        for onset-time-in-samples = (round (* time sample-rate))
        for duration-samples = (round (* duration sample-rate))
-       for sustain-samples = (- duration-samples attack-samples release-samples)
        do (if make-envelope-p
-	      ;; TODO replace with make-envelope if we want it.
-	      (let ((envelope (.concatenate (.rseq 0.0 amplitude attack-samples) 
-					    (.rseq amplitude amplitude sustain-samples)
-					    (.rseq amplitude 0.0 release-samples))))
-		(setf (.subarray time-signal (list 0 (list onset-time-in-samples 
-							   (+ onset-time-in-samples duration-samples))))
-		      envelope))
+	      (setf (.subarray time-signal (list 0 (list onset-time-in-samples 
+							 (+ onset-time-in-samples duration-samples))))
+		    (make-envelope amplitude :attack attack :release release :sustain (- duration attack release)))
 	      (setf (.aref time-signal onset-time-in-samples) (coerce amplitude 'double-float))))
     (make-instance 'rhythm
 		   :name name

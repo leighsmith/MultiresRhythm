@@ -29,6 +29,7 @@
 		     :skeleton-of-rhythm
 		     :tactus-for-rhythm
 		     :rhythmic-grid-to-signal
+		     :iois-to-rhythm
 		     :rhythm-complexity
 		     :rhythm-of-grid
 		     :clap-to-rhythm
