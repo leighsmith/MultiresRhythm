@@ -15,17 +15,16 @@
 (use-package :nlisp)
 (use-package :multires-rhythm)
 
+;;; Normalized function from Friberg & Sundberg (1999), Honing (2005); 
+;;; v(x) = [1 + (w^q - 1) x ] 1/q
 (defun ritard (score-positions curvature final-tempo)
   "Calculates a kinematic ritard. Accepts normalized score positions, returns normalized tempo positions"
  (.expt (.+ 1d0 (.* (- (expt final-tempo curvature) 1.0d0) score-positions)) (/ 1.0d0 curvature)))
 
-(defmacro .last (a)
-  `(.aref ,a (1- (.length ,a))))
-
 ;;; Removes the first interval to match the terminology used in the paper.
 (defun normalise-score-positions (positions)
   "Given a set of score positions, returns normalised versions suitable for the ritardando function"
-  (./ positions (.last positions)))
+  (./ positions (nlisp::.last positions)))
 
 (defun score-positions-from-iois (iois)
   (make-narray (multires-rhythm::iois-to-onsets (rest iois))))
@@ -77,18 +76,28 @@
 ;; (multires-rhythm::plot-rhythm y)
 ;; (setf double-claps (clap-to-rhythm y :start-from-beat 1))
 
-(defun rhythm-with-ritard (curvature final-tempo-ratio &key (tempo 120) (ritarding-rhythm '(1 1 1 1 1 1 1 1)))
+(defun rhythm-with-ritard (curvature final-tempo-ratio &key 
+			   (tempo 120) (ritarding-rhythm '(1 1 1 1 1 1 1 1)) (priming-rhythm ritarding-rhythm))
   (multires-rhythm::append-rhythm 
-   (multires-rhythm::iois-to-rhythm "iso" ritarding-rhythm :tempo tempo :sample-rate 200) ; '(1 1 1 1 1 1 1 1)
+   (multires-rhythm::iois-to-rhythm "iso" priming-rhythm :tempo tempo :sample-rate 200) ; '(1 1 1 1 1 1 1 1)
    (multires-rhythm::rhythm-of-onsets "ritard" (ritard-iois ritarding-rhythm curvature final-tempo-ratio tempo))))
 
-(defun hear-ritard (named rhythm)
-  (let ((rhythm-sound (multires-rhythm::sound-of rhythm 
-						 #P"/Volumes/iDisk/Research/Data/Handclap Examples/cowbell.aiff")))
-    (multires-rhythm::save-to-file rhythm-sound 
-				   (make-pathname :directory "/Volumes/iDisk/Research/Data/Handclap Examples/"
-						  :name named 
-						  :type "wav"))))
-
 ;; (dorys::hear-ritard "ritard" (rhythm-with-ritard 7 0.6))
+;; (dorys::hear-ritard "ritard" (rhythm-with-ritard 2 0.6))
 ;; (dorys::hear-ritard "ritard-rhythm" (rhythm-with-ritard 2 0.6 :ritarding-rhythm '(1 2 1 1 1 3 2 1)))
+;; (dorys::hear-ritard "ritard-rhythm" (rhythm-with-ritard 2 0.6 :ritarding-rhythm '(2 2 2 2 2 2)))
+;; (dorys::hear-ritard "ritard-rhythm" (rhythm-with-ritard 2 0.6 :priming-rhythm '(1 1 1 1 1 1 1 1) :ritarding-rhythm '(1 2 1 1 1 3 2 1)))
+
+(defun clap-to-ritard (rhythm-to-accompany)
+  (multires-rhythm::hear rhythm-to-accompany)
+  (pushnew 'multires-rhythm::cwt+skeleton *plotting*)
+  (multires-rhythm::save-rhythm-and-claps rhythm-to-accompany 
+					  (clap-to-rhythm rhythm-to-accompany :start-from-beat 1 :beat-multiple 1.0)))
+
+;;; Examples
+;; (clap-to-ritard (rhythm-with-ritard 2 0.5 :tempo 145))
+
+;;; From Friberg & Sundberg (1999)
+;; (clap-to-ritard (rhythm-with-ritard 3.4 0.43 :tempo 120))
+
+

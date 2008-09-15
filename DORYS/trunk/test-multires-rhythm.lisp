@@ -232,11 +232,16 @@
 ;; (onsets-to-grid (iois-to-onsets (intervals-in-samples '(17 17 20.5 13.5 17 17) :ioi 10)))
 ;; (iois-to-rhythm "test" '(17 17 20.5 13.5 17 17) :shortest-ioi (/ 120 17))
 
+;;; Needs to have remaining time 
+(defun clap-to-iois (name iois &key (shortest-ioi (/ 120 17)))
+  (clap-to-rhythm (iois-to-rhythm name iois :shortest-ioi shortest-ioi)))
+
 ;;; Gouyon & Dixon's examples of ambiguity of timing/tempo changes.
-;; (clap-to-iois "gouyon-isochronous" '(17 17 17 17 17 17) :shortest-ioi (/ 120 17))
-;; (clap-to-iois "gouyon-local-timing" '(17 17 20.5 13.5 17 17) :shortest-ioi (/ 120 17))
-;; (clap-to-iois "goyoun-global-timing" '(17 17 20.5 17 17 17) :shortest-ioi (/ 120 17))
-;; (clap-to-iois "gouyon-tempo-change" '(17 17 20.5 20.5 20.5 20.5) :shortest-ioi (/ 120 17))
+(defparameter *gouyon-timing-changes*
+  (list (iois-to-rhythm "gouyon-isochronous" '(17 17 17 17 17 17) :shortest-ioi (/ 120 17))
+	(iois-to-rhythm "gouyon-local-timing" '(17 17 20.5 13.5 17 17) :shortest-ioi (/ 120 17))
+	(iois-to-rhythm "goyoun-global-timing" '(17 17 20.5 17 17 17) :shortest-ioi (/ 120 17))
+	(iois-to-rhythm "gouyon-tempo-change" '(17 17 20.5 20.5 20.5 20.5) :shortest-ioi (/ 120 17))))
 
 ;;; Large & Jones's rhythms with temporal fluctuations from Figure 3.
 ;; (clap-to-iois "large-one-phase-perturbation" '(1.0 1.0 1.0 1.0 1.15 1.0 1.0 1.0 1.0) :shortest-ioi 200)
@@ -329,15 +334,15 @@
     (setf (.subarray full-length (list 0 (list 1 (- last-index 2)))) 
 	  (.and (.> center left) (.> center right)))))
 
-(defun fm-rhythm (&key (signal-length 2048))
+(defun fm-rhythm (&key (signal-length 2048) (modulation-freq 3.0) (modulation-amount 3.0)
+		  (max-modulation-change 1.0))
   "Frequency modulating signal for wavelet analysis."
   (let* ((carrier-freq 32)
-	 (modulation-freq 3.0)
-	 (modulation-amount 3.0)
 	 (norm-signal (.rseq 0 1 signal-length))
-	 (mod (.* modulation-amount (.cos (.* norm-signal 2.0 pi modulation-freq))))
-	 (fm-signal (.cos (.+ (.* 2 pi carrier-freq norm-signal) mod))))
-    ;; (plot mod nil)
+	 (modulation-change (.rseq 1.0 max-modulation-change signal-length))
+	 (modulator (.* modulation-amount (.cos (.* norm-signal 2.0 pi modulation-freq modulation-change))))
+	 (fm-signal (.cos (.+ (.* 2 pi carrier-freq norm-signal) modulator))))
+    (plot modulator nil :title "modulator")
     ;; (plot fm-signal nil)
     (peaks fm-signal)))
 
@@ -345,10 +350,12 @@
   (let* ((modulated-rhythm (make-instance 'rhythm 
 					 :name "modulated rhythm"
 					 :description "modulated rhythm"
-					 :time-signal (fm-rhythm)
+					 :time-signal (fm-rhythm :modulation-amount 3.0
+								 :max-modulation-change 1.3)
 					 :sample-rate 200)))
     (plot-rhythm modulated-rhythm)
-    (clap-to-rhythm modulated-rhythm)))
+    (hear modulated-rhythm)
+    (multires-rhythm::save-rhythm-and-claps modulated-rhythm (clap-to-rhythm modulated-rhythm :beat-multiple 1))))
 
 ;; (modulated-rhythm-test)
 

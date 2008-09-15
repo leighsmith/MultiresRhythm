@@ -45,18 +45,14 @@
 	       (:file "essen-meter-list")
 	       (:file "test-multires-rhythm")
 	       (:file "test-anthems" :depends-on ("national anthems"))
-	       (:file "metrical-expectancy")))
+	       (:file "metrical-expectancy")
+	       (:file "ritard")
+	       (:file "tempo-change")))
 
 #|
 
 From the common music version
 ;;; TODO - get all CLM output going to separate directory.
-
-
-;;; The output instruments are typically a rhythm-onset instrument
-;;; which is nominally an impulse at the onset time of the beat.
-;;; check if this needs recompiling.
-(:file "rhythms.fas")
 
 ;;; TODO use a common rhythm instrument that can be substituted for
 ;;; midi-note, rhythm-tone, sampler etc.
