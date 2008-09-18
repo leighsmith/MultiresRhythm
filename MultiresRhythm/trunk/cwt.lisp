@@ -85,14 +85,17 @@
 	  (duration-in-samples scaleogram-to-print)
 	  (voices-per-octave scaleogram-to-print)))
 
-(defun gaussian-envelope (width &key (mean 0d0) (stddev 1d0) 
-			    (scaling (/ 1d0 (* (sqrt (* 2d0 pi)) stddev))))
+(defun gaussian-envelope (width &key (mean 0d0) (stddev 1d0) (stddev-range 10.0d0)
+			  (scaling (/ 1d0 (* (sqrt (* 2d0 pi)) stddev))))
+  ;; to compensate for the sampling rate (width):
+  ;; (scaling (/ stddev-range (* (sqrt (* 2d0 pi)) stddev width))))
   "Compute a Gaussian envelope.
    width is the sampling range of an envelope over +/-5 standard deviations.
    mean determines the position of the envelope within the width number of samples.
    stddev determines the standard deviation and therefore the variance of the distribution.
    scaling determines the amplitude peak of the envelope, defaulting to an area of 1.0"
-  (let ((x (.rseq -5.0 +5.0 width)))
+  (let* ((half-stddev-range (/ stddev-range 2.0))
+	 (x (.rseq (- half-stddev-range) half-stddev-range width)))
     (.* scaling
 	(.exp (.- (./ (.expt (.- x mean) 2.0) (.* 2d0 stddev stddev)))))))
 
