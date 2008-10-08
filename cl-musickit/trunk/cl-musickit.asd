@@ -10,7 +10,10 @@
 ;;;;
 ;;;;
 
-(defpackage #:cl-musickit (:use #:cl #:asdf))
+(defpackage #:cl-musickit (:use #:cl #:asdf)
+	    (:export :drum-machine
+		     :make-midi-note
+		     :play-timed-notes))
 
 (in-package :cl-musickit)
 
