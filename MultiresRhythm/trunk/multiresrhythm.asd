@@ -24,6 +24,7 @@
 (require 'nlisp)			; For mathematics
 (require 'cli-parser)			; For command line option interpretation.
 
+;; Should probably put this in a separate package.lisp file.
 (defpackage #:multires-rhythm (:use #:cl #:asdf #:nlisp #:cli-parser)
 	    (:export :rhythm 
 		     :skeleton-of-rhythm
@@ -32,6 +33,11 @@
 		     :iois-to-rhythm
 		     :rhythm-complexity
 		     :rhythm-of-grid
+		     :rhythm-of-onsets
+		     :intervals-in-samples
+		     :duration-in-samples
+		     :scale-from-period
+		     :time-support
 		     :clap-to-rhythm
 		     :save-scorefile
 		     :generate-executable
@@ -41,9 +47,17 @@
 		     :get-histogram-counts
 		     :get-histogram-elements
 		     :plot-rhythm
+		     :plot-analysis
 		     :*plotting*
+		     :plot-cwt+skeleton-of
 		     :meter-for-name
 		     :analysis-of-rhythm
+		     :analysis-of-rhythm-cached
+		     :skeleton
+		     :voices-per-octave
+		     :ridges-containing-scale
+		     :make-monotone-ridge
+		     :scaleogram
 		     :hear
 		     :.subseq))
 
@@ -51,7 +65,7 @@
 
 (defsystem :multiresrhythm
   :description "A Multiresolution Time-Frequency Analysis and Interpretation of Musical Rhythm"
-  :version "2.7"
+  :version "2.8"
   :author "Leigh M. Smith"
   :license "Copyright (c) 2005-2008"
   :depends-on (:nlisp)

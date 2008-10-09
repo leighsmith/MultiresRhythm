@@ -108,30 +108,10 @@
     ;; just write out the claps as a scorefile alone:
     ;; (save-rhythm (make-instance 'rhythm salience-trace-claps))
     (format t "Beat times of ~a in seconds:~%~a~%" (name salience-trace-rhythm) clap-times-in-seconds)
+    ;; Make the perceptual onset detector results audible
     (save-rhythm-mix accompaniment-sound-path original-sound-path clap-times-in-seconds
 		     :clap-sample-file #P"/Volumes/iDisk/Research/Data/Handclap Examples/cowbell.aiff")
     (format t "Wrote mix as soundfile ~a~%" accompaniment-sound-path)))
-
-(defun compute-perceptual-versions (salience-filename onsets-filename original-sound-filename 
-				    &key 
-				    (start-from-beat 0) 
-				    (beat-multiple 1)
-				    (data-directory "/Volumes/iDisk/Research/Data/PerceptualOnsets/"))
-  (let* ((original-sound-path (make-pathname :directory (list :absolute data-directory)
-					     :name original-sound-filename
-					     :type "wav"))
-	 (accompaniment-sound-path (make-pathname :directory "/Volumes/iDisk/Research/Data/Handclap Examples"
-						  :name (concatenate 'string original-sound-filename "_mixed")
-						  :type "wav"))
-	 (saliency-path (make-pathname :directory (list :absolute data-directory) 
-				       :name salience-filename
-				       :type "saliency"))
-	 (onsets-path (make-pathname :directory (list :absolute data-directory) 
-				     :name onsets-filename
-				     :type "onsets")))
-    (clap-to-salience-rhythm-files saliency-path onsets-path original-sound-path accompaniment-sound-path
-				   :start-from-beat start-from-beat
-				   :beat-multiple beat-multiple)))
 
 ;;; TODO incomplete!
 (defun onsets-of-salience (salience)
@@ -157,16 +137,4 @@
 						  :name onsets-filename
 						  :type "mat") :format :octave)))
     (.column perceptual-onsets 0)))
-
-
-;;; Make the perceptual onset detector results audible
-(defun mix-pOnsets-with-sound (original-sound-filename)
-  (let* ((original-sound-path (make-pathname :directory "/Volumes/iDisk/Research/Data/PerceptualOnsets/"
-					     :name original-sound-filename
-					     :type "wav"))
-	 (accompaniment-sound-path (make-pathname :directory "/Volumes/iDisk/Research/Data/Handclap Examples"
-						  :name (concatenate 'string original-sound-filename "_pOnsets_mixed")
-						  :type "wav"))
-	 (onset-times-in-seconds (pOnset-times (concatenate 'string original-sound-filename "_pOnsets_text"))))
-    (save-rhythm-mix accompaniment-sound-path original-sound-path onset-times-in-seconds)))
 |#
