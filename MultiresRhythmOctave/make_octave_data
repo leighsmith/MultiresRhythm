@@ -1,0 +1,9 @@
+#!/usr/bin/zsh
+# script to generate octave ascii data from a .text file
+# currently generates into cwd.
+
+filebase=`basename $1 .text`
+filename="${filebase}.octave"
+# echo "# name: $filebase\n# type: matrix\n# rows: `wc -l < $1 | tr -d ' '`\n# columns: 1" > $filename
+echo "# name: signal\n# type: matrix\n# rows: `wc -l < $1 | tr -d ' '`\n# columns: 1" > $filename
+cat $1 >> $filename
