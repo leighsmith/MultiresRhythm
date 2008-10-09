@@ -45,6 +45,7 @@
 	       (:file "essen-meter-list")
 	       (:file "test-multires-rhythm")
 	       (:file "test-anthems" :depends-on ("national anthems"))
+	       (:file "NIPS-examples")
 	       (:file "metrical-expectancy")
 	       (:file "ritard")
 	       (:file "tempo-change")))
