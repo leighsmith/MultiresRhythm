@@ -25,8 +25,9 @@
    (sample-rate       :initarg :sample-rate :accessor sample-rate)) ; not yet used.
   (:documentation "Defines the expectation to the next point in time."))
 
-(defgeneric list-in-seconds (expectation sample-rate)
- (:documentation "Returns the expectation as a list, times in seconds, given the sample rate."))
+;;; TODO replace with two methods expected-time-seconds and precision-in-seconds.
+(defgeneric expectation-in-seconds (expectation sample-rate)
+  (:documentation "Returns the expectation as a list, times in seconds, given the sample rate."))
 
 (defgeneric absolute-duration-confidence (expectation rhythm)
   (:documentation "Scales the confidence of the expectation by the absolute duration of the rhythm"))
@@ -50,10 +51,12 @@
 	      (- (expected-time expectation) (first expectation-from-time))
 	      expectation))))
 
+;;; TODO Replace this with two methods expected-time-seconds and precision-in-seconds.
 (defmacro time-in-seconds (time-in-samples sample-rate)
   "Returns the expected time in seconds, given the sample rate."
   `(/ ,time-in-samples (float ,sample-rate)))
 
+;;; TODO Replace this with two methods expected-time-seconds and precision-in-seconds.
 (defmethod expectation-in-seconds ((expectation-to-list expectation) sample-rate)
   "Returns the expectancy as a list of expectation time, confidence and precision, all times in seconds"
   (list (time-in-seconds (expected-time expectation-to-list) sample-rate) 
@@ -511,33 +514,60 @@
 				       :cutoff-scale cutoff-scale :phase-correct-from phase-correct-from)))
 
 ;;; Accumulation of onset expectations.
-(defun onsets-of-expectations (all-expectations)
+(defun accumulated-confidence-of-expectations (all-expectations)
   "Given a set of expectations, sum the confidences (when overlapping), returns an array spanning the projection time"
-  (let* ((all-expect-times (make-narray (mapcar (lambda (e) (expected-time e)) all-expectations)))
-	 (maximum-expect-time (ceiling (.max all-expect-times)))
-	 (projection-confidences (make-double-array maximum-expect-time)))
-    (dolist (expectation all-expectations)
-      (incf (.aref projection-confidences (floor (expected-time expectation))) (confidence expectation)))
-    projection-confidences))
+  (if (null all-expectations) ;; catch the empty list for debugging purposes.
+      (make-double-array 0)
+      (let* ((all-expect-times (make-narray (mapcar (lambda (e) (expected-time e)) all-expectations)))
+	     (maximum-expect-time (ceiling (.max all-expect-times)))
+	     (projection-confidences (make-double-array (1+ maximum-expect-time))))
+	(dolist (expectation all-expectations)
+	  (incf (.aref projection-confidences (floor (expected-time expectation))) (confidence expectation)))
+	projection-confidences)))
+  
+(defmethod plot-expectations+rhythm ((rhythm-to-expect rhythm) (all-expectations list)
+				     &key (title (format nil "Accumulated expectations of ~a" (name rhythm-to-expect))))
+  "Plot the expectation times, confidences and precision and the rhythm."
+  (let* ((expectancy-confidences (accumulated-confidence-of-expectations all-expectations))
+	 (expectancy-exceeds (- (.length expectancy-confidences) (duration-in-samples rhythm-to-expect)))
+	 (padded-rhythm-signal (if (> expectancy-exceeds 0)
+				   (.concatenate (time-signal rhythm-to-expect)
+						 (make-double-array expectancy-exceeds))
+				   (time-signal rhythm-to-expect))))
+    (nplot (list expectancy-confidences padded-rhythm-signal)
+	   nil
+	   :styles '("impulses" "impulses")
+	   :legends (list "accumulated expectations" "original rhythm")
+	   :xlabel "Time"
+	   :ylabel "Confidence" 
+	   :aspect-ratio 0.15
+	   :title title)))
 
+(defmethod plot-expectations (all-expectations title)
+  "Plot the expectation times, confidences and precision."
+  (let ((expect-times (make-narray (mapcar (lambda (expect) (expected-time expect)) all-expectations)))
+	(expect-confidences (make-narray (mapcar (lambda (expect) (confidence expect)) all-expectations))))
+    (window)
+    (plot expect-confidences expect-times 
+ 	  :style "impulses" 
+	  :xlabel "Time" :ylabel "Confidence" 
+ 	  :aspect-ratio 0.66
+ 	  :title title)
+    (close-window)))
+
+;;; TODO needs work...
 (defun last-expectations-project-onsets (rhythm-to-expect)
   "Determine the expectations by summing the expectations at each onset"
   (let* ((all-expectations-of-rhythm (expectancies-of-rhythm rhythm-to-expect :phase-correct-from nil :time-limit-expectancies nil))
 	 ;; rearrange all the expectations into a single list.
 	 (all-expectations (reduce #'append (mapcar #'second all-expectations-of-rhythm)))
-	 (expectancy-confidences (onsets-of-expectations all-expectations))
-	 (projections-into-future (.subarray expectancy-confidences 
-					     (list 0 (list
-						      (duration-in-samples rhythm-to-expect)
-						      (1- (.length expectancy-confidences)))))))
-    (let ((padded-rhythm-signal (.concatenate (time-signal rhythm-to-expect)
-					      (make-double-array (- (.length expectancy-confidences)
-								    (duration-in-samples rhythm-to-expect))))))
-      (nplot (list expectancy-confidences (.- 0 padded-rhythm-signal))
-	     nil
-	     :styles '("impulses" "impulses") :aspect-ratio 0.66))
-    projections-into-future))
-
+	 (expectancy-confidences (accumulated-confidence-of-expectations all-expectations)))
+    ;; projections into future
+    (.subarray expectancy-confidences 
+	       (list 0 (list
+			(duration-in-samples rhythm-to-expect)
+			(1- (.length expectancy-confidences)))))))
+    
 ;;; last-expectations, Charles Dickens undiscovered work from his secret life as a Lisp programmer...
 ;;; This is needed to throw away the time and break the last expectation out of the list.
 (defun last-expectations (rhythm-to-expect 

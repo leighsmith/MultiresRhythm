@@ -281,6 +281,7 @@
 		    (list (nlisp::array-to-list (onsets-in-seconds rhythm-to-save)))
 		    :instrument "midi"
 		    :midi-channel 10
+		    :duration 0.25 ; make sufficient so QuickTime Player doesn't clip a MIDI version.
 		    :key-numbers (list *low-woodblock*)
 		    :description (description rhythm-to-save))
     scorefile-pathname))

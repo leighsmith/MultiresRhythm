@@ -96,3 +96,9 @@ than 8.66 probably since the integration tends to average out the peaks causing 
 ** Reduce the amount of recomputation of analyses
 *** Use a caching mechanism using rhythms as a key.
 *** Refactor the functions to use a list of analyses.
+
+* Tempo value
+Calculate tempo estimation as either:
+** number of beats divided by duration (Gouyon et al).
+** mean of the inter-beat interval (Gouyon et al).
+** median of the inter-beat interval (Peeters).

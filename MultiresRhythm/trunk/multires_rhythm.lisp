@@ -138,6 +138,12 @@ This is weighted by absolute constraints, look in the 600ms period range."
 	 (phase-wrap (.- (* 2 pi) abs-dt-phase)))
     (.+ (.* (.not which-wrapped) dt-phase) (.* phase-wrap which-wrapped))))
 
+;;; TODO this can probably replace phase-diff, if we can ascertain it's identical.
+(defmacro phase-diff-new (phase)
+  "Compute the first order differences of a phase signal (modulo +/- pi), such that we take into account
+  wrap around at the pi and -pi boundaries."
+  `(phase-wrap (.diff ,phase)))
+
 (defun stationary-phase (magnitude phase voices-per-octave &key (magnitude-minimum 0.01)
 			 (phase-match-threshold 4d0))
   "Compute points of stationary phase. Implementation of Delprat

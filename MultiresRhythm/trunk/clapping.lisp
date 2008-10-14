@@ -72,7 +72,7 @@
 	 (down-beat-sample (onset-time-of-note original-rhythm start-from-beat))
 	 (clap-on-phase-datum (.aref foot-tap-phase down-beat-sample))
 	 (phases-to-find (if (< beat-multiple 1.0)
-			     ;; TODO need 1 / beat-multiple number of extra entries
+			     ;; Produces 1 / beat-multiple number of extra entries
 			     (nlisp::array-to-list (phase-wrap (.+ clap-on-phase-datum (.rseq 0 (* 2 pi) (1+ (floor 1 beat-multiple))))))
 			     (list clap-on-phase-datum)))
 
@@ -93,12 +93,12 @@
     (diag-plot 'claps (plot-claps original-rhythm clap-at foot-tap-phase))
     clap-at))
 
-;; To create a clapping rhythm: (setf clap-rhythm (rhythm-of-onsets (name original-rhythm) clap-at))
-
 (defun beat-multiple-for-clapping (tactus vpo sample-rate)
-  "Compute a beat multiple we should clap at, based on the chosen tactus beat period compared to the preferred tempo"
+  "Compute a beat multiple we should clap at, based on the ratio of the chosen tactus beat
+   period to the preferred tempo period"
   (let* ((preferred-beat-period (time-support (preferred-tempo-scale vpo sample-rate) vpo))
-	 (tactus-beat-period (time-support (average-scale (first tactus)) vpo))) ; TODO using first is a hack
+	 ;; TODO using first is a hack, we should be averaging the average-scales, or using median-scale
+	 (tactus-beat-period (time-support (average-scale (first tactus)) vpo))) 
     (format t "Preferred clapping beat period ~,3f seconds actual tactus beat period ~,3f seconds, ratio ~,4f~%" 
 	    (/ preferred-beat-period sample-rate)
 	    (/ tactus-beat-period sample-rate)
@@ -111,7 +111,7 @@
 			   (beat-multiple 1 multiple-supplied-p)
 			   (start-from-beat 0 downbeat-supplied-p)
 			   (tactus-selector #'select-longest-lowest-tactus))
-  "Returns a set of sample times to clap to given the supplied rhythm"
+  "Returns a set of sample times to clap to, given the supplied rhythm"
   (multiple-value-bind (computed-tactus rhythm-analysis)
       (tactus-for-rhythm performed-rhythm :tactus-selector tactus-selector)
     (let* ((scaleogram (scaleogram rhythm-analysis))
@@ -131,13 +131,26 @@
 			   :start-from-beat found-downbeat
 			   :beat-multiple (if multiple-supplied-p beat-multiple clapping-beat-multiple)))))
 
-(defun save-rhythm-and-claps (original-rhythm clap-at)
-  "Writes out the rhythm and the handclaps to a scorefile"
-  (save-scorefile (format nil "/Volumes/iDisk/Research/Data/Handclap Examples/~a.handclap.score" (name original-rhythm)) 
-		  (list (nlisp::array-to-list (onsets-in-seconds original-rhythm)) 
-			(nlisp::array-to-list (./ clap-at (* (sample-rate original-rhythm) 1d0))))
-		  :instrument "midi"
-		  :midi-channel 10
-		  :key-numbers (list *low-woodblock* *closed-hi-hat*)
-		  :description (format nil "Handclapping to ~a" (name original-rhythm))))
+(defun accompaniment-rhythm-to (rhythm-to-accompany)
+  "Returns a rhythm that accompanies (i.e claps to) the given rhythm"
+  (rhythm-of-onsets (name rhythm-to-accompany) (clap-to-rhythm rhythm-to-accompany)))
 
+(defun save-rhythm-and-claps (original-rhythm clap-at &key (directory "/Volumes/iDisk/Research/Data/Handclap Examples"))
+  "Writes out the rhythm and the handclaps to a scorefile"
+  (let ((filename-to-write (make-pathname :directory directory 
+					  :name (concatenate 'string (name original-rhythm) "_handclap") 
+					  :type "score")))
+    (format t "Writing rhythm ~a and clapping accompaniment to ~a~%" (name original-rhythm) filename-to-write)
+    (save-scorefile filename-to-write
+		    (list (nlisp::array-to-list (onsets-in-seconds original-rhythm)) 
+			  (nlisp::array-to-list (./ clap-at (* (sample-rate original-rhythm) 1d0))))
+		    :instrument "midi"
+		    :midi-channel 10
+		    :key-numbers (list *low-woodblock* *closed-hi-hat*)
+		    :description (format nil "Handclapping to ~a" (name original-rhythm)))))
+
+(defun accompany-rhythm (rhythm &key (directory "/Volumes/iDisk/Research/Data/Handclap Examples"))
+  "Convenience function to generate a MusicKit Scorefile with the rhythm and accompaniment clapping"
+  (let ((claps (clap-to-rhythm rhythm :tactus-selector #'create-weighted-beat-ridge)))
+    (format t "Clapping at samples: ~a~%" claps)
+    (save-rhythm-and-claps rhythm claps :directory directory)))

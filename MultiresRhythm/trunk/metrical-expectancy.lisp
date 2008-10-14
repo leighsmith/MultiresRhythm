@@ -107,16 +107,6 @@
 ;;;; Plot routines
 ;;;;
 
-(defun plot-expectancies (all-expectations title)
-  (let ((expect-times (make-narray (mapcar (lambda (expect) (time-in-seconds expect 200.0)) all-expectations)))
-	(expect-confidences (make-narray (mapcar (lambda (expect) (confidence expect)) all-expectations))))
-    (window)
-    (plot expect-confidences expect-times 
- 	  :style "points" :xlabel "Time" :ylabel "Confidence" 
- 	  :aspect-ratio 0.66
- 	  :title title)
-    (close-window)))
-
 (defun plot-expectancies-histogram (times time-values meter title 
 				    &key (bin-size 0.025)
 				    (maximum-confidence 5.0 confidence-supplied))

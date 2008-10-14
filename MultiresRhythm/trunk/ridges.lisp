@@ -136,6 +136,10 @@
   "Returns the mean (average) of the scale numbers"
   (floor (.sum (scales-as-array the-ridge)) (duration-in-samples the-ridge))) 
 
+(defmethod median-scale ((the-ridge ridge))
+  "Return the median scale number of the ridge"
+  (floor (nlisp::median (.* (scales-as-array the-ridge) 1d0))))
+
 (defmethod scale-range ((the-ridge ridge))
   "Returns the range of the scales a ridge spans"
   (let* ((scales (scales-as-array the-ridge)))

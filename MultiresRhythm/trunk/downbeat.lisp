@@ -2,7 +2,7 @@
 ;;;;
 ;;;; $Id$
 ;;;;
-;;;; Functions for testing using National Anthem data-base.
+;;;; Functions for finding the initial downbeat of the rhythm.
 ;;;;
 ;;;; In nlisp (Matlab-like Common Lisp library www.nlisp.info)
 ;;;;
@@ -251,3 +251,8 @@ start-onset, these measures are in samples"
 ;;; period out of phase, accept the longest period as the more likely.
 
 
+;;; TODO Alternatives include a purely rule based approach over a maximum number of
+;;; events: 5 or 6. i.e use a simplified version of LH82 for disambiguating (parsing) the
+;;; first short number of beats. Purely assess it's ability to determine the downbeat, not
+;;; necessarily the rest of the rhythm. So use intervals together with the maximum length
+;;; of the repetition.
