@@ -25,5 +25,6 @@
   :serial t
   :components ((:file "note")
 	       (:file "playing")
+	       (:file "parts")
 	       (:file "rhythm-parts")
 	       (:file "drum-patterns")))
