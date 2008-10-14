@@ -184,13 +184,13 @@
 		   :sample-rate sample-rate)))
 
 (defun clap-to-octave-file (filename &key (sample-rate 200) (description "") 
-			 (tactus-selector #'select-longest-lowest-tactus))
+			 (tactus-selector #'multires-rhythm::select-longest-lowest-tactus))
   (let* ((loaded-rhythm (load-octave-rhythm-file filename :description description :sample-rate sample-rate))
 	 (clap-at (clap-to-rhythm loaded-rhythm :tactus-selector tactus-selector)))
     (window)
     (plot-rhythm loaded-rhythm :time-in-seconds t)
     (close-window)
-    (save-rhythm-and-claps loaded-rhythm clap-at)
+    (multires-rhythm::save-rhythm-and-claps loaded-rhythm clap-at)
     clap-at))
 
 ;; For decimating greensleeves to 200Hz.
