@@ -206,11 +206,14 @@
   (let* ((note-positions (onsets-in-samples rhythm-to-analyse)))
     (.arefs note-positions note-numbers)))
 
+(defmethod number-of-onsets ((rhythm-to-analyse rhythm))
+  "Returns the number of onsets in the rhythm"
+  (.length (onsets-in-samples rhythm-to-analyse)))
+
 (defmethod last-onset-time ((rhythm-to-analyse rhythm))
   "Returns the sample number of the last note in the given rhythm"
-  (let* ((note-positions (onsets-in-samples rhythm-to-analyse))
-	 (number-of-notes (.length note-positions)))
-    (.aref note-positions (1- number-of-notes))))
+  (let* ((note-positions (onsets-in-samples rhythm-to-analyse)))
+    (.aref note-positions (1- (number-of-onsets rhythm-to-analyse)))))
 
 (defmethod onsets-in-seconds ((rhythm-to-analyse rhythm))
   (./ (onsets-in-samples rhythm-to-analyse) (* (sample-rate rhythm-to-analyse) 1d0)))
@@ -275,14 +278,49 @@
 	:aspect-ratio aspect-ratio
 	:reset nil))
 
+(defun rhythm-of-part (name note-list &key 
+		       (sample-rate 200) 
+		       (attack 0.020) 
+		       (release 0.020)
+		       (make-envelope-p nil))
+  "Generate a rhythm from a note-list specifying time, duration (both in seconds) & amplitude"
+  (let* ((last-note (first (last note-list)))
+	 (rhythm-length (ceiling (* (+ (first last-note) (second last-note)) sample-rate)))
+	 (time-signal (make-double-array rhythm-length)))
+    (loop
+       for (time duration amplitude) in note-list
+       for onset-time-in-samples = (round (* time sample-rate))
+       for duration-samples = (round (* duration sample-rate))
+       do (if make-envelope-p
+	      (setf (.subarray time-signal (list 0 (list onset-time-in-samples 
+							 (+ onset-time-in-samples duration-samples))))
+		    (make-envelope amplitude :attack attack :release release :sustain (- duration attack release)))
+	      (setf (.aref time-signal onset-time-in-samples) (coerce amplitude 'double-float))))
+    (make-instance 'rhythm
+		   :name name
+		   :description name
+		   :time-signal time-signal
+		   :sample-rate sample-rate)))
+
+(defun part-from-rhythm (rhythm &key (fixed-duration 0.25) (fixed-key-number *low-woodblock*)
+			 (durations (make-list (number-of-onsets rhythm) :initial-element fixed-duration))
+			 (key-numbers (make-list (number-of-onsets rhythm) :initial-element fixed-key-number)))
+  "Returns a part created from a rhythm with a key number and duration list"
+  (map 'list (lambda (onset-time-seconds duration key-number) 
+	       (list onset-time-seconds 
+		     duration
+		     1.0 ; hacked for now
+		     key-number))
+       (nlisp::array-to-list (onsets-in-seconds rhythm)) durations key-numbers))
+
 (defmethod save-rhythm ((rhythm-to-save rhythm) &key (directory "/Users/leigh/"))
   (let ((scorefile-pathname (make-pathname :directory directory :name (name rhythm-to-save) :type "score")))
     (save-scorefile scorefile-pathname
-		    (list (nlisp::array-to-list (onsets-in-seconds rhythm-to-save)))
+		    (part-from-rhythm rhythm-to-save 
+				      :fixed-duration 0.25 ; make sufficient so QuickTime Player doesn't clip a MIDI version.
+				      :fixed-key-number *low-woodblock*)
 		    :instrument "midi"
-		    :midi-channel 10
-		    :duration 0.25 ; make sufficient so QuickTime Player doesn't clip a MIDI version.
-		    :key-numbers (list *low-woodblock*)
+		    :midi-channels (list 10)
 		    :description (description rhythm-to-save))
     scorefile-pathname))
 
@@ -350,28 +388,3 @@
 		 :description (name (first rhythms))
 		 :time-signal (apply #'.concatenate (mapcar #'time-signal rhythms))
 		 :sample-rate (sample-rate (first rhythms))))
-
-(defun rhythm-of-part (name note-list &key 
-		       (sample-rate 200) 
-		       (attack 0.020) 
-		       (release 0.020)
-		       (make-envelope-p nil))
-  "Generate a rhythm from a note-list specifying time, duration (both in seconds) & amplitude"
-  (let* ((last-note (first (last note-list)))
-	 (rhythm-length (ceiling (* (+ (first last-note) (second last-note)) sample-rate)))
-	 (time-signal (make-double-array rhythm-length)))
-    (loop
-       for (time duration amplitude) in note-list
-       for onset-time-in-samples = (round (* time sample-rate))
-       for duration-samples = (round (* duration sample-rate))
-       do (if make-envelope-p
-	      (setf (.subarray time-signal (list 0 (list onset-time-in-samples 
-							 (+ onset-time-in-samples duration-samples))))
-		    (make-envelope amplitude :attack attack :release release :sustain (- duration attack release)))
-	      (setf (.aref time-signal onset-time-in-samples) (coerce amplitude 'double-float))))
-    (make-instance 'rhythm
-		   :name name
-		   :description name
-		   :time-signal time-signal
-		   :sample-rate sample-rate)))
-

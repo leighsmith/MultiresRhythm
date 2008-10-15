@@ -139,14 +139,15 @@
   "Writes out the rhythm and the handclaps to a scorefile"
   (let ((filename-to-write (make-pathname :directory directory 
 					  :name (concatenate 'string (name original-rhythm) "_handclap") 
-					  :type "score")))
+					  :type "score"))
+	;; Convert clap-at from samples to seconds.
+	(clapping-rhythm (rhythm-of-onsets "hand clap" (./ clap-at (* (sample-rate original-rhythm) 1d0)))))
     (format t "Writing rhythm ~a and clapping accompaniment to ~a~%" (name original-rhythm) filename-to-write)
     (save-scorefile filename-to-write
-		    (list (nlisp::array-to-list (onsets-in-seconds original-rhythm)) 
-			  (nlisp::array-to-list (./ clap-at (* (sample-rate original-rhythm) 1d0))))
+		    (list (part-from-rhythm original-rhythm :fixed-key-number *low-woodblock*)
+			  (part-from-rhythm clapping-rhythm :fixed-key-number *closed-hi-hat*))
 		    :instrument "midi"
-		    :midi-channel 10
-		    :key-numbers (list *low-woodblock* *closed-hi-hat*)
+		    :midi-channels '(10 10)
 		    :description (format nil "Handclapping to ~a" (name original-rhythm)))))
 
 (defun accompany-rhythm (rhythm &key (directory "/Volumes/iDisk/Research/Data/Handclap Examples"))
