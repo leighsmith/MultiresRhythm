@@ -133,6 +133,7 @@
 ;;; (setf performed-68 (dorys::essen-of-meter "6/8"))
 ;;; (setf expectancy-set (mapcar #'last-expectations (load-essen-rhythms performed-34)))
 ;;; (setf all-expectations (reduce #'append expectancy-set))
+;;; (cl-musickit:play-timed-notes (cl-musickit::note-list-of-part (part-of-melisma-file "/Volumes/iDisk/Research/Data/Temperley/essen-perf/deut0214.notes")))
 
 (defun plot-profile-and-persistency (sample-size number-of-bars meter-name)
   "Display the combined metrical profile and combined ridge persistency measures"

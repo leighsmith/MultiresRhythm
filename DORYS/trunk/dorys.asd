@@ -44,15 +44,19 @@
 	       (:file "EsAC")
 	       (:file "essen-meter-list")
 	       (:file "test-multires-rhythm")
+	       ;; (:file "JMM-diagrams")
+	       ;; (:file "klapuri")
+	       ;; (:file "rhythm-psych-examples") ; Examples from published rhythm psychology literature
 	       (:file "test-anthems" :depends-on ("national anthems"))
 	       (:file "NIPS-examples")
 	       (:file "metrical-expectancy")
 	       (:file "ritard")
-	       (:file "tempo-change")))
+	       (:file "tempo-change")
+	       (:file "test-clapping")))
 
 #|
 
-From the common music version
+From the common music version:
 ;;; TODO - get all CLM output going to separate directory.
 
 ;;; TODO use a common rhythm instrument that can be substituted for
@@ -61,8 +65,6 @@ From the common music version
 ;; Functions for defining accents
 (:file "accentfns")
 
-;; Examples from published rhythm psychology literature
-(:file "rhythm_psych")
 
 ;; Examples of computed rhythms demonstrating various grouping and accenting
 (:file "synthetic_rhythms")
