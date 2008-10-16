@@ -135,6 +135,15 @@
   "Returns a rhythm that accompanies (i.e claps to) the given rhythm"
   (rhythm-of-onsets (name rhythm-to-accompany) (clap-to-rhythm rhythm-to-accompany)))
 
+(defun accompaniment-part-to (part part-name)
+  "Returns a part with accompaniment clapping to the supplied the part"
+  (let* ((rhythm (rhythm-of-part part-name part))
+	 (clap-at (clap-to-rhythm rhythm :tactus-selector #'create-weighted-beat-ridge))
+	 ;; Convert clap-at from samples to seconds.
+	 (clapping-rhythm (rhythm-of-onsets "hand clap" (./ clap-at (* (sample-rate rhythm) 1d0)))))
+    (format t "Clapping at samples: ~a~%" clap-at)
+    (part-from-rhythm clapping-rhythm :fixed-key-number *closed-hi-hat*)))
+
 (defun save-rhythm-and-claps (original-rhythm clap-at &key (directory "/Volumes/iDisk/Research/Data/Handclap Examples"))
   "Writes out the rhythm and the handclaps to a scorefile"
   (let ((filename-to-write (make-pathname :directory directory 
