@@ -41,9 +41,11 @@
 
 ;; TODO Return ((time intensity) (time intensity) ...)
 ;; use constant intensity claps but weight the amplitude for when we mix in Common Music.
-;; TODO add key (event-shift 0.0) to allow clapping ahead or behind the beat by a constant phase shift.
+;; event-shift allows clapping ahead or behind the beat by a constant phase shift.
 (defun clap-to-tactus-phase (original-rhythm rhythm-scaleogram tactus 
-			     &key (start-from-beat 0) (beat-multiple 1))
+			     &key (start-from-beat 0) (beat-multiple 1.0)
+			     ;; TODO what units, phase or time, if time, offset by a relative amount?
+			     (event-shift 0.0)) 
   "Function to compute times to clap and how hard from the extracted tactus.
    Returns a matrix where row 1 is the time to tap at, row 2 is the intensity."
   (let* ((time-frequency-dimensions (.array-dimensions (scaleogram-magnitude rhythm-scaleogram)))
@@ -71,40 +73,48 @@
 	 ;; Note the phase of the oscillating sinusoid at the beat to start tapping from.
 	 (down-beat-sample (onset-time-of-note original-rhythm start-from-beat))
 	 (clap-on-phase-datum (.aref foot-tap-phase down-beat-sample))
+	 ;; TODO add event-shift parameter.
 	 (phases-to-find (if (< beat-multiple 1.0)
 			     ;; Produces 1 / beat-multiple number of extra entries
 			     (nlisp::array-to-list (phase-wrap (.+ clap-on-phase-datum (.rseq 0 (* 2 pi) (1+ (floor 1 beat-multiple))))))
 			     (list clap-on-phase-datum)))
 
-	 ;; identify reoccurrance of the initial clap phase across the translation (time) axis
+	 ;; identify reoccurrance of the initial clap phase across the translation (time) axis.
 	 (phase-occurrances (phase-occurrances phases-to-find foot-tap-phase))
 	 ;; Stops any clapping before the downbeat.
+	 ;; TODO factor following lines into (clap-after phase-occurrances downbeat-sample beat-multiple)
 	 (valid-claps-start (position down-beat-sample (val phase-occurrances) :test #'<=))
 	 (valid-claps (.subarray phase-occurrances (list 0 (list valid-claps-start (1- (.length phase-occurrances))))))
 	 (subdivided-beats (if (<= beat-multiple 1.0)
 			       (.iseq 0 (1- (.length valid-claps)))
 			       (.* (.iseq 0 (1- (floor (.length valid-claps) beat-multiple))) beat-multiple)))
 	 (clap-at (.arefs valid-claps subdivided-beats)))
-    (diag-plot 'tap-phase (plot foot-tap-phase nil))
-    (format t "maximum foot tap phase ~a~%" (.max foot-tap-phase))
+    (diag-plot 'tap-phase 
+      (plot foot-tap-phase nil 
+	    :title (format nil "Foot tap phase of ~a" (name original-rhythm))
+	    :aspect-ratio 0.2))
+    ;; (format t "maximum foot tap phase ~a~%" (.max foot-tap-phase))
     (format t "phase values to search for ~a~%" phases-to-find)
+    ;; (format t "phase occurrances ~a~%" phase-occurrances)
     (format t "Handclapping every ~d beats from beat ~d of original rhythm, sample ~d~%"
 	    beat-multiple start-from-beat down-beat-sample)
     (diag-plot 'claps (plot-claps original-rhythm clap-at foot-tap-phase))
     clap-at))
 
 (defun beat-multiple-for-clapping (tactus vpo sample-rate)
-  "Compute a beat multiple we should clap at, based on the ratio of the chosen tactus beat
+  "Compute an integer beat multiple we should clap at, based on the ratio of the chosen tactus beat
    period to the preferred tempo period"
   (let* ((preferred-beat-period (time-support (preferred-tempo-scale vpo sample-rate) vpo))
 	 ;; TODO using first is a hack, we should be averaging the average-scales, or using median-scale
 	 (tactus-beat-period (time-support (average-scale (first tactus)) vpo))) 
-    (format t "Preferred clapping beat period ~,3f seconds actual tactus beat period ~,3f seconds, ratio ~,4f~%" 
+    (format t "Preferred clapping beat period ~,3f seconds, actual tactus beat period ~,3f seconds, ratio ~,4f~%" 
 	    (/ preferred-beat-period sample-rate)
 	    (/ tactus-beat-period sample-rate)
 	    (/ preferred-beat-period tactus-beat-period))
     ;; Establish a minimum of 1, since crazy tactus selectors can have round return 0
     ;; which freaks out division...
+    ;; TODO this could be updated to allow divisions below 1, if they are low prime
+    ;; denominators. That is, the log base 2,3,5,7 could be negative.
     (max 1 (round preferred-beat-period tactus-beat-period))))
 
 (defmethod clap-to-rhythm ((performed-rhythm rhythm) &key 
@@ -123,7 +133,7 @@
 	   (clapping-beat-multiple (beat-multiple-for-clapping computed-tactus 
 							       (voices-per-octave scaleogram) 
 							       (sample-rate performed-rhythm))))
-      (format t "Suggested beat multiple ~f~%" clapping-beat-multiple)
+      (format t "Suggested beat multiple for clapping ~f~%" clapping-beat-multiple)
       (format t "Possible metrical divisor ~a~%" (meter-of-analysis-and-tactus rhythm-analysis computed-tactus))
       ;; TODO find-downbeat is inclined to crash horribly because of the comparison - must fix.
       ;; (format t "Found downbeat is ~d~%" (find-downbeat performed-rhythm beat-period :strategy #'is-greater-rhythmic-period))
@@ -142,6 +152,11 @@
 	 ;; Convert clap-at from samples to seconds.
 	 (clapping-rhythm (rhythm-of-onsets "hand clap" (./ clap-at (* (sample-rate rhythm) 1d0)))))
     (format t "Clapping at samples: ~a~%" clap-at)
+    (diag-plot 'ibi-variation
+      ;; TODO would be nice to plot against the rhythm variation, but the number of events differ.
+      (plot (./ (.diff clap-at) (sample-rate rhythm)) nil
+	    :title (format nil "Variation in Inter-Beat Interval for ~a~%" (name rhythm))
+	    :aspect-ratio 0.66))
     (part-from-rhythm clapping-rhythm :fixed-key-number *closed-hi-hat*)))
 
 (defun save-rhythm-and-claps (original-rhythm clap-at &key (directory "/Volumes/iDisk/Research/Data/Handclap Examples"))

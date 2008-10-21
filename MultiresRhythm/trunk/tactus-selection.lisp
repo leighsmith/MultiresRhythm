@@ -255,9 +255,11 @@
   (let* ((chosen-tactus (funcall tactus-selector analysis-rhythm analysis))
 	 (chosen-tactus-list (if (listp chosen-tactus) chosen-tactus (list chosen-tactus))))
     (format t "Chosen tactus ~a using ~a~%" chosen-tactus-list tactus-selector)
-    (diag-plot 'cwt+skeleton
+    (diag-plot 'tactus-ridge 
+      (plot-ridge (first chosen-tactus-list)))
+    (diag-plot 'cwt+skeleton ;; overlay tactus on skeleton.
       (plot-cwt+skeleton-of analysis chosen-tactus-list analysis-rhythm))
-    (diag-plot 'cwt
+    (diag-plot 'cwt ;; overlay tactus on phase image.
       (plot-cwt+ridges (scaleogram analysis) chosen-tactus-list analysis-rhythm
 		       ;; :phase-palette :greyscale
 		       ;; :magnitude-palette :jet

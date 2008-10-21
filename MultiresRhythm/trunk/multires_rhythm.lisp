@@ -48,63 +48,6 @@ otherwise, generates them and writes to disk, and returns a multires-analysis in
   "Returns the duration of the skeleton, which should match the rhythm"
   (duration-in-samples (scaleogram analysis)))
 
-;; Fastest scale for tactus 
-;; (scale-from-period (* 200 0.25) 16)
-;; Slowest scale for tactus
-;; (scale-from-period (* 200 2.0) 16)
-;; Slowest scale "accessible to the senses" (London 2004)
-;; (scale-from-period (* 200 5.0) 16)
-
-(defun preferred-tempo-scale (voices-per-octave rhythm-sample-rate 
-			      ;; Fraisse's "spontaneous tempo" interval in seconds
-			      &key (tempo-salience-peak 0.600))
-  "Determine the scale which Fraisse's spontaneous tempo would occur at.
-This is weighted by absolute constraints, look in the 600ms period range."
-  (let* ((salient-IOI (* rhythm-sample-rate tempo-salience-peak)))
-    ;; Convert salient-IOI into the scale to begin checking.
-    ;; This assumes the highest frequency scale (shortest time support)
-    ;; is index 0, lowest frequency (longest time support) is number-of-scales.
-    (floor (scale-from-period salient-IOI voices-per-octave))))
-
-;;; Scale index 0 is the highest frequency (smallest dilation) scale.
-(defun tempo-salience-weighting-vector (salient-scale number-of-scales &key (voices-per-octave 16)
-					;; Define a doubling in frequency, 1 octave as 1 stddev.
-					(octaves-per-stddev 1.0)
-					(envelope #'gaussian-envelope))
-  "Returns a tempo weighting vector"
-  (format t "tempo-salience-weighting-vector salient scale is ~a~%" salient-scale)
-  (let* ((stddev-span 10.0)) ; Match the mean to a span across -5 < mean < 5 standard deviations.
-    ;; Create a Gaussian envelope spanning the number of scales.
-    (funcall envelope number-of-scales 
-	     :mean (- (/ (* stddev-span salient-scale) number-of-scales) 
-		      (/ stddev-span 2.0))
-	     :stddev (/ (* voices-per-octave stddev-span octaves-per-stddev) number-of-scales)
-	     :scaling 1d0)))
-
-;;; Scale index 0 is the highest frequency (smallest dilation) scale.
-(defun tempo-salience-weighting (salient-scale time-frequency-dimensions &rest tempo-arguments)
-  "Produce a weighting matching the analysis window using tempo preference."
-  (let* ((number-of-scales (first time-frequency-dimensions))
-	 (time-in-samples (second time-frequency-dimensions))
-	 (tempo-weighting-over-time (make-double-array time-frequency-dimensions))
-	 ;; Create a Gaussian envelope spanning the number of scales.
-	 (tempo-scale-weighting (apply #'tempo-salience-weighting-vector salient-scale number-of-scales tempo-arguments)))
-    (dotimes (time time-in-samples)
-      (setf (.subarray tempo-weighting-over-time (list t time))
-	    (.reshape tempo-scale-weighting (list number-of-scales 1))))
-    tempo-weighting-over-time))
-
-;; (plot (tempo-salience-weighting-vector 78 144 :voices-per-octave 16.0) nil :title "Preferred tempo weighting profile" :aspect-ratio 0.66)
-
-;;; Scale index 0 is the highest frequency (smallest dilation) scale.
-;;; this is weighted by the log scale character, rather than symmetrical.
-(defun tempo-salience-weighting-log (salient-scale time-frequency-dimensions &key (voices-per-octave 16))
-  "Produce a weighting matching the analysis window using tempo preference. This weighting
-   is skewed so that the scales higher than the mean are half as likely as scales lower than the mean."
-  (tempo-salience-weighting salient-scale time-frequency-dimensions 
-			    :voices-per-octave voices-per-octave
-			    :envelope #'skewed-gaussian-envelope))
-
 (defun normalise-by-scale (magnitude)
   "Normalise a magnitude finding the maximum scale at each time point.
  We assume values are positive values only"

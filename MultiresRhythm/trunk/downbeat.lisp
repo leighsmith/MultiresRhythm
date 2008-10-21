@@ -221,23 +221,21 @@ start-onset, these measures are in samples"
       (> (- (/ comparison original) minimum-differing-ratio) 0.00001)))
 
 ;;; We skip until we find truly the first longer interval (not equal to beat period) and
-;;; then count back from there, or more logically, not start clapping until after that
-;;; beat. So this is a conservative downbeat finder. The opportune finder uses #'<= and
-;;; accepts the first occurance of the current beat period or longer as the downbeat.
-;;; Alternatively if the longer interval is not within the starting beats, accept the beat
-;;; period as the next best bet. Starting beats need to be defined as a multiple of the
-;;; beat period.
-;;; It is possible for  beat-period-of-rhythm to erroneously produce a beat-period which
-;;; is longer than any interval in the rhythm. This causes find-downbeat to return nil.
+;;; not start clapping until after that interval. So this is a conservative downbeat
+;;; finder. The opportune finder uses #'<= and accepts the first occurance of the current
+;;; beat period or longer as the downbeat.  Alternatively if the longer interval is not
+;;; within the starting beats, accept the beat period as the next best bet. Starting beats
+;;; need to be defined as a multiple of the beat period.  It is possible for
+;;; beat-period-of-rhythm to erroneously produce a beat-period which is longer than any
+;;; interval in the rhythm. This causes find-downbeat to return nil.
 (defmethod find-downbeat ((rhythm-to-analyse rhythm) beat-period &key (strategy #'<))
   "Given the beat period, returns the number of the downbeat, skipping any anacrusis"
   (let* ((iois (rhythm-iois-samples rhythm-to-analyse)) ; Create the time intervals from the rhythm time signal.
 	 ;; Starting from the beginning of the piece, look for the first duration longer than the beat duration.
 	 (first-downbeat-interval (position (round beat-period) (val iois) :test strategy)))
     ;; (format t "~a~%" strategy)
-    (cond (first-downbeat-interval	; if unable to find an interval longer than the beat-period
-	   ;; The beat starting this longer duration is the downbeat.
-	   first-downbeat-interval)
+    (cond (first-downbeat-interval ; if able to find an interval longer than the beat-period
+	   first-downbeat-interval) ; The onset starting this longer duration is the downbeat event.
 	  (t (format t "Unable to find an interval longer than beat period in IOIs ~a~%" iois)
 	     (find-downbeat rhythm-to-analyse (/ beat-period 2d0) :strategy strategy))))) ; use half the beat period.
 

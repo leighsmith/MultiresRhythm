@@ -407,7 +407,9 @@
 (defmethod plot-ridge (ridge-to-plot)
   (let* ((start (start-sample ridge-to-plot))
 	 (time (.iseq start (+ start (duration-in-samples ridge-to-plot) -1))))
-    (plot (scales-as-array ridge-to-plot) time :aspect-ratio 0.15)))
+    (plot (scales-as-array ridge-to-plot) time 
+	  :aspect-ratio 0.15 
+	  :title (format nil "Ridge of ~a" ridge-to-plot))))
 
 (defmethod plot-phase ((the-ridge ridge) phase)
   (plot (phase-of the-ridge phase) (.iseq (start-sample the-ridge) (last-sample the-ridge))
