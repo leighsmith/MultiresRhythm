@@ -22,11 +22,6 @@
 (in-package :multires-rhythm)
 (use-package :nlisp)
 
-;; To get anthems with an anacrusis:
-;; (remove-if #'zerop *national-anthems* :key #'anthem-start-at)
-;; How many rhythms have an anacrusis?
-;; (/ (length (remove-if #'zerop *national-anthems* :key #'anthem-start-at)) (length *national-anthems*)))
-
 (defun plot-anacrusis-profiles (rhythm first-notes)
   "Plots the profiles of the first first-notes number of notes in the rhythm"
   ;; retrieve the first set of onset times of the anacrusis.
@@ -35,8 +30,6 @@
 	(scaleogram (scaleogram-of-rhythm rhythm)))
     (format t "times-in-samples ~a~%" times-in-samples)
     (plot-scale-energy-at-times scaleogram times-in-samples :description (name rhythm))))
-
-;; (plot-anacrusis-profiles (anthem-rhythm (anthem-named 'netherlands)) (downbeat-number (anthem-named 'netherlands))
 
 (defun ridge-ratios-at-time (ridges datum-ridge note-time &key (voices-per-octave 16))
   "Return the ratios of ridges to some datum ridge at each given time point"
@@ -77,8 +70,6 @@ start-onset, these measures are in samples"
   (let ((silence-padded-rhythm (long-silence-dyadic-pad (time-signal analysis-rhythm))))
     (cwt silence-padded-rhythm voices-per-octave)))
 
-;; (setf rhythm (anthem-rhythm (anthem-named 'america)))
-;; (setf rhythm (anthem-rhythm (anthem-named 'australia)))
 ;; (setf scaleogram (scaleogram-of-rhythm-silence rhythm))
 ;; (plot-cwt scaleogram)
 ;; (multiple-value-setq (skeleton ridge-peaks) (skeleton-of-scaleogram scaleogram (sample-rate rhythm)))
@@ -249,8 +240,36 @@ start-onset, these measures are in samples"
 ;;; period out of phase, accept the longest period as the more likely.
 
 
-;;; TODO Alternatives include a purely rule based approach over a maximum number of
+
+
+;; TODO
+;; Incorporate an absolute tempo component from London, Cross & Himberg (2006)
+;; "Relatively long and/or final elements in a series of tones are perceived as accented (Povel and Ok- 
+;; kerman 1981; Jones 1987; Johnson-Laird 1991, Drake and Palmer 1993)." London, Cross &
+;; Himberg (2006)
+
+;;; Alternative of a purely rule based approach over a maximum number of
 ;;; events: 5 or 6. i.e use a simplified version of LH82 for disambiguating (parsing) the
 ;;; first short number of beats. Purely assess it's ability to determine the downbeat, not
 ;;; necessarily the rest of the rhythm. So use intervals together with the maximum length
 ;;; of the repetition.
+;;;
+;;; There are two situations, we have a singularly perceptually longer interval (i.e. markedly longer)
+;;; than other events in the initial sequence, or we have intervals which are non-unique,
+;;; i.e other intervals of similar length reoccur in the initial sequence.
+(defmethod find-downbeat-new ((rhythm-to-analyse rhythm) beat-period &key 
+			      (maximum-window 3.0d0) (outlier-threshold 0.5d0))
+  "Given the beat period, returns the number of the downbeat, skipping any anacrusis"
+  (let* ((maximum-window-samples (round (* maximum-window (sample-rate rhythm-to-analyse))))
+	 (initial-iois (.* (rhythm-iois-samples (limit-rhythm rhythm-to-analyse :maximum-samples maximum-window-samples)) 1d0))
+	 (average-ioi (mean initial-iois))
+	 (interval-deviations (.- initial-iois average-ioi))
+	 ;; The onset starting the first relatively long duration is the downbeat event.
+	 (downbeat-event (position (* (stddev initial-iois) outlier-threshold) (val interval-deviations) :test #'<)))
+    (format t "initial iois ~a~%interval differences ~a~%average ioi ~a stddev ~a~%"
+	    initial-iois interval-deviations average-ioi (stddev initial-iois))
+    (if downbeat-event ; The maximum-ioi is perceptually significant.
+	downbeat-event
+	nil))) ; TODO this ensures only the downbeat is tested.
+	;; The iois are perceptually similar to earlier initial intervals.
+	;; (find-downbeat rhythm-to-analyse beat-period :strategy #'is-greater-rhythmic-period))))
