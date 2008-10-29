@@ -1,4 +1,23 @@
-;;; LMS
+;;;; -*- Lisp -*-
+;;;;
+;;;; $Id$
+;;;;
+;;;; Functions for testing using National Anthem data-base.
+;;;;
+;;;; In nlisp (Matlab-like Common Lisp library www.nlisp.info)
+;;;;
+;;;; By Leigh M. Smith <lsmith@science.uva.nl> 
+;;;;
+;;;; Copyright (c) 2006
+;;;;
+;;;; See 
+;;;;   author =  {Leigh M. Smith},
+;;;;   title =   {A Multiresolution Time-Frequency Analysis and Interpretation of Musical Rhythm},
+;;;;   school =  {Department of Computer Science, University of Western Australia},
+;;;;   year =    1999,
+;;;;   month =   {June},
+;;;;   annote =  {\url{http://www.leighsmith.com/Research/Papers/MultiresRhythm.pdf}}
+;;;;
 
 (in-package :dorys)
 (use-package :shoe)
@@ -14,7 +33,7 @@
   ;; (format t "pattern ~a t1 ~a beat ~a~%" pattern t1 beat)
   ;; (format t "normalized pattern ~a~%" (normalize pattern :sequential-ratio))
   ;; TODO should test that the name of the country matches.
-  (not (null (correct-tree-beat? *anthem-tree* (or pattern '(1)) (mod t1 beat) beat 
+  (not (null (shoe::correct-tree-beat? *anthem-tree* (or pattern '(1)) (mod t1 beat) beat 
 				 allow-multiples allow-sub-beats))))
 
 ;;; TODO used-part-of-pattern

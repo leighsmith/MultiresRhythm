@@ -101,3 +101,22 @@
 ;; (clap-to-ritard (rhythm-with-ritard 3.4 0.43 :tempo 120))
 
 
+;;; Verify the expectations using ritards.
+;;; Generate a ritard, remove the last onset, generate an expectation and see how close it
+;;; predicts the actual onset. Maybe too wide a range of acceptable rhythms to properly evaluate.
+(defun expect-ritards (iois curvature final-tempo-ratio global-tempo)
+  (let* ((ritarding-onsets (ritard-iois iois curvature final-tempo-ratio global-tempo))
+	 ;; Use all but the last onset.
+	 (incomplete-onsets (.subarray ritarding-onsets (list 0 (list 0 (1- (length iois))))))
+	 (incomplete-ritard (multires-rhythm::rhythm-of-onsets "incomplete-ritard" incomplete-onsets))
+	 (complete-ritard (multires-rhythm::rhythm-of-onsets "complete-ritard" ritarding-onsets))
+	 (ritard-expectations (multires-rhythm::last-expectations incomplete-ritard)))
+    (multires-rhythm::save-rhythm complete-ritard)
+    (format t "Ritarding onsets ~a~%samples ~a~%" ritarding-onsets (multires-rhythm::onsets-in-samples complete-ritard))
+    (multires-rhythm::plot-expectations+rhythm complete-ritard ritard-expectations)))
+
+
+;; (setf a (analysis-of-rhythm ritarding-rhythm :padding #'multires-rhythm::causal-pad))
+
+;; (expect-ritards '(1 1 1 1 1 1 1 1 1) 2 0.6 120)
+;; (expect-ritards '(1 1 1 1 1 1 1 1 1) 3 0.5 120)

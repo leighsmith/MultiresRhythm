@@ -93,48 +93,6 @@
 
 ;; (plot-expectancies all-expectations (format nil "Expectation Confidences for ~a examples of ~a bars of ~a meter"  sample-size number-of-bars candidate-meter))
 
-;; Read Temperley's Melisma "notefiles". These are described as:
-;;  in "notelist" format, "Note [ontime] [offtime] [pitch]", where ontime and offtime
-;; are in milliseconds and pitch is an integer, middle C = 60.
-;; There are however, other lines in the file, which need pruning.
-(defun part-of-melisma-file (filepath)
-  "Reads the data file, creates a note-list"
-  (with-open-file (input-stream filepath)
-    (loop
-       for note-type = (read input-stream nil)
-       while note-type
-       if (string-equal note-type "Note")
-       collect
-	 (let ((on-time (read input-stream))
-	       (off-time (read input-stream))
-	       (midi-note (read input-stream)))
-	   ;; (format t "~a, ~a, ~a, ~a~%" note-type on-time off-time midi-note)
-	   (list (/ on-time 1000.0d0) (/ (- off-time on-time) 1000.0d0) 1.0 midi-note))
-       else
-       do (read-line input-stream nil))))
-
-(defun rhythm-of-melisma-file (filepath)
-  "Returns a rhythm object from the melisma file"
-  (let ((melisma-note-list (part-of-melisma-file filepath)))
-    (multires-rhythm::rhythm-of-part (pathname-name filepath) melisma-note-list)))
-
-(defun load-essen-rhythms (essen-scores)
-  "Reads in the files from the score descriptions passed in, returns a list of rhythm instances."
-  (loop 
-     for (filename m meter d description) in essen-scores
-     for filepath = (make-pathname :directory "/Volumes/iDisk/Research/Data/Temperley/essen-perf" 
-				   :name filename 
-				   :type "notes")
-     collect (rhythm-of-melisma-file filepath)))
-
-;;; (setf rs (load-essen-rhythms (subseq dorys::*essen-perf-meters* 0 5)))
-;;; (setf performed-44 (dorys::essen-of-meter "4/4"))
-;;; (setf performed-34 (dorys::essen-of-meter "3/4"))
-;;; (setf performed-68 (dorys::essen-of-meter "6/8"))
-;;; (setf expectancy-set (mapcar #'last-expectations (load-essen-rhythms performed-34)))
-;;; (setf all-expectations (reduce #'append expectancy-set))
-;;; (cl-musickit:play-timed-notes (cl-musickit::note-list-of-part (part-of-melisma-file "/Volumes/iDisk/Research/Data/Temperley/essen-perf/deut0214.notes")))
-
 (defun plot-profile-and-persistency (sample-size number-of-bars meter-name)
   "Display the combined metrical profile and combined ridge persistency measures"
   (let ((meter (meter-for-name meter-name)))
@@ -173,10 +131,6 @@
 				      number-of-bars 
 				      (format nil "~a (RP)" description)
 				      :expectation-generator #'multires-rhythm::expectancies-of-rhythm-ridge-persistency)))))
-
-(defun time-limited-rhythm-named (name &key (sample-rate 200))
-  (mapcar (lambda (x) (limit-rhythm x :maximum-samples (* 15 sample-rate)))
-	  (load-essen-rhythms (list (essen-named name)))))
 
 (defun time-limited-rhythms-of-meter (meter &key (sample-rate 200))
       (mapcar (lambda (x) (multires-rhythm::limit-rhythm x :maximum-samples (* 15 sample-rate)))

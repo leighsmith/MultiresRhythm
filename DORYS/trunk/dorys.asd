@@ -38,16 +38,17 @@
   :author "Leigh M. Smith"
   :license "Copyright (c) 2005-2008"
   :depends-on (:multiresrhythm :shoe :nlisp)
-  :components ((:file "national anthems")
-	       (:file "anthem-accessors" :depends-on ("national anthems"))
+  :components ((:file "evaluation")
+	       (:file "national anthems")
+	       (:file "anthem-accessors" :depends-on ("national anthems" "evaluation"))
 	       (:file "anthem-evaluation" :depends-on ("anthem-accessors"))
 	       (:file "EsAC")
 	       (:file "essen-meter-list")
 	       (:file "test-multires-rhythm")
 	       ;; (:file "JMM-diagrams")
-	       ;; (:file "klapuri")
+	       (:file "klapuri")
 	       ;; (:file "rhythm-psych-examples") ; Examples from published rhythm psychology literature
-	       (:file "test-anthems" :depends-on ("national anthems"))
+	       (:file "test-anthems" :depends-on ("national anthems" "anthem-evaluation"))
 	       (:file "NIPS-examples")
 	       (:file "metrical-expectancy")
 	       (:file "ritard")

@@ -52,7 +52,7 @@
   (anthem-interval-scale anthem voices-per-octave (anthem-bar-duration anthem)))
 
 (defun beat-scale (anthem voices-per-octave)
-  (anthem-interval-scale anthem voices-per-octave (anthem-beat-duration anthem)))
+  (anthem-interval-scale anthem voices-per-octave (dorys::anthem-beat-duration anthem)))
 
 (defun canonical-bar-ridge (anthem rhythm-scaleogram)
   (make-monotone-ridge (round (bar-scale anthem (voices-per-octave rhythm-scaleogram)))
@@ -97,10 +97,11 @@
   "Return the sample times of notes of the anacrusis, prior to the downbeat"
   (let ((anacrusis-duration (anthem-anacrusis-duration anthem)))
     (if (zerop anacrusis-duration)
-	(make-fixnum-array '(0))
-	(onsets-in-samples (subset-of-rhythm (anthem-rhythm anthem)
-					     (list t (1- (* anacrusis-duration
-							    (anthem-minimum-duration anthem)))))))))
+	(make-integer-array '(0))
+	(multires-rhythm::onsets-in-samples 
+	 (multires-rhythm::subset-of-rhythm (anthem-rhythm anthem)
+					    (list t (1- (* anacrusis-duration
+							   (anthem-minimum-duration anthem)))))))))
 
 (defun anacrusis-count (anthem)
   "Return the number of notes of the anacrusis, prior to the downbeat"
@@ -180,7 +181,7 @@
 ;; This is the "right" way to do this, but it requires reading the entire analysis file.
 (defun skeleton-of-anthem (anthem &key (voices-per-octave 16) (anthem-path *anthem-analysis-path*))
   "Returns the skeleton of the given anthem."
-  (format t "Reading ~a~%" (dorys:anthem-name anthem))
+  (format t "Reading ~a~%" (anthem-name anthem))
   (let* ((anthem-rhythm (anthem-rhythm anthem))
 	 (analysis (analysis-of-rhythm-cached anthem-rhythm 
 					      :voices-per-octave voices-per-octave 
@@ -188,13 +189,14 @@
     (skeleton analysis)))
 |#
 
+;;; Should rename this as skeleton-of-rhythm-cached
 (defun skeleton-of-anthem (anthem &key (voices-per-octave 16) (anthem-path *anthem-analysis-path*))
   "Returns the skeleton of the given anthem. We do this by reading the skeleton file only,
 since it's small and fast to read rather than the entire analysis files."
-  (format t "Reading ~a~%" (dorys:anthem-name anthem))
+  (format t "Reading ~a~%" (anthem-name anthem))
   (let* ((anthem-rhythm (anthem-rhythm anthem))
-	 (skeleton-pathname (make-pathname :directory anthem-path :name (name anthem-rhythm) :type "skeleton")))
-    (read-skeleton-from skeleton-pathname)))
+	 (skeleton-pathname (make-pathname :directory anthem-path :name (multires-rhythm::name anthem-rhythm) :type "skeleton")))
+    (multires-rhythm::read-skeleton-from skeleton-pathname)))
 
 (defun ridge-persistency-of-anthem (anthem &key (anthem-path *anthem-analysis-path*))
   (ridge-persistency-of (skeleton-of-anthem anthem :anthem-path anthem-path)))
@@ -439,10 +441,10 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 	  :aspect-ratio 0.66
 	  :reset nil)))
 
-;; (plot-ridge-persistency-for-anthems (dorys:anthems-of-meter "4/4") "in 4/4 Meter")
-;; (plot-ridge-persistency-for-anthems (dorys:anthems-of-meter "3/4") "in 3/4 Meter")
-;; (plot-ridge-persistency-for-anthems (dorys:anthems-of-meter "2/4") "in 2/4 Meter")
-;; (plot-ridge-persistency-for-anthems (dorys:anthems-of-meter "2/2") "in 2/2 Meter")
+;; (plot-ridge-persistency-for-anthems (anthems-of-meter "4/4") "in 4/4 Meter")
+;; (plot-ridge-persistency-for-anthems (anthems-of-meter "3/4") "in 3/4 Meter")
+;; (plot-ridge-persistency-for-anthems (anthems-of-meter "2/4") "in 2/4 Meter")
+;; (plot-ridge-persistency-for-anthems (anthems-of-meter "2/2") "in 2/2 Meter")
 
 (defun plot-histogram-of-anthems (anthems description &key (crochet-duration 100) (vpo 16))
   "Plots a comparison between the histogram of intervals and the multiresolution ridge presence"
@@ -471,14 +473,14 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 	   :reset nil
 	   :aspect-ratio 0.66)))
 
-;; (plot-histogram-of-anthems (dorys:anthems-of-meter "4/4") "in 4/4 Meter")
-;; (plot-histogram-of-anthems (dorys:anthems-of-meter "3/4") "in 3/4 Meter")
-;; (plot-histogram-of-anthems (dorys:anthems-of-meter "2/4") "in 2/4 Meter")
-;; (plot-histogram-of-anthems (dorys:anthems-of-meter "2/2") "in 2/2 Meter")
+;; (plot-histogram-of-anthems (anthems-of-meter "4/4") "in 4/4 Meter")
+;; (plot-histogram-of-anthems (anthems-of-meter "3/4") "in 3/4 Meter")
+;; (plot-histogram-of-anthems (anthems-of-meter "2/4") "in 2/4 Meter")
+;; (plot-histogram-of-anthems (anthems-of-meter "2/2") "in 2/2 Meter")
 
 ;; To scale the histogram to match the 
-;; (setf arp (average-ridge-persistency-of-anthems (dorys:anthems-of-meter "2/2")))
-;; (setf h (scale-histogram-of-anthems (dorys:anthems-of-meter "2/2")))
+;; (setf arp (average-ridge-persistency-of-anthems (anthems-of-meter "2/2")))
+;; (setf h (scale-histogram-of-anthems (anthems-of-meter "2/2")))
 ;; (setf scaling (/ (.max arp) (.max h)))
 
 (defun plot-ridge-persistency-for-anthem (anthem &key (voices-per-octave 16) (anthem-path *anthem-analysis-path*))
@@ -618,7 +620,7 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 ;; (evaluate-beat-period-of-anthem (anthem-named 'australia) :anthem-path "/Users/leigh/Data/ShortAnthems")
 
 ;;; TODO Probably could tune (skew) the tempo weighting envelope.
-;;; (setf bad-beat-periods (dorys:evaluation-of-anthems #'evaluate-beat-period-of-anthem))
+;;; (setf bad-beat-periods (evaluation-of-anthems #'evaluate-beat-period-of-anthem))
 ;;; #<FUNCTION EVALUATE-BEAT-PERIOD-OF-ANTHEM> 12 failed, correct 88.57143%
 ;;;
 ;;; However many anthems which are not correct are producing beat estimates which are half the length.
@@ -665,48 +667,78 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 ;;; (setf bad-downbeats (evaluation-of-anthems #'evaluate-downbeat-of-anthem-old))
 ;;; #<FUNCTION EVALUATE-DOWNBEAT-OF-ANTHEM-OLD> 32 failed, correct 69.52381%
 
+(defun evaluate-downbeat-of-anthem-recent (anthem)
+  "Returns T if the downbeat chosen aligns on a measure boundary with the official downbeat"
+  (let* ((vpo 16)			; should be determined from scaleogram.
+	 (pattern (second anthem))
+	 (official-downbeat (anthem-anacrusis-duration anthem))
+	 (official-bar-duration (anthem-bar-duration anthem)) ; in anthem rhythmic units
+	 (official-beat-period (time-support (beat-scale anthem vpo) vpo)) ; in samples.
+	 ;; official-beat-period & beat-period's contribution are the same in this case.
+	 (rhythm (anthem-rhythm anthem))
+	 (beat-period (multires-rhythm::beat-period-of-rhythm rhythm (skeleton-of-anthem anthem)))
+	 (found-downbeat-number (multires-rhythm::find-downbeat rhythm beat-period :strategy #'multires-rhythm::is-greater-rhythmic-period))
+	 (found-anacrusis-duration (reduce #'+ (subseq (second anthem) 0 found-downbeat-number))))
+    (format t "official downbeat ~a found downbeat ~a~%" official-downbeat found-anacrusis-duration)
+    (format t "official beat period ~a computed beat period ~a~%" official-beat-period beat-period)
+    (format t "Strictly matches ~a~%" (= found-anacrusis-duration (anthem-anacrusis-duration anthem)))
+    (if (not found-downbeat-number)
+	(format t "Early exit, found downbeat is nil, couldn't find beat period~%")
+	(correct-from-anthem-tree pattern found-anacrusis-duration official-bar-duration))))
+
+#|
+(defun evaluate-downbeat-of-rhythm (rhythm pattern beat-period bar-period official-downbeat-duration)
+  "Compares the found downbeat against the ground truth value"
+;;  (let* ((found-downbeat-number (multires-rhythm::find-downbeat rhythm beat-period :strategy #'multires-rhythm::is-greater-rhythmic-period))
+  (let* ((found-downbeat-number (multires-rhythm::find-downbeat-new rhythm beat-period))
+	 (found-anacrusis-duration (reduce #'+ (subseq pattern 0 found-downbeat-number)))
+	 (minimum-anacrusis-duration (mod found-anacrusis-duration bar-period)))
+    (format t "Official downbeat duration ~a, found downbeat at event #~a, duration of anacrusis ~a~%"
+	    official-downbeat-duration found-downbeat-number found-anacrusis-duration)
+    (if (not found-downbeat-number)
+	(progn (format t "Early exit, found downbeat is nil, couldn't find beat period~%") nil)
+	(= minimum-anacrusis-duration official-downbeat-duration))))
+|#
+
+(defun evaluate-downbeat-of-rhythm (rhythm pattern beat-period bar-period official-downbeat-duration)
+  "Compares the found downbeat against the ground truth value"
+;;  (let* ((found-downbeat-number (multires-rhythm::find-downbeat-new rhythm beat-period))
+  (let* ((found-downbeat-number (multires-rhythm::find-downbeat-scores rhythm beat-period))
+	 (found-anacrusis-duration (reduce #'+ (subseq pattern 0 found-downbeat-number))))
+    (format t "Official downbeat duration ~a, found downbeat at event #~a, duration of anacrusis ~a~%"
+	    official-downbeat-duration found-downbeat-number found-anacrusis-duration)
+    (if (not found-downbeat-number)
+	(progn (format t "Early exit, found downbeat is nil, couldn't find beat period~%") nil)
+	(= found-anacrusis-duration official-downbeat-duration))))
+
 (defun evaluate-downbeat-of-anthem (anthem)
   "Returns T if the downbeat chosen aligns on a measure boundary with the official downbeat"
   (let* ((vpo 16)			; should be determined from scaleogram.
 	 (pattern (second anthem))
-	 (official-downbeat (dorys:anthem-anacrusis-duration anthem))
+	 (official-downbeat (anthem-anacrusis-duration anthem))
 	 (official-bar-duration (anthem-bar-duration anthem)) ; in anthem rhythmic units
 	 (official-beat-period (time-support (beat-scale anthem vpo) vpo)) ; in samples.
+	 (rhythm (anthem-rhythm anthem))
 	 ;; official-beat-period & beat-period's contribution are the same in this case.
-	 (beat-period (beat-period-of-rhythm (anthem-rhythm anthem) (skeleton-of-anthem anthem)))
-	 (found-downbeat-number (find-downbeat (anthem-rhythm anthem)
-					       beat-period 
-					       :strategy #'is-greater-rhythmic-period))
-	 (found-anacrusis-duration (reduce #'+ (subseq (second anthem) 0 found-downbeat-number))))
-    (format t "official downbeat ~a found downbeat ~a~%" official-downbeat found-anacrusis-duration)
+	 (beat-period (multires-rhythm::beat-period-of-rhythm rhythm (skeleton-of-anthem anthem)))
+	 (matched (evaluate-downbeat-of-rhythm rhythm pattern official-beat-period official-bar-duration official-downbeat)))
     (format t "official beat period ~a computed beat period ~a~%" official-beat-period beat-period)
-    (format t "Strictly matches ~a~%" (= found-anacrusis-duration (dorys:anthem-anacrusis-duration anthem)))
-    (if (not found-downbeat-number)
-	(format t "Early exit, found downbeat is nil, couldn't find beat period~%")
-	(shoe::correct-from-anthem-tree pattern found-anacrusis-duration official-bar-duration))))
+    (format t "Strictly matches ~a~%" matched)
+    matched))
 
-;;; (setf bad-downbeats (evaluation-of-anthems #'evaluate-downbeat-of-anthem))
+;; To get anthems with an anacrusis:
+;; (setf anthems-with-anacrusis (remove-if #'zerop *national-anthems* :key #'anthem-start-at))
+;; How many rhythms have an anacrusis?
+;; (/ (length (remove-if #'zerop *national-anthems* :key #'anthem-start-at)) (length *national-anthems*)))
+
+;; (plot-anacrusis-profiles (anthem-rhythm (anthem-named 'netherlands)) (downbeat-number (anthem-named 'netherlands))
+
+
+;;; (setf bad-downbeats (evaluation-of-anthems #'evaluate-downbeat-of-anthem-recent))
 ;;; #<FUNCTION EVALUATE-DOWNBEAT-OF-ANTHEM> 28 failed, correct 73.333336%
 
-(defun scales-in-tactus (tactus-list)
-   "Returns every scale that the ridge extraction reveals"
-   ;; if it's just a single ridge, make it a list.
-   (if (not (listp tactus-list)) (setf tactus-list (list tactus-list)))	
-   (remove-duplicates (loop for ridge in tactus-list append (nlisp::cars (scales-in-ridge ridge)))))
+;;; (setf bad-downbeats (evaluation-of-anthems #'evaluate-downbeat-of-anthem))
 
-(defun average-scale-in-tactus (tactus-list)
-  "Returns the average of the average scale for each ridge"
-  (coerce (/ (reduce #'+ (mapcar (lambda (ridge) (.sum (scales-as-array ridge))) tactus-list))
-	     (reduce #'+ (mapcar #'duration-in-samples tactus-list))) 'double-float))
-
-;;; TODO or the range, or just those unique values over the ridge?
-(defun modal-scale-in-tactus (tactus-list)
- "Returns the statistical mode of the scales"
- (let* ((scales-and-counts (scales-in-ridge tactus-list))
-	(scale-counts (mapcar #'second scales-and-counts))
-	(maximum-count (apply #'max scale-counts))
-	(which-maximum (position maximum-count scales-and-counts :key #'second)))
-   (first (nth which-maximum scales-and-counts))))
 
 ;;; Perhaps split into bar-period-of-rhythm and downbeat-of-rhythm?
 (defun bar-period-and-phase-of-rhythm (performed-rhythm &key (tactus-selector #'select-longest-lowest-tactus))
@@ -720,9 +752,9 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 	 ;; Return which beat is the downbeat.
 	 (found-downbeat (find-downbeat performed-rhythm beat-period :strategy #'is-greater-rhythmic-period))
 	 ;; Compare the average against the actual scales.
-	 ;; (tactus-scales (make-narray (scales-in-tactus tactus-list)))
-	 ;; (tactus-scales (average-scale-in-tactus tactus-list))
-	 (tactus-scales (modal-scale-in-tactus (first tactus-list))) ;; TODO kludged as first.
+	 ;; (tactus-scales (make-narray (scales-in-ridges tactus-list)))
+	 ;; (tactus-scales (average-scale-in-ridges tactus-list))
+	 (tactus-scales (modal-scale-in-ridges (first tactus-list))) ;; TODO kludged as first.
 	 (likely-bar-periods (.* (time-support tactus-scales vpo) meter-factor)))
     (format t "range of scales ~a periods (samples) ~a meter factor ~a~%"
 	    tactus-scales likely-bar-periods meter-factor)
@@ -738,13 +770,13 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
     (let* ((pattern (second anthem))
 	   (official-bar-period (anthem-bar-duration anthem))
 	   ;; official-downbeat is interval from first note to downbeat.
-	   (official-downbeat (dorys:anthem-anacrusis-duration anthem)) 
+	   (official-downbeat (anthem-anacrusis-duration anthem)) 
 	   (minimum-interval-in-samples (anthem-minimum-duration anthem))
 	   (bar-period-in-note-units (.round (./ bar-period-candidates minimum-interval-in-samples)))
 	   (downbeat-in-note-units (floor downbeat minimum-interval-in-samples)))
     (format t "official anacrusis duration ~a official bar period ~a~%" official-downbeat official-bar-period)
     (format t "computed anacrusis duration ~a computed bar period ~a~%" downbeat-in-note-units bar-period-in-note-units)
-    (shoe::correct-from-anthem-tree pattern downbeat-in-note-units bar-period-in-note-units))))
+    (correct-from-anthem-tree pattern downbeat-in-note-units bar-period-in-note-units))))
 
 ;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'australia))
 ;; (evaluate-mrr-with-tree-on-anthem (anthem-named 'america))
@@ -773,7 +805,7 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 	 (tactus-list (if (not (listp computed-tactus)) (list computed-tactus) computed-tactus))
 	 (meter-factor (meter-division rhythm-analysis tactus-list))
 	 (official-meter-signature (second (first anthem)))
-	 (official-meter-numerator (dorys:meter-numerator official-meter-signature)))
+	 (official-meter-numerator (meter-numerator official-meter-signature)))
     (format t "official meter ~a official meter numerator ~a computed meter factor ~a~%" 
 	    official-meter-signature official-meter-numerator meter-factor)
     (zerop (mod official-meter-numerator meter-factor))))
@@ -826,11 +858,13 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 ;; (metrical-profile-of-anthem (anthem-named 'america) '(3 2 2))
 
 ;;; Compare frequency of intervals against the generated versions.
-;; (dorys:get-histogram (interval-histogram (list (second (anthem-named 'america)))))
+;; (multires-rhythm::get-histogram (interval-histogram (list (second (anthem-named 'america)))))
 
 ;;; Most anthems don't demonstrate a canonical metrical profile, often lacking any beats
 ;;; falling on minor metrical positions.
 ;; (plot-ridge-persistency (average-ridge-persistency waltz-anthem-rhythms)
 ;;			(scaleogram-of-rhythm (first waltz-anthem-rhythms))
 ;;			"Average ridge persistency of waltz anthem rhythms")
+
+;; (print-elements-and-counts (make-histogram (second (anthem-named 'america))))
 

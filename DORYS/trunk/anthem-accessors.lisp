@@ -30,14 +30,14 @@
 (defun anthem-named (anthem-symbol)
   (find anthem-symbol *national-anthems* :key #'caar :test #'eq))
 
-(defmacro anthem-name (anthem)
-  `(first (anthem-description ,anthem)))
+(defun anthem-name (anthem)
+  (first (anthem-description anthem)))
 
-(defmacro anthem-bar-duration (anthem)
-  `(seventh (anthem-description ,anthem)))
+(defun anthem-bar-duration (anthem)
+  (seventh (anthem-description anthem)))
 
-(defmacro anthem-beat-duration (anthem)
-  `(fifth (anthem-description ,anthem)))
+(defun anthem-beat-duration (anthem)
+  (fifth (anthem-description anthem)))
 
 (defmacro meter-signature (anthem)
   `(second (anthem-description ,anthem)))
@@ -103,18 +103,8 @@
 
 ;; (/ (count-if #'numberp (bar-period-in-anthem-intervals)) (float (length *national-anthems*)))
 
+;;; Could be a macro.
 (defun evaluation-of-anthems (evaluation-function &key (anthems *national-anthems*))
   "Applies the evaluation function to each anthem in turn, returning those that fail and
 printing the proportion that pass."
-  (let* ((failing-anthems (loop
-			    for anthem in anthems
-			    do (format t "Evaluating ~a~%" (anthem-name anthem))
-			    when (not (print (funcall evaluation-function anthem)))
-			    collect anthem))
-	 (number-failed (length failing-anthems)))
-    (format t "~a ~d failed, correct ~f%~%" 
-	    evaluation-function 
-	    number-failed
-	    (* (- 1.0 (/ (float number-failed) (length anthems))) 100.0))
-    failing-anthems))
-
+  (evaluate-with-music evaluation-function :music-dataset anthems :music-name #'anthem-name))

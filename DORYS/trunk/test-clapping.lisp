@@ -44,6 +44,15 @@
 		       :description (format nil "Handclapping to ~a" filename))))
 
 ;;; (setf performed-rhythms (essen-of-meter "3/4"))
+;;; (setf performed-rhythms (essen-of-meter "4/4"))
+;;; (setf performed-rhythms (list (essen-named "romani09")))
 ;;; (accompany-essen-rhythms performed-rhythms)
 
 
+;; (setf france01 (essen-rhythm "france01"))
+;; (multires-rhythm::find-downbeat-new france01 100)
+
+(defun test-downbeat (essen-score)
+  "Evaluates the downbeat finder against the performed Essen data"
+  (destructuring-bind (filename m meter d description a anacrusis a1 anacrusis-intervals) essen-score
+    (= (multires-rhythm::find-downbeat-new (essen-rhythm filename) 100) anacrusis)))

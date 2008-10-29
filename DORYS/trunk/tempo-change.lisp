@@ -39,6 +39,14 @@
 
 ;; (plot (tempo-change-stimulus ) nil :style "lines linewidth 2")
 
+(defun analyse-tempo-change (tempo acceleration)
+  (let* ((tempo-change-rhythm (multires-rhythm::rhythm-of-onsets 
+			       (format nil "tempo change ~,3f ~,3f" tempo acceleration)
+			       (tempo-change-times tempo acceleration)))
+	 (tempo-analysis (analysis-of-rhythm tempo-change-rhythm)))
+    (plot-rhythm tempo-change-rhythm)
+    (plot-analysis tempo-analysis)
+    tempo-change-rhythm))
 
 ;;; Reproduces Vos, van Assen and Franek (1997)
 (defun create-vos-data ()

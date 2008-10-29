@@ -5,7 +5,7 @@
 ;;;; Diagrams for journal paper
 ;;;;
 
-(in-package :multires-rhythm)
+(in-package :dorys)
 (use-package :nlisp)
 
 (defun journal-diagrams ()
