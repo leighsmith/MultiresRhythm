@@ -240,7 +240,25 @@ start-onset, these measures are in samples"
 ;;; period out of phase, accept the longest period as the more likely.
 
 
+;;; Alternative of a purely rule based approach over a maximum number of
+;;; events: 5 or 6. i.e use a simplified version of LH82 for disambiguating (parsing) the
+;;; first short number of beats. Purely assess it's ability to determine the downbeat, not
+;;; necessarily the rest of the rhythm. So use intervals together with the maximum length
+;;; of the repetition.
+(defmethod find-downbeat-simple ((rhythm-to-analyse rhythm) beat-period &key (maximum-window 6))
+  "Given the beat period, returns the number of the downbeat, skipping any anacrusis"
+  (let* ((iois (rhythm-iois-samples rhythm-to-analyse)) ; Create the time intervals from the rhythm time signal.
+	 (initial-iois (.subseq iois 0 maximum-window))
+	 (maximum-interval (.max initial-iois))
+	 (locations-of-maximum (.find (.= maximum-interval initial-iois)))
+	 (first-downbeat-interval (.aref locations-of-maximum 0)))
+    first-downbeat-interval)) ; The onset starting this longest duration is the downbeat event.
 
+(defmethod find-downbeat-scores ((rhythm-to-analyse rhythm) beat-period &key (maximum-window 6))
+  "Given the beat period, returns the number of the downbeat, skipping any anacrusis"
+  (let* ((iois (rhythm-iois-samples rhythm-to-analyse)) ; Create the time intervals from the rhythm time signal.
+	 (initial-iois (.subseq iois 0 maximum-window)))
+    (position (round beat-period) (val initial-iois) :test #'<=))) ; use the first beat period.
 
 ;; TODO
 ;; Incorporate an absolute tempo component from London, Cross & Himberg (2006)
@@ -257,8 +275,9 @@ start-onset, these measures are in samples"
 ;;; There are two situations, we have a singularly perceptually longer interval (i.e. markedly longer)
 ;;; than other events in the initial sequence, or we have intervals which are non-unique,
 ;;; i.e other intervals of similar length reoccur in the initial sequence.
-(defmethod find-downbeat-new ((rhythm-to-analyse rhythm) beat-period &key 
-			      (maximum-window 3.0d0) (outlier-threshold 0.5d0))
+#|
+(defmethod find-downbeat-short ((rhythm-to-analyse rhythm) beat-period &key 
+			      (maximum-window 2.0d0) (outlier-threshold 0.5d0))
   "Given the beat period, returns the number of the downbeat, skipping any anacrusis"
   (let* ((maximum-window-samples (round (* maximum-window (sample-rate rhythm-to-analyse))))
 	 (initial-iois (.* (rhythm-iois-samples (limit-rhythm rhythm-to-analyse :maximum-samples maximum-window-samples)) 1d0))
@@ -268,8 +287,34 @@ start-onset, these measures are in samples"
 	 (downbeat-event (position (* (stddev initial-iois) outlier-threshold) (val interval-deviations) :test #'<)))
     (format t "initial iois ~a~%interval differences ~a~%average ioi ~a stddev ~a~%"
 	    initial-iois interval-deviations average-ioi (stddev initial-iois))
-    (if downbeat-event ; The maximum-ioi is perceptually significant.
+    (if downbeat-event ; The first long interval is perceptually significant.
 	downbeat-event
-	nil))) ; TODO this ensures only the downbeat is tested.
 	;; The iois are perceptually similar to earlier initial intervals.
 	;; (find-downbeat rhythm-to-analyse beat-period :strategy #'is-greater-rhythmic-period))))
+	0))) ; default to assuming no anacrusis.
+|#
+
+(defun rhythm-categories (iois sample-rate)
+  "Maps from intervals into perceptually distinct interval categories"
+  (declare (ignore sample-rate)) ; TODO should add absolute tempo preference using the sample-rate.
+  (let ((average-ioi (mean iois))
+	(tatum-estimate (.min iois)))
+    (format t "average ioi ~a stddev ~a~%" average-ioi (stddev iois))
+    (.round (./ iois tatum-estimate))))
+
+(defmethod find-downbeat-short ((rhythm-to-analyse rhythm) beat-period &key 
+			      (maximum-window 2.5d0))
+  "Given the beat period, returns the number of the downbeat, skipping any anacrusis"
+  (let* ((maximum-window-samples (round (* maximum-window (sample-rate rhythm-to-analyse))))
+	 (initial-iois (.* (rhythm-iois-samples (limit-rhythm rhythm-to-analyse :maximum-samples maximum-window-samples)) 1d0))
+	 (perceptual-categories (rhythm-categories initial-iois (sample-rate rhythm-to-analyse)))
+	 (maximum-perceived-interval (.max perceptual-categories))
+	 (locations-of-maximum (.find (.= maximum-perceived-interval perceptual-categories)))
+	 ;; The onset starting the first relatively long duration is the downbeat event.
+	 (downbeat-event (.aref locations-of-maximum 0)))
+    (format t "initial iois ~a~%perceptual-categories ~a~%" initial-iois perceptual-categories)
+    (if downbeat-event ; The first long interval is perceptually significant.
+	downbeat-event
+	;; The iois are perceptually similar to earlier initial intervals.
+	;; (find-downbeat rhythm-to-analyse beat-period :strategy #'is-greater-rhythmic-period))))
+	0))) ; default to assuming no anacrusis.
