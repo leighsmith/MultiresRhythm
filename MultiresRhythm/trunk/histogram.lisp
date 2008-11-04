@@ -25,8 +25,6 @@
 (defun print-elements-and-counts (histogram-hash-table)
   (maphash (lambda (key count) (format t "element ~a count ~a~%" key count)) histogram-hash-table))
 
-;; (print-elements-and-counts (make-histogram (second (anthem-named 'america))))
-
 (defun get-histogram (histogram-hash-table)
   "Returns a sorted list of the histogram keys and counts from the hash-table"
   (let ((all-keys '())

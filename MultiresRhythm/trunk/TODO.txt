@@ -9,6 +9,22 @@ Sub-band filter, Rectify, LP smooth, differentiate, half-wave rectify & find the
 the signal region over a moving time limited window (use a DoG?)
 Probably just implement Plymouth's model.
 
+
+** IRCAM's model:
+*** downsample the signal by 4 (assuming 44100hz) down to 11025Hz, do LP filtering, no normalization.
+*** Paulus preprocessing with an energy window size of L_sec = 1023. / 11025.
+Which is just Fenergyfft with:
+double enerL_sec = 0.08;
+double enerSTEP_sec = 0.01; Actually STEP_sec reset to 64/11025
+This calls Fmtlenergyfft and then
+****  normalizes the resulting energy:
+Subtracts the mean of the energy.
+If the stddev of the resulting energy is above "epsilon", divides by the stddev.
+Subtracts the minimum of the energy.
+
+
+
+
 * Perceptual Onsets:
 ** Check unlimited cumulative sum vs. a windowed (leaky) integrating store.
 ** Check use of ridge persistency, instead of just scale persistency.

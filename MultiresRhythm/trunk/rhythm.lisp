@@ -154,7 +154,7 @@
 		 :sample-rate sample-rate))
 
 (defun rhythm-of-onsets (name onsets &key (sample-rate 200))
-  "Given an narray of onsets, creates a rhythm instance"
+  "Given an narray of onsets (in seconds), creates a rhythm instance"
   (make-instance 'rhythm 
 		 :name name
 		 :description name ; TODO transliterate '-' for ' '.

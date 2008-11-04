@@ -55,22 +55,39 @@
        collect (read-from-string (dom:node-value (dom:item (dom:child-nodes marker-node) 0))) into marker-list
        finally (return (make-narray marker-list)))))
 
-;;;; To serialize a DOM document, use a SAX serialization sink as the argument to dom:map-document, which generates SAX events for the DOM tree
+#|
+(defun create-beat-markers-element (document clap-times-in-seconds meter)
+  (let* ((marker-DS (dom:create-element document "markerDS")))
+    (loop
+       for time across (val clap-times-in-seconds)
+       for beat-index = 0 then (1+ beat-index)
+       for marker-node = (dom:create-element document "marker")
+       do
+	 (dom:set-attribute marker-node "id" (format nil "~a" beat-index))
+	 (dom:set-attribute marker-node "num" (format nil "~a" (1+ (mod beat-index meter))))
+	 (dom:append-child marker-node (dom:create-text-node document (format nil "~f" time)))
+	 (dom:append-child marker-DS marker-node))
+    marker-DS))
+
 ;;; Will have to fake out the metrical descriptors.
 (defun create-ircam-beat-marker-document (media-description clap-times-in-seconds)
   (let* ((document (dom:create-document (dom:implementation bpm-doc) nil nil nil))
 	 (beat-description (dom:create-element document "beatdescription"))
 	 (media (dom:create-element document "media"))
-	 (marker-DS (dom:create-element document "markerDS")))
-    (loop
-       for time across (val clap-times-in-seconds)
-       do (dom:create-element document "marker"))
-    (dom:create-attribute document )
+	 (segment (dom:create-element document "segment")))
+    (dom:set-attribute segment "start" "0.0")
+    (dom:set-attribute segment "stop" (format nil "~f" last-time))
+    (dom:append-child segment (create-beat-markers-element document clap-times-in-seconds 4))
+    (dom:append-child media (dom:create-text-node document media-description))
+    (dom:append-child beat-description media)
+    (dom:append-child beat-description segment)
+    (dom:append-child document beat-description)
     document))
 
 (defun write-ircam-beat-marker-stream (stream document)
-  (dom:map-document (cxml:make-octet-stream-sink stream :indentation 2 :canonical nil)
-		    document))
+  ;; To serialize a DOM document, use a SAX serialization sink as the argument to
+  ;; dom:map-document, which generates SAX events for the DOM tree.
+  (dom:map-document (cxml:make-octet-stream-sink stream :indentation 2 :canonical nil) document))
 
 (defun write-ircam-beat-marker-document (filepath document)
   (with-open-file (out filepath :direction :output :element-type '(unsigned-byte 8))
@@ -79,6 +96,7 @@
 (defun write-ircam-beat-marker-document (filepath media-description clap-times-in-seconds)
   (write-ircam-beat-marker-document filepath 
 				    (create-ircam-beat-marker-document media-description clap-times-in-seconds)))
+|#
 
 (defun write-ircam-beat-marker-stream (stream media-description clap-times-in-seconds meter last-time)
   (cxml:with-xml-output (cxml:make-octet-stream-sink stream :indentation 2 :canonical nil)

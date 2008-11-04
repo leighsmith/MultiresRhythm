@@ -99,6 +99,10 @@ Anything clipped will be set to the clamp-low, clamp-high values"
     (setf (.subarray two-column-matrix '(t t)) vector)
     (.column (apply #'extrema-points (.transpose two-column-matrix) arguments) 0)))
 
+;; Compare against:
+;; (defun find-local-maxima (vector) (.+ (.find (.< (.diff (.signum (.diff vector))) 0)) 1))
+;; (local-maxima (make-narray '(2.0 -34.0 9.0 -8.0 15.0 2.0 -1.0)))
+
 (defun cumsum (a)
   "Computes the cumulative summation across each row of the matrix"
   (let* ((array-dimensions (.array-dimensions a))
@@ -146,5 +150,5 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 	  (make-double-array (.length impulse-indices) :initial-element 1d0))))
 
 (defun phase-wrap (phase-value-to-wrap)
-  "Wraps values within a modulo +/- pi (phase system)."
+  "Wraps values within a modulo +/- pi (phase) system."
   (.- (.mod (.+ phase-value-to-wrap pi) (* 2 pi)) pi))

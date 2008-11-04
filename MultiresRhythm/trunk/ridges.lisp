@@ -130,11 +130,20 @@
   "Returns the number of occurances of the given scale in this ridge"
   (count scale (scales the-ridge)))
 
+(defmethod scales-as-array ((the-ridge ridge))
+  "Returns the scales list as an nlisp array"
+  (make-narray (scales the-ridge)))
+
 ;;; duration-in-samples and the number of elements in scales-as-array will match, but we
 ;;; could just do (floor (mean (.* (scales-as-array the-ridge) 1d0)))
 (defmethod average-scale ((the-ridge ridge))
   "Returns the mean (average) of the scale numbers"
   (floor (.sum (scales-as-array the-ridge)) (duration-in-samples the-ridge))) 
+
+(defun average-scale-in-ridges (ridges-list)
+  "Returns the average of the average scale for each ridge"
+  (coerce (/ (reduce #'+ (mapcar (lambda (ridge) (.sum (scales-as-array ridge))) ridges-list))
+	     (reduce #'+ (mapcar #'duration-in-samples ridges-list))) 'double-float))
 
 (defmethod median-scale ((the-ridge ridge))
   "Return the median scale number of the ridge"
@@ -153,6 +162,12 @@
 
 ;; (reduce #'+ (scales-in-ridge ridge) :key #'cadr) == (duration-in-samples ridge)
 
+(defun scales-in-ridges (ridges-list)
+   "Returns every scale that the ridge extraction reveals"
+   ;; if it's just a single ridge, make it a list.
+   (if (not (listp ridges-list)) (setf ridges-list (list ridges-list)))	
+   (remove-duplicates (loop for ridge in ridges-list append (nlisp::cars (scales-in-ridge ridge)))))
+
 (defmethod scales-and-weights-in-ridge ((the-ridge ridge))
   "Returns an narray of the scales the ridge spans and the relative weights of each."
   (let ((ridge-scales-and-counts (scales-in-ridge the-ridge)))
@@ -163,6 +178,14 @@
 ;; (defmethod deviation-from-scale ((the-ridge ridge) scale)
 ;; "Returns the sum-squared deviation of each scale along the ridge from the given scale"
 
+;;; TODO or the range, or just those unique values over the ridge?
+(defun modal-scale-in-ridges (ridges-list)
+ "Returns the statistical mode of the scales"
+ (let* ((scales-and-counts (scales-in-ridge ridges-list))
+	(scale-counts (mapcar #'second scales-and-counts))
+	(maximum-count (apply #'max scale-counts))
+	(which-maximum (position maximum-count scales-and-counts :key #'second)))
+   (first (nth which-maximum scales-and-counts))))
 
 (defmethod .decimate ((the-ridge ridge) reduce-list &key (start-indices '(0 0)))
   "Returns the ridge instance with it's data decimated using the decimation-parameter-list"
@@ -355,10 +378,6 @@
 		 :start-sample start
 		 :scales (make-sequence 'list duration-in-samples :initial-element constant-ridge-scale)
 		 :set-active nil))
-
-(defmethod scales-as-array ((the-ridge ridge))
-  "Returns the scales list as an nlisp array"
-  (make-narray (scales the-ridge)))
 
 (defmethod insert-ridge ((ridge-to-insert ridge) (time-frequency-plane n-double-array)
 			 &key (constant-value 1.0d0)) 

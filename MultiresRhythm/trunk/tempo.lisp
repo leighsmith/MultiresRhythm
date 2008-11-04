@@ -40,7 +40,7 @@ This is weighted by absolute constraints, look in the 600ms period range."
 					(octaves-per-stddev 1.0)
 					(envelope #'gaussian-envelope))
   "Returns a tempo weighting vector"
-  (format t "tempo-salience-weighting-vector salient scale is ~a~%" salient-scale)
+  ;; (format t "tempo-salience-weighting-vector salient scale is ~a~%" salient-scale)
   (let* ((stddev-span 10.0)) ; Match the mean to a span across -5 < mean < 5 standard deviations.
     ;; Create a Gaussian envelope spanning the number of scales.
     (funcall envelope number-of-scales 

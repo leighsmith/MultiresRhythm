@@ -78,7 +78,7 @@
 				   (clap-to-rhythm salience-trace-rhythm 
 						   :start-from-beat start-from-beat
 						   :beat-multiple beat-multiple
-						   :tactus-selector #'create-beat-ridge) ; TODO we use unweighted ridges!
+						   :tactus-selector #'create-weighted-beat-ridge)
 				   (clap-to-rhythm salience-trace-rhythm 
 						   :start-from-beat start-from-beat
 						   :tactus-selector #'create-weighted-beat-ridge)))
@@ -108,6 +108,7 @@
     ;; just write out the claps as a scorefile alone:
     ;; (save-rhythm (make-instance 'rhythm salience-trace-claps))
     (format t "Beat times of ~a in seconds:~%~a~%" (name salience-trace-rhythm) clap-times-in-seconds)
+    (format t "Tempo estimate: ~,2f BPM~%" (tempo-from-claps salience-trace-claps (sample-rate salience-trace-rhythm)))
     ;; Make the perceptual onset detector results audible
     (save-rhythm-mix accompaniment-sound-path original-sound-path clap-times-in-seconds
 		     :clap-sample-file #P"/Volumes/iDisk/Research/Data/Handclap Examples/cowbell.aiff")

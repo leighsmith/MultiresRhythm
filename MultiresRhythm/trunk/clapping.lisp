@@ -141,6 +141,12 @@
 			   :start-from-beat found-downbeat
 			   :beat-multiple (if multiple-supplied-p beat-multiple clapping-beat-multiple)))))
 
+(defun tempo-from-claps (claps sample-rate)
+  "Given an array of clap times, estimate the tempo as the median reciprocal of the
+  inter-beat interval. Returns the tempo in BPM."
+  (let ((ibi-seconds (./ (.diff claps) (coerce sample-rate 'double-float))))
+    (/ 60.0d0 (median ibi-seconds))))
+  
 (defun accompaniment-rhythm-to (rhythm-to-accompany)
   "Returns a rhythm that accompanies (i.e claps to) the given rhythm"
   (rhythm-of-onsets (name rhythm-to-accompany) (clap-to-rhythm rhythm-to-accompany)))
@@ -152,11 +158,13 @@
 	 ;; Convert clap-at from samples to seconds.
 	 (clapping-rhythm (rhythm-of-onsets "hand clap" (./ clap-at (* (sample-rate rhythm) 1d0)))))
     (format t "Clapping at samples: ~a~%" clap-at)
+    (format t "Tempo estimate: ~,2f BPM~%" (tempo-from-claps clap-at (sample-rate rhythm)))
     (diag-plot 'ibi-variation
       ;; TODO would be nice to plot against the rhythm variation, but the number of events differ.
       (plot (./ (.diff clap-at) (sample-rate rhythm)) nil
 	    :title (format nil "Variation in Inter-Beat Interval for ~a~%" (name rhythm))
 	    :aspect-ratio 0.66))
+    ;;(format t "Standard Deviation of Tempo: ~,2f BPM~%" (stddev (./ (.diff clap-at) (sample-rate rhythm))))
     (part-from-rhythm clapping-rhythm :fixed-key-number *closed-hi-hat*)))
 
 (defun save-rhythm-and-claps (original-rhythm clap-at &key (directory "/Volumes/iDisk/Research/Data/Handclap Examples"))
@@ -178,4 +186,6 @@
   "Convenience function to generate a MusicKit Scorefile with the rhythm and accompaniment clapping"
   (let ((claps (clap-to-rhythm rhythm :tactus-selector #'create-weighted-beat-ridge)))
     (format t "Clapping at samples: ~a~%" claps)
+    (format t "Tempo estimate: ~a~%" (tempo-from-claps claps (sample-rate rhythm)))
     (save-rhythm-and-claps rhythm claps :directory directory)))
+

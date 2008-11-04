@@ -34,6 +34,7 @@
 		     :rhythm-complexity
 		     :rhythm-of-grid
 		     :rhythm-of-onsets
+		     :onsets-in-samples
 		     :intervals-in-samples
 		     :duration-in-samples
 		     :scale-from-period
