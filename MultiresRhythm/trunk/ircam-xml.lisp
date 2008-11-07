@@ -12,8 +12,6 @@
 ;;;; Copyright (c) 2008
 ;;;;
 
-(require 'cxml)
-
 (in-package :multires-rhythm)
 (use-package :nlisp)
 

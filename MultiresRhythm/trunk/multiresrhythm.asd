@@ -21,8 +21,9 @@
 ;;;;   annote =  {\url{http://www.science.uva.nl/~lsmith/Papers/MultiresRhythm.pdf}}
 ;;;;
 
-(require 'nlisp)			; For mathematics
+(require 'nlisp)			; For mathematics.
 (require 'cli-parser)			; For command line option interpretation.
+(require 'cxml)				; For IRCAM beat I/O and other XML formats.
 
 ;; Should probably put this in a separate package.lisp file.
 (defpackage #:multires-rhythm (:use #:cl #:asdf #:nlisp #:cli-parser)
@@ -77,6 +78,7 @@
   :components ((:file "signalprocessing")
 	       (:file "ridges")
 	       (:file "scorefile")
+	       (:file "ircam-xml")
 	       (:file "sound")
 	       (:file "histogram")
 	       (:file "martin-trees")
