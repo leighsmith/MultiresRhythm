@@ -42,14 +42,30 @@
 
 ;; (defgeneric sound-from-file 
 
+(defgeneric channel-count (sound-to-analyse)
+  (:documentation "Returns the number of channels in the sound"))
+
+(defgeneric frame-count (sound-to-analyse)
+  (:documentation "Returns the number of sample frames (indepenent of channels) in the sound"))
+
+;;;; Implementation.
+
+(defmethod channel-count ((sound-to-analyse sound))
+  (.row-count (sound-signal sound-to-analyse)))
+
+(defmethod frame-count ((sound-to-analyse sound))
+  (.column-count (sound-signal sound-to-analyse)))
+
 (defmethod print-object ((sound-to-print sound) stream)
   (call-next-method sound-to-print stream) ;; to print the superclass.
-  (let ((sound-array (sound-signal sound-to-print)))
-    (format stream " ~a frames ~a sample-rate ~a channels ~a"
-	    (description sound-to-print) 
-	    (.column-count sound-array)
-	    (sample-rate sound-to-print)
-	    (.row-count sound-array))))
+  (format stream " ~a frames ~a sample-rate ~a channels ~a"
+	  (description sound-to-print) 
+	  (frame-count sound-to-print)
+	  (sample-rate sound-to-print)
+	  (channel-count sound-to-print)))
+
+(defmethod monophonic-p ((sound-to-analyse sound))
+  (= (channel-count sound-to-analyse) 1))
 
 (defmethod sound-from-file ((path pathname))
   (multiple-value-bind (sound-signal sample-rate) (load-audio path)
@@ -68,7 +84,11 @@
 (defmethod sound-length ((sound-to-analyse sound))
   (.length (sound-signal sound-to-analyse)))
 
-;; TODO Should accept arbitary # of sounds.
+(defmethod sound-channel ((sound-to-retrieve sound) channel-number)
+  "Returns an narray of sound from a given (base 0) channel"
+  (.row (sound-signal sound-to-retrieve) channel-number))
+
+;; TODO Should accept arbitary # of sounds. Should test number of channels are equal.
 (defmethod sound-mix ((sound-to-mix1 sound) (sound-to-mix2 sound)) ; &rest sounds
   (make-instance 'sound
 		 :sound-signal (.+ (sound-signal sound-to-mix1) (sound-signal sound-to-mix2))
@@ -79,7 +99,34 @@
   (let* ((sound-vector (sound-signal sound-to-normalise))
 	 (maximum-displacement (max (.max sound-vector) (abs (.min sound-vector)))))
     (setf (sound-signal sound-to-normalise) (./ sound-vector maximum-displacement))))
-		 
+
+(defmethod monophonic ((sound-to-make-mono sound))
+  "Reduce multiple channels to a single channel sound"
+  (let* ((sound-matrix (sound-signal sound-to-make-mono))
+	 (number-of-channels (.row-count sound-matrix)))
+    (loop
+       for channel-index from 1 below number-of-channels
+       for mono-signal = (.row sound-matrix 0) then (.+ mono-signal (.row sound-matrix channel-index))
+       finally (setf (sound-signal sound-to-make-mono) mono-signal))))
+
+(defmethod multichannel ((sound-to-increase sound) new-channel-count)
+  "Duplicates the existing channels of the sound to return a new sound with the new number of channels."
+  (let* ((original-channels (channel-count sound-to-increase))
+	 (new-audio-matrix (make-double-array (list new-channel-count (frame-count sound-to-increase)))))
+    (loop
+	 for repetition-row from 0 below new-channel-count by original-channels
+	 for how-many = (if (< (- new-channel-count repetition-row) original-channels)
+			    (- new-channel-count repetition-row)
+			    original-channels)
+;;	 do (setf (.subseq new-audio-matrix (list (list repetition-row 0) 
+;;						  (list (+ repetition-row how-many) 0)))
+;;		  (sound-signal sound-to-increase)))
+	 do (setf (.row new-audio-matrix repetition-row) (sound-signal sound-to-increase)))
+    (make-instance 'sound 
+		   :sound-signal new-audio-matrix
+		   :sample-rate (sample-rate sound-to-increase)
+		   :description (format nil "~a channels of ~a" new-channel-count (description sound-to-increase)))))
+
 (defun sample-at-times (length-of-sound sample-sound times-in-seconds 
 			&key (amplitudes (make-double-array (.length times-in-seconds) :initial-element 1.0d0)))
   "Returns a sound with sample-sound placed beginning at each time specified in seconds. Uses the sample rate of the sample-sound."
@@ -109,7 +156,10 @@
 	 (clap-sample (sound-from-file clap-sample-file))
 	 ;; create an sound vector with our clap-sample
 	 (clapping-sound (sample-at-times (sound-length original-rhythm-sound) clap-sample clap-times))
-	 (clapping-mix (sound-mix original-rhythm-sound clapping-sound)))
+	 (clapping-mix (sound-mix original-rhythm-sound
+				  (if (< (channel-count clapping-sound) (channel-count original-rhythm-sound))
+				      (multichannel clapping-sound (channel-count original-rhythm-sound))
+				      clapping-sound))))
     (normalise clapping-mix)
     (save-to-file clapping-mix filename-to-write)))
 
@@ -157,3 +207,17 @@
 						      1.0d0
 						      -1.0d0))
        finally (return sound-signal))))
+
+(defmethod plot-sound ((sound-to-plot sound))
+  (let ((frames (frame-count sound-to-plot)))
+    (nplot (loop 
+	      for channel-index from 0 below (channel-count sound-to-plot) 
+	      collect (sound-channel sound-to-plot channel-index))
+	  (.rseq 0 (/ (coerce frames 'double-float) (sample-rate sound-to-plot)) frames)
+	  :title (description sound-to-plot)
+	  :xlabel "Time (seconds)"
+	  :ylabel "Amplitude"
+	  :legends (loop for channel-index from 0 below (channel-count sound-to-plot) 
+		      collect (format nil "channel ~a" channel-index))
+	  :aspect-ratio 0.15)))
+
