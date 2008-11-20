@@ -51,14 +51,17 @@
       (plot-command "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
 		    (label-samples-as-seconds (duration-in-samples rhythm-to-plot)
 					      (sample-rate rhythm-to-plot))))
-  (nplot (list (time-signal rhythm-to-plot) 
-	       (.* (onsets-time-signal rhythm-to-plot) (.max (time-signal rhythm-to-plot))))
-	 nil 
-	:aspect-ratio 0.66 
-	:styles '("lines" "impulses linetype 3")
-	:legends '("Saliency" "Onsets")
-	:reset nil
-	:title (format nil "Salience trace of ~a" (name rhythm-to-plot))))
+  (nplot (list (.* (onsets-time-signal rhythm-to-plot) (time-signal rhythm-to-plot)) 
+	       (time-signal rhythm-to-plot))
+	 ;; TODO need to have different x axes for each y parameters in the list.
+	 ;; (list (onsets-in-samples rhythm-to-plot) (.iseq 0 (duration-in-samples rhythm-to-plot))) 
+	 nil
+	 :aspect-ratio 0.2 
+	 ;; :styles '("lines" "impulses linetype 3")
+	 :styles '("points pointtype 3" "lines linetype 3")
+	 :legends '("Saliency" "Onsets")
+	 :reset nil
+	 :title (format nil "Salience trace and onsets of ~a" (name rhythm-to-plot))))
 
 ;; (plot-rhythm res1)
 ;; (plot (time-signal res1) nil :aspect-ratio 0.66)
@@ -114,14 +117,6 @@
 		     :clap-sample-file #P"/Volumes/iDisk/Research/Data/Handclap Examples/cowbell.aiff")
     (format t "Wrote mix as soundfile ~a~%" accompaniment-sound-path)))
 
-;;; TODO incomplete!
-(defun onsets-of-salience (salience)
-  "Attempt to determine the onset times from rapid changes in the salience trace"
-  (let* ((abs-diff (.abs (.diff salience)))
-	 (mean-difference (mean abs-diff))
-	 (stddev-difference (stddev abs-diff)))
-    (.find (.> abs-diff (+ mean-difference stddev-difference)))))
-
 ;;; TODO This should be replaced when we integrate Plymouth's onsets thresholding function
 ;;; into our code.
 (defmethod onset-time-of-note ((rhythm salience-trace-rhythm) note-numbers)
@@ -131,11 +126,48 @@
 				       :sample-rate (sample-rate rhythm))))
     (onset-time-of-note onsets-rhythm note-numbers)))
 
+(defmethod onsets-in-samples ((rhythm-to-analyse salience-trace-rhythm))
+  (.find (onsets-time-signal rhythm-to-analyse)))
+
+(defun remove-double-onsets (rhythm onset-times &key (filter-window-in-seconds 0.05))
+  "Remove all but the highest valued onsets that fall within the filter-window (specified in samples)"
+  (let* ((filter-window-in-samples (* filter-window-in-seconds (sample-rate rhythm)))
+	 ;; Find IOIs below the threshold.
+	 (within-window (.find (.< (.diff onset-times) filter-window-in-samples))))
+    (if (zerop (.length within-window))	; Exit out when within-window is empty.
+	onset-times
+	;; Determine the reliability (amplitude) of the within window onset candidates and the
+	;; following candidates.
+	(let* ((reliability-within-window (.arefs (time-signal rhythm) (.arefs onset-times within-window)))
+	       (next-reliability-within-window (.arefs (time-signal rhythm) (.arefs onset-times (.+ within-window 1))))
+	       ;; Remove whichever is less. The inequality operator will return a binary increment value.
+	       (first-are-greater (.> reliability-within-window next-reliability-within-window))
+	       ;; Form the array of indices of onset-times to remove.
+	       (to-remove (.+ within-window (.floor first-are-greater))))
+	  (remove-arefs onset-times to-remove)))))
+
 #|
-(defun pOnset-times (onsets-filename)
-  (let* ((data-directory "/Volumes/iDisk/Research/Data/PerceptualOnsets/")
-	 (perceptual-onsets (.load (make-pathname :directory (list :absolute data-directory)
-						  :name onsets-filename
-						  :type "mat") :format :octave)))
-    (.column perceptual-onsets 0)))
+;;; TODO incomplete!
+(defun onsets-of-salience (salience)
+  "Attempt to determine the onset times from rapid changes in the salience trace"
+  (let* ((abs-diff (.abs (.diff salience)))
+	 (mean-difference (mean abs-diff))
+	 (stddev-difference (stddev abs-diff)))
+    (.find (.> abs-diff (+ mean-difference stddev-difference)))))
 |#
+
+(defmethod onsets-of-salience ((odf-rhythm salience-trace-rhythm))
+  "Determine the onset times from the salience trace"
+  (let* (;; (a (analysis-of-rhythm odf-rhythm))
+	 ;; (npc (normalised-phase-congruency a)) ; if we include phase congruency to filter the ODF-RHYTHM.
+	 ;; (filtered-odf (.* (normalise (time-signal odf-rhythm)) npc))
+	 (filtered-odf (time-signal odf-rhythm))
+	 (onset-signal (.* (significant filtered-odf :threshold 0.75) (extrema-points-vector filtered-odf)))
+	 (onset-times (.find onset-signal)))
+    (diag-plot 'onset-signal 
+      (nplot (list (normalise filtered-odf) onset-signal) nil :aspect-ratio 0.2))
+    (remove-double-onsets odf-rhythm onset-times)))
+    ;; onset-times))
+
+;; Assign the onsets from the computed times derived from the salience trace.
+;; (setf (onsets-time-signal rwc95) (impulses-at (onsets-of-salience rwc95) (duration-in-samples rwc95)))

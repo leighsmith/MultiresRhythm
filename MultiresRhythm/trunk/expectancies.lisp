@@ -232,6 +232,7 @@
 
 ;; (nplot (list (impulses-at (phase-zero-samples phase scale) (.array-dimension phase 1)) (.row phase scale)) nil)
 
+;;; TODO can we replace with (phase-occurrances )?
 (defun phase-corrected-time-chasing (time-projection phase scale time)
   "Returns the time-projection corrected by it's phase measure based on the most recent occurrance of zero phase. 
    Chases for phase-zero values backwards from time."

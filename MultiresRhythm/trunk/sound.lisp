@@ -150,12 +150,19 @@
 ;; (setf hihat (sound-from-file #P"/Volumes/iDisk/Research/Data/Handclap Examples/hihat_closed.aiff"))
 ;; (setf hats (sample-at-times 44100 hihat (make-narray '(0.0 0.33 0.66 0.8))))
 
-(defun save-rhythm-mix (filename-to-write original-rhythm-file clap-times 
-			&key (clap-sample-file #P"/Volumes/iDisk/Research/Data/Handclap Examples/hihat_closed.aiff"))
+(defun save-rhythm-mix (filename-to-write original-rhythm-file clap-times-seconds 
+			&key (clap-sample-file #P"/Volumes/iDisk/Research/Data/Handclap Examples/hihat_closed.aiff")
+			(clap-amplitudes nil amplitudes-supplied))
+  "Mix the sound file original-rhythm-file with the claps marked by clap-sample-file at times clap-times-seconds."
   (let* ((original-rhythm-sound (sound-from-file original-rhythm-file)) ; load original file
 	 (clap-sample (sound-from-file clap-sample-file))
 	 ;; create an sound vector with our clap-sample
-	 (clapping-sound (sample-at-times (sound-length original-rhythm-sound) clap-sample clap-times))
+	 (clapping-sound (if amplitudes-supplied 
+			     (sample-at-times (sound-length original-rhythm-sound)
+					      clap-sample 
+					      clap-times-seconds 
+					      :amplitudes clap-amplitudes)
+			     (sample-at-times (sound-length original-rhythm-sound) clap-sample clap-times-seconds)))
 	 (clapping-mix (sound-mix original-rhythm-sound
 				  (if (< (channel-count clapping-sound) (channel-count original-rhythm-sound))
 				      (multichannel clapping-sound (channel-count original-rhythm-sound))
@@ -173,7 +180,10 @@
 ;; (plot down-sampled-rhythm nil)
 ;; (setf jw-prelude-3 (make-instance 'rhythm :time-signal down-sampled-rhythm :name "jw prelude 3"))
 
-
+(defmethod down-sample ((sound-to-decimate sound) factor)
+  "Downsample the sound by a given integer factor"
+  (setf (sound-signal sound-to-decimate) (sound-signal sound-to-decimate))
+  (setf (sample-rate sound-to-decimate) (/ (sample-rate sound-to-decimate) factor)))
 
 ;; (setf noisy-dialog (load-audio #P"/Users/leigh/Research/Data/RoomTone/noisy_dialog.aiff"))
 ;; (setf noisy-dialog-initial (.subarray noisy-dialog '(0 (0 32767))))

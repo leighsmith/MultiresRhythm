@@ -93,6 +93,9 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 
 ;;; We have to use two columns since NLISP otherwise reduces a 1 row x n column matrix
 ;;; into a vector.
+;;; TODO this is backwards, we should do the inner maxima finding on a vector and then
+;;; iterate that for a matrix. The problem is how to process each row of a matrix
+;;; efficiently without a copy.
 (defun extrema-points-vector (vector &rest arguments)
   "Find the extrema points of a vector by making it a two column matrix"
   (let* ((two-column-matrix (make-double-array (list 2 (.length vector)))))
@@ -100,8 +103,8 @@ Anything clipped will be set to the clamp-low, clamp-high values"
     (.column (apply #'extrema-points (.transpose two-column-matrix) arguments) 0)))
 
 ;; Compare against:
+;; (setf local-maxima (make-narray '(2.0 -34.0 9.0 -8.0 15.0 2.0 -1.0)))
 ;; (defun find-local-maxima (vector) (.+ (.find (.< (.diff (.signum (.diff vector))) 0)) 1))
-;; (local-maxima (make-narray '(2.0 -34.0 9.0 -8.0 15.0 2.0 -1.0)))
 
 (defun cumsum (a)
   "Computes the cumulative summation across each row of the matrix"
@@ -152,3 +155,24 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 (defun phase-wrap (phase-value-to-wrap)
   "Wraps values within a modulo +/- pi (phase) system."
   (.- (.mod (.+ phase-value-to-wrap pi) (* 2 pi)) pi))
+
+(defun significant (signal &key (threshold 0.5))
+  "Find all values greater than a threshold number of standard deviations above the mean"
+  (.> signal (+ (mean signal) (* (stddev signal) threshold))))
+
+(defun remove-arefs (narray indices-to-remove)
+  "Returns a new array with the values at the indicated indices removed. Assumes indices-to-remove is sorted."
+  (let* ((remove-count (.length indices-to-remove))
+	 (thinned-array (nlisp::narray-of-type narray (- (.length narray) remove-count))))
+    (loop 
+       for array-index from 0 below (.length narray)
+       with thinned-array-index = 0
+       with remove-index = 0
+       do 
+	 (if (and (< remove-index remove-count) 
+		  (= array-index (.aref indices-to-remove remove-index)))
+	     (incf remove-index)
+	     (prog1 (setf (.aref thinned-array thinned-array-index) (.aref narray array-index))
+	       (incf thinned-array-index))))
+    thinned-array))
+
