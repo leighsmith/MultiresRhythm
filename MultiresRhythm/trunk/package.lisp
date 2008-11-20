@@ -1,6 +1,6 @@
 ;;;; -*- Lisp -*-
 ;;;;
-;;;; $Id: cwt.lisp 5352 2008-09-18 14:32:26Z leigh $
+;;;; $Id$
 ;;;;
 ;;;; Defines the package and the exported symbols.
 ;;;;
