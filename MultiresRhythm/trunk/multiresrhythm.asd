@@ -25,57 +25,19 @@
 (require 'cli-parser)			; For command line option interpretation.
 (require 'cxml)				; For IRCAM beat I/O and other XML formats.
 
-;; Should probably put this in a separate package.lisp file.
-(defpackage #:multires-rhythm (:use #:cl #:asdf #:nlisp #:cli-parser)
-	    (:export :rhythm 
-		     :skeleton-of-rhythm
-		     :tactus-for-rhythm
-		     :rhythmic-grid-to-signal
-		     :iois-to-rhythm
-		     :rhythm-complexity
-		     :rhythm-of-grid
-		     :rhythm-of-onsets
-		     :onsets-in-samples
-		     :intervals-in-samples
-		     :duration-in-samples
-		     :scale-from-period
-		     :time-support
-		     :clap-to-rhythm
-		     :save-scorefile
-		     :generate-executable
-		     :make-histogram
-		     :add-to-histogram
-		     :get-histogram
-		     :get-histogram-counts
-		     :get-histogram-elements
-		     :plot-rhythm
-		     :plot-analysis
-		     :*plotting*
-		     :plot-cwt+skeleton-of
-		     :meter-for-name
-		     :analysis-of-rhythm
-		     :analysis-of-rhythm-cached
-		     :skeleton
-		     :voices-per-octave
-		     :ridges-containing-scale
-		     :make-monotone-ridge
-		     :scaleogram
-		     :hear
-		     :.subseq))
-
-(in-package :multires-rhythm)
-
 (defsystem :multiresrhythm
   :description "A Multiresolution Time-Frequency Analysis and Interpretation of Musical Rhythm"
   :version "2.8"
   :author "Leigh M. Smith"
   :license "Copyright (c) 2005-2008"
   :depends-on (:nlisp)
-  :properties ((#:author-email . "lsmith@science.uva.nl")
+  :properties ((#:author-email . "Leigh.Smith@ircam.fr")
 	       (#:date . "2008")	; Compute this automatically?
 	       ((#:albert #:output-dir) . "documentation")
 	       ((#:albert #:formats) . ("docbook")))
-  :components ((:file "signalprocessing")
+  :serial t
+  :components ((:file "package")
+	       (:file "signalprocessing")
 	       (:file "ridges")
 	       (:file "scorefile")
 	       (:file "ircam-xml")
