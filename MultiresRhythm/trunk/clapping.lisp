@@ -18,26 +18,11 @@
 (use-package :nlisp)
 
 ;;; TODO Should have a clapping behaviour class which specifies which beat to start clapping on
-;; and how often (it's a production task).
+;; and how often (it's a production task). Perhaps just a combination of clap times and
+;; clap amplitudes.
 
 (defgeneric clap-to-rhythm (rhythm-to-analyse &key tactus-selector start-from-beat beat-multiple)
   (:documentation "Returns a set of sample times to clap to given the supplied rhythm"))
-
-;;; TODO this could be a problem on the last phase point before 2 pi wrap.
-;;; TODO This is the same as phase correction chasing!
-(defun phase-occurrances (phases-to-find phase)
-  "Find locations where the given phase values would fall"
-  (loop
-     with time-in-samples = (.length phase)
-     with prev = (list 0 (list 0 (- time-in-samples 2)))
-     with next = (list 0 (list 1 (- time-in-samples 1)))
-     for phase-datum in phases-to-find
-     ;; check phase-datum >= current and < next phase measure.
-     for phase-occurrance = (.and (.>= phase-datum (.subarray phase prev)) 
-				  (.< phase-datum (.subarray phase next)))
-     then (.or phase-occurrance (.and (.>= phase-datum (.subarray phase prev)) 
-				      (.< phase-datum (.subarray phase next))))
-     finally (return (.find phase-occurrance))))
 
 ;; TODO Return ((time intensity) (time intensity) ...)
 ;; use constant intensity claps but weight the amplitude for when we mix in Common Music.
@@ -72,8 +57,9 @@
 
 	 ;; Note the phase of the oscillating sinusoid at the beat to start tapping from.
 	 (down-beat-sample (onset-time-of-note original-rhythm start-from-beat))
-	 (clap-on-phase-datum (.aref foot-tap-phase down-beat-sample))
-	 ;; TODO add event-shift parameter.
+	 (event-shift-samples (* event-shift (sample-rate original-rhythm)))
+	 ;; add event-shift parameter.
+	 (clap-on-phase-datum (.aref foot-tap-phase (+ down-beat-sample event-shift-samples)))
 	 (phases-to-find (if (< beat-multiple 1.0)
 			     ;; Produces 1 / beat-multiple number of extra entries
 			     (nlisp::array-to-list (phase-wrap (.+ clap-on-phase-datum (.rseq 0 (* 2 pi) (1+ (floor 1 beat-multiple))))))

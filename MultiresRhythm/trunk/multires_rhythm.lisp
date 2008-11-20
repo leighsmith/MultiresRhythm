@@ -69,6 +69,22 @@ otherwise, generates them and writes to disk, and returns a multires-analysis in
 	      (.reshape normalised-time-slice (list number-of-scales 1)))))
     normalised-values))
 
+;;; TODO this could be a problem on the last phase point before 2 pi wrap.
+;;; TODO This is the same as phase correction chasing!
+(defun phase-occurrances (phases-to-find phase)
+  "Find locations where the given phase values would fall"
+  (loop
+     with time-in-samples = (.length phase)
+     with prev = (list 0 (list 0 (- time-in-samples 2)))
+     with next = (list 0 (list 1 (- time-in-samples 1)))
+     for phase-datum in phases-to-find
+     ;; check phase-datum >= current and < next phase measure.
+     for phase-occurrance = (.and (.>= phase-datum (.subarray phase prev)) 
+				  (.< phase-datum (.subarray phase next)))
+     then (.or phase-occurrance (.and (.>= phase-datum (.subarray phase prev)) 
+				      (.< phase-datum (.subarray phase next))))
+     finally (return (.find phase-occurrance))))
+
 (defun phase-diff (phase)
   "Compute the first order differences of a phase signal (modulo +/- pi), such that we take into account
   wrap around at the pi and -pi boundaries."
@@ -250,6 +266,11 @@ Phase is assumed to be -pi to pi."
 	 (local-energy (.sqrt (.+ (.expt (.partial-sum real-bit) 2) (.expt (.partial-sum imag-bit) 2))))
 	 (local-magnitude (.sum magnitude)))
     (./ local-energy local-magnitude)))
+
+(defmethod normalised-phase-congruency ((analysis multires-analysis))
+  (let ((pc (phase-congruency (scaleogram-magnitude (scaleogram analysis))
+			      (scaleogram-phase (scaleogram analysis)))))
+    (normalise pc)))
 
 ;;; TODO alternatively return normalised-magnitude, stationary-phase or
 ;;; local-phase-congruency individually.
