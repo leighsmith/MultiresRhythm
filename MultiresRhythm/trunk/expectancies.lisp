@@ -411,10 +411,8 @@
 (defun most-persistent-scales (ridge-persistency)
   "Return those scales sorted in order of most persistent"
   ;; TODO Need to look under the area of the curve to determine the peaks which are worth identifying.
-  (let* ((prominent-scales (.find (extrema-points-vector ridge-persistency :extrema :max))))
-    ;; TODO should we use +1? Because the indexes for ridge-persistency are zero?
-    (make-instance (class-of prominent-scales) 
-		   :ival (sort (val prominent-scales) #'> :key (lambda (x) (.aref ridge-persistency x))))))
+  ;; TODO should we use +1? Because the indexes for ridge-persistency are zero?
+  (highest-peaks ridge-persistency))
 
 ;;; TODO Could be moved out of expectancies.
 (defun tempo-weighted-ridge-persistency-of (analysis)
