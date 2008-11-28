@@ -24,12 +24,12 @@
 ;;(defun mean (a)
 ;;  (/ (.sum a) (.length a)))
 
-(defun prune-to-limit (a limit)
+(defun prune-to-limit (a limit &key (test #'<=))
   "Remove any elements which are above the limit value"
-  (make-instance (class-of a) :ival (remove-if-not (lambda (x) (<= x limit)) (val a))))
+  (make-instance (class-of a) :ival (remove-if-not (lambda (x) (apply test x limit)) (val a))))
 
 (defun pad-end-to-length (vector length)
-  "Pad a vector with zeros out the length given"
+  "Pad a vector with zeros out to the length given"
   (let ((pad-length (- length (.length vector))))
     (.concatenate vector (make-double-array pad-length))))
 
@@ -54,6 +54,14 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 ;; Only good for vectors, of course.
 (defun .subseq (a start &optional end)
   (make-instance (class-of a) :ival (subseq (val a) start end)))
+
+(defun rotate-vector (sig &key (by (round (.length sig) 2))) ; default to mirroring
+  "Return a signal with elements rotated by the given number of places. Any elements shifted beyond the end of
+  the vector will be shifted into the start and vice-versa. Positive :by values shift
+  elements to the left, negative values shift elements to the right. Default reflects the
+  signal around its middle point"
+  (let ((rotate-by (if (plusp by) by (+ (.length sig) by))))
+    (.concatenate (.subseq sig rotate-by) (.subseq sig 0 rotate-by))))
 
 ;;; Really good candidate to replace with a BLAS routine...
 (defun .partial-sum (a &key (dimension 1)) 
@@ -138,9 +146,10 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 
 ;; (setf a (window-integration (make-double-array '(2 100) :initial-element 1d0) 10))
 
-(defmethod normalise ((vector n-array))
-  "Normalisation"
-  (./ vector (.max vector)))
+;;; Obsolete now it is within NLISP.
+;;(defmethod normalise ((vector n-array))
+;;  "Normalisation"
+;;  (./ vector (.max vector)))
 
 (defun map-narray (func vector)
   (make-instance 'n-double-array :ival (map (type-of (val vector)) func (val vector))))
@@ -176,3 +185,12 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 	       (incf thinned-array-index))))
     thinned-array))
 
+(defun .sorted-indices (value-vector &key (ordering #'>))
+  "Return the indices of the vector sorted in descending or ascending value, depending on ordering."
+  (let* ((prominent-indices (.find value-vector))) ; TODO this is a problem with -ve values.
+    (make-instance (class-of prominent-indices) 
+		   :ival (sort (val prominent-indices) ordering :key (lambda (x) (.aref value-vector x))))))
+
+(defun highest-peaks (value-vector)
+  "Return the indices of the peaks sorted in descending value"
+  (.sorted-indices (.* (extrema-points-vector value-vector :extrema :max) value-vector) :ordering #'>))
