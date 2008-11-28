@@ -15,32 +15,37 @@
 (in-package :multires-rhythm)
 (use-package :nlisp)
 
-#|
-(setf bpm-doc (cxml:parse
-	       #P"/Local/Users/leigh/Research/Data/IRCAM-Beat/res4_1.wav.bpm.xml"
-	       (cxml-dom:make-dom-builder)))
-(dom:document-element bpm-doc)
-(dom:tag-name (dom:document-element bpm-doc))
-(dom:child-nodes (dom:document-element bpm-doc))
+(defun read-ircam-beat-bpm (filepath)
+  (let* ((bpm-document (cxml:parse filepath (cxml-dom:make-dom-builder)))
+	 (bpm (dom:get-elements-by-tag-name (dom:document-element bpm-document) "bpm")))
+    ;; (format t "~a~%" bpm)
+    (loop
+       for bpm-index from 0 below (dom:length bpm)
+       for bpm-node = (dom:item bpm bpm-index)
+       collect (read-from-string (dom:node-value (dom:item (dom:child-nodes bpm-node) 0))) into bpm-list
+       finally (return (make-narray bpm-list)))))
 
-(dom:length (dom:child-nodes (dom:document-element bpm-doc)))
-(dom:item (dom:child-nodes (dom:document-element bpm-doc)) 3)
+;; (dom:document-element bpm-doc)
+;; (dom:tag-name (dom:document-element bpm-doc))
+;; (dom:child-nodes (dom:document-element bpm-doc))
 
-;;; Retrieve the elements
-(dom:has-child-nodes (dom:item (dom:child-nodes (dom:document-element bpm-doc)) 3))
-(dom:child-nodes (dom:item (dom:child-nodes (dom:document-element bpm-doc)) 3))
+;; (dom:length (dom:child-nodes (dom:document-element bpm-doc)))
+;; (dom:item (dom:child-nodes (dom:document-element bpm-doc)) 3)
 
-(dom:map-node-list (dom:tag-name (dom:child-nodes (dom:document-element bpm-doc))))
+;; ;;; Retrieve the elements
+;; (dom:has-child-nodes (dom:item (dom:child-nodes (dom:document-element bpm-doc)) 3))
+;; (dom:child-nodes (dom:item (dom:child-nodes (dom:document-element bpm-doc)) 3))
 
-(setf a (dom:get-elements-by-tag-name (dom:document-element bpm-doc) "bpm"))
-(dom:length a)
-(dom:item a 0)
-(dom:child-nodes (dom:item a 0))
-(dom:node-value (dom:item (dom:child-nodes (dom:item a 0)) 0))
+;; (dom:map-node-list (dom:tag-name (dom:child-nodes (dom:document-element bpm-doc))))
+
+;; (dom:length a)
+;; (dom:item a 0)
+;; (dom:child-nodes (dom:item a 0))
+;; (dom:node-value (dom:item (dom:child-nodes (dom:item a 0)) 0))
 
 ;;; Creation
-(dom:create-document (dom:implementation bpm-doc) nil nil nil)
-|#
+;; (dom:create-document (dom:implementation bpm-doc) nil nil nil)
+
 
 (defun read-ircam-beat-markers (filepath)
   "Read the given file using CXML and DOM to return an narray of beat markers"
