@@ -19,29 +19,6 @@
   ((onsets-time-signal :initarg :onsets-time-signal :accessor onsets-time-signal :initform (make-double-array '(1))))
   (:documentation "A subclass of rhythm that holds the full salience trace and the onset data."))
 
-(defun perceptual-salience-rhythm (salience-filepath onsets-filepath &key 
-				      (sample-rate 200) (description "") (weighted t))
-  "Reads the salience data and returns a salience-trace-rhythm instance. Weighted keyword
-   produces onsets which are weighted by relative values of the saliency measure."
-  (let* ((perceptual-salience-matrix (.load salience-filepath :format :text))
-	 (perceptual-onsets (.load onsets-filepath :format :text))
-	 (perceptual-salience (.column perceptual-salience-matrix 0))
-	 ;; Assumes onset times are in seconds, converts to samples
-	 (onset-times (.floor (.* (.column perceptual-onsets 0) sample-rate)))
-	 ;; TODO perhaps rhythm-of-weighted-onsets can be used instead?
-	 (onsets-time-signal (make-double-array (.length perceptual-salience))))
-    (setf (.arefs onsets-time-signal onset-times)
-	  (if weighted
-	      (.column perceptual-onsets 1)
-	      (make-double-array (.length onset-times) :initial-element 1.0d0)))
-    ;; Even though we have assumed rhythm is a set of dirac fns, we can cheat a bit.
-    (make-instance 'salience-trace-rhythm 
-		   :name (pathname-name salience-filepath)
-		   :description description
-		   :time-signal perceptual-salience
-		   :onsets-time-signal onsets-time-signal
-		   :sample-rate sample-rate)))
-
 ;; (setf ps (perceptual-salience-rhythm "/Volumes/iDisk/Research/Sources/OtherResearchers/UoP/AuditorySaliencyModel/ines1.saliency" "/Volumes/iDisk/Research/Sources/OtherResearchers/UoP/AuditorySaliencyModel/ines1.onsets" :weighted t))
 ;; (setf res1 (perceptual-onsets-to-rhythm "res1/res1_1_resp_text" "res1/res1_1_pOnsets" :weighted t))
 
@@ -59,7 +36,7 @@
 	 :aspect-ratio 0.2 
 	 ;; :styles '("lines" "impulses linetype 3")
 	 :styles '("points pointtype 3" "lines linetype 3")
-	 :legends '("Saliency" "Onsets")
+	 :legends '("Onsets" "Saliency")
 	 :reset nil
 	 :title (format nil "Salience trace and onsets of ~a" (name rhythm-to-plot))))
 
@@ -169,5 +146,45 @@
     (remove-double-onsets odf-rhythm onset-times)))
     ;; onset-times))
 
-;; Assign the onsets from the computed times derived from the salience trace.
-;; (setf (onsets-time-signal rwc95) (impulses-at (onsets-of-salience rwc95) (duration-in-samples rwc95)))
+
+(defun rhythm-from-odf (salience-filepath &key (sample-rate 200.0d0) (description "") (weighted t))
+  "Reads the onset detection function (perceptual salience) data and returns a salience-trace-rhythm instance. Weighted keyword
+   produces onsets which are weighted by relative values of the saliency measure."
+  (let* ((perceptual-salience-matrix (.load salience-filepath :format :text))
+	 (perceptual-salience (.column perceptual-salience-matrix 0))
+	 (perceptual-salience-rhythm
+	  ;; Even though we have assumed rhythm is a set of dirac fns, we can cheat a bit.
+	  (make-instance 'salience-trace-rhythm 
+			 :name (pathname-name salience-filepath)
+			 :description description
+			 :time-signal perceptual-salience
+			 :sample-rate sample-rate)))
+    ;; Assign the onsets from the computed times derived from the salience trace.
+    (setf (onsets-time-signal perceptual-salience-rhythm) 
+	  (if weighted
+	      (.arefs perceptual-salience (onsets-of-salience perceptual-salience-rhythm))
+	      (impulses-at (onsets-of-salience perceptual-salience-rhythm) (.length perceptual-salience))))
+    perceptual-salience-rhythm))
+
+(defun perceptual-salience-rhythm (salience-filepath onsets-filepath &key 
+				      (sample-rate 200) (description "") (weighted t))
+  "Reads the salience data and returns a salience-trace-rhythm instance. Weighted keyword
+   produces onsets which are weighted by relative values of the saliency measure."
+  (let* ((perceptual-salience-matrix (.load salience-filepath :format :text))
+	 (perceptual-onsets (.load onsets-filepath :format :text))
+	 (perceptual-salience (.column perceptual-salience-matrix 0))
+	 ;; Assumes onset times are in seconds, converts to samples
+	 (onset-times (.floor (.* (.column perceptual-onsets 0) sample-rate)))
+	 ;; TODO perhaps rhythm-of-weighted-onsets can be used instead?
+	 (onsets-time-signal (make-double-array (.length perceptual-salience))))
+    (setf (.arefs onsets-time-signal onset-times)
+	  (if weighted
+	      (.column perceptual-onsets 1)
+	      (make-double-array (.length onset-times) :initial-element 1.0d0)))
+    ;; Even though we have assumed rhythm is a set of dirac fns, we can cheat a bit.
+    (make-instance 'salience-trace-rhythm 
+		   :name (pathname-name salience-filepath)
+		   :description description
+		   :time-signal perceptual-salience
+		   :onsets-time-signal onsets-time-signal
+		   :sample-rate sample-rate)))
