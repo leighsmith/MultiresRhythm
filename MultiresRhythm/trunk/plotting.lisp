@@ -362,8 +362,8 @@ colourmap, suitable for use by NLISP's palette-defined function."
    (lambda (x) (apply #'plot-image (append x (list :title title :time-axis-decimation time-axis-decimation))))
    image-list)
   (plot-command "unset multiplot")
-  (close-window)
-  (reset-plot))
+  (reset-plot)
+  (close-window))
 
 (defun plot-claps (original-rhythm claps beat-phase &key (signal-name (name original-rhythm)))
   "Plot locations of original beats, computed claps, the foot tap
