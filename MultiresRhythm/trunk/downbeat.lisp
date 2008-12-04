@@ -19,6 +19,8 @@
 ;;;;   annote =  {\url{http://www.leighsmith.com/Research/Papers/MultiresRhythm.pdf}}
 ;;;;
 
+(declaim (optimize (speed 0) (safety 3) (debug 3)))
+
 (in-package :multires-rhythm)
 (use-package :nlisp)
 
@@ -306,3 +308,72 @@ start-onset, these measures are in samples"
     ;; contradicted by the second case.
     ;; TODO We could check if there are several iois that are the same as earlier initial intervals.
     (.aref locations-of-maximum 0)))
+
+(defmethod duration-downbeat-estimation ((rhythm-to-analyse rhythm) bar-period &key
+					 (maximum-events 5))
+  "Returns the number of the downbeat, skipping any anacrusis. bar-period in samples"
+  (let* ((bar-period-samples (* bar-period (sample-rate rhythm-to-analyse)))
+	 ;; We use a temporal limit... 
+	 (time-limited-iois (rhythm-iois-samples (limit-rhythm rhythm-to-analyse
+							       :maximum-samples bar-period-samples)))
+	 ;; ...and an event density (maximum event memory) limit.
+	 (initial-iois (.* (.subseq time-limited-iois 0 (1- (min (1+ (.length time-limited-iois)) maximum-events))) 1d0))
+	 (perceptual-categories (rhythm-categories initial-iois (sample-rate rhythm-to-analyse)))
+	 (maximum-perceived-interval (.max perceptual-categories))
+	 (locations-of-maximum (.find (.= maximum-perceived-interval perceptual-categories))))
+    (format t "initial iois ~a~%perceptual-categories ~a~%" initial-iois perceptual-categories)
+    ;; There are two situations: 1) we have a singularly perceptually longer interval
+    ;; (i.e. markedly longer) than other events in the initial sequence, in which case the
+    ;; onset starting the first relatively long (perceptually significant) interval is
+    ;; highly likely to be the downbeat event, or 2) we have intervals which are non-unique,
+    ;; i.e other intervals of similar length reoccur in the initial sequence.
+    ;; For now, we only assume the first case, since it's not clear that situation is
+    ;; contradicted by the second case.
+    ;; TODO We could check if there are several iois that are the same as earlier initial intervals.
+    (.aref locations-of-maximum 0)))
+
+;;; Since the likelihoods are ordered, simply comparing the first and second likelihoods is
+;;; sufficient to generalise a measure of likelihood into binary classes (low/high).
+;;; Incorporating the average of the likelihoods indicates how much the first rises above the remainder.
+(defun probability-of-estimate (match-scores)
+  "Return a normalised single probability based on the contrast of the match-score
+(unnormalised likelihood) of the chosen value against the remaining values."
+  (/ (- (.aref match-scores 0) (mean (.subseq match-scores 1))) (.aref match-scores 0)))
+
+;;(defun downbeat-from-shifts (shift-options beat-duration)
+;;  (round (.aref shift-options 0) beat-duration))
+
+(defun amplitude-profile-downbeat-estimation (ODF-fragment meter tempo-in-bpm beat-duration)
+  "Estimate the downbeat of the fragment of the onset detection function"
+  ;; TODO we could also use the returned likelihood to improve the estimation
+  (multiple-value-bind (shift-options shift-scores) (match-ODF-meter meter tempo-in-bpm ODF-fragment)  
+    (let* ((downbeat (round (.aref shift-options 0) beat-duration))) ; Super dumb for now.
+      (format t "shift options ~a downbeat ~a probability ~,5f~%" shift-options downbeat
+	      (probability-of-estimate shift-scores))
+    downbeat)))
+
+(defun downbeat-estimate-rhythm (rhythm tempo-in-bpm meter beats-per-measure downbeat-estimator)
+  "Returns an estimate of downbeat location across the entire ODF rhythm using an estimator"
+  (loop
+     with beat-duration-samples = (round (* (/ 60.0 tempo-in-bpm) (sample-rate rhythm)))
+     with bar-duration-samples = (* beats-per-measure beat-duration-samples)
+     with search-duration = (* 2 bar-duration-samples) ; in samples
+     initially (format t "beat duration in samples ~a, meter ~a~%" beat-duration-samples meter)
+     for start-sample from 0 below (duration-in-samples rhythm) by bar-duration-samples
+     for search-region = (list start-sample (1- (min (duration-in-samples rhythm) (+ start-sample search-duration))))
+     for two-bars-of-ODF = (subset-of-rhythm rhythm search-region)
+     for downbeat = (funcall downbeat-estimator two-bars-of-ODF meter tempo-in-bpm beat-duration-samples)
+     do (format t "tempo ~,2f bpm, search duration ~a search region ~a~%"
+		tempo-in-bpm search-duration search-region)	
+     collect downbeat into downbeats
+     ;; collect likelihood in downbeat-probability
+     finally (return (make-narray downbeats))))
+
+(defun downbeat-estimation (rhythm tempo-in-bpm meter beats-per-measure)
+  "Use competing features to form an estimation of downbeat."
+  (let ((amplitude-estimates (downbeat-estimate-rhythm rhythm 
+						       tempo-in-bpm
+						       meter
+						       beats-per-measure
+						       #'amplitude-profile-downbeat-estimation)))
+    amplitude-estimates))
