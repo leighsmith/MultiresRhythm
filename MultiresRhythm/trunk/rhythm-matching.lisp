@@ -30,7 +30,7 @@
         finally (return salience)))
 
 ;;; Just needs the syncopation package loaded.
-(defun metric-scale (meter &key (max-amp 1.0d0) (min-amp 0.12d0))
+(defun metric-hierarchy (meter &key (max-amp 1.0d0) (min-amp 0.12d0))
   "Derive from Longuet-Higgin's & Lee's metric salience measure (which is inverted in
    polarity) an amplitude weighting"
   (let* ((lhl-metric-salience (make-narray (lh-metric-salience meter)))
@@ -40,12 +40,20 @@
     ;; TODO need to scale the minimum above 0.
     (.+ 1d0 (./ (.* 1d0 lhl-metric-salience) amp-scaling))))
 
+(defun binary-metric-hierarchy (meter &key (max-amp 1.0d0) (min-amp (/ max-amp 2.0d0)))
+  "Returns a two level hierarchy (downbeat, every other beat) for the given meter"
+  (let* ((grid-length (apply #'* meter))
+	 (binary-hierarchy (make-double-array grid-length :initial-element min-amp)))
+    (setf (.aref binary-hierarchy 0) max-amp)
+    binary-hierarchy))
+
 ;;; TODO this assumes a constant tempo. This needs replacing with a function that computes
 ;;; the metrical structure according to the tempo estimate at each beat.
-;;; Assumes 4 tatums make a beat (for bpm).
-(defun metrically-scaled-rhythm (meter measures tempo &key (sample-rate 200.0d0) (beats-per-measure 4))
+(defun metrically-scaled-rhythm (meter measures tempo 
+				 &key (sample-rate 200.0d0) (beats-per-measure 4)
+				 (hierarchy #'binary-metric-hierarchy))  ; #'metric-hierarchy
   "Returns a rhythm with weighted onsets matching the metrical structure"
-  (let* ((metrical-weights (metric-scale meter))
+  (let* ((metrical-weights (funcall hierarchy meter))
 	 (number-of-tatums (1+ (* (.length metrical-weights) measures))) ; +1 for the next downbeat
 	 (tatums-per-beat (/ (reduce #'* meter) beats-per-measure))
 	 (tatum-duration (/ 60.0d0 tempo tatums-per-beat)) ; in seconds
@@ -100,6 +108,10 @@
   "Given a list of rhythms, return a list of rhythm envelopes"
   (mapcar (lambda (x) (gaussian-rhythm-envelope x :temporal-discrimination temporal-discrimination)) rhythms))
 
+(defun plot-correlation-matching (rhythm-1 rhythm-2 shift-by)
+  "Visually verifies the cross-correlation finds the shift to align the two rhythms"
+  (nplot (list rhythm-1 (.concatenate (make-double-array shift-by) rhythm-2)) nil :aspect-ratio 0.2))
+
 ;; Find the peaks in the positive lag region of the cross-correlation.  We only use
 ;; positive lag regions since positive lag values effectively indicate how far to
 ;; shift the ODF candidate *backwards* in time, thereby determining the meter
@@ -108,7 +120,7 @@
 ;; within a theme, this means playing before the start of the candidate media,
 ;; meaning leading black or silence which would produce poor results (even if the
 ;; correlation score was high).
-(defun cross-correlation-match (onset-detection-function metric-accent-gaussian &key (highest-correlations 10))
+(defun cross-correlation-match (onset-detection-function metric-accent-gaussian &key (highest-correlations 5))
   "Return the sample that is the highest match between the two vectors"
   (let* ((metric-ODF-correlation (cross-correlation onset-detection-function metric-accent-gaussian))
 	 ;; Since the crosscorrelation rotates the result forward by the metric-accent-gaussian
@@ -117,31 +129,28 @@
 	 (positive-lags (.subseq metric-ODF-correlation zeroth-lag))
 	 ;; Find that number of highest correlation measures, returning the locations in a
 	 ;; vector, in descending correlation order.
-	 (selected-peaks (.subseq (highest-peaks positive-lags) 0 highest-correlations)))
+	 (peaks (highest-peaks positive-lags))
+	 (selected-peak-indices (.subseq peaks 0 (min (.length peaks) highest-correlations))))
     (diag-plot 'cross-correlation
       (let* ((peak-values (make-double-array (.length positive-lags))))
-	(setf (.arefs peak-values selected-peaks) (.arefs positive-lags selected-peaks)) 
+	(setf (.arefs peak-values selected-peak-indices) (.arefs positive-lags selected-peak-indices)) 
 	(nplot (list positive-lags peak-values) nil 
 	       :title (format nil "Cross Correlation of ~a" "...")
 	       :styles '("lines" "points") :aspect-ratio 0.2)))
-    selected-peaks))
+    (diag-plot 'odf-match
+      (plot-correlation-matching onset-detection-function metric-accent-gaussian (.aref selected-peak-indices 0)))
+    (values selected-peak-indices (.arefs positive-lags selected-peak-indices))))
 
-(defun plot-correlation-matching (rhythm-1 rhythm-2 shift-by)
-  "Visually verifies the cross-correlation finds the shift to align the two rhythms"
-  (nplot (list rhythm-1 (.concatenate (make-double-array shift-by) rhythm-2)) nil :aspect-ratio 0.2))
-
-;;; TODO we can probably skip the normalisation for cross-correlation-matching.
+;;; TODO we can probably skip the normalisation for cross-correlation-matching, but it
+;;; makes visualisation easier.
 (defun match-ODF-meter (meter tempo-bpm onset-detection-rhythm)
   "Returns the sample that the meter (at the given tempo) matches the onset detection rhythm at."
   (let* ((metric-accent-gaussian (.normalise (gaussian-rhythm-envelope
 					      (metrically-scaled-rhythm meter 1 tempo-bpm 
 									:sample-rate (sample-rate
 										      onset-detection-rhythm)))))
-	 (normalised-odf (.normalise (time-signal onset-detection-rhythm)))
-	 (shift-options (cross-correlation-match normalised-odf metric-accent-gaussian)))
-    (diag-plot 'odf-match
-      (plot-correlation-matching normalised-odf metric-accent-gaussian (.aref shift-options 0)))
-    shift-options))
+	 (normalised-odf (.normalise (time-signal onset-detection-rhythm))))
+    (cross-correlation-match normalised-odf metric-accent-gaussian)))
 
 (defun test-correlation-matching ()
   "Visually verifies the cross-correlation finds the shift to align the two rhythms"
@@ -150,8 +159,7 @@
 	 (rhythm-2 (gaussian-rhythm-envelope (rhythm-of-onsets "rhythm2" (make-narray '(1.5 2.0 2.5)))))
 	 (shift-options (cross-correlation-match rhythm-1 rhythm-2))
 	 (shift-by (.aref shift-options 0)))
-    (format t "shift by ~a from options ~a~%" shift-by shift-options)
-    (plot-correlation-matching rhythm-1 rhythm-2 shift-by)))
+    (format t "shift by ~a from options ~a~%" shift-by shift-options)))
 
 (defun match-expectations-to-candidates (expectations candidate-rhythms)
   "Returns the measure of cross correlation matches of the expectations against the
