@@ -13,6 +13,8 @@
 ;;;; See multiresrhythm.asd for further info.
 ;;;;
 
+(declaim (optimize (speed 0) (safety 3) (debug 3)))
+
 (in-package :multires-rhythm)
 (use-package :nlisp)
 
@@ -75,8 +77,9 @@
 
 (defmethod print-object ((rhythm-to-print rhythm) stream)
   (call-next-method rhythm-to-print stream) ;; to print the superclass.
-  (format stream " ~a ~a sample-rate ~f" 
-	  (name rhythm-to-print) (description rhythm-to-print) (sample-rate rhythm-to-print)))
+  (format stream " ~a ~a sample-rate ~f duration ~d samples" 
+	  (name rhythm-to-print) (description rhythm-to-print) (sample-rate rhythm-to-print) 
+	  (duration-in-samples rhythm-to-print)))
 
 (defun intervals-in-samples (intervals &key ((:tempo tempo-in-bpm) 60)
 			     (ioi 1.0 interval-supplied-p)
@@ -363,7 +366,7 @@
 (defmethod subset-of-rhythm ((rhythm-to-subset rhythm) time-region)
   "Returns a new rhythm instance with a sub-region of the given rhythm. The time region
   consists of the start and end specifiers. T defaults to the start or finish."
-    (make-instance 'rhythm 
+    (make-instance (class-of rhythm-to-subset)
 		   :name (name rhythm-to-subset) 
 		   :description (format nil "subset of ~a" (name rhythm-to-subset))
 		   :time-signal (.subarray (time-signal rhythm-to-subset) (list 0 time-region))

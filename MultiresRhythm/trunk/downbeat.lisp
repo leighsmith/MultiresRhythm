@@ -265,9 +265,10 @@ start-onset, these measures are in samples"
 (defun rhythm-categories (iois sample-rate)
   "Maps from intervals into perceptually distinct interval categories"
   (declare (ignore sample-rate)) ; TODO should add absolute tempo preference using the sample-rate.
-  (let ((average-ioi (mean iois))
-	(tatum-estimate (.min iois)))
-    (format t "average ioi ~a stddev ~a~%" average-ioi (stddev iois))
+  (let* ((float-iois (.* iois 1d0))
+	 ;; (average-ioi (mean float-iois))
+	 (tatum-estimate (.min float-iois)))
+    ;; (format t "average ioi ~a stddev ~a~%" (mean float-iois) (stddev float-iois))
     (.round (./ iois tatum-estimate))))
 
 ;; TODO
@@ -309,60 +310,65 @@ start-onset, these measures are in samples"
     ;; TODO We could check if there are several iois that are the same as earlier initial intervals.
     (.aref locations-of-maximum 0)))
 
-(defmethod duration-downbeat-estimation ((rhythm-to-analyse rhythm) bar-period &key
-					 (maximum-events 5))
-  "Returns the number of the downbeat, skipping any anacrusis. bar-period in samples"
-  (let* ((bar-period-samples (* bar-period (sample-rate rhythm-to-analyse)))
-	 ;; We use a temporal limit... 
-	 (time-limited-iois (rhythm-iois-samples (limit-rhythm rhythm-to-analyse
-							       :maximum-samples bar-period-samples)))
-	 ;; ...and an event density (maximum event memory) limit.
-	 (initial-iois (.* (.subseq time-limited-iois 0 (1- (min (1+ (.length time-limited-iois)) maximum-events))) 1d0))
-	 (perceptual-categories (rhythm-categories initial-iois (sample-rate rhythm-to-analyse)))
-	 (maximum-perceived-interval (.max perceptual-categories))
-	 (locations-of-maximum (.find (.= maximum-perceived-interval perceptual-categories))))
-    (format t "initial iois ~a~%perceptual-categories ~a~%" initial-iois perceptual-categories)
-    ;; There are two situations: 1) we have a singularly perceptually longer interval
-    ;; (i.e. markedly longer) than other events in the initial sequence, in which case the
-    ;; onset starting the first relatively long (perceptually significant) interval is
-    ;; highly likely to be the downbeat event, or 2) we have intervals which are non-unique,
-    ;; i.e other intervals of similar length reoccur in the initial sequence.
-    ;; For now, we only assume the first case, since it's not clear that situation is
-    ;; contradicted by the second case.
-    ;; TODO We could check if there are several iois that are the same as earlier initial intervals.
-    (.aref locations-of-maximum 0)))
-
 ;;; Since the likelihoods are ordered, simply comparing the first and second likelihoods is
 ;;; sufficient to generalise a measure of likelihood into binary classes (low/high).
 ;;; Incorporating the average of the likelihoods indicates how much the first rises above the remainder.
 (defun probability-of-estimate (match-scores)
-  "Return a normalised single probability based on the contrast of the match-score
-(unnormalised likelihood) of the chosen value against the remaining values."
+  "Return a normalised single probability based on the contrast of the match-score (unnormalised likelihood) of the chosen value against the remaining values."
   (/ (- (.aref match-scores 0) (mean (.subseq match-scores 1))) (.aref match-scores 0)))
 
-;;(defun downbeat-from-shifts (shift-options beat-duration)
+;;(defun downbeat-from-position (shift-options beat-duration)
 ;;  (round (.aref shift-options 0) beat-duration))
 
-(defun amplitude-profile-downbeat-estimation (ODF-fragment meter tempo-in-bpm beat-duration)
+;;; There are two situations: 1) we have a singularly perceptually longer interval
+;;; (i.e. markedly longer) than other events in the initial sequence, in which case the
+;;; onset starting the first relatively long (perceptually significant) interval is
+;;; highly likely to be the downbeat event, or 2) we have intervals which are non-unique,
+;;; i.e other intervals of similar length reoccur in the initial sequence.
+;;; For now, we only assume the first case, since it's not clear that situation is
+;;; contradicted by the second case.
+;;; TODO We could check if there are several iois that are the same as earlier initial intervals.
+;;; TODO perhaps all we need to have passed in is the rhythm, beat-duration and bar-duration in samples?
+(defmethod duration-downbeat-estimation ((rhythm-to-analyse rhythm) meter tempo-in-bpm
+					 bar-duration beat-duration)
+  "Returns the number of the downbeat, skipping any anacrusis. bar-duration and beat-duration in samples"
+  (let (;; We use a temporal limit... Perhaps we can just pass this amount in?
+	(time-limited-iois (rhythm-iois-samples (limit-rhythm rhythm-to-analyse
+							      :maximum-samples bar-duration))))
+    (if (plusp (.length time-limited-iois))
+	(let* ((perceptual-categories (rhythm-categories time-limited-iois (sample-rate rhythm-to-analyse)))
+	       (categorised-beat (rhythm-categories (make-narray (list beat-duration)) (sample-rate rhythm-to-analyse)))
+	       (maximum-perceived-interval (.max perceptual-categories))
+	       (locations-of-maximum (.find (.= maximum-perceived-interval perceptual-categories)))
+	       (downbeat (round (onset-time-of-note rhythm-to-analyse (.aref locations-of-maximum 0)) beat-duration)))
+	     (format t "time limited iois ~a~%perceptual-categories ~a, categorised beat ~a~%"
+		     time-limited-iois perceptual-categories categorised-beat)
+	     (format t "locations of max duration ~a downbeat ~d probability ~,5f~%" locations-of-maximum downbeat 0.0)
+	     downbeat)
+	0)))
+
+(defmethod amplitude-profile-downbeat-estimation ((ODF-fragment rhythm)
+						  meter tempo-in-bpm bar-duration beat-duration)
   "Estimate the downbeat of the fragment of the onset detection function"
-  ;; TODO we could also use the returned likelihood to improve the estimation
+  (declare (ignore bar-duration))
   (multiple-value-bind (shift-options shift-scores) (match-ODF-meter meter tempo-in-bpm ODF-fragment)  
     (let* ((downbeat (round (.aref shift-options 0) beat-duration))) ; Super dumb for now.
       (format t "shift options ~a downbeat ~a probability ~,5f~%" shift-options downbeat
 	      (probability-of-estimate shift-scores))
-    downbeat)))
+      ;; TODO we could also use the probability-of-estimate likelihood to improve the estimation
+      downbeat)))
 
 (defun downbeat-estimate-rhythm (rhythm tempo-in-bpm meter beats-per-measure downbeat-estimator)
   "Returns an estimate of downbeat location across the entire ODF rhythm using an estimator"
   (loop
-     with beat-duration-samples = (round (* (/ 60.0 tempo-in-bpm) (sample-rate rhythm)))
-     with bar-duration-samples = (* beats-per-measure beat-duration-samples)
-     with search-duration = (* 2 bar-duration-samples) ; in samples
-     initially (format t "beat duration in samples ~a, meter ~a~%" beat-duration-samples meter)
-     for start-sample from 0 below (duration-in-samples rhythm) by bar-duration-samples
+     with beat-duration = (round (* (/ 60.0 tempo-in-bpm) (sample-rate rhythm))) ; in samples
+     with bar-duration = (* beats-per-measure beat-duration) ; in samples
+     with search-duration = (* 2 bar-duration) ; in samples
+     initially (format t "beat duration in samples ~a, meter ~a~%" beat-duration meter)
+     for start-sample from 0 below (duration-in-samples rhythm) by bar-duration
      for search-region = (list start-sample (1- (min (duration-in-samples rhythm) (+ start-sample search-duration))))
      for two-bars-of-ODF = (subset-of-rhythm rhythm search-region)
-     for downbeat = (funcall downbeat-estimator two-bars-of-ODF meter tempo-in-bpm beat-duration-samples)
+     for downbeat = (mod (funcall downbeat-estimator two-bars-of-ODF meter tempo-in-bpm bar-duration beat-duration) beats-per-measure)
      do (format t "tempo ~,2f bpm, search duration ~a search region ~a~%"
 		tempo-in-bpm search-duration search-region)	
      collect downbeat into downbeats
@@ -375,5 +381,12 @@ start-onset, these measures are in samples"
 						       tempo-in-bpm
 						       meter
 						       beats-per-measure
-						       #'amplitude-profile-downbeat-estimation)))
+						       #'amplitude-profile-downbeat-estimation))
+	(duration-estimates (downbeat-estimate-rhythm rhythm
+						      tempo-in-bpm
+						      meter
+						      beats-per-measure
+						      #'duration-downbeat-estimation)))
+    (format t "amplitude estimates ~a~%" amplitude-estimates)
+    (format t "duration estimates ~a~%" duration-estimates)
     amplitude-estimates))

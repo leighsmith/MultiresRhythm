@@ -12,6 +12,8 @@
 ;;;; Copyright (c) 2007
 ;;;;
 
+(declaim (optimize (speed 0) (safety 3) (debug 3)))
+
 (in-package :multires-rhythm)
 (use-package :nlisp)
 
@@ -96,12 +98,20 @@
 
 ;;; TODO This should be replaced when we integrate Plymouth's onsets thresholding function
 ;;; into our code.
-(defmethod onset-time-of-note ((rhythm salience-trace-rhythm) note-numbers)
+;; (defmethod onset-time-of-note ((rhythm salience-trace-rhythm) note-numbers)
+;;   "Returns the sample number of the beat-number'th beat in the given rhythm"
+;;   (let* ((onsets-rhythm (make-instance 'rhythm 
+;; 				       :time-signal (onsets-time-signal rhythm)
+;; 				       :sample-rate (sample-rate rhythm))))
+;;     (onset-time-of-note onsets-rhythm note-numbers)))
+
+(defmethod onset-time-of-note ((rhythm-to-analyse salience-trace-rhythm) (note-numbers n-array))
   "Returns the sample number of the beat-number'th beat in the given rhythm"
-  (let* ((onsets-rhythm (make-instance 'rhythm 
-				       :time-signal (onsets-time-signal rhythm)
-				       :sample-rate (sample-rate rhythm))))
-    (onset-time-of-note onsets-rhythm note-numbers)))
+  (.arefs (.find (onsets-time-signal rhythm-to-analyse)) note-numbers))
+
+(defmethod onset-time-of-note ((rhythm-to-analyse salience-trace-rhythm) note-number)
+  "Returns the sample number of the beat-number'th beat in the given rhythm"
+  (.aref (.find (onsets-time-signal rhythm-to-analyse)) note-number))
 
 (defmethod onsets-in-samples ((rhythm-to-analyse salience-trace-rhythm))
   (.find (onsets-time-signal rhythm-to-analyse)))
@@ -123,15 +133,14 @@
 	       (to-remove (.+ within-window (.floor first-are-greater))))
 	  (remove-arefs onset-times to-remove)))))
 
-#|
-;;; TODO incomplete!
-(defun onsets-of-salience (salience)
-  "Attempt to determine the onset times from rapid changes in the salience trace"
-  (let* ((abs-diff (.abs (.diff salience)))
-	 (mean-difference (mean abs-diff))
-	 (stddev-difference (stddev abs-diff)))
-    (.find (.> abs-diff (+ mean-difference stddev-difference)))))
-|#
+;;; TODO Perhaps we are beginning to reach the limit of the representation, where we are swapping
+;;; the discrete time values for the onsets. Probably the solution is to factor the
+;;; rerieval methods so that onsets are more clearly separated from a rhythm time signal.
+(defmethod subset-of-rhythm ((rhythm-to-subset salience-trace-rhythm) time-region)
+  "Subset the onsets-time-signal as well as the time-signal"
+  (let ((subset-rhythm (call-next-method rhythm-to-subset time-region)))
+    (setf (onsets-time-signal subset-rhythm) (.subarray (onsets-time-signal rhythm-to-subset) (list 0 time-region)))
+    subset-rhythm))
 
 (defmethod onsets-of-salience ((odf-rhythm salience-trace-rhythm))
   "Determine the onset times from the salience trace"
@@ -158,12 +167,14 @@
 			 :name (pathname-name salience-filepath)
 			 :description description
 			 :time-signal perceptual-salience
-			 :sample-rate sample-rate)))
+			 :onsets-time-signal (make-double-array (.length perceptual-salience))
+			 :sample-rate sample-rate))
+	 (onset-indices (onsets-of-salience perceptual-salience-rhythm)))
     ;; Assign the onsets from the computed times derived from the salience trace.
-    (setf (onsets-time-signal perceptual-salience-rhythm) 
+    (setf (.arefs (onsets-time-signal perceptual-salience-rhythm) onset-indices)
 	  (if weighted
-	      (.arefs perceptual-salience (onsets-of-salience perceptual-salience-rhythm))
-	      (impulses-at (onsets-of-salience perceptual-salience-rhythm) (.length perceptual-salience))))
+	      (.arefs perceptual-salience onset-indices)
+	      (make-double-array (.length onset-indices) :initial-element 1d0)))
     perceptual-salience-rhythm))
 
 (defun perceptual-salience-rhythm (salience-filepath onsets-filepath &key 
