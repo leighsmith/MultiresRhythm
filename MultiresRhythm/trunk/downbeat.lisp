@@ -336,15 +336,23 @@ start-onset, these measures are in samples"
 	(time-limited-iois (rhythm-iois-samples (limit-rhythm rhythm-to-analyse
 							      :maximum-samples bar-duration))))
     (if (plusp (.length time-limited-iois))
-	(let* ((perceptual-categories (rhythm-categories time-limited-iois (sample-rate rhythm-to-analyse)))
-	       (categorised-beat (rhythm-categories (make-narray (list beat-duration)) (sample-rate rhythm-to-analyse)))
-	       (maximum-perceived-interval (.max perceptual-categories))
-	       (locations-of-maximum (.find (.= maximum-perceived-interval perceptual-categories)))
-	       (downbeat (round (onset-time-of-note rhythm-to-analyse (.aref locations-of-maximum 0)) beat-duration)))
-	     (format t "time limited iois ~a~%perceptual-categories ~a, categorised beat ~a~%"
-		     time-limited-iois perceptual-categories categorised-beat)
-	     (format t "locations of max duration ~a downbeat ~d probability ~,5f~%" locations-of-maximum downbeat 0.0)
-	     downbeat)
+	(let* ((perceptual-categories (rhythm-categories (.concatenate (make-narray (list beat-duration)) time-limited-iois) (sample-rate rhythm-to-analyse)))
+	       (categorised-beat (.aref perceptual-categories 0))
+	       (categorised-iois (.subseq perceptual-categories 1))
+	       (maximum-perceived-interval (.max categorised-iois))
+	       (locations-of-maximum (.find (.and (.= maximum-perceived-interval categorised-iois)
+						  (.> categorised-iois categorised-beat)))))
+	     (format t "time limited iois ~a, beat-duration ~a~%" time-limited-iois beat-duration)
+	     (format t "categorised-iois ~a, categorised beat ~a~%" categorised-iois categorised-beat)
+	     (if (plusp (.length locations-of-maximum))
+		 ;; Find the earliest maximum IOI
+		 (let ((downbeat (round (onset-time-of-note rhythm-to-analyse (.aref locations-of-maximum 0)) beat-duration)))
+		   (format t "locations of max duration ~a downbeat ~d probability ~,5f~%"
+			   locations-of-maximum downbeat 0.0)
+		   downbeat)
+		 0))
+	;; We should mark this as being unknown, rather than just
+	;; defaulting. Prob. return -1? or probability 0 which doesn't really mean we don't know...
 	0)))
 
 (defmethod amplitude-profile-downbeat-estimation ((ODF-fragment rhythm)
