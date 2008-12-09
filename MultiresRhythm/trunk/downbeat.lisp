@@ -329,8 +329,8 @@ start-onset, these measures are in samples"
 ;;; contradicted by the second case.
 ;;; TODO We could check if there are several iois that are the same as earlier initial intervals.
 ;;; TODO perhaps all we need to have passed in is the rhythm, beat-duration and bar-duration in samples?
-(defmethod duration-downbeat-estimation ((rhythm-to-analyse rhythm) meter tempo-in-bpm
-					 bar-duration beat-duration)
+(defmethod duration-downbeat-estimation ((rhythm-to-analyse rhythm) meter
+					 beats-per-measure tempo-in-bpm bar-duration beat-duration)
   "Returns the number of the downbeat, skipping any anacrusis. bar-duration and beat-duration in samples"
   (let (;; We use a temporal limit... Perhaps we can just pass this amount in?
 	(time-limited-iois (rhythm-iois-samples (limit-rhythm rhythm-to-analyse
@@ -355,46 +355,75 @@ start-onset, these measures are in samples"
 	;; defaulting. Prob. return -1? or probability 0 which doesn't really mean we don't know...
 	0)))
 
+#|
+Overblown, & doesn't always return 4 values.
+;; Make a histogram of the labels, adding the probabilities
+(defun combine-probabilities (discrete-labels probabilities)
+  "Combines any duplicated labels into a single value, adding the probabilities"
+  (let ((label-hash (make-hash-table :size (.length discrete-labels))))
+    (map nil (lambda (element probability) (incf (gethash element label-hash 0) probability)) 
+	 (val discrete-labels) (val probabilities))
+    (make-narray (get-histogram-counts label-hash))))
+|#
+
+;; Make a histogram of the labels, adding the probabilities
+(defun combine-probabilities (discrete-labels probabilities total-labels)
+  "Combines any duplicated labels into a single value, adding the probabilities"
+  (loop
+     with label-tally = (make-double-array total-labels)
+     for label across (val discrete-labels)
+     for probability across (val probabilities)
+     do (incf (.aref label-tally label) probability)
+     finally (return label-tally)))
+
 (defmethod amplitude-profile-downbeat-estimation ((ODF-fragment rhythm)
-						  meter tempo-in-bpm bar-duration beat-duration)
-  "Estimate the downbeat of the fragment of the onset detection function"
+						  meter beats-per-measure tempo-in-bpm bar-duration beat-duration)
+  "Estimate the downbeat of the fragment of the onset detection function. Returns a vector
+   of length beats-in-measure with the probabilty of the downbeat at each beat indicated."
   (declare (ignore bar-duration))
   (multiple-value-bind (shift-options shift-scores) (match-ODF-meter meter tempo-in-bpm ODF-fragment)  
-    (let* ((downbeat (round (.aref shift-options 0) beat-duration))) ; Super dumb for now.
-      (format t "shift options ~a downbeat ~a probability ~,5f~%" shift-options downbeat
-	      (probability-of-estimate shift-scores))
-      ;; TODO we could also use the probability-of-estimate likelihood to improve the estimation
-      downbeat)))
+    (let* ((downbeats (.mod (.round (./ shift-options beat-duration)) beats-per-measure)) ; Super dumb for now.
+	   ;; balance by the relative score values.
+	   (scores-as-probabilities (./ shift-scores (.sum shift-scores)))) 
+      (format t "shift options ~a downbeat probabilities ~,5f~%"
+	      shift-options (combine-probabilities downbeats scores-as-probabilities beats-per-measure))
+      (combine-probabilities downbeats scores-as-probabilities beats-per-measure))))
 
+;; TODO could pass in the search duration in number of bars.
 (defun downbeat-estimate-rhythm (rhythm tempo-in-bpm meter beats-per-measure downbeat-estimator)
   "Returns an estimate of downbeat location across the entire ODF rhythm using an estimator"
   (loop
      with beat-duration = (round (* (/ 60.0 tempo-in-bpm) (sample-rate rhythm))) ; in samples
      with bar-duration = (* beats-per-measure beat-duration) ; in samples
+     with number-of-measures = (floor (duration-in-samples rhythm) bar-duration) ; floor avoids partial bars
+     with downbeat-estimates = (make-double-array (list beats-per-measure number-of-measures))
      with search-duration = (* 2 bar-duration) ; in samples
      initially (format t "beat duration in samples ~a, meter ~a~%" beat-duration meter)
+     for measure-index from 0 below number-of-measures
      for start-sample from 0 below (duration-in-samples rhythm) by bar-duration
      for search-region = (list start-sample (1- (min (duration-in-samples rhythm) (+ start-sample search-duration))))
-     for two-bars-of-ODF = (subset-of-rhythm rhythm search-region)
-     for downbeat = (mod (funcall downbeat-estimator two-bars-of-ODF meter tempo-in-bpm bar-duration beat-duration) beats-per-measure)
+     for fragment-of-ODF = (subset-of-rhythm rhythm search-region)
+     for downbeat-probabilities = (funcall downbeat-estimator fragment-of-ODF meter beats-per-measure
+					   tempo-in-bpm bar-duration beat-duration)
      do (format t "tempo ~,2f bpm, search duration ~a search region ~a~%"
 		tempo-in-bpm search-duration search-region)	
-     collect downbeat into downbeats
-     ;; collect likelihood in downbeat-probability
-     finally (return (make-narray downbeats))))
+       (setf (.column downbeat-estimates measure-index) downbeat-probabilities) ; collect likelihood in downbeat-probability
+     finally (return downbeat-estimates)))
 
 (defun downbeat-estimation (rhythm tempo-in-bpm meter beats-per-measure)
-  "Use competing features to form an estimation of downbeat."
+  "Use competing features to form an estimation of downbeat. Returns a single number mod beats-per-measure"
   (let ((amplitude-estimates (downbeat-estimate-rhythm rhythm 
 						       tempo-in-bpm
 						       meter
 						       beats-per-measure
 						       #'amplitude-profile-downbeat-estimation))
-	(duration-estimates (downbeat-estimate-rhythm rhythm
-						      tempo-in-bpm
-						      meter
-						      beats-per-measure
-						      #'duration-downbeat-estimation)))
+;;; 	(duration-estimates (downbeat-estimate-rhythm rhythm
+;;; 						      tempo-in-bpm
+;;; 						      meter
+;;; 						      beats-per-measure
+;;; 						      #'duration-downbeat-estimation)))
+)
     (format t "amplitude estimates ~a~%" amplitude-estimates)
-    (format t "duration estimates ~a~%" duration-estimates)
-    amplitude-estimates))
+ ;;   (format t "duration estimates ~a~%" duration-estimates)
+    (format t "partial-sum ~a~%" (.partial-sum (.transpose amplitude-estimates)))
+    (argmax (.partial-sum (.transpose amplitude-estimates)))))
