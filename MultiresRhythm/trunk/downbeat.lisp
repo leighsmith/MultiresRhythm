@@ -317,54 +317,114 @@ start-onset, these measures are in samples"
   "Return a normalised single probability based on the contrast of the match-score (unnormalised likelihood) of the chosen value against the remaining values."
   (/ (- (.aref match-scores 0) (mean (.subseq match-scores 1))) (.aref match-scores 0)))
 
-;;(defun downbeat-from-position (shift-options beat-duration)
-;;  (round (.aref shift-options 0) beat-duration))
+(defun reward-for-occurance (rhythm condition description beats-per-measure beat-duration probability-increment)
+  "Returns those beats that span notes that match the condition with extra probability-increment"
+  (let*	((beat-probabilities (make-double-array beats-per-measure))
+	 (notes-matching-condition (.find condition)))
+    (format t "notes matching ~a ~a~%" description notes-matching-condition)
+    (if (plusp (.length notes-matching-condition))
+	(let ((beats-matching-condition (.mod (.round (./ (onset-time-of-note rhythm notes-matching-condition) beat-duration)) 
+					      beats-per-measure)))
+	  (format t "downbeats ~d~%" beats-matching-condition)
+	  ;; If the same downbeat occurs more than once, the probability increment is only done once.
+	  (setf (.arefs beat-probabilities beats-matching-condition) probability-increment)))
+    beat-probabilities))
 
 ;;; There are two situations: 1) we have a singularly perceptually longer interval
 ;;; (i.e. markedly longer) than other events in the initial sequence, in which case the
 ;;; onset starting the first relatively long (perceptually significant) interval is
-;;; highly likely to be the downbeat event, or 2) we have intervals which are non-unique,
-;;; i.e other intervals of similar length reoccur in the initial sequence.
-;;; For now, we only assume the first case, since it's not clear that situation is
-;;; contradicted by the second case.
+;;; highly likely to be the downbeat event, or 
 ;;; TODO We could check if there are several iois that are the same as earlier initial intervals.
 ;;; TODO perhaps all we need to have passed in is the rhythm, beat-duration and bar-duration in samples?
 (defmethod duration-downbeat-estimation ((rhythm-to-analyse rhythm) meter
 					 beats-per-measure tempo-in-bpm bar-duration beat-duration)
-  "Returns the number of the downbeat, skipping any anacrusis. bar-duration and beat-duration in samples"
+  "Returns the probabilities of the downbeat at each beat location. bar-duration and beat-duration in samples"
   (let (;; We use a temporal limit... Perhaps we can just pass this amount in?
 	(time-limited-iois (rhythm-iois-samples (limit-rhythm rhythm-to-analyse
-							      :maximum-samples bar-duration))))
+							      :maximum-samples bar-duration)))
+	(downbeat-probabilities (make-double-array beats-per-measure))) ; initialised to 0.0
+    (format t "time limited iois ~a, beat-duration ~a~%" time-limited-iois beat-duration)
     (if (plusp (.length time-limited-iois))
-	(let* ((perceptual-categories (rhythm-categories (.concatenate (make-narray (list beat-duration)) time-limited-iois) (sample-rate rhythm-to-analyse)))
+	(let* ((perceptual-categories (rhythm-categories (.concatenate (make-narray (list beat-duration))
+								       time-limited-iois) 
+							 (sample-rate rhythm-to-analyse)))
 	       (categorised-beat (.aref perceptual-categories 0))
 	       (categorised-iois (.subseq perceptual-categories 1))
 	       (maximum-perceived-interval (.max categorised-iois))
-	       (locations-of-maximum (.find (.and (.= maximum-perceived-interval categorised-iois)
-						  (.> categorised-iois categorised-beat)))))
-	     (format t "time limited iois ~a, beat-duration ~a~%" time-limited-iois beat-duration)
-	     (format t "categorised-iois ~a, categorised beat ~a~%" categorised-iois categorised-beat)
-	     (if (plusp (.length locations-of-maximum))
-		 ;; Find the earliest maximum IOI
-		 (let ((downbeat (round (onset-time-of-note rhythm-to-analyse (.aref locations-of-maximum 0)) beat-duration)))
-		   (format t "locations of max duration ~a downbeat ~d probability ~,5f~%"
-			   locations-of-maximum downbeat 0.0)
-		   downbeat)
-		 0))
-	;; We should mark this as being unknown, rather than just
-	;; defaulting. Prob. return -1? or probability 0 which doesn't really mean we don't know...
-	0)))
+	       (duration-maxima-probabilities (reward-for-occurance rhythm-to-analyse 
+								    (.= maximum-perceived-interval categorised-iois)
+								    "maximum duration"
+								    beats-per-measure beat-duration 0.1d0))
+	       (exceeding-beat-probabilities (reward-for-occurance rhythm-to-analyse 
+								   (.> categorised-iois categorised-beat)
+								   "exceeding beat duration"
+								   beats-per-measure beat-duration 0.2d0)))
+	  (format t "categorised-iois ~a, categorised beat ~a~%" categorised-iois categorised-beat)
+	  ;; TODO Find the earliest maximum IOI
+	  (setf downbeat-probabilities (.+ duration-maxima-probabilities exceeding-beat-probabilities))))
+    ;; By returning P(downbeat) = 0 for all downbeat locations we indicate the lack of
+    ;; decision as all are equally likely and none contribute to the final decision.
+    (if (zerop (.sum downbeat-probabilities)) ; catch when we're dropping through with all 0 probabilities
+	downbeat-probabilities
+	(./ downbeat-probabilities (.sum downbeat-probabilities)))))
 
-#|
-Overblown, & doesn't always return 4 values.
-;; Make a histogram of the labels, adding the probabilities
-(defun combine-probabilities (discrete-labels probabilities)
-  "Combines any duplicated labels into a single value, adding the probabilities"
-  (let ((label-hash (make-hash-table :size (.length discrete-labels))))
-    (map nil (lambda (element probability) (incf (gethash element label-hash 0) probability)) 
-	 (val discrete-labels) (val probabilities))
-    (make-narray (get-histogram-counts label-hash))))
-|#
+;;; We have a singularly perceptually longer interval
+;;; (i.e. markedly longer) than other events in the initial sequence, in which case the
+;;; onset starting the first relatively long (perceptually significant) interval is
+;;; highly likely to be the downbeat event, or 
+;;; TODO We could check if there are several iois that are the same as earlier initial intervals.
+;;; TODO perhaps all we need to have passed in is the rhythm, beat-duration and bar-duration in samples?
+(defmethod duration-accent-estimation ((rhythm-to-analyse rhythm) meter
+				       beats-per-measure tempo-in-bpm bar-duration beat-duration)
+  "Returns the probabilities of the downbeat at each beat location. bar-duration and beat-duration in samples"
+  (let (;; We use a temporal limit... Perhaps we can just pass this amount in?
+	(time-limited-iois (rhythm-iois-samples (limit-rhythm rhythm-to-analyse
+							      :maximum-samples bar-duration)))
+	(downbeat-probabilities (make-double-array beats-per-measure))) ; initialised to 0.0
+    (format t "time limited iois ~a, beat-duration ~a~%" time-limited-iois beat-duration)
+    (if (plusp (.length time-limited-iois))
+	(let* ((perceptual-categories (rhythm-categories (.concatenate (make-narray (list beat-duration))
+								       time-limited-iois) 
+							 (sample-rate rhythm-to-analyse)))
+	       (categorised-beat (.aref perceptual-categories 0))
+	       (categorised-iois (.subseq perceptual-categories 1))
+	       (exceeding-beat-probabilities (reward-for-occurance rhythm-to-analyse 
+								   (.> categorised-iois categorised-beat)
+								   "exceeding beat duration"
+								   beats-per-measure beat-duration 0.2d0)))
+	  (format t "categorised-iois ~a, categorised beat ~a~%" categorised-iois categorised-beat)
+	  ;; TODO Find the earliest maximum IOI
+	  (if (plusp (.sum exceeding-beat-probabilities))
+	      (setf downbeat-probabilities (./ exceeding-beat-probabilities (.sum exceeding-beat-probabilities))))))
+    ;; By returning P(downbeat) = 0 for all downbeat locations we indicate the lack of
+    ;; decision as all are equally likely and none contribute to the final decision.
+    downbeat-probabilities))
+
+;;; We have intervals which are non-unique, i.e other intervals of similar length reoccur
+;;; in the initial sequence.  For now, we only assume the first case, since it's not clear
+;;; that situation is contradicted by the second case.
+(defmethod gap-downbeat-estimation ((rhythm-to-analyse rhythm) meter
+					 beats-per-measure tempo-in-bpm bar-duration beat-duration)
+  "Returns the probabilities of the downbeat at each beat location. bar-duration and beat-duration in samples"
+  (let (;; We use a temporal limit... Perhaps we can just pass this amount in?
+	(time-limited-iois (rhythm-iois-samples (limit-rhythm rhythm-to-analyse
+							      :maximum-samples bar-duration)))
+	(downbeat-probabilities (make-double-array beats-per-measure))) ; initialised to 0.0
+    (format t "time limited iois ~a, beat-duration ~a~%" time-limited-iois beat-duration)
+    (if (plusp (.length time-limited-iois))
+	(let* ((categorised-iois (rhythm-categories time-limited-iois (sample-rate rhythm-to-analyse)))
+	       (maximum-perceived-interval (.max categorised-iois))
+	       (duration-maxima-probabilities (reward-for-occurance rhythm-to-analyse 
+								    (.= maximum-perceived-interval categorised-iois)
+								    "maximum duration"
+								    beats-per-measure beat-duration 0.1d0)))
+	  (format t "categorised-iois ~a~%" categorised-iois)
+	  ;; TODO Find the earliest maximum IOI
+	  (setf downbeat-probabilities (./ duration-maxima-probabilities (.sum duration-maxima-probabilities)))))
+    ;; By returning P(downbeat) = 0 for all downbeat locations we indicate the lack of
+    ;; decision as all are equally likely and none contribute to the final decision.
+    downbeat-probabilities))
+
 
 ;; Make a histogram of the labels, adding the probabilities
 (defun combine-probabilities (discrete-labels probabilities total-labels)
@@ -410,20 +470,28 @@ Overblown, & doesn't always return 4 values.
        (setf (.column downbeat-estimates measure-index) downbeat-probabilities) ; collect likelihood in downbeat-probability
      finally (return downbeat-estimates)))
 
+(defun amass-evidence (estimates)
+  "Returns the row number (downbeat estimate) with most evidence"
+  (let ((location-evidence (.partial-sum (.transpose estimates))))
+    (format t "amassed downbeat location evidence ~a~%" location-evidence)
+    ;; TODO calc how much more likely: (probability-of-estimate location-evidence)
+    (argmax location-evidence)))
+
 (defun downbeat-estimation (rhythm tempo-in-bpm meter beats-per-measure)
   "Use competing features to form an estimation of downbeat. Returns a single number mod beats-per-measure"
-  (let ((amplitude-estimates (downbeat-estimate-rhythm rhythm 
+  (let* ((amplitude-estimates (downbeat-estimate-rhythm rhythm 
+							tempo-in-bpm
+							meter
+							beats-per-measure
+							#'amplitude-profile-downbeat-estimation))
+	 (duration-estimates (downbeat-estimate-rhythm rhythm
 						       tempo-in-bpm
 						       meter
 						       beats-per-measure
-						       #'amplitude-profile-downbeat-estimation))
-;;; 	(duration-estimates (downbeat-estimate-rhythm rhythm
-;;; 						      tempo-in-bpm
-;;; 						      meter
-;;; 						      beats-per-measure
-;;; 						      #'duration-downbeat-estimation)))
-)
-    (format t "amplitude estimates ~a~%" amplitude-estimates)
- ;;   (format t "duration estimates ~a~%" duration-estimates)
-    (format t "partial-sum ~a~%" (.partial-sum (.transpose amplitude-estimates)))
-    (argmax (.partial-sum (.transpose amplitude-estimates)))))
+						       #'duration-downbeat-estimation)))
+    (format t "amplitude estimates ~a~%" (.transpose amplitude-estimates))
+    (format t "duration estimates ~a~%" (.transpose duration-estimates))
+    ;; If we are doing anything other than finding the argmax, we need to normalise the
+    ;; values by dividing by the number of estimates.
+    ;; (amass-evidence (.+ amplitude-estimates duration-estimates))))
+    (amass-evidence amplitude-estimates)))
