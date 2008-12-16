@@ -32,7 +32,7 @@
 			      when (not (print (funcall evaluation-function music)))
 			      collect music))
 	 (number-failed (length failing-examples)))
-    (format t "~%~a ~d failed, correct ~f%~%" 
+    (format t "~%~a ~d failed, correct ~,2f%~%" 
 	    evaluation-function 
 	    number-failed
 	    (* (- 1.0 (/ (float number-failed) (length music-dataset))) 100.0))

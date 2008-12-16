@@ -56,7 +56,16 @@
   (compute-perceptual-versions "res1/res1_2_resp_text" "res1/res1_2_pOnsets_text" "res1/res1_2" :start-from-beat 2)
   (compute-perceptual-versions "res1/res1_3_resp_text" "res1/res1_3_pOnsets_text" "res1/res1_3")
   (compute-perceptual-versions "res4/res4_1_resp_text" "res4/res4_1_pOnsets_text" "res4/res4_1")
+  ;; res4_1 produces claps at:
+  ;; Beat times of res4/res4_1_resp_text in seconds:
+  ;; NLISP #(0.1d0 0.69d0 1.26d0 1.8d0 2.325d0 2.865d0 3.445d0 4.155d0 4.855d0
+  ;;         5.52d0 6.165d0 6.795d0 7.425d0 8.025d0 8.58d0 9.125d0)
+  ;; Tempo estimate: 101.69 BPM
   (compute-perceptual-versions "res4/res4_2_resp_text" "res4/res4_2_pOnsets_text" "res4/res4_2")
+  ;; Beat times of res4/res4_2_resp_text in seconds:
+  ;; NLISP #(0.475d0 0.985d0 1.54d0 2.2d0 2.85d0 3.495d0 4.145d0 4.825d0 5.56d0
+  ;;         6.285d0 6.985d0 7.695d0 8.38d0 9.04d0 9.69d0 10.325d0 10.93d0 11.51d0)
+  ;; Tempo estimate: 92.31 BPM
   ;; The ridge selected by the weighted version is too slow.
   (compute-perceptual-versions "res4/res4_3_resp_text" "res4/res4_3_pOnsets_text" "res4/res4_3")
   (compute-perceptual-versions "res4/res4_3_resp_text" "res4/res4_3_pOnsets_text" "res4/res4_3" :start-from-beat 5))

@@ -42,9 +42,9 @@
 ;; (setf x (dyadic-cwt (fm-test :signal-length 256) 8 256)) ; magnitude only.
 ;; Test any length signals:
 ;; (setf fm-scaleogram (cwt (fm-test) 8))
-;; (setf fm-scaleogram (cwt (fm-test) 16))
+;; (setf fm-scaleogram (multires-rhythm::cwt (fm-test) 16))
 ;; Test plotting of both magnitude and phase:
-;; (plot-cwt (cwt (fm-test) 16) :title "fm")
+;; (mrr::plot-cwt (mrr::cwt (fm-test) 16) :title "fm")
 
 ;;; 
 (defun rising-harmonic-test (&key (signal-length 2048))
@@ -408,3 +408,8 @@
 		   :sample-rate (sample-rate rhythm-to-noise)
 		   :time-signal (make-instance 'n-integer-array :ival rhythm-vector))))
 
+;;; Test phase-diff versions:
+;;(setf single-phase (.row (multires-rhythm::scaleogram-phase fm-scaleogram) 60))
+;;(setf x (multires-rhythm::phase-diff single-phase))
+;;(setf y (multires-rhythm::phase-diff-new single-phase))
+;;(plot (.- x y) nil)

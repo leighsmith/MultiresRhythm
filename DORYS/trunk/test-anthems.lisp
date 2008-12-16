@@ -52,7 +52,7 @@
   (anthem-interval-scale anthem voices-per-octave (anthem-bar-duration anthem)))
 
 (defun beat-scale (anthem voices-per-octave)
-  (anthem-interval-scale anthem voices-per-octave (dorys::anthem-beat-duration anthem)))
+  (anthem-interval-scale anthem voices-per-octave (anthem-beat-duration anthem)))
 
 (defun canonical-bar-ridge (anthem rhythm-scaleogram)
   (make-monotone-ridge (round (bar-scale anthem (voices-per-octave rhythm-scaleogram)))
@@ -686,31 +686,28 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 	(format t "Early exit, found downbeat is nil, couldn't find beat period~%")
 	(correct-from-anthem-tree pattern found-anacrusis-duration official-bar-duration))))
 
-#|
+;;; with find-downbeat generates 72.38% success, without modulus 35.24%.
+;;; with find-downbeat-short 71.43% without modulus 65.71%
+;;; with find-downbeat-scores 61.90% without modulus 60.00%
+;;; with find-downbeat-simple 73.33% without modulus 61.90%
 (defun evaluate-downbeat-of-rhythm (rhythm pattern beat-period bar-period official-downbeat-duration)
-  "Compares the found downbeat against the ground truth value"
+  "Compares the found downbeat against the ground truth value. Accepts the value if the
+   downbeat is still on a metrical boundary but not the first measure."
+  (let* ((found-downbeat-number (multires-rhythm::find-downbeat-short rhythm))
+;;  (let* ((found-downbeat-number (multires-rhythm::find-downbeat-short rhythm :bar-period bar-period))
 ;;  (let* ((found-downbeat-number (multires-rhythm::find-downbeat rhythm beat-period :strategy #'multires-rhythm::is-greater-rhythmic-period))
-  (let* ((found-downbeat-number (multires-rhythm::find-downbeat-new rhythm beat-period))
+;;  (let* ((found-downbeat-number (multires-rhythm::find-downbeat-simple rhythm beat-period))
+;;  (let* ((found-downbeat-number (multires-rhythm::find-downbeat-scores rhythm beat-period))
 	 (found-anacrusis-duration (reduce #'+ (subseq pattern 0 found-downbeat-number)))
 	 (minimum-anacrusis-duration (mod found-anacrusis-duration bar-period)))
     (format t "Official downbeat duration ~a, found downbeat at event #~a, duration of anacrusis ~a~%"
 	    official-downbeat-duration found-downbeat-number found-anacrusis-duration)
     (if (not found-downbeat-number)
 	(progn (format t "Early exit, found downbeat is nil, couldn't find beat period~%") nil)
-	(= minimum-anacrusis-duration official-downbeat-duration))))
-|#
-
-(defun evaluate-downbeat-of-rhythm (rhythm pattern beat-period bar-period official-downbeat-duration)
-  "Compares the found downbeat against the ground truth value"
-;;  (let* ((found-downbeat-number (multires-rhythm::find-downbeat-new rhythm beat-period))
-  (let* ((found-downbeat-number (multires-rhythm::find-downbeat-scores rhythm beat-period))
-	 (found-anacrusis-duration (reduce #'+ (subseq pattern 0 found-downbeat-number))))
-    (format t "Official downbeat duration ~a, found downbeat at event #~a, duration of anacrusis ~a~%"
-	    official-downbeat-duration found-downbeat-number found-anacrusis-duration)
-    (if (not found-downbeat-number)
-	(progn (format t "Early exit, found downbeat is nil, couldn't find beat period~%") nil)
+	;; (= minimum-anacrusis-duration official-downbeat-duration)))) ; comment out to remove modulus.
 	(= found-anacrusis-duration official-downbeat-duration))))
 
+#|
 (defun evaluate-downbeat-of-anthem (anthem)
   "Returns T if the downbeat chosen aligns on a measure boundary with the official downbeat"
   (let* ((vpo 16)			; should be determined from scaleogram.
@@ -720,9 +717,24 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 	 (official-beat-period (time-support (beat-scale anthem vpo) vpo)) ; in samples.
 	 (rhythm (anthem-rhythm anthem))
 	 ;; official-beat-period & beat-period's contribution are the same in this case.
-	 (beat-period (multires-rhythm::beat-period-of-rhythm rhythm (skeleton-of-anthem anthem)))
+	 ;; (beat-period (multires-rhythm::beat-period-of-rhythm rhythm (skeleton-of-anthem anthem)))
 	 (matched (evaluate-downbeat-of-rhythm rhythm pattern official-beat-period official-bar-duration official-downbeat)))
-    (format t "official beat period ~a computed beat period ~a~%" official-beat-period beat-period)
+    ;; (format t "official beat period ~a computed beat period ~a~%" official-beat-period beat-period)
+    (format t "Strictly matches ~a~%" matched)
+    matched))
+|#
+
+(defun evaluate-downbeat-of-anthem (anthem)
+  "Returns T if the downbeat chosen aligns on a measure boundary with the official downbeat"
+  (let* ((pattern (second anthem))
+	 (official-downbeat (anthem-anacrusis-duration anthem))
+	 (official-bar-duration (anthem-duration-in-samples anthem (anthem-bar-duration anthem))) ; in samples
+	 (official-beat-period (anthem-duration-in-samples anthem (anthem-beat-duration anthem))) ; in samples.
+	 (rhythm (anthem-rhythm anthem))
+	 ;; official-beat-period & beat-period's contribution are the same in this case.
+	 ;; (beat-period (multires-rhythm::beat-period-of-rhythm rhythm (skeleton-of-anthem anthem)))
+	 (matched (evaluate-downbeat-of-rhythm rhythm pattern official-beat-period official-bar-duration official-downbeat)))
+    ;; (format t "official beat period ~a computed beat period ~a~%" official-beat-period beat-period)
     (format t "Strictly matches ~a~%" matched)
     matched))
 
@@ -734,11 +746,22 @@ Ghana (12/8) and Malaya (repeated intervals of 5) are fine."
 ;; (plot-anacrusis-profiles (anthem-rhythm (anthem-named 'netherlands)) (downbeat-number (anthem-named 'netherlands))
 
 
-;;; (setf bad-downbeats (evaluation-of-anthems #'evaluate-downbeat-of-anthem-recent))
-;;; #<FUNCTION EVALUATE-DOWNBEAT-OF-ANTHEM> 28 failed, correct 73.333336%
+;;; (setf bad-anthem-downbeats (evaluation-of-anthems #'evaluate-downbeat-of-anthem-recent))
+;;; #<FUNCTION EVALUATE-DOWNBEAT-OF-ANTHEM-RECENT> 31 failed, correct 70.48%
 
-;;; (setf bad-downbeats (evaluation-of-anthems #'evaluate-downbeat-of-anthem))
+;;; (setf bad-anthem-downbeats (evaluation-of-anthems #'evaluate-downbeat-of-anthem))
+;;; #<FUNCTION EVALUATE-DOWNBEAT-OF-ANTHEM> 29 failed, correct 72.38%
 
+#|
+(setf simple-countries (mapcar #'caar bad-downbeats-simple))
+(setf short-countries (mapcar #'caar bad-downbeats-short))
+;; Only works if there are no elements in simple-countries that are not also in short-countries.
+(loop for mismatched = (nth (mismatch simple-countries short-countries) short-countries)
+     when mismatched
+	    collect mismatched into short-fails
+	    do (delete mismatched short-countries)
+	    finally (return short-fails))
+|#
 
 ;;; Perhaps split into bar-period-of-rhythm and downbeat-of-rhythm?
 (defun bar-period-and-phase-of-rhythm (performed-rhythm &key (tactus-selector #'select-longest-lowest-tactus))

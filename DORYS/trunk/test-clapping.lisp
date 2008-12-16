@@ -52,7 +52,14 @@
 ;; (setf france01 (essen-rhythm "france01"))
 ;; (multires-rhythm::find-downbeat-new france01 100)
 
-(defun test-downbeat (essen-score)
+(defun evaluate-downbeat-of-essen (essen-score)
   "Evaluates the downbeat finder against the performed Essen data"
-  (destructuring-bind (filename m meter d description a anacrusis a1 anacrusis-intervals) essen-score
-    (= (multires-rhythm::find-downbeat-new (essen-rhythm filename) 100) anacrusis)))
+  (let ((filename (first essen-score))
+	(anacrusis (seventh essen-score)))
+    (= (multires-rhythm::find-downbeat-short (essen-rhythm filename)) anacrusis)))
+
+;;; (setf bad-essen-downbeats (evaluate-with-music #'evaluate-downbeat-of-essen :music-dataset *essen-perf-meters* :music-name #'first))
+;;; #<FUNCTION EVALUATE-DOWNBEAT-OF-ESSEN> 17 failed, correct 73.02%
+;;; Look at the problems all at once:
+;;; (evaluate-with-music #'evaluate-downbeat-of-essen :music-dataset bad-essen-downbeats :music-name #'first)
+

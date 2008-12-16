@@ -15,25 +15,6 @@
 (use-package :nlisp)
 (use-package :multires-rhythm)
 
-#|
-;;; Just needs the syncopation package loaded.
-(defun metric-scale (meter &key (max-amp 1.0d0) (min-amp 0.12d0))
-  "Derive from Longuet-Higgin's & Lee's metric salience measure (which is inverted in
-   polarity) an amplitude weighting"
-  (let* ((lhl-metric-salience (make-narray (syncopation::lh-metric-salience meter)))
-	 (max-salience (.max lhl-metric-salience))
-	 (min-salience (.min lhl-metric-salience))
-	 (amp-scaling (/ (- max-salience min-salience) (- max-amp min-amp))))
-    ;; TODO need to scale the minimum above 0.
-    (.+ 1d0 (./ (.* 1d0 lhl-metric-salience) amp-scaling))))
-
-(defun metrically-scaled-rhythm (meter bars tempo)
-  "Returns a rhythm with weighted onsets matching the metrical structure"
-  (let* ((metrical-weights (nlisp::array-to-list (metric-scale meter)))
-	 (times (nlisp::array-to-list (.rseq 0 1.0d0 (1+ (reduce #'* meter))))))
-    (rhythm-of-weighted-onsets "metrical scaling" (mapcar #'list times metrical-weights))))
-|#
-
 ;;;; 
 
 ;;; Randomly generate metrical rhythms of a fixed meter, with no upbeats.
