@@ -53,7 +53,8 @@
 	       (:file "metrical-expectancy")
 	       (:file "ritard")
 	       (:file "tempo-change")
-	       (:file "test-clapping")))
+	       (:file "test-clapping")
+	       (:file "ircam")))
 
 #|
 

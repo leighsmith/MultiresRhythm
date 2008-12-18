@@ -54,15 +54,19 @@
     (format t "downbeat indices ~a~%" downbeat-indices)
     (.arefs times downbeat-indices)))
 
+(defun downbeat-times (original-sound-path &key (anacrusis 0) (sound-every 1))
+  "Returns the times of downbeats in the IRCAMbeat marker file"
+  (downbeats-of-times (read-ircam-marker-times original-sound-path) anacrusis sound-every))
+
 (defun sonify-ircam-beat (original-sound-path &key (directory "/Volumes/iDisk/Research/Data/IRCAM-Beat")
 			  (anacrusis 0) (sound-every 1))
+  "Write out a sound file mixed with downbeats"
   (let* ((accompaniment-sound-path (make-pathname :directory directory
 						  :name (concatenate 'string (pathname-name original-sound-path) "_mixed")
-						  :type "wav"))
-	 (clap-times-in-seconds (read-ircam-marker-times original-sound-path)))
+						  :type "wav")))
     (multires-rhythm::save-rhythm-mix accompaniment-sound-path 
 				      original-sound-path 
-				      (downbeats-of-times clap-times-in-seconds anacrusis sound-every)
+				      (downbeat-times original-sound-path :anacrusis anacrusis :sound-every sound-every)
 				      :clap-sample-file #P"/Volumes/iDisk/Research/Data/Handclap Examples/cowbell.aiff")
     (format t "Wrote mix as soundfile ~a~%" accompaniment-sound-path)))
 
@@ -119,9 +123,20 @@
 		     :anacrusis (third rwc-example) 
 		     :sound-every 4)) ; TODO we've fixed this as 4/4, needs fixing.
 
+(defun count-rwc-example (rwc-example)
+  (.length (downbeat-times (make-pathname :directory *rwc-directory* :name (first rwc-example) :type "wav") 
+			   :anacrusis (third rwc-example) 
+			   :sound-every 4))) ; TODO we've fixed this as 4/4, needs fixing.
+
 ;;; (setf bad-examples (evaluate-with-music #'evaluate-ircam-downbeat :music-dataset *ircam-downbeats* :music-name #'first))
 ;;; (mapcar #'sonify-rwc-example *ircam-downbeats*)
 ;;; (sonify-rwc-example (nth 0 *ircam-downbeats*))
+
+;;; Find the average number of downbeats in each example
+;;; (mean (.* (make-narray (mapcar #'count-rwc-example *ircam-downbeats*)) 1d0))
+;;; Find the total number of downbeats.
+;;; (.sum (make-narray (mapcar #'count-rwc-example *ircam-downbeats*)))
+
 
 ;;; (sonify-ircam-beat #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/rwc_p_99_excerpt.wav")
 
@@ -129,11 +144,12 @@
 				&key (clap-sample-file #P"/Volumes/iDisk/Research/Data/Handclap Examples/cowbell.aiff"))
   (multiple-value-bind (times beats) 
       (mrr::read-ircam-annotation ircam-annotation-path)
-    ;; (downbeats-of-times times (position 1 (val beats)) (.max beats))
-    (let ((downbeats (.arefs times (.find (.= beats 1))))
-	  (accompaniment-sound-path (make-pathname :directory accompaniment-directory
-						   :name (concatenate 'string (pathname-name original-sound-path) "_mixed")
-						   :type "wav")))
+    (let* ((downbeat-indices (.find (.= beats 1)))
+	   (downbeats (.arefs times downbeat-indices))
+	   (accompaniment-sound-path (make-pathname :directory accompaniment-directory
+						    :name (concatenate 'string (pathname-name original-sound-path) "_mixed")
+						    :type "wav")))
+      (format t "downbeat indices ~a~%" downbeat-indices)
       (multires-rhythm:save-rhythm-mix accompaniment-sound-path 
 				       original-sound-path 
 				       downbeats
@@ -142,36 +158,49 @@
 
 
 ;;; The symlink seems to not work over AFP so that this path is unable to be retrieved by POSIX calls.
-;;;(defparameter *ircam-annotations-directory* "/Volumes/Quaerodb/annotation/annotation current state/beat_XML_from_QIMAv1")
-
-(defparameter *ircam-annotations-directory* "/Volumes/Quaerodb/doc/quaero_site/content/18_current/beat_XML_from_QIMAv1")
-
-(defparameter *ircam-audio-directory* "/Volumes/Quaerodb/annotation-wav")
-
-(defun sonify-quaero (annotation-name audio-name)
+;;; annotations-directory #P"/Volumes/Quaerodb/annotation/annotation current state/"
+;;; TODO need to check if the audio is 22KHz or 44.1KHz to select the correct version of the accompaniment.
+(defun sonify-quaero (annotation-pathspec 
+		      &key (annotations-directory #P"/Volumes/Quaerodb/doc/quaero_site/content/18_current/")
+		      (audio-directory #P"/Volumes/Quaerodb/annotation-wav-m22k/"))
+  "Creates a sonification from the annotation-pathspec, which can have a relative directory component"
+  (let* ((annotation-name (pathname-name annotation-pathspec))
+	 (first-b (position #\b annotation-name))
+	 (audio-name (concatenate 'string 
+				  (subseq annotation-name 0 first-b)
+				  (subseq annotation-name (1+ first-b)))))
   (sonify-ircam-annotation 
-   (make-pathname :directory *ircam-annotations-directory* 
-		  :name annotation-name
-		  :type "xml" )
-   (make-pathname :directory *ircam-audio-directory*
-		  :name audio-name
-		  :type "wav")
-   "/Volumes/iDisk/Research/Data/IRCAM-Beat/Annotation"))
+   (merge-pathnames (make-pathname :defaults annotation-pathspec :type "xml") 
+		    annotations-directory)
+   (merge-pathnames audio-directory
+		    (make-pathname :directory (pathname-directory annotation-pathspec)
+				   :name audio-name
+				   :type "wav"))
+   "/Volumes/iDisk/Research/Data/IRCAM-Beat/Annotation"
+   :clap-sample-file #P"/Volumes/iDisk/Research/Data/Handclap Examples/cowbell_22kHz_mono.aiff")))
 
 #|
-(sonify-quaero "0144b - The Beatles - A Hard Days Night - 01 A Hard Day s Night" 
-	       "0144 - The Beatles - A Hard Days Night - 01 A Hard Day s Night")
-|#
+(sonify-quaero #P"beat_XML_from_QIMAv1/0144b - The Beatles - A Hard Days Night - 01 A Hard Day s Night")
+
+(sonify-quaero #P"beat_XML_from_QIMAv1/0186b - Dillinger - Cocaine - 01 Cocaine In My Brain")
+
+(sonify-quaero #P"beat_XML_from_protools/0051b - Buenavista social club - Buenavista social club - Chan chan")
+
+(sonify-quaero #P"beat_XML_from_protools/0043b - Ali Farka Toure - Ali Farka Toure - Amandrai")
+
+(sonify-quaero #P"beat_XML_from_protools/0202b - Squarepusher - Hard Normal Daddy - Beep Street")
 
 ;; Sonification of Local files
-;; (sonify-ircam-annotation 
-;; #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/0186b - Dillinger - Cocaine - 01 Cocaine In My Brain.xml" 
-;; #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/0186 - Dillinger - Cocaine - 01 Cocaine In My Brain.wav"  
-;; "/Volumes/iDisk/Research/Data/IRCAM-Beat/Annotation")
+(sonify-quaero #P"0186b - Dillinger - Cocaine - 01 Cocaine In My Brain" 
+	       :annotations-directory #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/"
+	       :audio-directory #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/")
 
-(sonify-ircam-annotation 
- #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/0144b - The Beatles - A Hard Days Night - 01 A Hard Day s Night.xml"
- #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/0144 - The Beatles - A Hard Days Night - 01 A Hard Day s Night.wav" 
- "/Volumes/iDisk/Research/Data/IRCAM-Beat/Annotation" 
- :clap-sample-file #P"/Volumes/iDisk/Research/Data/Handclap Examples/cowbell_22kHz_mono.aiff")
+(sonify-quaero #P"0144b - The Beatles - A Hard Days Night - 01 A Hard Day s Night.xml"
+	       :annotations-directory #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/"
+	       :audio-directory #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/")
 
+(sonify-quaero #P"0051b - Buenavista social club - Buenavista social club - Chan chan.xml"
+	       :annotations-directory #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/"
+	       :audio-directory #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/")
+
+|#
