@@ -212,7 +212,7 @@
 	  (format t "average-persistency ~a beat-scale ~a beat-period ~a bar-scale ~a~%candidate-bar-periods ~a~%candidate-bar-scales ~a~%bar-scale-profiles ~a~%"
 		  average-persistency beat-scale beat-period bar-scale candidate-bar-periods candidate-bar-scales bar-scale-profiles)
 	  (setf (.arefs selected-scales candidate-bar-scales) bar-scale-profiles)
-	  (nplot (list scale-persistency-profile selected-scales) nil
+	  (plot (list scale-persistency-profile selected-scales) nil
 		 :styles '("lines" "impulses") :aspect-ratio 0.66)))
     ;; Compare the height of the candidate peak against the average height
     ;; (or area?) to get a degree of assurance.

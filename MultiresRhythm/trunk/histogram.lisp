@@ -49,8 +49,8 @@
     ;; (plot-command "set xrange [*:~d]" (1+ largest-element))
     (plot-command "set yrange [*:1.1]")
     (plot (make-narray counts) (make-narray elements)
-	  :style "boxes fill solid border 9"
-	  :label "Relative Frequency of Occurrence of Elementss"
+	  :styles '("boxes fill solid border 9")
+	  :legends '("Relative Frequency of Occurrence of Elements")
 	  :xlabel "Elements"
 	  :ylabel "Proportion of Element Present"
 	  :title (format nil "Occurrence of Elements For ~a" description)
@@ -96,10 +96,10 @@
     ;; Downsample the bin labels.
     ;; (.arefs time-bins (.* (.iseq 0 (/ (.length time-bins) 2)) 2))
     (plot counts time-bins
-	  :style "boxes fill solid 1.0 border -1"
+	  :styles '("boxes fill solid 1.0 border -1")
 	  :xlabel title
 	  :ylabel "Occurrence"
-	  :label (format nil "~a Occurrence" title)
+	  :legends (list (format nil "~a Occurrence" title))
 	  :aspect-ratio 0.66
 	  :reset nil
 	  :title (format nil "Occurrence of ~a" title)))

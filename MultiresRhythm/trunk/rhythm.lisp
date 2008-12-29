@@ -253,8 +253,8 @@
   (plot-command "set origin 0.055,0.65")
   (plot-command "unset key")
   (plot (time-signal rhythm-to-plot) nil
-	;; :label (format nil "Rhythm onsets of ~a" (description rhythm-to-plot))
-	:style "impulses linetype 6"
+	;; :legends (list (format nil "Rhythm onsets of ~a" (description rhythm-to-plot)))
+	:styles '("impulses linetype 6")
 	:xlabel (if time-in-seconds "Time in seconds"
 		    (format nil "Time in samples (~dHz sample rate)" (sample-rate rhythm-to-plot)))
 	:ylabel "Normalised Intensity"
@@ -272,8 +272,8 @@
   (plot-command "set ytics 0.0, 0.20, 1.0")
   (plot-command "unset key")
   (plot (time-signal rhythm-to-plot) nil
-	;; :label (format nil "Rhythm onsets of ~a" (description rhythm-to-plot))
-	:style "impulses linetype 6"
+	;; :legends (list (format nil "Rhythm onsets of ~a" (description rhythm-to-plot)))
+	:styles '("impulses linetype 6")
 	:xlabel (if time-in-seconds "Time in seconds"
 		    (format nil "Time in samples (~dHz sample rate)" (sample-rate rhythm-to-plot)))
 	:ylabel "Normalised Intensity"
@@ -369,7 +369,8 @@
     (make-instance (class-of rhythm-to-subset)
 		   :name (name rhythm-to-subset) 
 		   :description (format nil "subset of ~a" (name rhythm-to-subset))
-		   :time-signal (.subarray (time-signal rhythm-to-subset) (list 0 time-region))
+		   ;; TODO .subarray isn't handling vectors with trailing 't regions correctly.
+		   :time-signal (.subarray (time-signal rhythm-to-subset) (list time-region))
 		   :sample-rate (sample-rate rhythm-to-subset)))
 
 ;;; TODO this should also allow limitation by the number of notes, number of bars etc.

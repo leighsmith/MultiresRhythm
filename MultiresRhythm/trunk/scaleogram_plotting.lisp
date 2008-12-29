@@ -260,7 +260,7 @@
       (plot-command "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
 		    (label-scale-as-time-support-seconds scaleogram-to-plot sample-rate)))
   ;; We reverse the column so we plot in more intuitive lowest scale on the left orientation.
-  (nplot (mapcar (lambda (time) (.reverse (.column (scaleogram-magnitude scaleogram-to-plot) time))) times)
+  (plot (mapcar (lambda (time) (.reverse (.column (scaleogram-magnitude scaleogram-to-plot) time))) times)
 	 nil 
 	 :title (format nil "Energy profiles at select times of ~a" description)
 	 :legends times ; "sample number ~d" 
@@ -282,7 +282,7 @@
 		    (label-scale-as-time-support-seconds scaleogram-to-plot sample-rate)))
   (let ((time-slice (.column (scaleogram-magnitude scaleogram-to-plot) time)))
     ;; We reverse the column so we plot in more intuitive lowest scale on the left orientation.
-    (nplot (list (.reverse time-slice) 
+    (plot (list (.reverse time-slice) 
 		 ;; scale the peaks down to magnitude maximum.
 		 (.* (.max time-slice) (.reverse (.column peaks time)))) 
 	   nil 
@@ -296,7 +296,7 @@
 (defun plot-voice-behaviour (original-rhythm scaleogram-to-plot voices)
   "Plots the magnitude response of several single wavelet voices (dilation scale) to a rhythm."
   (let ((scaleogram-mag (scaleogram-magnitude scaleogram-to-plot)))
-    (nplot (append (mapcar (lambda (voice) (.row scaleogram-mag voice)) voices)
+    (plot (append (mapcar (lambda (voice) (.row scaleogram-mag voice)) voices)
 		   (list (.* (.max scaleogram-mag) (time-signal original-rhythm))))
 	   nil
 	   :legends (append (mapcar (lambda (voice) (format nil "Voice ~a" voice)) voices) 
@@ -317,7 +317,7 @@
   ;; (format t "max plot ~a~%" (.max tempo-preference))
   (plot (.reverse (.* tempo-preference weighting))
 	nil 
-	:style "lines linetype 3 linewidth 2"
+	:styles '("lines linetype 3 linewidth 2")
 	:title "Tempo Preference Weighting Profile"
 	:xlabel "Scale as IOI Range in Seconds"
 	:ylabel "Preference Weight"

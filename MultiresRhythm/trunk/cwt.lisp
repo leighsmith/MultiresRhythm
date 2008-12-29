@@ -140,7 +140,7 @@
 
 ;;; Plot the gaussian envelope in the Fourier domain
 ;;; (plot (.realpart (morlet-wavelet-fourier 1024 8)) nil)
-;;; (nplot (list (.realpart (morlet-wavelet-fourier 1024 16 :omega0 6.2)) 
+;;; (plot (list (.realpart (morlet-wavelet-fourier 1024 16 :omega0 6.2)) 
 ;;; 	     (.realpart (morlet-wavelet-fourier 1024 16 :omega0 6.45))) nil)
 ;;; (plot (.realpart (morlet-wavelet-fourier 1024 128)) nil)
 
@@ -151,10 +151,10 @@
 	(swapped-time-wavelet (.concatenate 
 			       (.subseq time-wavelet (1+ zero-frequency) (1- signal-time-period))
 			       (.subseq time-wavelet 0 zero-frequency))))
-   (nplot (list (.realpart swapped-time-wavelet) (.imagpart swapped-time-wavelet)) 
-	  nil ; TODO (.rseq ? ? signal-time-period)
-	  :legends (list "Real Part" "Imaginary Part")
-	  :title (format nil "Time domain kernel for omega0 = ~a" omega0))))
+   (plot (list (.realpart swapped-time-wavelet) (.imagpart swapped-time-wavelet)) 
+	 nil ; TODO (.rseq ? ? signal-time-period)
+	 :legends (list "Real Part" "Imaginary Part")
+	 :title (format nil "Time domain kernel for omega0 = ~a" omega0))))
 
 ;;; (plot-time-domain-kernel 1024 128 :omega0 6.45)
 ;;; (plot-time-domain-kernel 1024 128 :omega0 6.2)

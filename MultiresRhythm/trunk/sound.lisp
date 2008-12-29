@@ -220,7 +220,7 @@
 
 (defmethod plot-sound ((sound-to-plot sound))
   (let ((frames (frame-count sound-to-plot)))
-    (nplot (loop 
+    (plot (loop 
 	      for channel-index from 0 below (channel-count sound-to-plot) 
 	      collect (sound-channel sound-to-plot channel-index))
 	  (.rseq 0 (/ (coerce frames 'double-float) (sample-rate sound-to-plot)) frames)

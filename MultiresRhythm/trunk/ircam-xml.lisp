@@ -2,7 +2,7 @@
 ;;;;
 ;;;; $Id$
 ;;;;
-;;;; Routines to read (and one day write) ircam-beat XML files.
+;;;; Routines to read and write ircam-beat XML files.
 ;;;; Uses the CXML package and the accompanying DOM package.
 ;;;;
 ;;;; In nlisp (Matlab-alike Common Lisp library www.nlisp.info)
@@ -124,3 +124,27 @@
 
 ;;(write-ircam-beat-marker-document #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/test.xml"
 ;; "testfile.wav" (make-narray '(1.0d0 2.0d0 2.5d0 3.0d0)) 9.0d0)
+
+(defun read-annotation-time (marker-node)
+  (read-from-string (dom:get-attribute marker-node "time") 0))
+
+(defun read-annotation-beat (marker-node)
+  "Return a list of the beat descriptors, or nil if it is ill-formed"
+  (let ((beat-type (dom:item (dom:get-elements-by-tag-name marker-node "beattype") 0)))
+    (if beat-type
+	(read-from-string (dom:get-attribute beat-type "b"))
+	nil)))
+
+(defun read-ircam-annotation (filepath)
+  "Read the given file using CXML and DOM to return an narray of beat markers"
+  (let* ((marker-document (cxml:parse filepath (cxml-dom:make-dom-builder)))
+	 (markers (dom:get-elements-by-tag-name (dom:document-element marker-document) "marker")))
+    ;; (format t "~a~%" markers)
+    (loop
+       for marker-index from 0 below (dom:length markers)
+       for marker-node = (dom:item markers marker-index)
+       for beat = (read-annotation-beat marker-node)
+       when beat
+       collect beat into marker-beat-list
+       and collect (read-annotation-time marker-node) into marker-time-list
+       finally (return (values (make-narray marker-time-list) (make-narray marker-beat-list))))))

@@ -117,12 +117,12 @@ start-onset, these measures are in samples"
       ;; (plot-command "set xtics (~{~{\"~d\" ~5d~}~^, ~})~%" (label-scale-as-time-support skeleton-to-analyse))
       (plot-command "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
 		    (label-scale-as-time-support-seconds skeleton-to-analyse sample-rate))
-      (nplot (mapcar #'.reverse (list ridge-persistency-profile tempo-beat-preference weighted-persistency-profile))
-	     nil
-	     :title (format nil "Ridge persistency profile for ~a" (name rhythm-to-analyse))
-	     :legends '("Original ridge persistency" "absolute tempo preference profile" "weighted persistency profile") 
-	     :aspect-ratio 0.66
-	     :reset nil))
+      (plot (mapcar #'.reverse (list ridge-persistency-profile tempo-beat-preference weighted-persistency-profile))
+	    nil
+	    :title (format nil "Ridge persistency profile for ~a" (name rhythm-to-analyse))
+	    :legends '("Original ridge persistency" "absolute tempo preference profile" "weighted persistency profile") 
+	    :aspect-ratio 0.66
+	    :reset nil))
     beat-period))
 
 #|
@@ -145,12 +145,12 @@ start-onset, these measures are in samples"
     ;; (plot-command "set xtics (~{~{\"~d\" ~5d~}~^, ~})~%" (label-scale-as-time-support skeleton-to-analyse))
     (plot-command "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
 		  (label-scale-as-time-support-seconds skeleton-to-analyse sample-rate))
-    (nplot (mapcar #'.reverse (list ridge-persistency-profile tempo-beat-preference weighted-persistency-profile))
-	   nil
-	   :title (format nil "Ridge persistency profile for ~a" (name rhythm-to-analyse))
-	   :legends '("Original ridge persistency" "absolute tempo preference profile" "weighted persistency profile") 
-	   :aspect-ratio 0.66
-	   :reset nil)
+    (plot (mapcar #'.reverse (list ridge-persistency-profile tempo-beat-preference weighted-persistency-profile))
+	  nil
+	  :title (format nil "Ridge persistency profile for ~a" (name rhythm-to-analyse))
+	  :legends '("Original ridge persistency" "absolute tempo preference profile" "weighted persistency profile") 
+	  :aspect-ratio 0.66
+	  :reset nil)
     (close-window)
     beat-period))
 |#
@@ -169,12 +169,12 @@ start-onset, these measures are in samples"
     ;; (plot-command "set xtics (~{~{\"~d\" ~5d~}~^, ~})~%" (label-scale-as-time-support skeleton-to-analyse))
     (plot-command "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
 		  (label-scale-as-time-support-seconds skeleton-to-analyse sample-rate))
-    (nplot (mapcar #'.reverse (list ridge-persistency-profile))
-	   nil
-	   :title (format nil "Ridge persistency profile for ~a" (name rhythm-to-analyse))
-	   :legends '("Original ridge persistency" "absolute tempo preference profile" "weighted persistency profile") 
-	   :aspect-ratio 0.66
-	   :reset nil)
+    (plot (mapcar #'.reverse (list ridge-persistency-profile))
+	  nil
+	  :title (format nil "Ridge persistency profile for ~a" (name rhythm-to-analyse))
+	  :legends '("Original ridge persistency" "absolute tempo preference profile" "weighted persistency profile") 
+	  :aspect-ratio 0.66
+	  :reset nil)
     (close-window)
     beat-period))
 |#
@@ -193,12 +193,12 @@ start-onset, these measures are in samples"
       ;; (plot-command "set xtics (~{~{\"~d\" ~5d~}~^, ~})~%" (label-scale-as-time-support skeleton-to-analyse))
       (plot-command "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
 		    (label-scale-as-time-support-seconds scaleogram-to-analyse sample-rate))
-      (nplot (mapcar #'.reverse (list scale-persistency-profile))
-	     nil
-	     :title (format nil "Scale persistency profile for ~a" (name rhythm-to-analyse))
-	     :legends '("Original scale persistency" "absolute tempo preference profile" "weighted persistency profile") 
-	     :aspect-ratio 0.66
-	     :reset nil))
+      (plot (mapcar #'.reverse (list scale-persistency-profile))
+	    nil
+	    :title (format nil "Scale persistency profile for ~a" (name rhythm-to-analyse))
+	    :legends '("Original scale persistency" "absolute tempo preference profile" "weighted persistency profile") 
+	    :aspect-ratio 0.66
+	    :reset nil))
     beat-period))
 
 ;;(setf prob-distribution (./ weighted-persistency-profile (.sum weighted-persistency-profile)))
@@ -330,6 +330,7 @@ start-onset, these measures are in samples"
 	  (setf (.arefs beat-probabilities beats-matching-condition) probability-increment)))
     beat-probabilities))
 
+#|
 ;;; There are two situations: 1) we have a singularly perceptually longer interval
 ;;; (i.e. markedly longer) than other events in the initial sequence, in which case the
 ;;; onset starting the first relatively long (perceptually significant) interval is
@@ -367,16 +368,17 @@ start-onset, these measures are in samples"
     (if (zerop (.sum downbeat-probabilities)) ; catch when we're dropping through with all 0 probabilities
 	downbeat-probabilities
 	(./ downbeat-probabilities (.sum downbeat-probabilities)))))
+|#
 
-;;; We have a singularly perceptually longer interval
-;;; (i.e. markedly longer) than other events in the initial sequence, in which case the
-;;; onset starting the first relatively long (perceptually significant) interval is
-;;; highly likely to be the downbeat event, or 
+;;; We have a singularly perceptually longer interval (i.e. markedly longer) than other
+;;; events in the sequence, in which case the onset starting the first relatively long
+;;; (perceptually significant) interval longer than the beat period is likely to be the downbeat event.
 ;;; TODO We could check if there are several iois that are the same as earlier initial intervals.
 ;;; TODO perhaps all we need to have passed in is the rhythm, beat-duration and bar-duration in samples?
-(defmethod duration-accent-estimation ((rhythm-to-analyse rhythm) meter
-				       beats-per-measure tempo-in-bpm bar-duration beat-duration)
-  "Returns the probabilities of the downbeat at each beat location. bar-duration and beat-duration in samples"
+(defmethod gap-accent-downbeat-estimation ((rhythm-to-analyse rhythm) meter
+					   beats-per-measure tempo-in-bpm bar-duration beat-duration)
+  "Returns the probabilities of the downbeat at each beat location. Estimates formed by
+when the gap exceeds the beat period. bar-duration and beat-duration in samples"
   (let (;; We use a temporal limit... Perhaps we can just pass this amount in?
 	(time-limited-iois (rhythm-iois-samples (limit-rhythm rhythm-to-analyse
 							      :maximum-samples bar-duration)))
@@ -403,8 +405,8 @@ start-onset, these measures are in samples"
 ;;; We have intervals which are non-unique, i.e other intervals of similar length reoccur
 ;;; in the initial sequence.  For now, we only assume the first case, since it's not clear
 ;;; that situation is contradicted by the second case.
-(defmethod gap-downbeat-estimation ((rhythm-to-analyse rhythm) meter
-					 beats-per-measure tempo-in-bpm bar-duration beat-duration)
+(defmethod duration-maxima-downbeat-estimation ((rhythm-to-analyse rhythm) meter
+						beats-per-measure tempo-in-bpm bar-duration beat-duration)
   "Returns the probabilities of the downbeat at each beat location. bar-duration and beat-duration in samples"
   (let (;; We use a temporal limit... Perhaps we can just pass this amount in?
 	(time-limited-iois (rhythm-iois-samples (limit-rhythm rhythm-to-analyse
@@ -426,7 +428,8 @@ start-onset, these measures are in samples"
     downbeat-probabilities))
 
 
-;; Make a histogram of the labels, adding the probabilities
+;; Make a histogram of the labels for a maximum of total-lables, adding the probabilities
+;; where there are duplicates. 
 (defun combine-probabilities (discrete-labels probabilities total-labels)
   "Combines any duplicated labels into a single value, adding the probabilities"
   (loop
@@ -452,13 +455,15 @@ start-onset, these measures are in samples"
 ;; TODO could pass in the search duration in number of bars.
 (defun downbeat-estimate-rhythm (rhythm tempo-in-bpm meter beats-per-measure downbeat-estimator)
   "Returns an estimate of downbeat location across the entire ODF rhythm using an estimator"
+  (push 'odf-match *plotting*)
   (loop
      with beat-duration = (round (* (/ 60.0 tempo-in-bpm) (sample-rate rhythm))) ; in samples
      with bar-duration = (* beats-per-measure beat-duration) ; in samples
      with number-of-measures = (floor (duration-in-samples rhythm) bar-duration) ; floor avoids partial bars
      with downbeat-estimates = (make-double-array (list beats-per-measure number-of-measures))
      with search-duration = (* 2 bar-duration) ; in samples
-     initially (format t "beat duration in samples ~a, meter ~a~%" beat-duration meter)
+     initially (format t "~%~a~%beat duration in samples ~a, meter ~a~%"
+		       downbeat-estimator beat-duration meter)
      for measure-index from 0 below number-of-measures
      for start-sample from 0 below (duration-in-samples rhythm) by bar-duration
      for search-region = (list start-sample (1- (min (duration-in-samples rhythm) (+ start-sample search-duration))))
@@ -466,7 +471,8 @@ start-onset, these measures are in samples"
      for downbeat-probabilities = (funcall downbeat-estimator fragment-of-ODF meter beats-per-measure
 					   tempo-in-bpm bar-duration beat-duration)
      do (format t "tempo ~,2f bpm, search duration ~a search region ~a~%"
-		tempo-in-bpm search-duration search-region)	
+		tempo-in-bpm search-duration search-region)
+       (pop *plotting*)
        (setf (.column downbeat-estimates measure-index) downbeat-probabilities) ; collect likelihood in downbeat-probability
      finally (return downbeat-estimates)))
 
@@ -484,14 +490,25 @@ start-onset, these measures are in samples"
 							meter
 							beats-per-measure
 							#'amplitude-profile-downbeat-estimation))
-	 (duration-estimates (downbeat-estimate-rhythm rhythm
-						       tempo-in-bpm
-						       meter
-						       beats-per-measure
-						       #'duration-downbeat-estimation)))
-    (format t "amplitude estimates ~a~%" (.transpose amplitude-estimates))
-    (format t "duration estimates ~a~%" (.transpose duration-estimates))
+;;  	 (duration-maxima-estimates (downbeat-estimate-rhythm rhythm
+;; 							   tempo-in-bpm
+;; 							   meter
+;; 							   beats-per-measure
+;; 							   #'duration-maxima-downbeat-estimation))
+;; 	 (gap-accent-estimates (downbeat-estimate-rhythm rhythm
+;; 							      tempo-in-bpm
+;; 							      meter
+;; 							      beats-per-measure
+;; 							      #'gap-accent-downbeat-estimation))
+	 )
+;;    (format t "amplitude estimates ~a~%" (.transpose amplitude-estimates))
+    (format t "change in estimation over time ~a~%" 
+	    ;; find argmax for each.
+	    (reduce-dimension amplitude-estimates (lambda (y) (coerce (position (.max y) (val y)) 'double-float))))
+;;    (format t "duration gap estimates ~a~%" (.transpose duration-gap-estimates))
+;;    (format t "duration accent estimates ~a~%" (.transpose duration-accent-estimates))
     ;; If we are doing anything other than finding the argmax, we need to normalise the
-    ;; values by dividing by the number of estimates.
-    ;; (amass-evidence (.+ amplitude-estimates duration-estimates))))
+    ;; values by dividing by the number of estimates. TODO perform the addition on a
+    ;; variable length set of parameters within amass-evidence.
+    ;; (amass-evidence (.+ amplitude-estimates duration-accent-estimates))))
     (amass-evidence amplitude-estimates)))

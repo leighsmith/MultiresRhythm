@@ -131,10 +131,10 @@
       ;; Plot the meter behind the histogram
       (plot-martin-tree meter 1.0 maximum-confidence :start-x start-time)
       (plot accumulated-time-values time-bins
-	    :style "boxes fill solid 0.75 border -1" ; transparent
+	    :styles '("boxes fill solid 0.75 border -1") ; transparent
 	    :xlabel "Divisions of a Measure" 
 	    :ylabel "Accumulated Confidence"
-	    :label "Relative Accumulated Confidence"
+	    :legends '("Relative Accumulated Confidence")
 	    :aspect-ratio 0.66
 	    :reset nil
 	    :title (format nil "Accumulated Expectation Confidences for ~a" title))
@@ -147,10 +147,10 @@
       (plot-command "set ylabel font \"Times,24\"")
       (plot-command "set xtics ~a out" (max bin-size minimum-tics))
       (plot (./ accumulated-time-values dividable-counts) time-bins
-	    :style "boxes fill solid 1.0 border -1"
+	    :styles '("boxes fill solid 1.0 border -1")
 	    :xlabel "Divisions of a Measure" 
 	    :ylabel "Average Confidence"
-	    :label "Average Confidence per Measure Division"
+	    :legends '("Average Confidence per Measure Division")
 	    :aspect-ratio 0.66
 	    :reset nil
 	    :title (format nil "Average Expectation Confidences for ~a" title))
@@ -230,10 +230,10 @@
       ;; Plot the meter behind the histogram
       (plot-martin-tree meter (reduce #'* meter) max-confidence :start-x 0.0)
       (plot accumulated-time-values time-bins
-	    :style "boxes fill solid 0.75 border -1"
+	    :styles '("boxes fill solid 0.75 border -1")
 	    :xlabel "Tatums (Units of Minimum IOI)" 
 	    :ylabel "Accumulated Confidence"
-	    :label "Relative accumulated confidence"
+	    :legends '("Relative accumulated confidence")
 	    :aspect-ratio 0.66
 	    :reset nil
 	    :title (format nil "Accumulated Expectation Time-Values for ~a" title))
@@ -245,10 +245,10 @@
       (plot-command "set ylabel font \"Times,24\"")
       (plot-command "set xtics out 0,~a" (max bin-size minimum-tics))
       (plot (./ accumulated-time-values dividable-counts) time-bins
-	    :style "boxes fill solid 1.0 border -1"
+	    :styles "boxes fill solid 1.0 border -1"
 	    :xlabel "Tatums (Units of Minimum IOI)" 
 	    :ylabel "Average Confidence"
-	    :label "Average Confidence per Tatum"
+	    :legends '("Average Confidence per Tatum")
 	    :aspect-ratio 0.66
 	    :reset nil
 	    :title (format nil "Average Expectation Time-Values for ~a" title))
@@ -271,7 +271,7 @@
 		    (label-scale-as-time-support scaleogram)))
   (plot (.reverse ridge-persistency) 
 	nil 
-	:style "boxes fill solid 1.0 border -1"
+	:styles '("boxes fill solid 1.0 border -1")
 	:aspect-ratio 0.66 
 	:xlabel (if sample-rate-supplied "Time (Seconds)" "Time (Samples)")
 	:ylabel "Ridge Presence"
@@ -292,10 +292,10 @@
       (plot-command "set yrange [0:1.1]")
       (plot-command "set xrange [0:~d]" (1+ meter-length))
       (plot (normalise all-metrical-positions) (.iseq 1 meter-length)
-	    :style "boxes fill solid 1.0 border -1"
+	    :styles '("boxes fill solid 1.0 border -1")
 	    :xlabel "Semiquavers of a Measure" 
 	    :ylabel "Relative Occurrence"
-	    :label "Metrical Profile"
+	    :legends '("Metrical Profile")
 	    :aspect-ratio 0.66
 	    :reset nil
 	    :title (format nil "Metrical Profile for ~a" title)))))
@@ -315,15 +315,15 @@
     (plot-command "set ylabel font \"Times,24\"")
     (plot-command "set xtics border (~{~{\"~a\" ~d~}~^, ~}) font \"Sonata,28\"~%" 
 		  (x-axis-pad (label-scale-as-rhythmic-beat vpo crochet-duration)))
-    (nplot (list (.* interval-counts histogram-scaling) average-ridge-persistency)
-	   nil
-	   :styles '("boxes fill solid border 9" "lines linetype 3 linewidth 2")
-	   :legends '("Relative Frequency of Occurrence of Intervals" "Time-Frequency Scale Persistency")
-	   :xlabel "Dilation Scales in Units of Musical Time"
-	   :ylabel "Proportion of Interval Present"
-	   :title (format nil "Skeleton Scale Persistency vs. Occurrence of Intervals For ~a" description)
-	   :reset nil
-	   :aspect-ratio 0.66)))
+    (plot (list (.* interval-counts histogram-scaling) average-ridge-persistency)
+	  nil
+	  :styles '("boxes fill solid border 9" "lines linetype 3 linewidth 2")
+	  :legends '("Relative Frequency of Occurrence of Intervals" "Time-Frequency Scale Persistency")
+	  :xlabel "Dilation Scales in Units of Musical Time"
+	  :ylabel "Proportion of Interval Present"
+	  :title (format nil "Skeleton Scale Persistency vs. Occurrence of Intervals For ~a" description)
+	  :reset nil
+	  :aspect-ratio 0.66)))
 
 ;; (plot-interval-comparison (interval-histogram rhythm-iois) (average-ridge-persistency rhythms)
 
@@ -344,8 +344,8 @@
       (plot-command "set xrange [*:~d]" (1+ largest-interval))
       (plot-command "set yrange [*:1.1]")
       (plot (normalise interval-counts) (.iseq 1 largest-interval)
-	    :style "boxes fill solid border 9"
-	    :label "Relative Frequency of Occurrence of Intervals"
+	    :styles '("boxes fill solid border 9")
+	    :legends '("Relative Frequency of Occurrence of Intervals")
 	    :xlabel "Intervals in semiquavers"
 	    :ylabel "Proportion of Interval Present"
 	    :title (format nil "Occurrence of Intervals For ~a" description)

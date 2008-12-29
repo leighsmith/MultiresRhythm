@@ -389,9 +389,9 @@ colourmap, suitable for use by NLISP's palette-defined function."
 	   :aspect-ratio 0.66)
     (close-window)))
 
-;; Alternative plot method if not using nplot.
+;; Alternative plot method if not using plot.
 ;;  (let ((clap-intensity (make-double-array (.array-dimensions claps) :initial-element 2d0)))
-;;  (plot clap-intensity claps :style "impulses"))
+;;  (plot clap-intensity claps :styles '("impulses")))
 
 (defgeneric make-plotable-ridges (tf-plane ridges &key time-axis-decimation maximum-colour-value)
   (:documentation "Downsamples the time-frequency plane and inserts the list of ridges into the plane"))

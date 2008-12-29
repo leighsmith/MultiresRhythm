@@ -63,7 +63,17 @@ Anything clipped will be set to the clamp-low, clamp-high values"
   (let ((rotate-by (if (plusp by) by (+ (.length sig) by))))
     (.concatenate (.subseq sig rotate-by) (.subseq sig 0 rotate-by))))
 
+;;; Generalise over any dimension.
+(defun reduce-dimension (a fn &optional (dimension 1))
+  "Applies the given function to each column, storing the result in a vector"
+  (loop
+     with result = (nlisp::narray-of-type a (.array-dimension a dimension))
+     for column-index from 0 below (.array-dimension a dimension)
+     do (setf (.aref result column-index) (funcall fn (.column a column-index)))
+     finally (return result)))
+
 ;;; Really good candidate to replace with a BLAS routine...
+;;; Actually this should become a macro using (reduce-dimension a #'.+)
 (defun .partial-sum (a &key (dimension 1)) 
   (declare (optimize (speed 3) (space 0) (safety 1)))
   (let* ((result-length (.array-dimension a dimension))
@@ -168,6 +178,9 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 (defun significant (signal &key (threshold 0.5))
   "Find all values greater than a threshold number of standard deviations above the mean"
   (.> signal (+ (mean signal) (* (stddev signal) threshold))))
+
+(defun .remove-duplicates (a)
+  (make-instance (class-of a) :ival (remove-duplicates (val a))))
 
 (defun remove-arefs (narray indices-to-remove)
   "Returns a new array with the values at the indicated indices removed. Assumes indices-to-remove is sorted."

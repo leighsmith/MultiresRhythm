@@ -120,7 +120,7 @@
 (defun precision-profile (ridge-peak-profile ridge-trough-profile voices-per-octave)
   "Determine the precision in samples, given the peaks and troughs expressed as vectors of scale indices"
   (diag-plot 'precision-profiles
-    (nplot (list ridge-peak-profile ridge-trough-profile) nil :styles '("impulses lw 2" "impulses lw 2")))
+    (plot (list ridge-peak-profile ridge-trough-profile) nil :styles '("impulses lw 2" "impulses lw 2")))
   (let* ((number-of-scales (.length ridge-peak-profile))
 	 (peak-scales (.find ridge-peak-profile))
 	 (trough-scales (.find ridge-trough-profile))
@@ -230,7 +230,7 @@
     (.find (.and (.subarray (.>= phase-at-scale 0) (list 0 (list 1 (1- time-length))))
 		 (.subarray (.< phase-at-scale 0) (list 0 (list 0 (- time-length 2))))))))
 
-;; (nplot (list (impulses-at (phase-zero-samples phase scale) (.array-dimension phase 1)) (.row phase scale)) nil)
+;; (plot (list (impulses-at (phase-zero-samples phase scale) (.array-dimension phase 1)) (.row phase scale)) nil)
 
 ;;; TODO can we replace with (phase-occurrances )?
 (defun phase-corrected-time-chasing (time-projection phase scale time)
@@ -274,10 +274,10 @@
       ;; Downsample the bin labels.
       ;; (.arefs time-bins (.* (.iseq 0 (/ (.length time-bins) 2)) 2))
       (plot accumulated-likelihood time-bins
-	    :style "boxes fill solid 1.0 border -1"
+	    :styles '("boxes fill solid 1.0 border -1")
 	    :xlabel title
 	    :ylabel "Occurrence"
-	    :label (format nil "~a Occurrence" title)
+	    :legends (list (format nil "~a Occurrence" title))
 	    :aspect-ratio 0.66
 	    :reset nil
 	    :title (format nil "Occurrence of ~a" title)))
@@ -382,7 +382,7 @@
 		  :title (format nil "cumulative persistency profile of ~a" (name rhythm-to-analyse))))
     (diag-plot 'tempo-preference
       (plot-command "set xtics (~{~{\"~d\" ~5d~}~^, ~})~%" (label-scale-as-time-support scaleogram))
-      (nplot (list (.reverse (.* (.column tempo-beat-preference (first (last times-to-check)))
+      (plot (list (.reverse (.* (.column tempo-beat-preference (first (last times-to-check)))
 				 (.max cumulative-persistency)))
 		   (.reverse (.column cumulative-persistency (first (last times-to-check)))))
 	     nil 
@@ -533,7 +533,7 @@
 				   (.concatenate (time-signal rhythm-to-expect)
 						 (make-double-array expectancy-exceeds))
 				   (time-signal rhythm-to-expect))))
-    (nplot (list expectancy-confidences padded-rhythm-signal)
+    (plot (list expectancy-confidences padded-rhythm-signal)
 	   nil
 	   :styles '("impulses" "impulses")
 	   :legends (list "accumulated expectations" "original rhythm")
@@ -548,7 +548,7 @@
 	(expect-confidences (make-narray (mapcar (lambda (expect) (confidence expect)) all-expectations))))
     (window)
     (plot expect-confidences expect-times 
- 	  :style "impulses" 
+ 	  :styles '("impulses")
 	  :xlabel "Time" :ylabel "Confidence" 
  	  :aspect-ratio 0.66
  	  :title title)

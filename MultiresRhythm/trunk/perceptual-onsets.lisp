@@ -30,17 +30,17 @@
       (plot-command "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
 		    (label-samples-as-seconds (duration-in-samples rhythm-to-plot)
 					      (sample-rate rhythm-to-plot))))
-  (nplot (list (.* (onsets-time-signal rhythm-to-plot) (time-signal rhythm-to-plot)) 
-	       (time-signal rhythm-to-plot))
-	 ;; TODO need to have different x axes for each y parameters in the list.
-	 ;; (list (onsets-in-samples rhythm-to-plot) (.iseq 0 (duration-in-samples rhythm-to-plot))) 
-	 nil
-	 :aspect-ratio 0.2 
-	 ;; :styles '("lines" "impulses linetype 3")
-	 :styles '("points pointtype 3" "lines linetype 3")
-	 :legends '("Onsets" "Saliency")
-	 :reset nil
-	 :title (format nil "Salience trace and onsets of ~a" (name rhythm-to-plot))))
+  (plot (list (.* (onsets-time-signal rhythm-to-plot) (time-signal rhythm-to-plot)) 
+	      (time-signal rhythm-to-plot))
+	;; TODO need to have different x axes for each y parameters in the list.
+	;; (list (onsets-in-samples rhythm-to-plot) (.iseq 0 (duration-in-samples rhythm-to-plot))) 
+	nil
+	:aspect-ratio 0.2 
+	;; :styles '("lines" "impulses linetype 3")
+	:styles '("points pointtype 3" "lines linetype 3")
+	:legends '("Onsets" "Saliency")
+	:reset nil
+	:title (format nil "Salience trace and onsets of ~a" (name rhythm-to-plot))))
 
 ;; (plot-rhythm res1)
 ;; (plot (time-signal res1) nil :aspect-ratio 0.66)
@@ -131,7 +131,7 @@
 	       (first-are-greater (.> reliability-within-window next-reliability-within-window))
 	       ;; Form the array of indices of onset-times to remove.
 	       (to-remove (.+ within-window (.floor first-are-greater))))
-	  (remove-arefs onset-times to-remove)))))
+	  (remove-arefs onset-times (.remove-duplicates to-remove))))))
 
 ;;; TODO Perhaps we are beginning to reach the limit of the representation, where we are swapping
 ;;; the discrete time values for the onsets. Probably the solution is to factor the
@@ -139,7 +139,8 @@
 (defmethod subset-of-rhythm ((rhythm-to-subset salience-trace-rhythm) time-region)
   "Subset the onsets-time-signal as well as the time-signal"
   (let ((subset-rhythm (call-next-method rhythm-to-subset time-region)))
-    (setf (onsets-time-signal subset-rhythm) (.subarray (onsets-time-signal rhythm-to-subset) (list 0 time-region)))
+    ;; TODO we put the time region inside a list to appease .subarray when working on a vector.
+    (setf (onsets-time-signal subset-rhythm) (.subarray (onsets-time-signal rhythm-to-subset) (list time-region)))
     subset-rhythm))
 
 (defmethod onsets-of-salience ((odf-rhythm salience-trace-rhythm))
@@ -151,9 +152,9 @@
 	 (onset-signal (.* (significant filtered-odf :threshold 0.75) (extrema-points-vector filtered-odf)))
 	 (onset-times (.find onset-signal)))
     (diag-plot 'onset-signal 
-      (nplot (list (normalise filtered-odf) onset-signal) nil :aspect-ratio 0.2))
+      (plot (list (normalise filtered-odf) onset-signal) nil :aspect-ratio 0.2))
     (remove-double-onsets odf-rhythm onset-times)))
-    ;; onset-times))
+;; onset-times))
 
 
 (defun rhythm-from-odf (salience-filepath &key (sample-rate 200.0d0) (description "") (weighted t))

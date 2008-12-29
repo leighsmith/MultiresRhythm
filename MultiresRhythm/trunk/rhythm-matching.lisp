@@ -110,7 +110,7 @@
 
 (defun plot-correlation-matching (rhythm-1 rhythm-2 shift-by)
   "Visually verifies the cross-correlation finds the shift to align the two rhythms"
-  (nplot (list rhythm-1 (.concatenate (make-double-array shift-by) rhythm-2)) nil :aspect-ratio 0.2))
+  (plot (list rhythm-1 (.concatenate (make-double-array shift-by) rhythm-2)) nil :aspect-ratio 0.2))
 
 ;; Find the peaks in the positive lag region of the cross-correlation.  We only use
 ;; positive lag regions since positive lag values effectively indicate how far to
@@ -134,7 +134,7 @@
     (diag-plot 'cross-correlation
       (let* ((peak-values (make-double-array (.length positive-lags))))
 	(setf (.arefs peak-values selected-peak-indices) (.arefs positive-lags selected-peak-indices)) 
-	(nplot (list positive-lags peak-values) nil 
+	(plot (list positive-lags peak-values) nil 
 	       :title (format nil "Cross Correlation of ~a" "...")
 	       :styles '("lines" "points") :aspect-ratio 0.2)))
     (diag-plot 'odf-match
@@ -146,9 +146,10 @@
 (defun match-ODF-meter (meter tempo-bpm onset-detection-rhythm)
   "Returns the sample that the meter (at the given tempo) matches the onset detection rhythm at."
   (let* ((metric-accent-gaussian (.normalise (gaussian-rhythm-envelope
-					      (metrically-scaled-rhythm meter 1 tempo-bpm 
-									:sample-rate (sample-rate
-										      onset-detection-rhythm)))))
+					      (metrically-scaled-rhythm 
+					       meter 1 tempo-bpm 
+					       :sample-rate (sample-rate onset-detection-rhythm)
+					       :hierarchy #'binary-metric-hierarchy))))  ; #'metric-hierarchy
 	 (normalised-odf (.normalise (time-signal onset-detection-rhythm))))
     (cross-correlation-match normalised-odf metric-accent-gaussian)))
 
