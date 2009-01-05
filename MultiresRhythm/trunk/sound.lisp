@@ -88,11 +88,15 @@
   "Returns an narray of sound from a given (base 0) channel"
   (.row (sound-signal sound-to-retrieve) channel-number))
 
-;; TODO Should accept arbitary # of sounds. Should test number of channels are equal.
+;; TODO Should accept arbitary # of sounds.
 (defmethod sound-mix ((sound-to-mix1 sound) (sound-to-mix2 sound)) ; &rest sounds
+  ;; TODO should test SRs are all equal.
+  ;; (= (sample-rate sound-to-mix1) (sample-rate sound-to-mix2))
+  ;; TODO Should test number of channels are equal.
+  ;; (= (channel-count sound-to-mix1) (channel-count sound-to-mix2))
   (make-instance 'sound
 		 :sound-signal (.+ (sound-signal sound-to-mix1) (sound-signal sound-to-mix2))
-		 :sample-rate (sample-rate sound-to-mix1))) ; TODO should test SRs are all equal.
+		 :sample-rate (sample-rate sound-to-mix1)))
 
 (defmethod normalise ((sound-to-normalise sound))
   "Normalise over the entire sound to a bipolar range (between -1.0 and 1.0)"
@@ -204,8 +208,9 @@
 		  (.rseq amplitude amplitude sustain-samples)
 		  (.rseq amplitude 0.0 release-samples))))
 
+; TODO should be a sound instance
 (defun square-wave (frequency duration sample-rate)
-  "Returns a full amplitude square wave"
+  "Returns a full amplitude square wave" 
   (let* ((wavelength-in-samples (/ sample-rate frequency))
 	 (half-wavelength (/ wavelength-in-samples 2.0))
 	 (duration-in-samples (floor (* sample-rate duration)))
@@ -217,6 +222,17 @@
 						      1.0d0
 						      -1.0d0))
        finally (return sound-signal))))
+
+(defun sinusoid-sound (frequency duration sample-rate)
+  "Returns a full amplitude sinusoidal sound"
+  (let* ((duration-in-samples (floor (* sample-rate duration)))
+	 ;; This gets around the dumb Vector vs. 1D matrix issue...sigh.
+	 ;; This should be hidden in the sound-signal accessor.
+	 (sound-signal (make-double-array (list 1 duration-in-samples))))
+    (setf (.row sound-signal 0) (.sin (.rseq 0 (* 2.0d0 pi frequency duration) duration-in-samples)))
+    (make-instance 'sound 
+		   :sample-rate sample-rate
+		   :sound-signal sound-signal)))
 
 (defmethod plot-sound ((sound-to-plot sound))
   (let ((frames (frame-count sound-to-plot)))
