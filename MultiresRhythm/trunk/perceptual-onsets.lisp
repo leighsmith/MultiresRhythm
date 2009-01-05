@@ -30,13 +30,12 @@
       (plot-command "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
 		    (label-samples-as-seconds (duration-in-samples rhythm-to-plot)
 					      (sample-rate rhythm-to-plot))))
-  (plot (list (.* (onsets-time-signal rhythm-to-plot) (time-signal rhythm-to-plot)) 
+  (plot (list (.arefs (time-signal rhythm-to-plot) (onsets-in-samples rhythm-to-plot)) 
 	      (time-signal rhythm-to-plot))
-	;; TODO need to have different x axes for each y parameters in the list.
-	;; (list (onsets-in-samples rhythm-to-plot) (.iseq 0 (duration-in-samples rhythm-to-plot))) 
-	nil
+	;; different x axes for each y parameters in the list.
+	(list (onsets-in-samples rhythm-to-plot) (.iseq 0 (duration-in-samples rhythm-to-plot))) 
 	:aspect-ratio 0.2 
-	;; :styles '("lines" "impulses linetype 3")
+        ;; :styles '("impulses linetype 1" "lines linetype 3")
 	:styles '("points pointtype 3" "lines linetype 3")
 	:legends '("Onsets" "Saliency")
 	:reset nil
