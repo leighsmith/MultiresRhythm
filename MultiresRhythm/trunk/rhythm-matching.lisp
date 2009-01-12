@@ -108,9 +108,13 @@
   "Given a list of rhythms, return a list of rhythm envelopes"
   (mapcar (lambda (x) (gaussian-rhythm-envelope x :temporal-discrimination temporal-discrimination)) rhythms))
 
-(defun plot-correlation-matching (rhythm-1 rhythm-2 shift-by)
-  "Visually verifies the cross-correlation finds the shift to align the two rhythms"
-  (plot (list rhythm-1 (.concatenate (make-double-array shift-by) rhythm-2)) nil :aspect-ratio 0.2))
+(let ((odf-plot-index 0))
+  (defun plot-correlation-matching (rhythm-1 rhythm-2 shift-by)
+    "Visually verifies the cross-correlation finds the shift to align the two rhythms"
+    (plot (list rhythm-1 (.concatenate (make-double-array shift-by) rhythm-2)) nil 
+	  :aspect-ratio 0.2
+	  :legends (list "rhythm 1" (format nil "rhythm 2 shifted by ~d" shift-by))
+	  :title (format nil "Cross Correlation of ~a" (incf odf-plot-index)))))
 
 ;; Find the peaks in the positive lag region of the cross-correlation.  We only use
 ;; positive lag regions since positive lag values effectively indicate how far to
@@ -118,7 +122,7 @@
 ;; play region start time. Negative lag values indicate how far to shift the
 ;; candidate *forward* in time, but since we are nowdays only using phrases
 ;; within a theme, this means playing before the start of the candidate media,
-;; meaning leading black or silence which would produce poor results (even if the
+;; meaning leading silence which would produce poor results (even if the
 ;; correlation score was high).
 (defun cross-correlation-match (onset-detection-function metric-accent-gaussian &key (highest-correlations 5))
   "Return the sample that is the highest match between the two vectors"
@@ -143,7 +147,7 @@
 
 ;;; TODO we can probably skip the normalisation for cross-correlation-matching, but it
 ;;; makes visualisation easier.
-(defun match-ODF-meter (meter tempo-bpm onset-detection-rhythm)
+(defun match-ODF-meter (meter tempo-bpm onset-detection-rhythm &key (maximum-matches 5))
   "Returns the sample that the meter (at the given tempo) matches the onset detection rhythm at."
   (let* ((metric-accent-gaussian (.normalise (gaussian-rhythm-envelope
 					      (metrically-scaled-rhythm 
@@ -151,7 +155,18 @@
 					       :sample-rate (sample-rate onset-detection-rhythm)
 					       :hierarchy #'binary-metric-hierarchy))))  ; #'metric-hierarchy
 	 (normalised-odf (.normalise (time-signal onset-detection-rhythm))))
-    (cross-correlation-match normalised-odf metric-accent-gaussian)))
+    (cross-correlation-match normalised-odf metric-accent-gaussian :highest-correlations maximum-matches)))
+
+(defun visualise-downbeat (meter tempo-bpm onset-detection-rhythm downbeat-index)
+  "Plots meter against the onset detection rhythm at the selected downbeat"
+  (let* ((metric-accent-gaussian (.normalise (gaussian-rhythm-envelope
+					      (metrically-scaled-rhythm 
+					       meter 1 tempo-bpm 
+					       :sample-rate (sample-rate onset-detection-rhythm)
+					       :hierarchy #'binary-metric-hierarchy))))  ; #'metric-hierarchy
+	 (normalised-odf (.normalise (time-signal onset-detection-rhythm))))
+    (plot-correlation-matching normalised-odf metric-accent-gaussian 
+			       (round (* (/ 60.0 tempo-bpm) (sample-rate onset-detection-rhythm) downbeat-index)))))
 
 (defun test-correlation-matching ()
   "Visually verifies the cross-correlation finds the shift to align the two rhythms"
