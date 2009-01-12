@@ -1,6 +1,6 @@
 ;;;; -*- Lisp -*-
 ;;;;
-;;;; $Id:$
+;;;; $Id$
 ;;;;
 ;;;; Implementation of the Viterbi decoding algorithm.
 ;;;; See L. Rabiner. A tutorial on hidden Markov models and selected applications in speech recognition. 
