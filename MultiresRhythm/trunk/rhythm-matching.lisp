@@ -41,11 +41,22 @@
     (.+ 1d0 (./ (.* 1d0 lhl-metric-salience) amp-scaling))))
 
 (defun binary-metric-hierarchy (meter &key (max-amp 1.0d0) (min-amp (/ max-amp 2.0d0)))
-  "Returns a two level hierarchy (downbeat, every other beat) for the given meter"
+  "Returns a two level hierarchy (major downbeat, all other beats) for the given meter"
   (let* ((grid-length (apply #'* meter))
 	 (binary-hierarchy (make-double-array grid-length :initial-element min-amp)))
     (setf (.aref binary-hierarchy 0) max-amp)
     binary-hierarchy))
+
+(defun backbeat-metric-hierarchy (meter &key (max-amp 1.0d0) (min-amp (/ max-amp 2.0d0)))
+  "Returns a two level hierarchy with a low downbeat, and two accented backbeats, the
+  classic rock-n-roll structure"
+  (let* ((grid-length (apply #'* meter))
+	 (backbeat-hierarchy (make-double-array grid-length :initial-element min-amp))
+	 (top-level-interval (.* (.iseq 0 (1- (first meter))) (reduce #'* (rest meter)))) 
+	 ;; TODO we cheat using second level subdivision. We should use beats-per-measure
+	 (backbeat-intervals (.+ top-level-interval (second meter))))
+    (setf (.arefs backbeat-hierarchy backbeat-intervals) max-amp)
+    backbeat-hierarchy))
 
 ;;; TODO this assumes a constant tempo. This needs replacing with a function that computes
 ;;; the metrical structure according to the tempo estimate at each beat.
@@ -59,7 +70,8 @@
 	 (tatum-duration (/ 60.0d0 tempo tatums-per-beat)) ; in seconds
 	 (times (nlisp::array-to-list (.* tatum-duration (.iseq 0 number-of-tatums))))
 	 ;; Append the number of measures worth of weights and a final full amplitude downbeat.
-	 (weights (append (loop repeat measures append (nlisp::array-to-list metrical-weights)) '(1.0d0))))
+	 (weights (append (loop repeat measures append (nlisp::array-to-list metrical-weights))
+			  (list (.aref metrical-weights 0)))))
     (rhythm-of-weighted-onsets "metrical scaling" 
 			       (mapcar #'list times weights)
 			       ;; :duration (* tatum-duration number-of-tatums)
@@ -153,20 +165,23 @@
 					      (metrically-scaled-rhythm 
 					       meter 1 tempo-bpm 
 					       :sample-rate (sample-rate onset-detection-rhythm)
-					       :hierarchy #'binary-metric-hierarchy))))  ; #'metric-hierarchy
+					       :hierarchy #'backbeat-metric-hierarchy))))  ; #'metric-hierarchy
 	 (normalised-odf (.normalise (time-signal onset-detection-rhythm))))
     (cross-correlation-match normalised-odf metric-accent-gaussian :highest-correlations maximum-matches)))
 
-(defun visualise-downbeat (meter tempo-bpm onset-detection-rhythm downbeat-index)
-  "Plots meter against the onset detection rhythm at the selected downbeat"
+(defun visualise-downbeat (meter tempo-bpm onset-detection-rhythm downbeat-sample)
+  "Plots the metrical  against the onset detection rhythm at the selected downbeat"
   (let* ((metric-accent-gaussian (.normalise (gaussian-rhythm-envelope
 					      (metrically-scaled-rhythm 
 					       meter 1 tempo-bpm 
 					       :sample-rate (sample-rate onset-detection-rhythm)
-					       :hierarchy #'binary-metric-hierarchy))))  ; #'metric-hierarchy
+					       :hierarchy #'backbeat-metric-hierarchy))))  ; #'metric-hierarchy
 	 (normalised-odf (.normalise (time-signal onset-detection-rhythm))))
-    (plot-correlation-matching normalised-odf metric-accent-gaussian 
-			       (round (* (/ 60.0 tempo-bpm) (sample-rate onset-detection-rhythm) downbeat-index)))))
+    (plot-correlation-matching normalised-odf metric-accent-gaussian downbeat-sample)))
+
+(defun visualise-downbeat-index (meter tempo-bpm onset-detection-rhythm downbeat-index)
+  (visualise-downbeat meter tempo-bpm onset-detection-rhythm
+		      (round (* (/ 60.0 tempo-bpm) (sample-rate onset-detection-rhythm) downbeat-index))))
 
 (defun test-correlation-matching ()
   "Visually verifies the cross-correlation finds the shift to align the two rhythms"
