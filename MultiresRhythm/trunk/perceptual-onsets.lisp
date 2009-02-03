@@ -24,7 +24,8 @@
 ;; (setf ps (perceptual-salience-rhythm "/Volumes/iDisk/Research/Sources/OtherResearchers/UoP/AuditorySaliencyModel/ines1.saliency" "/Volumes/iDisk/Research/Sources/OtherResearchers/UoP/AuditorySaliencyModel/ines1.onsets" :weighted t))
 ;; (setf res1 (perceptual-onsets-to-rhythm "res1/res1_1_resp_text" "res1/res1_1_pOnsets" :weighted t))
 
-(defmethod plot-rhythm ((rhythm-to-plot salience-trace-rhythm) &key (reset t) (time-in-seconds nil))
+(defmethod plot-rhythm ((rhythm-to-plot salience-trace-rhythm) &key 
+			(reset t) (time-in-seconds nil) (title ""))
   (if reset (reset-plot))
   (if time-in-seconds
       (plot-command "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
@@ -39,7 +40,7 @@
 	:styles '("points pointtype 3" "lines linetype 3")
 	:legends '("Onsets" "Saliency")
 	:reset nil
-	:title (format nil "Salience trace and onsets of ~a" (name rhythm-to-plot))))
+	:title (format nil "Salience trace and onsets of ~a~a" (name rhythm-to-plot) title)))
 
 ;; (plot-rhythm res1)
 ;; (plot (time-signal res1) nil :aspect-ratio 0.66)
