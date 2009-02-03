@@ -15,6 +15,7 @@
 ;;;;
 
 (declaim (optimize (speed 3) (safety 0) (debug 0)))
+;; (declaim (optimize (speed 0) (safety 3) (debug 3)))
 
 (in-package :multires-rhythm)
 (use-package :nlisp)
@@ -37,12 +38,12 @@
 	 (state-path (make-integer-array number-of-times))
 	 most-likely-state
 	 state-likelihood)
-    ;; (declare (type fixnum number-of-times))
+    (declare (type fixnum number-of-times number-of-states))
     ;; 1) Initialisation:
     (setf (.column maximum-likelihood 0) (.+ (.log initial-probabilities) (.column log-prob-observe 0)))
     ;; 2) Recursion: Compute the forward maximum transition probabilities
-    (loop for time from 1 below number-of-times
-       do (loop for state from 0 below number-of-states
+    (loop for time fixnum from 1 below number-of-times
+       do (loop for state fixnum from 0 below number-of-states
 	     ;; Retrieve the enumeration of the transition probabilities, given the current state.
 	     for transition-to-state = (.column log-prob-transitions state)
 	     ;; Calculate the maximum transition probability from states at previous time to the current state.
@@ -70,19 +71,16 @@
 ;;; Tests
 ;;;
 #|
-(setf test-observations (make-double-array '(4 8)))
-(setf test-observ-list '((0.1 0.4 0.1 0.2 0.1 0.1 0.3 0.3)
-			 (0.7 0.4 0.5 0.3 0.2 0.2 0.1 0.2)
-			 (0.1 0.1 0.2 0.4 0.6 0.3 0.5 0.4)
-			 (0.1 0.1 0.2 0.1 0.1 0.4 0.1 0.1)))
-(nlisp::store-at test-observations 0 test-observ-list)
+(setf test-observations (make-narray '((0.1 0.4 0.1 0.2 0.1 0.1 0.3 0.3)
+				       (0.7 0.4 0.5 0.3 0.2 0.2 0.1 0.2)
+				       (0.1 0.1 0.2 0.4 0.6 0.3 0.5 0.4)
+				       (0.1 0.1 0.2 0.1 0.1 0.4 0.1 0.1))))
 
 (setf init-probs (make-narray '(0.25 0.25 0.25 0.25)))
-(setf transition-probs (make-double-array '(4 4)))
-(nlisp::store-at transition-probs 0 '((0.9 0.0333 0.0333 0.0333)
+(setf transition-probs (make-narray '((0.9 0.0333 0.0333 0.0333)
 				      (0.0333 0.9 0.0333 0.0333)
 				      (0.0333 0.0333 0.9 0.0333)
-				      (0.0333 0.0333 0.0333 0.9)))
+				      (0.0333 0.0333 0.0333 0.9))))
 
 (viterbi init-probs test-observations transition-probs)
 ;;; Produces a path NLISP #(1 1 1 2 2 2 2 2) -11.627295282373277d0 matching the matlab code. 
