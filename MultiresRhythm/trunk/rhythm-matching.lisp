@@ -16,6 +16,9 @@
 (in-package :multires-rhythm)
 (use-package :nlisp)
 
+;;; Specifies the width in seconds of each beat when matching.
+(defparameter *matching-temporal-discrimination* 0.175d0)
+
 ;;; calculating metric salience the Longuet-Higgins & Lee way.
 (defun lh-metric-salience (meter)
   "Return list of metric weights; 0 highest level, -n lowest"
@@ -97,6 +100,11 @@
     ;; Divide by the length of the vector to renormalize the result.
     (./ (.subseq (rotate-vector result :by (- (.length y))) 0 result-length) result-length)))
 
+;;; autocorrelation is just the cross-correlation of the signal and itself.
+(defmacro autocorrelation (x)
+  "Compute the autocorrelation of x"
+  `(cross-correlation ,x ,x))
+
 ;;; TODO should make the expectation precision value narrow or widen the Gaussian peak.
 (defun temporal-likelihood-of-expectations (expectations temporal-discrimination)
   "Convert the expectations into a continuous Gaussian projection by convolution"
@@ -159,23 +167,23 @@
 
 ;;; TODO we can probably skip the normalisation for cross-correlation-matching, but it
 ;;; makes visualisation easier.
-(defun match-ODF-meter (meter tempo-bpm onset-detection-rhythm &key (maximum-matches 5))
+(defun match-ODF-meter (meter tempo-bpm onset-detection-rhythm measures &key (maximum-matches 5))
   "Returns the sample that the meter (at the given tempo) matches the onset detection rhythm at."
   (let* ((metric-accent-gaussian (.normalise (gaussian-rhythm-envelope
-					      (metrically-scaled-rhythm 
-					       meter 1 tempo-bpm 
+					      (metrically-scaled-rhythm meter measures tempo-bpm 
 					       :sample-rate (sample-rate onset-detection-rhythm)
-					       :hierarchy #'backbeat-metric-hierarchy))))  ; #'metric-hierarchy
+					       :hierarchy #'backbeat-metric-hierarchy)  ; #'metric-hierarchy
+					      :temporal-discrimination *matching-temporal-discrimination*))) 
 	 (normalised-odf (.normalise (time-signal onset-detection-rhythm))))
     (cross-correlation-match normalised-odf metric-accent-gaussian :highest-correlations maximum-matches)))
 
-(defun visualise-downbeat (meter tempo-bpm onset-detection-rhythm downbeat-sample)
+(defun visualise-downbeat (meter tempo-bpm onset-detection-rhythm downbeat-sample measures)
   "Plots the metrical  against the onset detection rhythm at the selected downbeat"
   (let* ((metric-accent-gaussian (.normalise (gaussian-rhythm-envelope
-					      (metrically-scaled-rhythm 
-					       meter 1 tempo-bpm 
+					      (metrically-scaled-rhythm meter measures tempo-bpm 
 					       :sample-rate (sample-rate onset-detection-rhythm)
-					       :hierarchy #'backbeat-metric-hierarchy))))  ; #'metric-hierarchy
+					       :hierarchy #'backbeat-metric-hierarchy)
+					      :temporal-discrimination *matching-temporal-discrimination*)))
 	 (normalised-odf (.normalise (time-signal onset-detection-rhythm))))
     (plot-correlation-matching normalised-odf metric-accent-gaussian downbeat-sample)))
 
@@ -201,3 +209,7 @@
     ;; precalculate the Gaussian envelopes for each.
     (dolist (rhythm-envelope (gaussian-rhythm-envelopes candidate-rhythms))
       (cross-correlation-match rhythm-envelope match-prototype))))
+
+
+;;; (setf dillinger-ac (.subseq (autocorrelation (time-signal dillinger)) (.length (time-signal dillinger))))
+
