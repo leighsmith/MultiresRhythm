@@ -29,8 +29,8 @@
 	   (evidence (mapcar 
 		      (lambda (beat-multiple)
 			(let* ((candidate-bar-periods (.* beat-periods beat-multiple))
-			       (candidate-scales (prune-to-limit (.round (scale-from-period candidate-bar-periods vpo))
-								 (1- (number-of-scales skeleton)))))
+			       (candidate-scales (prune-outliers (.round (scale-from-period candidate-bar-periods vpo))
+								 :upper-limit (1- (number-of-scales skeleton)))))
 			  ;; return the weighted meter evidence
 			  (if (plusp (.length candidate-scales))
 			      (.sum (.* (.arefs persistency-profile candidate-scales) scale-weights))
@@ -50,7 +50,7 @@
      for units-per-beat in tactus-units
      for meter-periods = (./ (.* (make-narray meter-multiples) beat-period) units-per-beat)
      ;; clip below the lowest freq. scale.
-     collect (prune-to-limit (.round (scale-from-period meter-periods vpo)) max-scale)))
+     collect (prune-outliers (.round (scale-from-period meter-periods vpo)) :upper-limit max-scale)))
 
 (defun meter-of-analysis (analysis &key (candidate-meters '((3 2 2) (2 2 2 2) (2 3 2)))
 			  (tactus-units '(4 4 2)))

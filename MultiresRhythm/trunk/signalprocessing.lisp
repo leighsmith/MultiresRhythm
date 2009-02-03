@@ -20,13 +20,16 @@
   "Determines the range of values in the matrix"
   (- (.max matrix) (.min matrix)))
 
-;;; Obsolete now we have a stats package access within NLISP/GSL
-;;(defun mean (a)
-;;  (/ (.sum a) (.length a)))
-
 (defun prune-to-limit (a limit &key (test #'<=))
   "Remove any elements which are above the limit value"
-  (make-instance (class-of a) :ival (remove-if-not (lambda (x) (apply test x limit)) (val a))))
+  (make-instance (class-of a) :ival (remove-if-not (lambda (x) (funcall test x limit)) (val a))))
+
+(defun prune-outliers (a &key (upper-limit nil upper-limit-supplied) (lower-limit nil lower-limit-supplied))
+  "Remove any elements which are above the limit value"
+  (make-instance (class-of a) 
+		 :ival (remove-if-not (lambda (x) (and (if upper-limit-supplied (<= x upper-limit) t)
+						       (if lower-limit-supplied (>= x lower-limit) t)))
+				      (val a))))
 
 (defun pad-end-to-length (vector length)
   "Pad a vector with zeros out to the length given"
@@ -207,3 +210,26 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 (defun highest-peaks (value-vector)
   "Return the indices of the peaks sorted in descending value"
   (.sorted-indices (.* (extrema-points-vector value-vector :extrema :max) value-vector) :ordering #'>))
+
+#|
+(defun filter (numerator denominator input initial-state)
+  "Filter input with the coefficients defined as numerator and denominator vectors with an
+  initial state"
+      (if (= (length numerator) (length denominator))
+	(if (> (length numerator) 0)
+	  T &zend = initial-state(initial-state.endC());
+	  T &zstart = initial-state(0);
+          typename Vec2::const_elem_iterator xel = input.elbegin();      
+	  for(int ii =0; ii<len; ++ii,++xel) (
+            typename Vec2::value_type xx = *xel;
+	    Out(ii) = bstart * xx + zstart;
+	    zr0   = zr1;	
+	    zend = 0.0;
+	    zbr  += xx * numerator - Out(ii) * denominator;	    
+	  )	
+	)
+	(
+	  Out = bstart * input;
+	)	
+      )
+|#
