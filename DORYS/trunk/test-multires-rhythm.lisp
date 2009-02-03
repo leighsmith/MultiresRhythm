@@ -61,10 +61,10 @@
 
 (defun plot-rising-harmonic ()
   (let* ((rising-harmonic-signal (rising-harmonic-test :signal-length 4096))
-	 (scaleogram (cwt rising-harmonic-signal 8)))
+	 (scaleogram (mrr::cwt rising-harmonic-signal 8)))
     (plot rising-harmonic-signal nil :title "Rising Harmonic Signal" :xlabel "Time" :ylabel "Amplitude" :aspect-ratio 0.66)
     (window)
-    (plot-cwt scaleogram :title "rising-harmonic")))
+    (mrr::plot-cwt scaleogram :title "rising-harmonic")))
     ;; (plot-cwt+ridges scaleogram () (scale-peaks-of-scaleogram scaleogram 200))))
 
 ;; (plot-rising-harmonic)
@@ -413,3 +413,11 @@
 ;;(setf x (multires-rhythm::phase-diff single-phase))
 ;;(setf y (multires-rhythm::phase-diff-new single-phase))
 ;;(plot (.- x y) nil)
+
+;; (pushnew 'cwt+skeleton  *plotting*)
+;;(multires-rhythm::clap-to-salience-rhythm-files  
+;; #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/rwc_p_95.odf"
+;; #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/rwc_p_95.onsets" 
+;; #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/rwc_p_95_excerpt.wav"
+;; #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/rwc_p_95_excerpt_mixed_mrr.wav"
+;; :sample-rate 172.27 :beat-multiple 1)

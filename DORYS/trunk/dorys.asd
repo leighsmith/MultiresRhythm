@@ -19,6 +19,7 @@
 (require 'shoe)				; For anthem comparisons.
 (require 'nlisp)			; For mathematics functions.
 (require 'multiresrhythm)		; For multires-rhythm library.
+(require 'cl-fad)			; For directory access.
 
 ;; (setf (logical-pathname-translations "rhythm") '(("data;*.*.*" "/Volumes/iDisk/Research/Data/")))
 
