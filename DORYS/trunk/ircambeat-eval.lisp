@@ -33,7 +33,7 @@
   (.+ (.subarray beat-times (list 0 (list 0 (- (.length beat-times) 2)))) (./ (.diff beat-times) 2.0d0)))
 
 (defun evaluate-ircambeat-times (ircambeat-marker-times annotation-times precision-window)
-  "Retrieve the times of nominated downbeats from an annotation file"
+  "Return the precision, recall and f-scores given the times of computed and annotated beats"
   (let* ((time-limited-markers (mrr::prune-outliers ircambeat-marker-times 
 						    :lower-limit (- (.aref annotation-times 0) precision-window)
 						    :upper-limit (+ (.last annotation-times) precision-window)))
@@ -43,14 +43,30 @@
 	 (recall (/ number-correct (.length annotation-times)))
 	 (precision (/ number-correct (.length time-limited-markers)))
 	 (f-score (if (zerop (+ precision recall)) 0.0 (/ (* 2 precision recall) (+ precision recall)))))
-    (format t "number of annotations ~d number of markers with annotation range ~d number correct ~d~%"
+    (format t "number of annotations ~d number of markers within annotation range ~d number correct ~d~%"
 	    (.length matches-per-annotation) (.length time-limited-markers) (floor number-correct))
     (list precision recall f-score)))
+
+(defun precision-window-of-times (annotation-times relative-precision-window)
+  "Retrieve the precision window in seconds from annotated beat times and relative
+  precision window as a proportion of the beat period"
+  (let* ((average-annotated-beat-period (mean (.diff annotation-times)))
+	 (precision-window (* average-annotated-beat-period relative-precision-window)))
+    (format t "average annotated beat period ~,3f precision window ~,3f~%" 
+	    average-annotated-beat-period precision-window)
+    precision-window))
 
 (defun evaluate-ircambeat (ircambeat-marker-filepath annotation-filepath precision-window)
   "Retrieve the times of nominated downbeats from an annotation file"
   (let* ((annotation-times (mrr::read-ircam-annotation annotation-filepath))
 	 (ircambeat-marker-times (read-ircam-marker-times ircambeat-marker-filepath)))
+    (evaluate-ircambeat-times ircambeat-marker-times annotation-times precision-window)))
+
+(defun evaluate-ircambeat-relative-precision (ircambeat-marker-filepath annotation-filepath relative-precision-window)
+  "Retrieve the times of nominated downbeats from an annotation file"
+  (let* ((annotation-times (mrr::read-ircam-annotation annotation-filepath))
+	 (ircambeat-marker-times (read-ircam-marker-times ircambeat-marker-filepath))
+	 (precision-window (precision-window-of-times annotation-times relative-precision-window)))
     (evaluate-ircambeat-times ircambeat-marker-times annotation-times precision-window)))
 
 (defun evaluate-ircambeat-counter-beats (ircambeat-marker-filepath annotation-filepath precision-window)
@@ -59,12 +75,6 @@
 	 (ircambeat-marker-times (read-ircam-marker-times ircambeat-marker-filepath)))
     (evaluate-ircambeat-times ircambeat-marker-times (counter-beats annotation-times) precision-window)))
 
-(defun print-stats (name proportional-scores)
-  (let ((mean-score (mean proportional-scores)))
-    (format t "Mean ~a ~,3f Stddev ~a ~,3f~%" 
-	    name mean-score name (stddev proportional-scores))
-    mean-score))
-  
 (defun evaluate-ircambeat-on-corpus (corpus-name corpus precision-window &key (evaluation #'evaluate-ircambeat))
   "Evaluate the list of tracks in corpus for the given precision-window"
   (loop
@@ -81,18 +91,34 @@
      collect f-score into f-score-list
      finally (return (list (make-narray precision-list) (make-narray recall-list) (make-narray f-score-list)))))
 
-(defun summary-evaluation-ircambeat (corpus-name corpus precision-window)
+(defun print-stats (name proportional-scores)
+  (let ((mean-score (mean proportional-scores)))
+    (format t "Mean ~a ~,3f Stddev ~a ~,3f~%" 
+	    name mean-score name (stddev proportional-scores))
+    mean-score))
+  
+(defun summary-evaluation-ircambeat (corpus-name corpus precision-window &key (evaluation))
   "Returns mean precision, recall and f-score measures as a list"
   (map 'list #'print-stats 
        '("precision" "recall" "f-score") 
-       (evaluate-ircambeat-on-corpus corpus-name corpus precision-window :evaluation #'evaluate-ircambeat)))
+       (evaluate-ircambeat-on-corpus corpus-name corpus precision-window :evaluation evaluation)))
 
 (defun evaluate-precision-width (corpus-name corpus)
   "Runs the evaluation on the given corpus over a range of precision widths"
   (loop
      for precision-width across (val (.rseq 0.025d0 0.150d0 6))
      collect (cons precision-width 
-		   (summary-evaluation-ircambeat corpus-name corpus precision-width)) into scores
+		   (summary-evaluation-ircambeat corpus-name corpus precision-width
+						 :evaluation #'evaluate-ircambeat)) into scores
+     finally (return (make-narray scores))))
+
+(defun evaluate-relative-precision-width (corpus-name corpus)
+  "Runs the evaluation on the given corpus over a range of relative precision widths"
+  (loop
+     for precision-width across (val (.rseq 0.01d0 0.250d0 7))
+     collect (cons precision-width 
+		   (summary-evaluation-ircambeat corpus-name corpus precision-width
+						 :evaluation #'evaluate-ircambeat-relative-precision)) into scores
      finally (return (make-narray scores))))
 
 (defun is-hidden-file (pathname)
@@ -109,9 +135,22 @@
     (plot-command "set yrange [ 0.0 : 1.0 ]")
     (plot (list (.column scores 1) (.column scores 2)) (.column scores 0) 
 	  :title (format nil "Evaluation of IRCAM-beat on ~a dataset" corpus-name)
-	  :legends  '("Precision" "Recall")
+	  :legends  '("Mean Precision" "Mean Recall")
 	  :styles '("linespoints" "linespoints") 
-	  :xlabel "Precision Width" :ylabel "Proportion Correct"
+	  :xlabel "Precision Width (seconds)" :ylabel "Proportion Correct"
+	  :reset nil)
+    (close-window)))
+
+(defun plot-ircambeat-evaluation-relative (corpus-name corpus-directory)
+  "Run the evaluations and plot the results"
+  (let ((scores (evaluate-relative-precision-width corpus-name (no-hidden-files (cl-fad:list-directory corpus-directory)))))
+    (window)
+    (plot-command "set yrange [ 0.0 : 1.0 ]")
+    (plot (list (.column scores 1) (.column scores 2)) (.column scores 0) 
+	  :title (format nil "Evaluation of IRCAM-beat on ~a dataset" corpus-name)
+	  :legends  '("Mean Precision" "Mean Recall")
+	  :styles '("linespoints" "linespoints") 
+	  :xlabel "Precision Width (% of beat)" :ylabel "Proportion Correct"
 	  :reset nil)
     (close-window)))
 
@@ -131,23 +170,55 @@
 (evaluate-ircambeat-on-corpus "Quaero"
 			      (list #P"/Volumes/Quaerodb/doc/quaero_site/content/18_current/beat_XML/0005 - Pink Floyd - Dark Side of the Moon - 05 Great Gig in the sky.b_p.xml"
 				    #P"/Volumes/Quaerodb/doc/quaero_site/content/18_current/beat_XML/0136 - The Beatles - Abbey Road - 10 Sun King.b_q.xml")
-			      0.050)
+			      0.25d0 
+			      :evaluation #'evaluate-ircambeat-relative-precision)
 
+(evaluate-ircambeat-on-corpus "Quaero" (no-hidden-files (cl-fad:list-directory *quaero-annotations-directory*)) 0.050)
 
-(evaluate-ircambeat-on-corpus "Quaero" (no-hidden-files (cl-fad:list-directory )) 0.050)
+(evaluate-ircambeat-on-corpus "Quaero" 
+			      (no-hidden-files (cl-fad:list-directory *quaero-annotations-directory*))
+			      0.25
+			      :evaluation #'evaluate-ircambeat-relative-precision)
 
 (setf score-list (evaluate-ircambeat-on-corpus "RWC" (no-hidden-files (cl-fad:list-directory *rwc-annotations-directory*)) 0.050))
 
-(defun plot-histogram (list-of-columns)
+(setf score-list (evaluate-ircambeat-on-corpus "RWC" 
+					       (no-hidden-files (cl-fad:list-directory *rwc-annotations-directory*)) 
+					       0.25
+					       :evaluation #'evaluate-ircambeat-relative-precision))
+
+
+(defmethod plot-histogram ((list-of-columns list))
   (plot-command "set style data histogram")
   (plot-command "set style histogram cluster gap 1")
   (plot-command "set style fill solid border -1")
   (plot-command "set boxwidth 0.9")
-  (plot score-list nil 
+  (let ((file-base 
+        for file = (make-pathname :defaults file-base
+				 :name (plot-tmp-name)
+				 :type "bin")
+     (write-binary-records  x dependent-vars)
+
+  (plot (nth 2 score-list) nil 
 	:reset nil
-	:styles (nlisp::ntimes "boxes fill solid border 9" (length score-list)) 
-	:legends '("precision" "recall" "f-score")
+	:styles "boxes fill solid border 9" 
+	;; :legends '("precision" "recall" "f-score")
+	:legends '("f-score")
 	:aspect-ratio 0.66))
+
+(plot (nth 1 score-list) nil 
+      :reset nil
+      :styles "boxes fill solid border 9" 
+      ;; :legends '("precision" "recall" "f-score")
+      :legends '("recall")
+      :aspect-ratio 0.66)
   
+(setf high-precision (.find (.> (nth 0 score-list) 0.97d0)))
 (setf high-recall (.find (.> (nth 1 score-list) 0.97d0)))
+(setf high-f-score (.find (.> (nth 2 score-list) 0.97d0)))
+(setf low-f-score (.find (.< (nth 2 score-list) 0.2d0)))
+
+;; Below 50%
+(.length (.find (.< (nth 2 score-list) 0.5d0)))
+
 |#

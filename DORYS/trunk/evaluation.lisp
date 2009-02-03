@@ -23,6 +23,11 @@
 (use-package :nlisp)
 (use-package :multires-rhythm)
 
+;;; Defines where our data resides.
+(defparameter *data-directory* (merge-pathnames 
+				(make-pathname :directory '(:relative "Research" "Data"))
+				(user-homedir-pathname)))
+
 (defun evaluate-with-music (evaluation-function &key (music-dataset) (music-name))
   "Applies the evaluation function to the music dataset, by applying to each example of music (as an
   member in the supplied list) in turn, returning those that fail and printing the proportion that pass."

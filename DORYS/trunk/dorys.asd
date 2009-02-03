@@ -21,8 +21,6 @@
 (require 'multiresrhythm)		; For multires-rhythm library.
 (require 'cl-fad)			; For directory access.
 
-;; (setf (logical-pathname-translations "rhythm") '(("data;*.*.*" "/Volumes/iDisk/Research/Data/")))
-
 (defpackage #:dorys (:use #:cl #:asdf #:nlisp #:multires-rhythm #:shoe)
 	    (:export :*national-anthems*
 		     :anthem-named :meter-numerator :anthem-name
@@ -55,7 +53,8 @@
 	       (:file "ritard")
 	       (:file "tempo-change")
 	       (:file "test-clapping")
-	       (:file "ircam")))
+	       (:file "ircam" :depends-on ("evaluation"))
+	       (:file "ircambeat-eval" :depends-on ("ircam"))))
 
 #|
 

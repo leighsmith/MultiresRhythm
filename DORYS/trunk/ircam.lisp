@@ -17,14 +17,15 @@
 (use-package :nlisp)
 (use-package :multires-rhythm)
 
-(defparameter *rhythm-data-directory* "/Volumes/iDisk/Research/Data/IRCAM-Beat/")
+(defparameter *rhythm-data-directory* (merge-pathnames (make-pathname :directory '(:relative "IRCAM-Beat"))
+						       *data-directory*))
 
 ;;; The symlink seems to not work over AFP so that this path is unable to be retrieved by POSIX calls.
 ;;; annotations-directory #P"/Volumes/Quaerodb/annotation/annotation current state/"
-(defparameter *annotations-directory* #P"/Volumes/Quaerodb/doc/quaero_site/content/18_current/beat_XML/")
+(defparameter *quaero-annotations-directory* #P"/Volumes/Quaerodb/doc/quaero_site/content/18_current/beat_XML/")
 
 ;;; The location of the audio files that were annotated.
-(defparameter *audio-directory* "/Volumes/Quaerodb/annotation/wav-m22k/")
+(defparameter *quaero-audio-directory* #P"/Volumes/Quaerodb/annotation/wav-m22k/")
 
 ;;; Holds the ground truth for the anacrusis (number of beats to shift to find the
 ;;; downbeat) or each example.
@@ -129,9 +130,13 @@
 
 (defun correct-clap-file (original-sound-file)
   "Returns the right audio file matching the sample rate of the file to be accompanied"
-  (case (nlisp::audio-parameters original-sound-file)
-    (22050 #P"/Volumes/iDisk/Research/Data/Handclap Examples/cowbell_22kHz_mono.aiff")
-    (44100 #P"/Volumes/iDisk/Research/Data/Handclap Examples/cowbell.aiff")))
+  (merge-pathnames 
+   (make-pathname :directory '(:relative "Handclap Examples") 
+		  :name (case (nlisp::audio-parameters original-sound-file)
+			  (22050 "cowbell_22kHz_mono") 
+			  (44100 "cowbell"))
+		  :type "aiff")
+   *data-directory*))
 
 (defun sonify-ircambeat (original-sound-path &key (directory *rhythm-data-directory*)
 			  (anacrusis 0) (sound-every 1) 
@@ -152,10 +157,11 @@
 				      :clap-sample-file clap-sample-file)
     (format t "Wrote mix as soundfile ~a~%" accompaniment-sound-path)))
 
-;;; (sonify-ircambeat #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/rwc_p_99_excerpt.wav")
+;;; (sonify-ircambeat *rhythm-data-directory* "rwc_p_99_excerpt" "wav")
 
 (defun sonify-corpus (corpus-name corpus-example)
-  (sonify-ircambeat (make-pathname :directory *audio-directory* :name (first corpus-example) :type "wav") 
+  (sonify-ircambeat (merge-pathnames (make-pathname :name (first corpus-example) :type "wav") 
+				     *quaero-audio-directory*)
 		    :directory (merge-pathnames 
 				(make-pathname :directory (list :relative corpus-name)) 
 				*rhythm-data-directory*)
@@ -178,20 +184,22 @@
 				     :clap-sample-file clap-sample-file)
     (format t "Wrote mix as soundfile ~a~%" accompaniment-sound-path)))
 
-(defun sonify-quaero-annotation (annotation-filepath &key (audio-directory *audio-directory*))
+(defun sonify-quaero-annotation (annotation-filepath &key (audio-directory *quaero-audio-directory*))
   "Creates a sonification from the annotation-pathspec, which can have a relative directory component"
   (sonify-annotation annotation-filepath
 		     (merge-pathnames audio-directory
 				      (make-pathname :directory (pathname-directory annotation-filepath)
 						     :name (pathname-name (pathname-name annotation-filepath))
 						     :type "wav"))
+		     ;; (merge-pathnames (make-pathname :directory '(:relative "Quaero" "Verification"))
+		     ;; *rhythm-data-directory*)
 		     "/Volumes/iDisk/Research/Data/IRCAM-Beat/Quaero/Verification"))
 
 (defun sonify-random-sample (max-number)
   "Sonify a random sample of the annotations for evaluation"
   (loop
      with rs = (make-random-state t)
-     with annotation-files = (cl-fad:list-directory *annotations-directory*)
+     with annotation-files = (cl-fad:list-directory *quaero-annotations-directory*)
      with corpus-length = (length annotation-files)
      repeat max-number
      for corpus-sample-pathname = (nth (random corpus-length rs) annotation-files) 
@@ -265,8 +273,6 @@
     found-downbeat))
 
 ;;; (ircambeat-marker-of-downbeat #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/Quaero_excerpts/Audio/0186 - Dillinger_excerpt.wav"  :analysis-directory #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/Quaero_excerpts/Analysis")
-;;; (ircambeat-marker-of-downbeat #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/rwc_p_81_excerpt.wav")
-;;; (ircambeat-marker-of-downbeat #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/rwc_p_89_excerpt.wav")
 
 ;;; take the ground truth downbeat locations and print out where they would be.
 (defun groundtruth-downbeat-locations (original-sound-path annotation-path)
@@ -374,7 +380,7 @@
 
 ;;(verify-annotated-downbeats #P"/Volumes/Quaerodb/annotation/wav-22km/0245 - The Beatles - Magical Mystery Tour - 10 Baby Youre A Rich Man.wav" #P"/Volumes/Quaerodb/annotation//0245 - The Beatles - Magical Mystery Tour - 10 Baby Youre A Rich Man.b_q.xml")
 
-;; (make-pathname :defaults *annotations-directory* 
+;; (make-pathname :defaults *quaero-annotations-directory* 
 ;; 	       :name (concatenate 'string (first (track-named "0245" full-quaero)) ".b_q")
 ;; 	       :type "xml")
 
@@ -420,7 +426,7 @@
   "Evaluate the downbeat finder against the annotated example"
   (let* ((filename (first ircam-example))
 	 (anacrusis (third ircam-example))
-	 (sound-filename (make-pathname :directory audio-directory :name filename :type "wav"))
+	 (sound-filename (merge-pathnames (make-pathname :name filename :type "wav") audio-directory))
 	 (found-downbeat (ircambeat-marker-of-downbeat sound-filename :analysis-directory analysis-directory)))
     (format t "For ~a found downbeat ~a vs. ground truth ~a~%" filename found-downbeat anacrusis)
     (= found-downbeat anacrusis)))
@@ -430,7 +436,7 @@
   (evaluate-ircam-downbeat ircam-example
 			   :analysis-directory (merge-pathnames (make-pathname :directory '(:relative "Quaero"))
 								*rhythm-data-directory*)
-			   :audio-directory "/Volumes/Quaerodb/annotation/wav-m22k/"))
+			   :audio-directory *quaero-audio-directory*))
 
 (defun annotated-anacrusis (ircam-annotation-path ircambeat-marker-path)
   "Returns the beat location of the ircambeat marker nearest the first annotated downbeat"
@@ -443,7 +449,7 @@
 (defun make-quaero-dataset (max every)
   "Generate a list of entries suitables for testing evaluate-quaero-downbeat with"
   (loop
-     with annotation-files = (cl-fad:list-directory *annotations-directory*)
+     with annotation-files = (cl-fad:list-directory *quaero-annotations-directory*)
      with analysis-directory = (merge-pathnames (make-pathname :directory '(:relative "Quaero")) *rhythm-data-directory*)
      with anacrusis
      for song-index from 0 below max by every
@@ -467,53 +473,36 @@
 
 (defun save-annotations ()
   "Determines the anacruses for all of the Quaero dataset and writes the anacruses to a file"
-  (with-open-file (out #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/Quaero/Annotation/anacruses.lisp"
+  (with-open-file (out (merge-pathnames (make-pathname :directory '(:relative "Quaero" "Annotation") 
+						       :file "anacruses" :type "lisp")
+					*rhythm-data-directory*)
 		       :direction :output :if-exists :supersede) 
-    (print (make-quaero-dataset 250 1) out)))
+    (write (make-quaero-dataset 250 1) :stream out :readable t :pretty t)))
 
 ;; Load in the anacruses.
-;; (setf full-quaero (with-open-file (f #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/Quaero/Annotation/anacruses.lisp" :direction :input) (read f)))
+;; (setf full-quaero (with-open-file (f "Quaero/Annotation/anacruses.lisp" :direction :input) (read f)))
 
 
 #|
 
 (setf bad-examples (evaluate-with-music #'evaluate-ircam-downbeat :music-dataset *ircam-downbeats* :music-name #'first))
 
-(sonify-downbeat-estimate #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/0186 - Dillinger_excerpt.wav")
+(sonify-ircambeat #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/0186 - Dillinger_excerpt.wav")
 
-(sonify-downbeat-estimate #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/0051 - Buenavista_excerpt.wav")
-
-(sonify-downbeat-estimate #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/rwc_p_81_excerpt.wav")
-
-(sonify-ircambeat #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/0186 - Dillinger_excerpt.wav"
-		   :clap-sample-file #P"/Volumes/iDisk/Research/Data/Handclap Examples/cowbell_22kHz_mono.aiff")
-
-(sonify-ircambeat #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/0051 - Buenavista_excerpt.wav"
-		   :clap-sample-file #P"/Volumes/iDisk/Research/Data/Handclap Examples/cowbell_22kHz_mono.aiff")
-
-
-(sonify-quaero #P"beat_XML_from_QIMAv1/0144b - The Beatles - A Hard Days Night - 01 A Hard Day s Night")
-
-(sonify-quaero #P"beat_XML_from_logic/0186b - Dillinger - Cocaine - 01 Cocaine In My Brain")
-
-(sonify-quaero #P"beat_XML_from_protools/0051b - Buenavista social club - Buenavista social club - Chan chan")
-
-(sonify-quaero #P"beat_XML_from_protools/0043b - Ali Farka Toure - Ali Farka Toure - Amandrai")
-
-(sonify-quaero #P"beat_XML_from_protools/0202b - Squarepusher - Hard Normal Daddy - Beep Street")
+(sonify-ircambeat #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/0051 - Buenavista_excerpt.wav")
 
 ;; Sonification of Local files
 (sonify-quaero #P"0186b - Dillinger - Cocaine - 01 Cocaine In My Brain" 
-	       :annotations-directory #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/"
-	       :audio-directory #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/")
+	       :annotations-directory *rhythm-data-directory*
+	       :audio-directory *rhythm-data-directory*)
 
 (sonify-quaero #P"0144b - The Beatles - A Hard Days Night - 01 A Hard Day s Night.xml"
-	       :annotations-directory #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/"
-	       :audio-directory #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/")
+	       :annotations-directory *rhythm-data-directory*
+	       :audio-directory *rhythm-data-directory*)
 
 (sonify-quaero #P"0051b - Buenavista social club - Buenavista social club - Chan chan.xml"
-	       :annotations-directory #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/"
-	       :audio-directory #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/")
+	       :annotations-directory *rhythm-data-directory*
+	       :audio-directory *rhythm-data-directory*)
 
 ;; (setf ircambeat-markers (mrr::read-ircambeat-markers #P"/Local/Users/leigh/Research/Sources/Rhythm/IRCAM/LeighsTests/res4_1.wav.markers.xml"))
 ;; (setf mrr-markers (make-narray '(0.1d0 0.69d0 1.26d0 1.8d0 2.325d0 2.865d0 3.445d0 4.155d0 4.855d0  5.52d0 6.165d0 6.795d0 7.425d0 8.025d0 8.58d0 9.125d0)))
