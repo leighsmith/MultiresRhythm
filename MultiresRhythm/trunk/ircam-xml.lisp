@@ -15,7 +15,7 @@
 (in-package :multires-rhythm)
 (use-package :nlisp)
 
-(defun read-ircam-beat-bpm (filepath)
+(defun read-ircambeat-bpm (filepath)
   (let* ((bpm-document (cxml:parse filepath (cxml-dom:make-dom-builder)))
 	 (bpm (dom:get-elements-by-tag-name (dom:document-element bpm-document) "bpm")))
     ;; (format t "~a~%" bpm)
@@ -47,7 +47,7 @@
 ;; (dom:create-document (dom:implementation bpm-doc) nil nil nil)
 
 
-(defun read-ircam-beat-markers (filepath)
+(defun read-ircambeat-markers (filepath)
   "Read the given file using CXML and DOM to return an narray of beat markers"
   (let* ((marker-document (cxml:parse filepath (cxml-dom:make-dom-builder)))
 	 (markers (dom:get-elements-by-tag-name (dom:document-element marker-document) "marker")))
@@ -87,21 +87,21 @@
     (dom:append-child document beat-description)
     document))
 
-(defun write-ircam-beat-marker-stream (stream document)
+(defun write-ircambeat-marker-stream (stream document)
   ;; To serialize a DOM document, use a SAX serialization sink as the argument to
   ;; dom:map-document, which generates SAX events for the DOM tree.
   (dom:map-document (cxml:make-octet-stream-sink stream :indentation 2 :canonical nil) document))
 
-(defun write-ircam-beat-marker-document (filepath document)
+(defun write-ircambeat-marker-document (filepath document)
   (with-open-file (out filepath :direction :output :element-type '(unsigned-byte 8))
     (write-ircam-beat-marker-stream out document)))
 
-(defun write-ircam-beat-marker-document (filepath media-description clap-times-in-seconds)
+(defun write-ircambeat-marker-document (filepath media-description clap-times-in-seconds)
   (write-ircam-beat-marker-document filepath 
 				    (create-ircam-beat-marker-document media-description clap-times-in-seconds)))
 |#
 
-(defun write-ircam-beat-marker-stream (stream media-description clap-times-in-seconds meter last-time)
+(defun write-ircambeat-marker-stream (stream media-description clap-times-in-seconds meter last-time)
   (cxml:with-xml-output (cxml:make-octet-stream-sink stream :indentation 2 :canonical nil)
     (cxml:with-element "beatdescription"
       (cxml:with-element "media"
@@ -118,7 +118,7 @@
 		  (cxml:attribute "num" (format nil "~a" (1+ (mod beat-index meter))))
 		  (cxml:text (format nil "~f" time)))))))))
 
-(defun write-ircam-beat-marker-document (filepath media-description clap-times-in-seconds last-time)
+(defun write-ircambeat-marker-document (filepath media-description clap-times-in-seconds last-time)
   (with-open-file (out filepath :direction :output :element-type '(unsigned-byte 8))
     (write-ircam-beat-marker-stream out media-description clap-times-in-seconds 4 last-time)))
 
@@ -135,10 +135,10 @@
 	(read-from-string (dom:get-attribute beat-type "b"))
 	nil)))
 
-(defun read-ircam-annotation (filepath)
+(defun read-ircam-annotation (filepath &key (marker-name "marker"))
   "Read the given file using CXML and DOM to return an narray of beat markers"
   (let* ((marker-document (cxml:parse filepath (cxml-dom:make-dom-builder)))
-	 (markers (dom:get-elements-by-tag-name (dom:document-element marker-document) "marker")))
+	 (markers (dom:get-elements-by-tag-name (dom:document-element marker-document) marker-name)))
     ;; (format t "~a~%" markers)
     (loop
        for marker-index from 0 below (dom:length markers)
