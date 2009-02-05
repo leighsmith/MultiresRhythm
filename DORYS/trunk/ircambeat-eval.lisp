@@ -56,22 +56,49 @@
 	    average-annotated-beat-period precision-window)
     precision-window))
 
+(defun evaluate-ircambeat-computed-tempo (bpm-filepath annotation-filepath precision-window)
+  "Returns t if the difference between the tempo of the annotated beat and computed tempo matches with the
+  given absolute tolerance in BPM"
+  (let* ((annotation-tempo (mrr::tempo-from-times (annotated-beats annotation-filepath)))
+	 (ircambeat-computed-tempo (ircambeat-computed-bpm bpm-filepath)))
+    (format t "annotation tempo ~d, ircambeat computed tempo ~d~%"
+	    annotation-tempo ircambeat-computed-tempo)
+    (list (.< (abs (- annotation-tempo ircambeat-computed-tempo)) precision-window) 0.0d0 0.0d0)))
+
+(defun evaluate-ircambeat-computed-tempo-relative (bpm-filepath annotation-filepath precision-window)
+  "Returns t if the difference between the tempo of the annotated beat and computed tempo matches with the
+  given relative tolerance"
+  (let* ((annotation-tempo (mrr::tempo-from-times (annotated-beats annotation-filepath)))
+	 (ircambeat-computed-tempo (ircambeat-computed-bpm bpm-filepath)))
+    (format t "annotation tempo ~d, ircambeat computed tempo ~d~%"
+	    annotation-tempo ircambeat-computed-tempo)
+    (list (.< (abs (- annotation-tempo ircambeat-computed-tempo)) (* precision-window annotation-tempo))
+	  0.0d0 0.0d0)))
+
+(defun evaluate-ircambeat-tempo (ircambeat-marker-filepath annotation-filepath precision-window)
+  "Returns t if the difference between the tempo of annotated and computed beats with the given tolerance"
+  (let* ((annotation-tempo (mrr::tempo-from-times (annotated-beats annotation-filepath)))
+	 (ircambeat-marker-tempo (mrr::tempo-from-times (read-ircam-marker-times ircambeat-marker-filepath))))
+    (format t "annotation tempo ~d, median ircambeat tempo ~d~%"
+	    annotation-tempo ircambeat-marker-tempo)
+    (list (.< (abs (- annotation-tempo ircambeat-marker-tempo)) precision-window) 0.0d0 0.0d0)))
+
 (defun evaluate-ircambeat (ircambeat-marker-filepath annotation-filepath precision-window)
-  "Retrieve the times of nominated downbeats from an annotation file"
-  (let* ((annotation-times (mrr::read-ircam-annotation annotation-filepath))
+  "Retrieve the times of nominated beats from an annotation file"
+  (let* ((annotation-times (annotated-beats annotation-filepath))
 	 (ircambeat-marker-times (read-ircam-marker-times ircambeat-marker-filepath)))
     (evaluate-ircambeat-times ircambeat-marker-times annotation-times precision-window)))
 
 (defun evaluate-ircambeat-relative-precision (ircambeat-marker-filepath annotation-filepath relative-precision-window)
   "Retrieve the times of nominated downbeats from an annotation file"
-  (let* ((annotation-times (mrr::read-ircam-annotation annotation-filepath))
+  (let* ((annotation-times (annotated-beats annotation-filepath))
 	 (ircambeat-marker-times (read-ircam-marker-times ircambeat-marker-filepath))
 	 (precision-window (precision-window-of-times annotation-times relative-precision-window)))
     (evaluate-ircambeat-times ircambeat-marker-times annotation-times precision-window)))
 
 (defun evaluate-ircambeat-counter-beats (ircambeat-marker-filepath annotation-filepath precision-window)
   "Retrieve the times of nominated downbeats from an annotation file"
-  (let* ((annotation-times (mrr::read-ircam-annotation annotation-filepath))
+  (let* ((annotation-times (annotated-beats annotation-filepath))
 	 (ircambeat-marker-times (read-ircam-marker-times ircambeat-marker-filepath)))
     (evaluate-ircambeat-times ircambeat-marker-times (counter-beats annotation-times) precision-window)))
 
@@ -86,40 +113,60 @@
      for (precision recall f-score) = (funcall evaluation ircambeat-marker-filepath annotation-filepath precision-window)
      do (format t "precision-window ~,3f recall ~,3f precision ~,3f f-score ~,3f~%"
 		precision-window recall precision f-score)
-     collect recall into recall-list
-     collect precision into precision-list
-     collect f-score into f-score-list
-     finally (return (list (make-narray precision-list) (make-narray recall-list) (make-narray f-score-list)))))
+     collect (list precision recall f-score) into scores-list
+     finally (return (make-narray scores-list))))
 
-(defun print-stats (name proportional-scores)
-  (let ((mean-score (mean proportional-scores)))
-    (format t "Mean ~a ~,3f Stddev ~a ~,3f~%" 
-	    name mean-score name (stddev proportional-scores))
-    mean-score))
-  
-(defun summary-evaluation-ircambeat (corpus-name corpus precision-window &key (evaluation))
-  "Returns mean precision, recall and f-score measures as a list"
-  (map 'list #'print-stats 
-       '("precision" "recall" "f-score") 
-       (evaluate-ircambeat-on-corpus corpus-name corpus precision-window :evaluation evaluation)))
+(defun evaluate-ircambeat-tempo-on-corpus (corpus-name corpus precision-window 
+					   &key (evaluation #'evaluate-ircambeat-computed-tempo))
+  "Evaluate the list of tracks in corpus for the given precision-window"
+  (loop
+     with analysis-directory = (merge-pathnames (make-pathname :directory (list :relative corpus-name)) *rhythm-data-directory*)
+     for annotation-filepath in corpus
+     for nothing = (format t "~a~%" annotation-filepath)
+     for audio-filepath = (make-pathname :name (pathname-name (pathname-name annotation-filepath)) :type "wav")
+     for ircambeat-bpm-filepath = (bpm-filepath audio-filepath :analysis-directory analysis-directory)
+     for tempo-matches = (funcall evaluation ircambeat-bpm-filepath annotation-filepath precision-window)
+     do (format t "precision-window ~,3f tempo-matches ~,3f~%" precision-window tempo-matches)
+     collect tempo-matches into f-score-list
+     finally (return (make-narray f-score-list))))
+
+(defun summarise-evaluation-ircambeat (corpus-name corpus precision-window &key (evaluation #'evaluate-ircambeat))
+  "Returns mean precision, recall and f-score measures as a list, printing the mean values"
+  (let ((mean-scores
+	 (nlisp::array-to-list
+	  (mrr::reduce-dimension (evaluate-ircambeat-on-corpus corpus-name corpus precision-window
+							       :evaluation evaluation)
+				 #'mean))))
+    (format t "Mean ~:{~a ~,3f ~}~%" (mapcar #'list '("precision" "recall" "f-score") mean-scores))
+    mean-scores))
 
 (defun evaluate-precision-width (corpus-name corpus)
   "Runs the evaluation on the given corpus over a range of precision widths"
   (loop
-     for precision-width across (val (.rseq 0.025d0 0.150d0 6))
+     with precision-samples = 6
+     for precision-width across (val (.rseq 0.025d0 0.150d0 precision-samples))
      collect (cons precision-width 
-		   (summary-evaluation-ircambeat corpus-name corpus precision-width
+		   (summarise-evaluation-ircambeat corpus-name corpus precision-width
 						 :evaluation #'evaluate-ircambeat)) into scores
      finally (return (make-narray scores))))
 
 (defun evaluate-relative-precision-width (corpus-name corpus)
   "Runs the evaluation on the given corpus over a range of relative precision widths"
   (loop
-     for precision-width across (val (.rseq 0.01d0 0.250d0 7))
+     for precision-width across (val (.rseq 0.01d0 0.50d0 11))
      collect (cons precision-width 
-		   (summary-evaluation-ircambeat corpus-name corpus precision-width
+		   (summarise-evaluation-ircambeat corpus-name corpus precision-width
 						 :evaluation #'evaluate-ircambeat-relative-precision)) into scores
      finally (return (make-narray scores))))
+
+(defun random-select (list maximum-selection)
+  "Returns a randomly drawn subset of list to maximum-selection"
+  (loop
+     while (< (length selection) maximum-selection)
+     for new-select = (nth (random (length list)) list)
+     unless (find new-select selection)
+     collect new-select into selection
+     finally (return selection)))
 
 (defun is-hidden-file (pathname)
   "Returns T if the filename of the path has a leading period."
@@ -128,9 +175,9 @@
 (defun no-hidden-files (file-list)
   (remove-if #'is-hidden-file file-list))
 
-(defun plot-ircambeat-evaluation (corpus-name corpus-directory)
+(defun plot-ircambeat-evaluation (corpus-name corpus)
   "Run the evaluations and plot the results"
-  (let ((scores (evaluate-precision-width corpus-name (no-hidden-files (cl-fad:list-directory corpus-directory)))))
+  (let ((scores (evaluate-precision-width corpus-name corpus)))
     (window)
     (plot-command "set yrange [ 0.0 : 1.0 ]")
     (plot (list (.column scores 1) (.column scores 2)) (.column scores 0) 
@@ -141,9 +188,9 @@
 	  :reset nil)
     (close-window)))
 
-(defun plot-ircambeat-evaluation-relative (corpus-name corpus-directory)
+(defun plot-ircambeat-evaluation-relative (corpus-name corpus)
   "Run the evaluations and plot the results"
-  (let ((scores (evaluate-relative-precision-width corpus-name (no-hidden-files (cl-fad:list-directory corpus-directory)))))
+  (let ((scores (evaluate-relative-precision-width corpus-name corpus)))
     (window)
     (plot-command "set yrange [ 0.0 : 1.0 ]")
     (plot (list (.column scores 1) (.column scores 2)) (.column scores 0) 
@@ -154,16 +201,42 @@
 	  :reset nil)
     (close-window)))
 
-;; (plot-ircambeat-evaluation "RWC" *rwc-annotations-directory*)
-;; (plot-ircambeat-evaluation "Quaero" *quaero-annotations-directory*)
+(defun plot-ircambeat-evaluation-directory (corpus-name corpus-directory)
+  "Run the evaluations and plot the results"
+  (plot-ircambeat-evaluation corpus-name (no-hidden-files (cl-fad:list-directory corpus-directory))))
 
+(defun plot-corpus-scores (scores &key (score-index 0))
+  (plot (.column scores score-index) nil 
+	:reset nil
+	:styles "boxes fill solid border 9" 
+	:legends (list (nth score-index '("precision" "recall" "f-score")))
+	:aspect-ratio 0.66))
+
+(defun rwc-evaluation ()
+  "Performs and plots evaluations with a range of precision widths, both absolute and relative"
+  (plot-ircambeat-evaluation-directory "RWC" *rwc-annotations-directory*)
+  (plot-ircambeat-evaluation-relative "RWC" (no-hidden-files (cl-fad:list-directory *rwc-annotations-directory*))))
+
+(defun quaero-evaluation ()
+  "Performs and plots evaluations with a range of precision widths, both absolute and relative"
+  (let* ((quaero-subset (random-select (cl-fad:list-directory *quaero-annotations-directory*) 100))
+	 (scores (evaluate-ircambeat-on-corpus "Quaero" quaero-subset 0.050))
+	 (shortened-scores (.subarray scores '(t (0 49)))))
+    (plot-corpus-scores scores :score-index 1)
+    (window)
+    (nlisp::plot-histogram shortened-scores nil :legends '("precision" "recall" "f-score"))
+    ;;(plot-ircambeat-evaluation "Quaero" quaero-subset)
+    (plot-ircambeat-evaluation-relative "Quaero" quaero-subset)))
+
+;; (rwc-evaluation)
+;; (quaero-evaluation)
 
 #|
-(setf x (evaluate-ircambeat #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/Quaero/Analysis/0005 - Pink Floyd - Dark Side of the Moon - 05 Great Gig in the sky.wav.markers.xml"
+(setf x (evaluate-ircambeat #P"/Users/lsmith/Research/Data/IRCAM-Beat/Quaero/Analysis/0005 - Pink Floyd - Dark Side of the Moon - 05 Great Gig in the sky.wav.markers.xml"
 		    #P"/Volumes/Quaerodb/doc/quaero_site/content/18_current/beat_XML/0005 - Pink Floyd - Dark Side of the Moon - 05 Great Gig in the sky.b_p.xml"
 		    0.050))
 
-(setf x (evaluate-ircambeat #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/Quaero/Analysis/0136 - The Beatles - Abbey Road - 10 Sun King.wav.markers.xml"
+(setf x (evaluate-ircambeat #P"/Users/lsmith/Research/Data/IRCAM-Beat/Quaero/Analysis/0136 - The Beatles - Abbey Road - 10 Sun King.wav.markers.xml"
 		    #P"/Volumes/Quaerodb/doc/quaero_site/content/18_current/beat_XML/0136 - The Beatles - Abbey Road - 10 Sun King.b_q.xml"
 		    0.050))
 
@@ -173,46 +246,37 @@
 			      0.25d0 
 			      :evaluation #'evaluate-ircambeat-relative-precision)
 
-(evaluate-ircambeat-on-corpus "Quaero" (no-hidden-files (cl-fad:list-directory *quaero-annotations-directory*)) 0.050)
+(setf scores (evaluate-ircambeat-on-corpus "Quaero" (no-hidden-files (cl-fad:list-directory *quaero-annotations-directory*)) 0.050))
 
-(evaluate-ircambeat-on-corpus "Quaero" 
-			      (no-hidden-files (cl-fad:list-directory *quaero-annotations-directory*))
-			      0.25
-			      :evaluation #'evaluate-ircambeat-relative-precision)
+(setf score-list (evaluate-ircambeat-tempo-on-corpus "RWC" 
+			      (no-hidden-files (cl-fad:list-directory *rwc-annotations-directory*))
+			      2.0d0 :evaluation #'evaluate-ircambeat-tempo))
 
-(setf score-list (evaluate-ircambeat-on-corpus "RWC" (no-hidden-files (cl-fad:list-directory *rwc-annotations-directory*)) 0.050))
+(setf score-list (evaluate-ircambeat-tempo-on-corpus "RWC" 
+			      (no-hidden-files (cl-fad:list-directory *rwc-annotations-directory*))
+			      2.0d0 :evaluation #'evaluate-ircambeat-computed-tempo))
 
-(setf score-list (evaluate-ircambeat-on-corpus "RWC" 
-					       (no-hidden-files (cl-fad:list-directory *rwc-annotations-directory*)) 
-					       0.25
-					       :evaluation #'evaluate-ircambeat-relative-precision))
+(setf scores (summarise-evaluation-ircambeat "RWC" 
+					     (no-hidden-files (cl-fad:list-directory *rwc-annotations-directory*))
+					     0.050d0 :evaluation #'evaluate-ircambeat))
 
 
-(defmethod plot-histogram ((list-of-columns list))
-  (plot-command "set style data histogram")
-  (plot-command "set style histogram cluster gap 1")
-  (plot-command "set style fill solid border -1")
-  (plot-command "set boxwidth 0.9")
-  (let ((file-base 
-        for file = (make-pathname :defaults file-base
-				 :name (plot-tmp-name)
-				 :type "bin")
-     (write-binary-records  x dependent-vars)
+(evaluate-ircambeat-tempo 
+ #P"/Users/lsmith/Research/Data/IRCAM-Beat/Quaero/Analysis/0136 - The Beatles - Abbey Road - 10 Sun King.wav.markers.xml"
+ #P"/Volumes/Quaerodb/doc/quaero_site/content/18_current/beat_XML/0136 - The Beatles - Abbey Road - 10 Sun King.b_q.xml" 
+2.0d0)
 
-  (plot (nth 2 score-list) nil 
-	:reset nil
-	:styles "boxes fill solid border 9" 
-	;; :legends '("precision" "recall" "f-score")
-	:legends '("f-score")
-	:aspect-ratio 0.66))
+(evaluate-ircambeat-tempo 
+ #P"/Users/lsmith/Research/Data/IRCAM-Beat/RWC/Analysis/RM-P001.wav.markers.xml"
+ #P"/Users/lsmith/Research/Data/IRCAM-Beat/RWC/Annotation/AIST.RWC-MDB-P-2001.BEAT/RM-P001.BEAT.xml"
+2.0d0)
 
-(plot (nth 1 score-list) nil 
-      :reset nil
-      :styles "boxes fill solid border 9" 
-      ;; :legends '("precision" "recall" "f-score")
-      :legends '("recall")
-      :aspect-ratio 0.66)
-  
+
+(evaluate-ircambeat-computed-tempo 
+		    #P"/Volumes/Quaerodb/doc/quaero_site/content/18_current/beat_XML/0136 - The Beatles - Abbey Road - 10 Sun King.b_q.xml" 
+ #P"/Users/lsmith/Research/Data/IRCAM-Beat/Quaero/Analysis/0136 - The Beatles - Abbey Road - 10 Sun King.wav.bpm.xml"
+2.0d0)
+
 (setf high-precision (.find (.> (nth 0 score-list) 0.97d0)))
 (setf high-recall (.find (.> (nth 1 score-list) 0.97d0)))
 (setf high-f-score (.find (.> (nth 2 score-list) 0.97d0)))
