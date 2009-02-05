@@ -87,6 +87,9 @@
     ;; Remove the clap times that are negative (!)
    (.arefs clap-times-in-seconds (.find (.> clap-times-in-seconds 0.0d0)))))
 
+(defun ircambeat-computed-bpm (bpm-filepath)
+  (.aref (mrr::read-ircambeat-bpm bpm-filepath) 0))
+
 (defun downbeats-of-times (times anacrusis beats-per-measure)
   "Returns those times which occur on the downbeat, i.e once every measure, with an
   anacrusis (in notes). The anacrusis indicates the start location, not the number of preceding notes."
@@ -118,6 +121,14 @@
       ;; (format t "~a~%first downbeat indices ~a~%" (pathname-name ircam-annotation-path) (.subseq downbeat-indices 0 10))
       (values downbeats downbeat-indices))))
 
+(defun annotated-beats (ircam-annotation-path)
+  "Retrieve the times of beats and downbeats, skipping beat = 0, which are tatums, in the IRCAM annotation convention"
+  (multiple-value-bind (times beats) 
+      (mrr::read-ircam-annotation ircam-annotation-path)
+    (let* ((beat-indices (.find (.> beats 0)))
+	   (beat-times (.arefs times beat-indices)))
+      (values beat-times beat-indices))))
+
 (defun track-named (number corpus)
   "Find the example with the leading text matching the number"
   ;; (format nil "~4,0D" number)
@@ -138,6 +149,7 @@
 		  :type "aiff")
    *data-directory*))
 
+;;; The default is to sonify all beats
 (defun sonify-ircambeat (original-sound-path &key (directory *rhythm-data-directory*)
 			  (anacrusis 0) (sound-every 1) 
 			  (clap-sample-file (correct-clap-file original-sound-path)))
@@ -149,12 +161,12 @@
 						     :type "wav")
 						    directory))
 	 (beat-marker-path (beat-marker-filepath original-sound-path :analysis-directory directory)))
-    (multires-rhythm::save-rhythm-mix accompaniment-sound-path 
-				      original-sound-path 
-				      (downbeat-times beat-marker-path 
-						      :anacrusis anacrusis
-						      :sound-every sound-every)
-				      :clap-sample-file clap-sample-file)
+    (mrr:save-rhythm-mix accompaniment-sound-path 
+			 original-sound-path 
+			 (downbeat-times beat-marker-path 
+					 :anacrusis anacrusis
+					 :sound-every sound-every)
+			 :clap-sample-file clap-sample-file)
     (format t "Wrote mix as soundfile ~a~%" accompaniment-sound-path)))
 
 ;;; (sonify-ircambeat *rhythm-data-directory* "rwc_p_99_excerpt" "wav")
@@ -244,7 +256,7 @@
 (defun ircam-find-downbeat (odf-filepath bpm-filepath &key (start-from 0.0d0) (sample-rate 172.27d0))
   "Given the files, compute the downbeat"
   (let* ((rhythm (rhythm-from-ircam-odf odf-filepath :sample-rate sample-rate :weighted nil))
-	 (bpm (.aref (mrr::read-ircambeat-bpm bpm-filepath) 0))
+	 (bpm (ircambeat-computed-bpm bpm-filepath))
 	 (odf-subset (mrr::subset-of-rhythm rhythm (list (round (* sample-rate start-from)) t))))
     ;; TODO beats-per-measure is derived from time signature. hardwired to 4/4 for now.
     ;; (mrr::downbeat-estimation-fixed odf-subset bpm '(2 2 2) 4))) ; Test the null hypothesis
@@ -345,7 +357,7 @@
 (defun verify-annotated-downbeats (original-sound-path annotation-path &key (odf-type "odf") (bar-search 2))
   "Plots 2 bar fragment of the ODF against the annotated downbeat positions"
   (let* ((beats-per-measure 4)
-	 (tempo-in-bpm (.aref (mrr::read-ircambeat-bpm (bpm-filepath original-sound-path)) 0))
+	 (tempo-in-bpm (ircambeat-computed-bpm (bpm-filepath original-sound-path)))
 	 (odf-file (odf-filepath original-sound-path))
 	 (odf (rhythm-from-ircam-odf odf-file :sample-rate 172.27))
 	 (beat-duration (round (* (/ 60.0 tempo-in-bpm) (sample-rate odf)))) ; in samples
@@ -388,7 +400,7 @@
   "Plots 2 bar fragment of the ODF against the IRCAM beat _generated_ marker positions"
   (let* ((beats-per-measure 4)
 	 (odf-file (odf-filepath original-sound-path))
-	 (tempo-in-bpm (.aref (mrr::read-ircambeat-bpm (bpm-filepath original-sound-path)) 0))
+	 (tempo-in-bpm (ircambeat-computed-bpm (bpm-filepath original-sound-path)))
 	 (odf (rhythm-from-ircam-odf odf-file :sample-rate 172.27))
 	 (beat-duration (round (* (/ 60.0 tempo-in-bpm) (sample-rate odf)))) ; in samples
 	 (bar-duration (* beats-per-measure beat-duration)) ; in samples
