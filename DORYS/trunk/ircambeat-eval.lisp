@@ -30,8 +30,18 @@
 
 (defun counter-beats (beat-times)
   "Returns counter-beats, that is, times of beats phase shifted by pi radians"
-  (.+ (.subarray beat-times (list 0 (list 0 (- (.length beat-times) 2)))) 
-      (./ (.diff beat-times) 2.0d0)))
+  (.+ (mrr::.butlast beat-times) (./ (.diff beat-times) 2.0d0)))
+
+(defun interpolate-beats-new (beat-times division)
+  "Returns a new set of beat times with division-1 number of beats interpolated between them"
+  (let* ((tatum (./ (.diff beat-times) division))
+	 (butlast-beat (mrr::.butlast beat-times)) ;; we interpolate upto the last beat.
+	 (new-length (1+ (* (1- (.length beat-times)) division)))
+	 (new (make-double-array new-length))
+	 (indices (.* (.iseq 0 (- (.length beat-times) 2)) division)))
+    (setf (.aref new (1- new-length)) (.last beat-times)) 
+    (dotimes (tatum-index division new)
+      (setf (.arefs new (.+ indices tatum-index)) (.+ butlast-beat (.* tatum tatum-index))))))
 
 (defun interpolate-beats (beat-times)
   "Returns a new set of beat times with counter-beats interpolated between"
@@ -60,6 +70,8 @@
     (format t "number of annotations ~d number of markers within annotation range ~d number correct ~d~%"
 	    (.length matches-per-annotation) (.length time-limited-markers) (floor number-correct))
     (format t "number of annotations matching more than one marker ~d~%" (floor duplicated-matches))
+    ;; (format t "first 10 annotations ~a~%" (.subseq annotation-times 0 9))
+    ;; (format t "last 10 annotations ~a~%" (.subseq annotation-times (- (.length annotation-times) 10)))
     (list precision recall f-score)))
 
 (defun precision-window-of-times (annotation-times relative-precision-window)
@@ -141,36 +153,72 @@
      collect tempo-matches into f-score-list
      finally (return (make-narray f-score-list))))
 
+(defun mean-scores (scores-per-track)
+  "Returns mean precision, recall and f-score measures as a list, printing the mean values, from the track scores"
+  (let* ((mean-scores (nlisp::array-to-list (mrr::reduce-dimension scores-per-track #'mean))))
+    (format t "Mean ~:{~a ~,3f ~}~%" (mapcar #'list '("precision" "recall" "f-score") mean-scores))
+    mean-scores))
+
+(defun evaluate-accuracy-2 (corpus-name corpus precision-window &key relative-precision) 
+  "Combines the evaluations on the given corpus against the annotations and filterings thereof"
+  (loop
+     ;; we assume three scores (precision, recall, f-score) are returned.
+     with mean-scores = (make-double-array (list (length corpus) 3))
+     for annotation-filter in (list nil #'interpolate-beats #'half-beats) 
+     for scores-per-track = (evaluate-ircambeat-on-corpus corpus-name 
+							  corpus 
+							  precision-window
+							  :relative-precision relative-precision
+							  :annotation-filter annotation-filter)
+     do
+       (format t "~%for ~a ~a mean scores ~a~%" corpus-name annotation-filter (mean-scores scores-per-track))
+       (setf mean-scores (.+ mean-scores scores-per-track))
+     count t into filter-number
+     finally (return (./ mean-scores filter-number))))
+  
 (defun summarise-evaluation-ircambeat (corpus-name corpus precision-window &key annotation-filter relative-precision)
   "Returns mean precision, recall and f-score measures as a list, printing the mean values"
   (let* ((scores-per-track (evaluate-ircambeat-on-corpus corpus-name 
 							 corpus 
 							 precision-window
 							 :relative-precision relative-precision
-							 :annotation-filter annotation-filter))
-	 (mean-scores (nlisp::array-to-list (mrr::reduce-dimension scores-per-track #'mean))))
-    (format t "Mean ~:{~a ~,3f ~}~%" (mapcar #'list '("precision" "recall" "f-score") mean-scores))
-    mean-scores))
+							 :annotation-filter annotation-filter)))
+    (mean-scores scores-per-track)))
 
 (defun evaluate-precision-window (corpus-name corpus &key annotation-filter)
   "Runs the evaluation on the given corpus over a range of precision widths"
   (loop
      with precision-samples = 6
      for precision-window across (val (.rseq 0.025d0 0.150d0 precision-samples))
-     collect (cons precision-window 
-		   (summarise-evaluation-ircambeat corpus-name corpus precision-window
-						   :relative-precision nil
-						   :annotation-filter annotation-filter)) into scores
+     for scores-per-track = (evaluate-ircambeat-on-corpus corpus-name 
+							  corpus 
+							  precision-window
+							  :relative-precision nil
+							  :annotation-filter annotation-filter)
+     collect (cons precision-window (mean-scores scores-per-track)) into scores
      finally (return (make-narray scores))))
 
 (defun evaluate-relative-precision-window (corpus-name corpus &key annotation-filter)
   "Runs the evaluation on the given corpus over a range of relative precision widths"
   (loop
      for precision-window across (val (.rseq 0.01d0 0.50d0 6))
-     collect (cons precision-window 
-		   (summarise-evaluation-ircambeat corpus-name corpus precision-window
-						   :relative-precision t
-						   :annotation-filter annotation-filter)) into scores
+     for scores-per-track = (evaluate-ircambeat-on-corpus corpus-name 
+							  corpus 
+							  precision-window
+							  :relative-precision t
+							  :annotation-filter annotation-filter)
+     collect (cons precision-window (mean-scores scores-per-track)) into scores
+     finally (return (make-narray scores))))
+
+(defun evaluate-relative-accuracy-2 (corpus-name corpus)
+  "Runs the evaluation on the given corpus over a range of relative precision widths"
+  (loop
+     for precision-window across (val (.rseq 0.01d0 0.50d0 6))
+     for scores-per-track = (evaluate-accuracy-2 corpus-name 
+						 corpus 
+						 precision-window
+						 :relative-precision t)
+     collect (cons precision-window (mean-scores scores-per-track)) into scores
      finally (return (make-narray scores))))
 
 (defun random-select (list maximum-selection)
@@ -220,6 +268,11 @@
      do (plot-ircambeat-evaluation evaluation-description relative-scores "% of beat")))
      ;; do (plot-ircambeat-evaluation evaluation-description scores "seconds")))
 
+(defun plot-evaluation-2 (corpus-name corpus-directory)
+  (let* ((corpus (no-hidden-files (cl-fad:list-directory corpus-directory)))
+	 (relative-scores (evaluate-relative-accuracy-2 corpus-name corpus)))
+    (plot-ircambeat-evaluation (format nil "~a accuracy 2" corpus-name) relative-scores "% of beat")))
+
 (defun plot-tempo-evaluation (corpus-name corpus-directory)
   (let* ((corpus (no-hidden-files (cl-fad:list-directory corpus-directory))) 
 	 (scores (evaluate-ircambeat-tempo-on-corpus corpus-name corpus 0.04d0
@@ -242,6 +295,7 @@
 ;;; Evaluate RWC with relative scores
 ;; (plot-evaluation "RWC" *rwc-annotations-directory*)
 ;; (plot-tempo-evaluation "RWC" *rwc-annotations-directory*)
+;; (plot-evaluation-2 "RWC" *rwc-annotations-directory*)
 ;; (quaero-evaluation)
 
 #|
@@ -280,6 +334,17 @@
 					     0.35d0
 					     :relative-precision t
 					     :annotation-filter #'interpolate-beats))
+
+(setf accuracy-2-scores (evaluate-accuracy-2 "RWC"
+					     (no-hidden-files (cl-fad:list-directory *rwc-annotations-directory*))
+					     0.04d0 
+					     :relative-precision t))
+
+(setf x (evaluate-accuracy-2 "RWC" (list
+				    #P"/Users/leigh/Research/Data/IRCAM-Beat/RWC/Annotation/AIST.RWC-MDB-P-2001.BEAT/RM-P100.BEAT.xml")
+			     0.10d0 
+			     :relative-precision t))
+
 
 (evaluate-ircambeat-tempo 
  #P"/Users/lsmith/Research/Data/IRCAM-Beat/Quaero/Analysis/0136 - The Beatles - Abbey Road - 10 Sun King.wav.markers.xml"
