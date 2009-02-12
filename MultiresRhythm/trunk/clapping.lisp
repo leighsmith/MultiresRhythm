@@ -127,11 +127,15 @@
 			   :start-from-beat found-downbeat
 			   :beat-multiple (if multiple-supplied-p beat-multiple clapping-beat-multiple)))))
 
-(defun tempo-from-claps (claps sample-rate)
+(defun tempo-from-times (beat-times)
   "Given an array of clap times, estimate the tempo as the median reciprocal of the
   inter-beat interval. Returns the tempo in BPM."
-  (let ((ibi-seconds (./ (.diff claps) (coerce sample-rate 'double-float))))
-    (/ 60.0d0 (median ibi-seconds))))
+  (median (continuous-BPM-of-times beat-times)))
+
+(defun tempo-from-claps (claps sample-rate)
+  "Given an array of clap times in samples, estimate the tempo as the median reciprocal of the
+  inter-beat interval. Returns the tempo in BPM."
+  (tempo-from-times (./ claps (coerce sample-rate 'double-float))))
   
 (defun accompaniment-rhythm-to (rhythm-to-accompany)
   "Returns a rhythm that accompanies (i.e claps to) the given rhythm"
