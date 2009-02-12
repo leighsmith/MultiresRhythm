@@ -20,9 +20,10 @@
   "Determines the range of values in the matrix"
   (- (.max matrix) (.min matrix)))
 
-(defun prune-to-limit (a limit &key (test #'<=))
-  "Remove any elements which are above the limit value"
-  (make-instance (class-of a) :ival (remove-if-not (lambda (x) (funcall test x limit)) (val a))))
+;; deprecated
+;; (defun prune-to-limit (a limit &key (test #'<=))
+;;  "Remove any elements which are above the limit value"
+;;  (make-instance (class-of a) :ival (remove-if-not (lambda (x) (funcall test x limit)) (val a))))
 
 (defun prune-outliers (a &key (upper-limit nil upper-limit-supplied) (lower-limit nil lower-limit-supplied))
   "Remove any elements which are above the limit value"
@@ -58,6 +59,10 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 (defun .subseq (a start &optional end)
   (make-instance (class-of a) :ival (subseq (val a) start end)))
 
+(defun .butlast (a &optional (n 1))
+  "Return all but the last n elements of a"
+  (.subarray a (list 0 (list 0 (- (.length a) n 1)))))
+
 (defun rotate-vector (sig &key (by (round (.length sig) 2))) ; default to mirroring
   "Return a signal with elements rotated by the given number of places. Any elements shifted beyond the end of
   the vector will be shifted into the start and vice-versa. Positive :by values shift
@@ -66,16 +71,20 @@ Anything clipped will be set to the clamp-low, clamp-high values"
   (let ((rotate-by (if (plusp by) by (+ (.length sig) by))))
     (.concatenate (.subseq sig rotate-by) (.subseq sig 0 rotate-by))))
 
-;;; Generalise over any dimension.
+;;; TODO Generalise over any dimension.
 (defun reduce-dimension (a fn &optional (dimension 1))
   "Applies the given function to each column, storing the result in a vector"
   (loop
      with result = (nlisp::narray-of-type a (.array-dimension a dimension))
      for column-index from 0 below (.array-dimension a dimension)
-     do (setf (.aref result column-index) (funcall fn (.column a column-index)))
+     do (setf (.aref result column-index) (.* (funcall fn (.column a column-index)) 1d0))
      finally (return result)))
 
-;;; Really good candidate to replace with a BLAS routine...
+(defun map-narray (func vector)
+  "Map the function across the elements of the array"
+  (make-instance (class-of vector) :ival (map (type-of (val vector)) func (val vector))))
+
+;;; Really good candidate to replace with a GSL/BLAS routine...
 ;;; Actually this should become a macro using (reduce-dimension a #'.+)
 (defun .partial-sum (a &key (dimension 1)) 
   (declare (optimize (speed 3) (space 0) (safety 1)))
@@ -95,7 +104,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
   (declare (optimize (speed 3) (space 0) (safety 1)))
   (let* ((dims (.array-dimensions matrix))
 	 (rows (.row-count matrix))
-	 (r (make-double-array dims)) ; (make-ninstance a result-length)
+	 (r (make-double-array dims)) ; (ntype-of-array a dims)
 	 (a-val (val matrix))
 	 (r-val (val r))
 	 (comparison-fn (if (eql extrema :max) #'> #'<)))
@@ -103,7 +112,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
     (declare (type (simple-array double-float *) r-val a-val))
     (dotimes (c (.column-count matrix))
       (declare (fixnum c))
-      (dotimes (r (- rows 3))
+      (dotimes (r (- rows 2))
 	(declare (fixnum r))
 	(let* ((r+1 (1+ r))
 	       (center (aref a-val r+1 c)))
@@ -112,20 +121,26 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 					    (funcall comparison-fn center (aref a-val (+ r 2) c))) 1d0 0d0)))))
     r))
 
+(defun find-local-maxima (vector)
+  "Returns the indices of the vector which are maximal"
+  (.+ (.find (.< (.diff (.signum (.diff vector))) 0)) 1))
+
+(defun extrema-points-vector (vector)
+  (let ((extrema-vector (nlisp::narray-of-type vector (.array-dimensions vector))))
+    (setf (.arefs extrema-vector (find-local-maxima vector)) 1.0d0)))
+
 ;;; We have to use two columns since NLISP otherwise reduces a 1 row x n column matrix
 ;;; into a vector.
 ;;; TODO this is backwards, we should do the inner maxima finding on a vector and then
 ;;; iterate that for a matrix. The problem is how to process each row of a matrix
 ;;; efficiently without a copy.
-(defun extrema-points-vector (vector &rest arguments)
-  "Find the extrema points of a vector by making it a two column matrix"
-  (let* ((two-column-matrix (make-double-array (list 2 (.length vector)))))
-    (setf (.subarray two-column-matrix '(t t)) vector)
-    (.column (apply #'extrema-points (.transpose two-column-matrix) arguments) 0)))
+;; (defun extrema-points-vector (vector &rest arguments)
+;;   "Find the extrema points of a vector by making it a two column matrix"
+;;   (let* ((two-column-matrix (make-double-array (list 2 (.length vector)))))
+;;     (setf (.subarray two-column-matrix '(t t)) vector)
+;;     (.column (apply #'extrema-points (.transpose two-column-matrix) arguments) 0)))
 
-;; Compare against:
-;; (setf local-maxima (make-narray '(2.0 -34.0 9.0 -8.0 15.0 2.0 -1.0)))
-;; (defun find-local-maxima (vector) (.+ (.find (.< (.diff (.signum (.diff vector))) 0)) 1))
+;; (extrema-points-vector (make-narray '(2.0 -34.0 9.0 -8.0 15.0 2.0 -1.0)))
 
 (defun cumsum (a)
   "Computes the cumulative summation across each row of the matrix"
@@ -158,14 +173,6 @@ Anything clipped will be set to the clamp-low, clamp-high values"
     cumsum))
 
 ;; (setf a (window-integration (make-double-array '(2 100) :initial-element 1d0) 10))
-
-;;; Obsolete now it is within NLISP.
-;;(defmethod normalise ((vector n-array))
-;;  "Normalisation"
-;;  (./ vector (.max vector)))
-
-(defun map-narray (func vector)
-  (make-instance 'n-double-array :ival (map (type-of (val vector)) func (val vector))))
 
 ;;; TODO Surely there must exist something similar already?
 (defun impulses-at (impulse-indices total-vector-length)
@@ -203,13 +210,17 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 
 (defun .sorted-indices (value-vector &key (ordering #'>))
   "Return the indices of the vector sorted in descending or ascending value, depending on ordering."
-  (let* ((prominent-indices (.find value-vector))) ; TODO this is a problem with -ve values.
-    (make-instance (class-of prominent-indices) 
-		   :ival (sort (val prominent-indices) ordering :key (lambda (x) (.aref value-vector x))))))
+  (let* ((indices (.iseq 0 (1- (.length value-vector)))))
+    (make-instance 'n-integer-array
+		   :ival (sort (val indices) ordering :key (lambda (x) (.aref value-vector x))))))
 
 (defun highest-peaks (value-vector)
-  "Return the indices of the peaks sorted in descending value"
+  "Return the indices of the peaks sorted in descending value. This is limited for negative values"
   (.sorted-indices (.* (extrema-points-vector value-vector :extrema :max) value-vector) :ordering #'>))
+
+(defun .sort (value-vector &key (ordering #'>))
+  "Return a new array with the values sorted according to the ordering"
+  (.arefs value-vector (.sorted-indices value-vector :ordering ordering)))
 
 #|
 (defun filter (numerator denominator input initial-state)
