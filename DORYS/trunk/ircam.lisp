@@ -265,7 +265,7 @@
     ;; (mrr::downbeat-estimation-amplitude odf-subset bpm '(2 2 2) 4)))
     ;; (mrr::downbeat-estimation odf-subset bpm '(2 2 2) 4)))
 
-;;; (ircam-find-downbeat #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/Quaero_excerpts/Analysis/0186 - Dillinger_excerpt.odf" #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/Quaero_excerpts/Analysis/0186 - Dillinger_excerpt.wav.bpm.xml")
+;;; (ircam-find-downbeat #P"/Users/lsmith/Research/Data/IRCAM-Beat/Quaero_excerpts/Analysis/0186 - Dillinger_excerpt.odf" #P"/Users/lsmith/Research/Data/IRCAM-Beat/Quaero_excerpts/Analysis/0186 - Dillinger_excerpt.wav.bpm.xml")
 
 (defun ircambeat-marker-of-downbeat (original-sound-path &key (analysis-directory *rhythm-data-directory*))
   "Given the original sound file, determine the downbeat, and find the marker produced by
