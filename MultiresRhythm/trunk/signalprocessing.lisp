@@ -80,10 +80,6 @@ Anything clipped will be set to the clamp-low, clamp-high values"
      do (setf (.aref result column-index) (.* (funcall fn (.column a column-index)) 1d0))
      finally (return result)))
 
-(defun map-narray (func vector)
-  "Map the function across the elements of the array"
-  (make-instance (class-of vector) :ival (map (type-of (val vector)) func (val vector))))
-
 ;;; Really good candidate to replace with a GSL/BLAS routine...
 ;;; Actually this should become a macro using (reduce-dimension a #'.+)
 (defun .partial-sum (a &key (dimension 1)) 
@@ -141,6 +137,10 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 ;;     (.column (apply #'extrema-points (.transpose two-column-matrix) arguments) 0)))
 
 ;; (extrema-points-vector (make-narray '(2.0 -34.0 9.0 -8.0 15.0 2.0 -1.0)))
+
+(defun find-column-maxima (a)
+  "Returns the row indices of the maximum of each column"
+  (.floor (reduce-dimension a (lambda (column) (position (.max column) (val column))))))
 
 (defun cumsum (a)
   "Computes the cumulative summation across each row of the matrix"

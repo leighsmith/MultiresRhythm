@@ -232,6 +232,10 @@
   (let* ((iois-in-samples (rhythm-iois-samples rhythm-to-analyse)))
     (./ iois-in-samples (.min iois-in-samples) 1d0)))
 
+(defun continuous-BPM-of-times (beat-times)
+  "Return tempo in BPM at each beat-time in seconds"
+  (./ 60.0d0 (.diff beat-times)))
+
 (defmethod plot-rhythm ((rhythm-to-plot rhythm) &key 
 			(reset t)
 			(time-in-seconds nil)

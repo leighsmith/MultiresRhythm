@@ -34,7 +34,7 @@
   (plot (list (.arefs (time-signal rhythm-to-plot) (onsets-in-samples rhythm-to-plot)) 
 	      (time-signal rhythm-to-plot))
 	;; different x axes for each y parameters in the list.
-	(list (onsets-in-samples rhythm-to-plot) (.iseq 0 (duration-in-samples rhythm-to-plot))) 
+	(list (onsets-in-samples rhythm-to-plot) (.iseq 0 (1- (duration-in-samples rhythm-to-plot))))
 	:aspect-ratio 0.2 
         ;; :styles '("impulses linetype 1" "lines linetype 3")
 	:styles '("points pointtype 3" "lines linetype 3")

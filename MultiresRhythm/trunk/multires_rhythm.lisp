@@ -270,7 +270,7 @@ Phase is assumed to be -pi to pi."
 (defmethod normalised-phase-congruency ((analysis multires-analysis))
   (let ((pc (phase-congruency (scaleogram-magnitude (scaleogram analysis))
 			      (scaleogram-phase (scaleogram analysis)))))
-    (normalise pc)))
+    (.normalise pc)))
 
 ;;; TODO alternatively return normalised-magnitude, stationary-phase or
 ;;; local-phase-congruency individually.

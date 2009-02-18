@@ -444,6 +444,11 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
     (if (plusp (decf *plots-per-rhythm*))
 	(let ((analysis (analysis-of-rhythm ODF-fragment :padding #'causal-pad)))
 	  (plot-analysis analysis)
+	  (window)
+	  (plot (normalised-phase-congruency analysis) nil 
+		:title (format nil "normalised phase congruency of ~a" (name ODF-fragment)) 
+		:aspect-ratio 0.2)
+	  (close-window)
 	  (plot-rhythm ODF-fragment)))
     downbeat-probabilities))
 
@@ -633,7 +638,7 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 						      tempo-in-bpm
 						      meter
 						      beats-per-measure
-						      *bars-of-amplitude-profile*
+						      4
 						      #'mrr-phase-downbeat-evidence)))
     (assess-evidence phase-observations "Amplitude profile" rhythm)))
 

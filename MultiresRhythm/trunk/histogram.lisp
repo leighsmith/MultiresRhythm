@@ -39,7 +39,7 @@
 (defun get-histogram-elements (histogram-hash-table)
   (values (get-histogram histogram-hash-table)))
 
-(defun plot-histogram (histogram description)
+(defun plot-histogram-hash-table (histogram description)
   "Plots the histogram"
   (multiple-value-bind (elements counts) (get-histogram histogram)
     (reset-plot)
