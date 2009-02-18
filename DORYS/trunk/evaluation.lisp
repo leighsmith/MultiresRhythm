@@ -28,6 +28,10 @@
 				(make-pathname :directory '(:relative "Research" "Data"))
 				(user-homedir-pathname)))
 
+(defparameter *handclap-directory* (merge-pathnames
+				    (make-pathname :directory '(:relative "Handclap Examples"))
+				    *data-directory*))
+
 (defun evaluate-with-music (evaluation-function &key (music-dataset) (music-name))
   "Applies the evaluation function to the music dataset, by applying to each example of music (as an
   member in the supplied list) in turn, returning those that fail and printing the proportion that pass."

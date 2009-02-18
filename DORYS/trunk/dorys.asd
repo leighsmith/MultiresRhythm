@@ -38,6 +38,7 @@
   :license "Copyright (c) 2005-2008"
   :depends-on (:multiresrhythm :shoe :nlisp)
   :components ((:file "evaluation")
+	       (:file "beat-eval")
 	       (:file "national anthems")
 	       (:file "anthem-accessors" :depends-on ("national anthems" "evaluation"))
 	       (:file "anthem-evaluation" :depends-on ("anthem-accessors"))
@@ -54,7 +55,7 @@
 	       (:file "tempo-change")
 	       (:file "test-clapping")
 	       (:file "ircam" :depends-on ("evaluation"))
-	       (:file "ircambeat-eval" :depends-on ("ircam"))))
+	       (:file "ircambeat-eval" :depends-on ("ircam" "beat-eval"))))
 
 #|
 
