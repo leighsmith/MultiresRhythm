@@ -95,6 +95,9 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 	(setf (aref r-val j) (+ (aref r-val j) (aref a-val i j))))) 
     r))
 
+;;; TODO we should do the inner maxima finding on a vector and then
+;;; iterate that for a matrix. The problem is how to process each row of a matrix
+;;; efficiently without a copy.
 (defun extrema-points (matrix &key (extrema :max))
   "Returns a matrix of the same size as passed in, with peaks of the rows marked"
   (declare (optimize (speed 3) (space 0) (safety 1)))
@@ -117,26 +120,17 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 					    (funcall comparison-fn center (aref a-val (+ r 2) c))) 1d0 0d0)))))
     r))
 
-(defun find-local-maxima (vector)
+(defun find-local-maxima (vector &key (extrema :max))
   "Returns the indices of the vector which are maximal"
-  (.+ (.find (.< (.diff (.signum (.diff vector))) 0)) 1))
+  (let ((comparison-fn (if (eql extrema :max) #'.< #'.>)))
+    (.+ (.find (funcall comparison-fn (.diff (.signum (.diff vector))) 0)) 1)))
 
-(defun extrema-points-vector (vector)
+;;; Perhaps we can make this a generic function
+(defun extrema-points-vector (vector &rest arguments)
   (let ((extrema-vector (nlisp::narray-of-type vector (.array-dimensions vector))))
-    (setf (.arefs extrema-vector (find-local-maxima vector)) 1.0d0)))
+    (setf (.arefs extrema-vector (apply #'find-local-maxima vector arguments)) 1.0d0)))
 
-;;; We have to use two columns since NLISP otherwise reduces a 1 row x n column matrix
-;;; into a vector.
-;;; TODO this is backwards, we should do the inner maxima finding on a vector and then
-;;; iterate that for a matrix. The problem is how to process each row of a matrix
-;;; efficiently without a copy.
-;; (defun extrema-points-vector (vector &rest arguments)
-;;   "Find the extrema points of a vector by making it a two column matrix"
-;;   (let* ((two-column-matrix (make-double-array (list 2 (.length vector)))))
-;;     (setf (.subarray two-column-matrix '(t t)) vector)
-;;     (.column (apply #'extrema-points (.transpose two-column-matrix) arguments) 0)))
-
-;; (extrema-points-vector (make-narray '(2.0 -34.0 9.0 -8.0 15.0 2.0 -1.0)))
+;; (extrema-points-vector (make-narray '(2.0 -34.0 9.0 -8.0 15.0 2.0 -1.0)) :extrema :min)
 
 (defun find-column-maxima (a)
   "Returns the row indices of the maximum of each column"
