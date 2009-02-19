@@ -11,6 +11,8 @@
 ;;;; In nlisp (Matlab-alike Common Lisp library www.nlisp.info)
 ;;;;
 
+(require 'nlisp)			; For mathematics.
+
 (defpackage #:syncopation (:use #:cl #:asdf #:nlisp #:multires-rhythm))
 
 (in-package :syncopation)
