@@ -61,20 +61,17 @@
 ;; Precision = number correct / number computed => determines additions
 (defun evaluate-beat-times (computed-beat-times annotation-times precision-window)
   "Return the precision, recall and f-scores given the times of computed and annotated beats"
-  (let* ((time-limited-markers (mrr::prune-outliers computed-beat-times 
-						    :lower-limit (- (.aref annotation-times 0) precision-window)
-						    :upper-limit (+ (.last annotation-times) precision-window)))
-	 (within-precision (.< (vector-distance time-limited-markers annotation-times) precision-window))
+  (let* ((within-precision (.< (vector-distance computed-beat-times annotation-times) precision-window))
 	 (matches-per-annotation (mrr::.partial-sum within-precision))
 	 (matching-annotations-per-marker (mrr::.partial-sum (.transpose within-precision)))
 	 (duplicated-matches (.sum (.> matching-annotations-per-marker 1)))
 	 ;; remove any annotations that match a marker more than once
 	 (number-correct (- (.sum (.> matches-per-annotation 0)) duplicated-matches))
 	 (recall (/ number-correct (.length annotation-times)))
-	 (precision (/ number-correct (.length time-limited-markers)))
+	 (precision (/ number-correct (.length computed-beat-times)))
 	 (f-score (if (zerop (+ precision recall)) 0.0 (/ (* 2 precision recall) (+ precision recall)))))
     (format t "number of annotations ~d number of markers within annotation range ~d number correct ~d~%"
-	    (.length matches-per-annotation) (.length time-limited-markers) (floor number-correct))
+	    (.length matches-per-annotation) (.length computed-beat-times) (floor number-correct))
     (format t "number of annotations matching more than one marker ~d~%" (floor duplicated-matches))
     ;; (format t "first 10 annotations ~a~%" (.subseq annotation-times 0 9))
     ;; (format t "last 10 annotations ~a~%" (.subseq annotation-times (- (.length annotation-times) 10)))

@@ -27,6 +27,13 @@
 	(audio-filepath (make-pathname :name (pathname-name (pathname-name annotation-filepath)) :type "wav")))
     (beat-marker-filepath audio-filepath :analysis-directory analysis-directory)))
 
+(defun evaluate-within-annotation (computed-beat-times annotation-times precision-window)
+  "Remove times before and after the annotation times"
+  (let ((time-limited-markers (mrr::prune-outliers computed-beat-times 
+						   :lower-limit (- (.aref annotation-times 0) precision-window)
+						   :upper-limit (+ (.last annotation-times) precision-window))))
+    (evaluate-beat-times time-limited-markers annotation-times precision-window)))
+
 (defun evaluate-ircambeat (ircambeat-marker-filepath annotation-filepath precision-window
 			   &key annotation-filter relative-precision)
   "Retrieve the times of nominated beats from an annotation file & return the match scores"
@@ -39,7 +46,7 @@
 	 (ircambeat-marker-times (read-ircam-marker-times ircambeat-marker-filepath)))
     (plot-min-distance (format nil "~a ~a" (pathname-name annotation-filepath) annotation-filter)
 		       ircambeat-marker-times filtered-annotation-times precision-window)
-    (evaluate-beat-times ircambeat-marker-times filtered-annotation-times absolute-precision-window)))
+    (evaluate-within-annotation ircambeat-marker-times filtered-annotation-times absolute-precision-window)))
 
 (defun evaluate-ircambeat-on-corpus (corpus-name corpus precision-window &key annotation-filter relative-precision)
   "Evaluate the list of tracks in corpus for the given precision-window"
@@ -55,7 +62,7 @@
      for absolute-precision-window = (if relative-precision 
 					 (precision-window-of-times annotation-times precision-window) 
 					 precision-window)
-     for (precision recall f-score) = (evaluate-beat-times ircambeat-marker-times filtered-annotation-times absolute-precision-window)
+     for (precision recall f-score) = (evaluate-within-annotation ircambeat-marker-times filtered-annotation-times absolute-precision-window)
      do (format t "precision-window ~,3f recall ~,3f precision ~,3f f-score ~,3f~%" precision-window recall precision f-score)
      collect (list precision recall f-score) into scores-list
      finally (return (make-narray scores-list))))

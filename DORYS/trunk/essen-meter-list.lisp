@@ -10,7 +10,9 @@
 ;;; Derived from Kern format files of the Essen folk song collection taken from HumDrum, sitting in the local
 ;;; directory 
 
-(defparameter *essen-kern-directory* "/Volumes/iDisk/Research/Data/EsAC/Kern/")
+(defparameter *essen-perform-directory* (merge-pathnames 
+					 (make-pathname :directory '(:relative "Temperley" "essen-perf"))
+					 *data-directory*))
 
 (defparameter *essen-perf-meters* '(
 
@@ -111,7 +113,7 @@
 
 (defun essen-rhythm (name)
   "Returns a rhythm given the name of the EsAC data"
-  (rhythm-of-melisma-file (make-pathname :directory "/Volumes/iDisk/Research/Data/Temperley/essen-perf" 
+  (rhythm-of-melisma-file (make-pathname :defaults *essen-perform-directory*
 					 :name name 
 					 :type "notes")))
 
@@ -127,5 +129,6 @@
 ;;; (setf performed-68 (essen-of-meter "6/8"))
 ;;; (setf expectancy-set (mapcar #'last-expectations (load-essen-rhythms performed-34)))
 ;;; (setf all-expectations (reduce #'append expectancy-set))
-;;; (cl-musickit:play-timed-notes (cl-musickit::note-list-of-part (part-of-melisma-file "/Volumes/iDisk/Research/Data/Temperley/essen-perf/deut0214.notes")))
+;;; (cl-musickit:play-timed-notes (cl-musickit::note-list-of-part (part-of-melisma-file
+;;; (make-pathname *essen-perform-directory* "deut0214.notes"))))
 
