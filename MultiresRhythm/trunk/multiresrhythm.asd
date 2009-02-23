@@ -61,4 +61,5 @@
 	       (:file "expectancies" :depends-on ("clapping" "signalprocessing"))
 	       (:file "meter" :depends-on ("multires_rhythm" "tactus-selection" "expectancies"))
 	       (:file "metrical-expectancy" :depends-on ("expectancies" "martin-trees" "histogram"))
-	       (:file "commandline" :depends-on ("expectancies"))))
+	       (:file "emcap-expectancy" :depends-on ("expectancies"))
+	       (:file "commandline" :depends-on ("emcap-expectancy"))))

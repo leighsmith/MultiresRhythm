@@ -51,4 +51,5 @@
 	   :create-weighted-beat-ridge
 	   :save-rhythm-and-claps
 	   :save-rhythm-mix
-	   :sample-rate))
+	   :sample-rate
+	   :last-expectations))
