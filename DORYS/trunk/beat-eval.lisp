@@ -47,6 +47,10 @@
   "Returns every second beat of the given array of times"
   (downbeats-of-times beat-times 0 2))
 
+(defun counter-half-beats (beat-times)
+  "Returns every second beat of the given array of times, skipping the first beat"
+  (downbeats-of-times beat-times 1 2))
+
 (defun plot-min-distance (title computed-beat-times annotation-times &optional (precision-window 0.100d0))
   (let* ((time-limited-markers (mrr::prune-outliers computed-beat-times 
 						    :lower-limit (- (.aref annotation-times 0) precision-window)
@@ -59,6 +63,7 @@
 
 ;; Recall = number correct / number annotated => determines deletions
 ;; Precision = number correct / number computed => determines additions
+;; Single combined value.
 (defun evaluate-beat-times (computed-beat-times annotation-times precision-window)
   "Return the precision, recall and f-scores given the times of computed and annotated beats"
   (let* ((within-precision (.< (vector-distance computed-beat-times annotation-times) precision-window))

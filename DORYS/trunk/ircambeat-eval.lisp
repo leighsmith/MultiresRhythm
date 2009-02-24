@@ -322,13 +322,18 @@
 	 (standard-score (evaluate-ircambeat marker-path annotation-path precision
 					     :relative-precision t :annotation-filter nil))
 	 (counter-beat-score (evaluate-ircambeat marker-path annotation-path precision
-						 :relative-precision t :annotation-filter #'counter-beats)))
-    (format t "standard score ~a~%counter beat score ~a~%" standard-score counter-beat-score)))
+						 :relative-precision t :annotation-filter #'counter-beats))
+	 (counter-half-beat-score (evaluate-ircambeat marker-path annotation-path precision
+						      :relative-precision t :annotation-filter #'counter-half-beats)))
+    (format t "standard score ~a~%counter beat score ~a~%counter half beat score ~a~%" 
+	    standard-score counter-beat-score counter-half-beat-score)))
 
 
 #|
 
 (examine-bad-file "RM-P041")
+(examine-bad-file "RM-P095")
+(examine-bad-file "RM-P073")
 
 
 (setf x (evaluate-ircambeat #P"/Users/lsmith/Research/Data/IRCAM-Beat/Quaero/Analysis/0005 - Pink Floyd - Dark Side of the Moon - 05 Great Gig in the sky.wav.markers.xml"

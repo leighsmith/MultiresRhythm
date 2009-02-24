@@ -51,6 +51,7 @@
 	       (:file "test-anthems" :depends-on ("national anthems" "anthem-evaluation"))
 	       (:file "NIPS-examples")
 	       (:file "metrical-expectancy")
+	       (:file "expectation")
 	       (:file "ritard")
 	       (:file "tempo-change")
 	       (:file "test-clapping")
