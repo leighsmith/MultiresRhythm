@@ -25,9 +25,11 @@
    (sample-rate       :initarg :sample-rate :accessor sample-rate)) ; not yet used.
   (:documentation "Defines the expectation to the next point in time."))
 
-;;; TODO replace with two methods expected-time-seconds and precision-in-seconds.
-(defgeneric expectation-in-seconds (expectation sample-rate)
-  (:documentation "Returns the expectation as a list, times in seconds, given the sample rate."))
+(defgeneric expected-time-seconds (expectation)
+  (:documentation "Returns the expected time in seconds, given the sample rate."))
+
+(defgeneric precision-in-seconds (expectation)
+  (:documentation "Returns the precision time in seconds, given the sample rate."))
 
 (defgeneric absolute-duration-confidence (expectation rhythm)
   (:documentation "Scales the confidence of the expectation by the absolute duration of the rhythm"))
@@ -51,17 +53,13 @@
 	      (- (expected-time expectation) (first expectation-from-time))
 	      expectation))))
 
-;;; TODO Replace this with two methods expected-time-seconds and precision-in-seconds.
-(defmacro time-in-seconds (time-in-samples sample-rate)
-  "Returns the expected time in seconds, given the sample rate."
-  `(/ ,time-in-samples (float ,sample-rate)))
+(defmethod expected-time-seconds ((expectation-to-list expectation))
+  "Returns the expected time in seconds given the sample rate"
+  (/ (expected-time expectation-to-list) (float (sample-rate expectation-to-list))))
 
-;;; TODO Replace this with two methods expected-time-seconds and precision-in-seconds.
-(defmethod expectation-in-seconds ((expectation-to-list expectation) sample-rate)
-  "Returns the expectancy as a list of expectation time, confidence and precision, all times in seconds"
-  (list (time-in-seconds (expected-time expectation-to-list) sample-rate) 
-	(confidence expectation-to-list)
-	(time-in-seconds (precision expectation-to-list) sample-rate)))
+(defmethod precision-in-seconds ((expectation-to-list expectation))
+  "Returns the expectation precision in seconds"
+  (/ (precision expectation-to-list) (float (sample-rate expectation-to-list))))
 
 (defmethod absolute-duration-confidence ((expectation-to-modify expectation) (rhythm-expected rhythm))
   "Scales the confidence of the expectation prediction by the absolute duration of the rhythm"
@@ -291,7 +289,7 @@
        for likely-scale across (val mls)
        do (phase-histogram (scaleogram a) likely-scale (onsets-in-samples rhythm)))))
 
-(defun expectation-of-scale-at-time (scale time scaleogram confidence precision 
+(defun expectation-of-scale-at-time (scale time scaleogram confidence precision sample-rate
 				     &key (phase-correct-from nil) (time-limit-expectancies nil))
   "Returns an expectation instance. Effectively a factory method with phase correction of expectation time"
   (let* ((vpo (voices-per-octave scaleogram))
@@ -311,11 +309,11 @@
     (make-instance 'expectation 
 		   :time (min expected-time max-time)
 		   :period projection
-		   ;; :sample-rate (sample-rate analysis)
+		   :sample-rate sample-rate
 		   :confidence (.aref confidence scale)
 		   :precision (.aref precision scale))))
 
-(defun expectancy-of-ridge-at-time (ridge time scaleogram all-precision all-peaks 
+(defun expectancy-of-ridge-at-time (ridge time scaleogram all-precision all-peaks sample-rate
 				    &key (time-limit-expectancies nil) (phase-correct-from nil))
   "Return an expectation instance holding the expection time, the confidence and the precision" 
   (expectation-of-scale-at-time (scale-at-time ridge time) 
@@ -325,10 +323,11 @@
 				;; passed into all-peaks)
 				(.column all-peaks time)
 				(.column all-precision time)
+				sample-rate
 				:phase-correct-from phase-correct-from
 				:time-limit-expectancies time-limit-expectancies))
 
-(defun expectancies-of-skeleton-at-times (skeleton times scaleogram precision ridge-peaks &key
+(defun expectancies-of-skeleton-at-times (skeleton times scaleogram precision ridge-peaks sample-rate &key
 					  (cutoff-scale 16) (phase-correct-from nil))
   "Returns the expectancies determined from the skeleton, scaleogram and precision at the indicated times"
   (loop
@@ -340,6 +339,7 @@
 		      ;; filter out the ridges higher than a cut off point determined by preferred tempo rate.
 		      when (> (scale-at-time ridge time) cutoff-scale)
 		      collect (expectancy-of-ridge-at-time ridge time scaleogram precision ridge-peaks
+							   sample-rate
 							   :phase-correct-from phase-correct-from
 							   :time-limit-expectancies nil)))))
 
@@ -403,6 +403,7 @@
 				       cumulative-scaleogram
 				       precision
 				       weighted-scale-peaks
+				       sample-rate
 				       :phase-correct-from phase-correct-from)))
 
 
@@ -468,7 +469,7 @@
 	 ;; Make a new peak profile of just the most likely scales for the precision calculation.
 	 (likely-persistency-peaks (impulses-at most-likely-scales (.length tempo-weighted-ridge-persistency)))
 	 ;; Since ridge-persistency produces many zero values, and extrema-points-vector won't
-	 ;; catch corners, only minima, including locations of zeros tightens the precision estimation.
+	 ;; catch corners, only minima including locations of zeros, tightens the precision estimation.
 	 (persistency-troughs (.or (extrema-points-vector tempo-weighted-ridge-persistency :extrema :min) 
 				   (.not tempo-weighted-ridge-persistency))) 
 	 (precision (precision-profile likely-persistency-peaks persistency-troughs
@@ -483,6 +484,7 @@
 	      collect (expectation-of-scale-at-time scale time scaleogram
 						    tempo-weighted-ridge-persistency
 						    precision
+						    (sample-rate rhythm-to-analyse)
 						    :phase-correct-from phase-correct-from))))))
 
 (defun expectancies-of-rhythm (rhythm &key (times-to-check (nlisp::array-to-list (onsets-in-samples rhythm)))
@@ -505,7 +507,7 @@
       (plot-scale-energy+peaks-at-time rhythm-scaleogram 
 				       (first (last times-to-check))
 				       (ridge-peaks rhythm-analysis)))
-    ;; (format t "times to check ~a~%" times-to-check)
+    (format t "times to check ~a~%" times-to-check)
     (format t "cutoff scale ~a period ~a~%" 
 	    cutoff-scale (time-support cutoff-scale (voices-per-octave rhythm-scaleogram)))
     (expectancies-of-skeleton-at-times skeleton times-to-check rhythm-scaleogram 
@@ -527,13 +529,9 @@
 (defmethod plot-expectations+rhythm ((rhythm-to-expect rhythm) (all-expectations list)
 				     &key (title (format nil "Accumulated expectations of ~a" (name rhythm-to-expect))))
   "Plot the expectation times, confidences and precision and the rhythm."
-  (let* ((expectancy-confidences (accumulated-confidence-of-expectations all-expectations))
-	 (expectancy-exceeds (- (.length expectancy-confidences) (duration-in-samples rhythm-to-expect)))
-	 (padded-rhythm-signal (if (> expectancy-exceeds 0)
-				   (.concatenate (time-signal rhythm-to-expect)
-						 (make-double-array expectancy-exceeds))
-				   (time-signal rhythm-to-expect))))
-    (plot (list expectancy-confidences padded-rhythm-signal)
+  (let* ((expectancy-confidences (accumulated-confidence-of-expectations all-expectations)))
+    (format t "expectancy-confidences ~a rhythm ~a~%" expectancy-confidences rhythm-to-expect)
+    (plot (list expectancy-confidences (time-signal rhythm-to-expect))
 	   nil
 	   :styles '("impulses" "impulses")
 	   :legends (list "accumulated expectations" "original rhythm")

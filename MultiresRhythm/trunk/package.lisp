@@ -47,6 +47,7 @@
 	   :scaleogram
 	   :hear
 	   :.subseq
+	   :subset-of-rhythm
 	   :select-longest-lowest-tactus
 	   :create-weighted-beat-ridge
 	   :save-rhythm-and-claps

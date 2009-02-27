@@ -20,13 +20,8 @@
   "Determines the range of values in the matrix"
   (- (.max matrix) (.min matrix)))
 
-;; deprecated
-;; (defun prune-to-limit (a limit &key (test #'<=))
-;;  "Remove any elements which are above the limit value"
-;;  (make-instance (class-of a) :ival (remove-if-not (lambda (x) (funcall test x limit)) (val a))))
-
 (defun prune-outliers (a &key (upper-limit nil upper-limit-supplied) (lower-limit nil lower-limit-supplied))
-  "Remove any elements which are above the limit value"
+  "Remove any elements which are above or below the limit value"
   (make-instance (class-of a) 
 		 :ival (remove-if-not (lambda (x) (and (if upper-limit-supplied (<= x upper-limit) t)
 						       (if lower-limit-supplied (>= x lower-limit) t)))
@@ -54,6 +49,9 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 ;; (setf a (.rseq2 0 9 10))
 ;; (setf b (.rseq2 9 0 10))
 ;; (clamp-to-bounds b a :low-bound 5d0 :clamp-low -1d0)
+
+(defun half-wave-rectify (x) 
+  (.* x (.> x 0)))
 
 ;; Only good for vectors, of course.
 (defun .subseq (a start &optional end)
@@ -218,8 +216,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 
 #|
 (defun filter (numerator denominator input initial-state)
-  "Filter input with the coefficients defined as numerator and denominator vectors with an
-  initial state"
+  "Filter input with the coefficients defined as numerator and denominator vectors with an initial state"
       (if (= (length numerator) (length denominator))
 	(if (> (length numerator) 0)
 	  T &zend = initial-state(initial-state.endC());

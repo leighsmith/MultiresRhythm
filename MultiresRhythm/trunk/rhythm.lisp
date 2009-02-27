@@ -70,7 +70,7 @@
 (defgeneric write-as-audio (rhythm-to-save filepath-to-save clap-pathname)
   (:documentation "Write the rhythm to the filename, using the clapping sound."))
 
-(defgeneric hear (rhythm-to-hear)
+(defgeneric hear (rhythm-to-hear &key handclap-directory)
   (:documentation "Convenience function to make a rhythm audible"))
 
 ;;;; Implementation
@@ -344,13 +344,18 @@
   "Write the given rhythm as an audio file"
   (save-to-file (sound-of rhythm-to-save clap-pathname) filepath-to-save))
 
-(defmethod hear ((rhythm-to-hear rhythm))
+;;; TODO *handclap-directory*
+(defmethod hear ((rhythm-to-hear rhythm) &key (handclap-directory nil))
   "Convenience function to make a rhythm audible"
   (write-as-audio rhythm-to-hear 
-		  (make-pathname :directory "/Volumes/iDisk/Research/Data/Handclap Examples/"
-				 :name (name rhythm-to-hear)
-				 :type "wav")
-		  #P"/Volumes/iDisk/Research/Data/Handclap Examples/cowbell.aiff"))
+		  (make-pathname :directory handclap-directory :name (name rhythm-to-hear) :type "wav")
+		  (make-pathname :directory handclap-directory :name "cowbell" :type "aiff")))
+
+(defun rhythm-of-file (input-filepath sample-rate)
+  "Returns a rhythm from a series of onset times from a text file"
+  (let* ((events (.load input-filepath :format :text))
+	 (times-in-seconds (.column events 0)))
+    (rhythm-of-onsets (pathname-name input-filepath) times-in-seconds :sample-rate sample-rate)))
 
 (defun add-rhythm (&rest rhythms-to-add)
   "Adds multiple rhythms together. Returns the shortest? longest? rhythm."

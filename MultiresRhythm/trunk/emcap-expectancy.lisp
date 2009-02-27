@@ -18,7 +18,9 @@
 (defmethod exchange-format ((expectation-to-exchange expectation) sample-rate)
   "Returns the expectancy in the EmCAP interchange output format."
   (format nil "~{~,5f~^ ~};~:{~,5f,~,5f~:^ ~}" 
-	  (expectation-in-seconds expectation-to-exchange sample-rate) 
+	  (list (expected-time-seconds expectation-to-exchange sample-rate) 
+		(confidence expectation-to-exchange)
+		(precision-in-seconds expectation-to-exchange sample-rate))
 	  (expected-features expectation-to-exchange)))
 
 (defun write-expectancies-to-stream (expectancies sample-rate stream)
