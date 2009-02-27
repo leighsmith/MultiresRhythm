@@ -89,7 +89,7 @@
 ;; (dorys::hear-ritard "ritard-rhythm" (rhythm-with-ritard 2 0.6 :priming-rhythm '(1 1 1 1 1 1 1 1) :ritarding-rhythm '(1 2 1 1 1 3 2 1)))
 
 (defun clap-to-ritard (rhythm-to-accompany)
-  (multires-rhythm::hear rhythm-to-accompany)
+  (multires-rhythm::hear rhythm-to-accompany :handclap-directory *handclap-directory*)
   (pushnew 'multires-rhythm::cwt+skeleton *plotting*)
   (multires-rhythm::save-rhythm-and-claps rhythm-to-accompany 
 					  (clap-to-rhythm rhythm-to-accompany :start-from-beat 1 :beat-multiple 1.0)))

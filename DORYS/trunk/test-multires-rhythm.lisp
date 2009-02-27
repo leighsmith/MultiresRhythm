@@ -354,7 +354,7 @@
 								 :max-modulation-change 1.3)
 					 :sample-rate 200)))
     (plot-rhythm modulated-rhythm)
-    (hear modulated-rhythm)
+    ;; (hear modulated-rhythm)
     (multires-rhythm::save-rhythm-and-claps modulated-rhythm (clap-to-rhythm modulated-rhythm :beat-multiple 1))))
 
 ;; (modulated-rhythm-test)

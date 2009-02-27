@@ -52,7 +52,7 @@
 	       (:file "NIPS-examples")
 	       (:file "metrical-expectancy")
 	       (:file "expectation")
-	       (:file "ritard")
+	       (:file "ritard" :depends-on ("evaluation"))
 	       (:file "tempo-change")
 	       (:file "test-clapping")
 	       (:file "ircam" :depends-on ("evaluation"))
