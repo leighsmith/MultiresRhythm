@@ -10,21 +10,16 @@
 ;;;;
 ;;;;
 
-(defpackage #:cl-musickit (:use #:cl #:asdf)
-	    (:export :drum-machine
-		     :make-midi-note
-		     :play-timed-notes))
-
-(in-package :cl-musickit)
-
 (defsystem :cl-musickit
-  :description "Common Lisp MusicKit playing"
+  :description "Common Lisp interface to the MusicKit"
   :version "1.0"
   :author "Leigh M. Smith"
-  :depends-on (:portmidi)
+  :depends-on (:portmidi :cl-objc)
   :serial t
-  :components ((:file "note")
-	       (:file "playing")
+  :components ((:file "package")
+	       (:file "musickit")
+	       (:file "note")
 	       (:file "parts")
+	       (:file "playing") ; Perhaps this can be merged with musickit.lisp
 	       (:file "rhythm-parts")
 	       (:file "drum-patterns")))

@@ -12,10 +12,10 @@
   (let ((note-tag 0))
     (mapcar (lambda (note-parameter-list) 
 	      (destructuring-bind (onset-time duration amplitude midi-key-number) note-parameter-list
-		(cl-musickit::make-midi-note (floor (* onset-time 1000)) ; convert back to mSec.
-					     (incf note-tag)
-					     :velocity (round (* amplitude 127))
-					     :duration (floor (* duration 1000)) ; convert back to mSec.
-					     :key-number midi-key-number
-					     :midi-channel 1)))
+		(make-midi-note (floor (* onset-time 1000)) ; convert back to mSec.
+				(incf note-tag)
+				:velocity (round (* amplitude 127))
+				:duration (floor (* duration 1000)) ; convert back to mSec.
+				:key-number midi-key-number
+				:midi-channel 1)))
 	    part)))
