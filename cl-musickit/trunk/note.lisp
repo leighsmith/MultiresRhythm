@@ -13,7 +13,7 @@
   ;; :note-duration :note-on :note-off :note-update
   ((note-type  :initarg :note-type  :accessor note-type :initform :note-duration) 
    (note-tag   :initarg :note-tag   :accessor note-tag)
-   (play-time  :initarg :play-time  :accessor play-time)
+   (time-tag   :initarg :time-tag   :accessor time-tag)
    (parameters :initarg :parameters :accessor parameters :initform (make-hash-table))))
 
 (defmethod note-duration ((the-note note))
@@ -23,13 +23,13 @@
   (setf (gethash 'duration (parameters the-note)) duration))
 
 (defmethod compare ((first-note note) (second-note note))
-  "Compare the play-times"
-  (< (play-time first-note) (play-time second-note)))
+  "Compare the time-tags"
+  (< (time-tag first-note) (time-tag second-note)))
 
 (defmethod note-in-region ((note-to-check note) region-start region-end)
   "Predicate checking if a note is within a temporal region"
-  (and (>= (play-time note-to-check) region-start)
-       (< (play-time note-to-check) region-end)))
+  (and (>= (time-tag note-to-check) region-start)
+       (< (time-tag note-to-check) region-end)))
 
 (defun parameter-list (parameter-hash-table)
   "Return a two level list of parameters and values, given the hash table"
@@ -48,7 +48,7 @@
     (if (equal (note-type note-object) :note-duration) 
 	(push (note-duration note-object) note-tag-list))
     (format stream " at ~f: ~a ~a~%~a~%" 
-	    (play-time note-object) (note-type note-object) note-tag-list 
+	    (time-tag note-object) (note-type note-object) note-tag-list 
 	    (print-note-parameters (parameters note-object)))))
 
 (defun make-midi-note (time note-tag &key (key-number 60) (velocity 127) (duration 60) (midi-channel 0))
@@ -61,7 +61,7 @@
     (make-instance 'note 
 		   :note-type :note-duration
 		   :note-tag note-tag
-		   :play-time time
+		   :time-tag time
 		   :parameters midi-parameters)))
 
 

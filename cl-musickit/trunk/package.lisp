@@ -16,6 +16,7 @@
 		     :play-timed-notes
 		     :read-score-named
 		     :read-smf-named
-		     :onsets-of-mkscore
-		     :pitchbends-of-mkscore))
+		     :onsets-of-score
+		     :pitchbends-of-score
+		     :notes-of-score))
 
