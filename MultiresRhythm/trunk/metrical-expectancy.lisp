@@ -291,7 +291,7 @@
       (plot-command "set xtics 0,1")
       (plot-command "set yrange [0:1.1]")
       (plot-command "set xrange [0:~d]" (1+ meter-length))
-      (plot (normalise all-metrical-positions) (.iseq 1 meter-length)
+      (plot (.normalise all-metrical-positions) (.iseq 1 meter-length)
 	    :styles '("boxes fill solid 1.0 border -1")
 	    :xlabel "Semiquavers of a Measure" 
 	    :ylabel "Relative Occurrence"
@@ -343,7 +343,7 @@
       (plot-command "set ylabel font \"Times,24\"")
       (plot-command "set xrange [*:~d]" (1+ largest-interval))
       (plot-command "set yrange [*:1.1]")
-      (plot (normalise interval-counts) (.iseq 1 largest-interval)
+      (plot (.normalise interval-counts) (.iseq 1 largest-interval)
 	    :styles '("boxes fill solid border 9")
 	    :legends '("Relative Frequency of Occurrence of Intervals")
 	    :xlabel "Intervals in semiquavers"
