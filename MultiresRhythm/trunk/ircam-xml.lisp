@@ -47,16 +47,7 @@
 ;; (dom:create-document (dom:implementation bpm-doc) nil nil nil)
 
 
-(defun read-ircambeat-markers (filepath)
-  "Read the given file using CXML and DOM to return an narray of beat markers"
-  (let* ((marker-document (cxml:parse filepath (cxml-dom:make-dom-builder)))
-	 (markers (dom:get-elements-by-tag-name (dom:document-element marker-document) "marker")))
-    ;; (format t "~a~%" markers)
-    (loop
-       for marker-index from 0 below (dom:length markers)
-       for marker-node = (dom:item markers marker-index)
-       collect (read-from-string (dom:node-value (dom:item (dom:child-nodes marker-node) 0))) into marker-list
-       finally (return (make-narray marker-list)))))
+
 
 #|
 (defun create-beat-markers-element (document clap-times-in-seconds meter)
@@ -148,3 +139,27 @@
        collect beat into marker-beat-list
        and collect (read-annotation-time marker-node) into marker-time-list
        finally (return (values (make-narray marker-time-list) (make-narray marker-beat-list))))))
+
+;;; For reading old 1.0 version ircambeat marker files.
+(defun read-ircambeat-markers-1.0 (filepath)
+  "Read the given file using CXML and DOM to return an narray of beat markers"
+  (let* ((marker-document (cxml:parse filepath (cxml-dom:make-dom-builder)))
+	 (markers (dom:get-elements-by-tag-name (dom:document-element marker-document) "marker")))
+    ;; (format t "~a~%" markers)
+    (loop
+       for marker-index from 0 below (dom:length markers)
+       for marker-node = (dom:item markers marker-index)
+       collect (read-from-string (dom:node-value (dom:item (dom:child-nodes marker-node) 0))) into marker-list
+       finally (return (make-narray marker-list)))))
+
+(defun read-ircambeat-markers (filepath)
+  "New version 20090226A just uses the same beattype markers, as annotations, named segments"
+  (let* ((marker-document (cxml:parse filepath (cxml-dom:make-dom-builder)))
+	 (first-tagname (dom:tag-name (dom:document-element marker-document))))
+    (cond ((string= first-tagname "beatdescription")
+	   (read-ircambeat-markers-1.0 filepath))
+	  ((string= first-tagname "musicdescription")
+	   ;; (dom:get-attribute (dom:document-element marker-document) "format")
+	   (read-ircam-annotation filepath :marker-name "segment"))
+	  (t (format t "Unusual ircambeat format ~a discovered" first-tagname)))))
+
