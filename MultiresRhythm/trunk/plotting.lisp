@@ -348,7 +348,8 @@ colourmap, suitable for use by NLISP's palette-defined function."
 ;; (plot-image #'highted-ridges-image (list ridges magnitude) '((1.0 0.5) (0.0 0.0)) "")
 ;; (apply #'plot-image (list #'magnitude-image (list magnitude) "" :title "blah")) 
 
-(defun plot-grey-data (data &key (title "blah"))
+(defun plot-magnitude (data &key (title "blah"))
+  "Plots a 2D image in grey scale"
   (plot-image #'magnitude-image (list data) '((1.0 0.5) (0.0 0.3)) "" :title title))
 
 (defun plot-images (image-list &key (title "unnamed") (time-axis-decimation 4))

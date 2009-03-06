@@ -29,10 +29,10 @@
   :description "A Multiresolution Time-Frequency Analysis and Interpretation of Musical Rhythm"
   :version "2.8"
   :author "Leigh M. Smith"
-  :license "Copyright (c) 2005-2008"
+  :license "Copyright (c) 2005-2009"
   :depends-on (:nlisp)
   :properties ((#:author-email . "Leigh.Smith@ircam.fr")
-	       (#:date . "2008")	; Compute this automatically?
+	       (#:date . "2009")	; Compute this automatically?
 	       ((#:albert #:output-dir) . "documentation")
 	       ((#:albert #:formats) . ("docbook")))
   :serial t
@@ -56,7 +56,7 @@
 	       (:file "rhythm-matching" :depends-on ("signalprocessing"))
 	       (:file "viterbi")
 	       (:file "downbeat" :depends-on ("multires_rhythm" "rhythm-matching" "viterbi"))
-	       (:file "clapping" :depends-on ("multires_rhythm" "downbeat" "tactus-selection"))
+	       (:file "clapping" :depends-on ("multires_rhythm" "downbeat" "tactus-selection" "cwt"))
 	       (:file "perceptual-onsets" :depends-on ("clapping" "sound"))
 	       (:file "expectancies" :depends-on ("clapping" "signalprocessing"))
 	       (:file "meter" :depends-on ("multires_rhythm" "tactus-selection" "expectancies"))

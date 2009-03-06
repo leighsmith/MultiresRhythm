@@ -76,13 +76,13 @@
 (defgeneric copy-object (object)
   (:documentation "Creates a deep copy of the object")) 
 
-(defgeneric phase-of (the-ridge phase)
+(defgeneric phase-of (the-ridge source-of-phase)
   (:documentation "Returns the phase values at each scale and time in the ridge"))
 
 (defgeneric plot-ridge (the-ridge)
   (:documentation "Plots the given ridge."))
 
-(defgeneric plot-phase (the-ridge phase)
+(defgeneric plot-phase (the-ridge source-of-phase)
   (:documentation "Plots the phase of the ridge."))
 
 ;;; Methods
@@ -399,6 +399,8 @@
 		 :scales (copy-list (scales ridge-to-copy))
 		 :start-sample (start-sample ridge-to-copy)))
 
+;;; The phase returned is a little kludgy since we are concatenating it from different scales.
+;;; This introduces discontinuities, ideally we need to invert back to the time domain first.
 (defmethod phase-of ((the-ridge ridge) phase)
   (loop
      with phases-of-ridge = (make-double-array (duration-in-samples the-ridge))

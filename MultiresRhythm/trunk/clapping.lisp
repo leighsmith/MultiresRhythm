@@ -33,28 +33,7 @@
 			     (event-shift 0.0)) 
   "Function to compute times to clap and how hard from the extracted tactus.
    Returns a matrix where row 1 is the time to tap at, row 2 is the intensity."
-  (let* ((time-frequency-dimensions (.array-dimensions (scaleogram-magnitude rhythm-scaleogram)))
-
-	 ;; The right way to do this is with a tight (well, two octave)
-	 ;; Gaussian envelope over it.
-	 ;; tactus-mag (gaussian-envelope tactus voices-per-octave)
-	 ;; But just a single voice alone produces the correct oscillation, with lower amplitude:
-	 (empty-magnitude (make-double-array time-frequency-dimensions))
-	 (tactus-mag (dolist (tactus-ridge (if (listp tactus) tactus (list tactus)) empty-magnitude)
-			     (insert-ridge tactus-ridge empty-magnitude :constant-value 1d0)))
-
-	 ;; TODO To be completely correct the original padded output from dyadic-cwt should be used
-	 ;; for input to the dyadic-icwt.
-	 ;; TODO create a scalogram
-	 ;; (clamped-magnitude-scaleogram (copy-instance rhythm-scaleogram))
-	 ;; (setf (scaleogram-magnitude clamped-magnitude-scalogram) tactus-mag)
-	 ;; (icwt clamped-magnitude-scaleogram)
-	 ;; Use the modified magnitude and original phase to compute a sinusoid and it's
-	 ;; Hilbert transform, from that, determine the phase of the sinusoid.
-	 (foot-tap-phase (.phase (icwt tactus-mag
-				       (scaleogram-phase rhythm-scaleogram)
-				       (voices-per-octave rhythm-scaleogram))))
-
+  (let* ((foot-tap-phase (phase-of tactus rhythm-scaleogram))
 	 ;; Note the phase of the oscillating sinusoid at the beat to start tapping from.
 	 (down-beat-sample (onset-time-of-note original-rhythm start-from-beat))
 	 (event-shift-samples (* event-shift (sample-rate original-rhythm)))

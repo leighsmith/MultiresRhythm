@@ -460,6 +460,29 @@
 	  (.array-dimension scale-peaks 1))
       nil))
 
+(defmethod phase-of ((ridges list) (rhythm-scaleogram scaleogram))
+  "Returns the phase of the list of ridges, by inversion of the scaleogram"
+  (let* ((time-frequency-dimensions (.array-dimensions (scaleogram-magnitude rhythm-scaleogram)))
+	 ;; The right way to do this is with a tight (well, two octave) Gaussian envelope over it.
+	 ;; (ridges-mag (gaussian-envelope ridges voices-per-octave))
+	 ;; But just a single voice alone produces the correct oscillation, with lower amplitude:
+	 (empty-magnitude (make-double-array time-frequency-dimensions))
+	 (ridges-mag (dolist (ridge ridges empty-magnitude)
+			     (insert-ridge ridge empty-magnitude :constant-value 1d0))))
+    ;; TODO To be completely correct the original padded output from dyadic-cwt should be used
+    ;; for input to the dyadic-icwt.
+    ;; TODO create a scalogram
+    ;; (clamped-magnitude-scaleogram (copy-instance rhythm-scaleogram))
+    ;; (setf (scaleogram-magnitude clamped-magnitude-scalogram) ridges-mag)
+    ;; (icwt clamped-magnitude-scaleogram)
+    ;; Use the modified magnitude and original phase to compute a sinusoid and it's
+    ;; Hilbert transform, from that, determine the phase of the sinusoid.
+    (.phase (icwt ridges-mag (scaleogram-phase rhythm-scaleogram) (voices-per-octave rhythm-scaleogram)))))
+
+(defmethod phase-of ((a-ridge ridge) (rhythm-scaleogram scaleogram))
+  "Returns the phase of a single ridge, by inversion of the scaleogram"
+  (phase-of (list a-ridge) rhythm-scaleogram))
+
 ;;; File I/O
 
 ;;; For now just write these as binary files. Eventually they should be replaced with
@@ -500,3 +523,4 @@
 ;;   "Reads just the dimensions of the scaleogram contained in the named file. 
 ;; This is *much* quicker than reading the two matrices."
 ;;     )
+

@@ -212,6 +212,15 @@
 	    (if (= zero-index time) 0 (.aref phase scale (1+ zero-index))))
     (+ time (* time-projection (- 1.0d0 norm-phase)))))
 
+(defun phase-zero-samples (phase scale)
+  "Returns the location of each phase 0 crossing index for a given scale"
+  (let ((phase-at-scale (.row phase scale))
+	(time-length (.array-dimension phase 1)))
+    (.find (.and (.subarray (.>= phase-at-scale 0) (list 0 (list 1 (1- time-length))))
+		 (.subarray (.< phase-at-scale 0) (list 0 (list 0 (- time-length 2))))))))
+
+;; (plot (list (impulses-at (phase-zero-samples phase scale) (.array-dimension phase 1)) (.row phase scale)) nil)
+
 ;; TODO phase change from start of time
 ;; (phase-corrected-time (+ time (* (time-support scale vpo) 
 ;;			  (- 1.0d0 (normalised-phase (phase-diff-from-start phase scale time))))))
@@ -221,14 +230,29 @@
 ;;	expected-time phase-corrected-time uncorrected-time)
 ;;    (format t "phase-diff ~a~%" (phase-diff-from-start phase scale time))
 
-(defun phase-zero-samples (phase scale)
-  "Returns the location of each phase 0 crossing index for a given scale"
-  (let ((phase-at-scale (.row phase scale))
-	(time-length (.array-dimension phase 1)))
-    (.find (.and (.subarray (.>= phase-at-scale 0) (list 0 (list 1 (1- time-length))))
-		 (.subarray (.< phase-at-scale 0) (list 0 (list 0 (- time-length 2))))))))
+(defun phase-corrected-time-total-diff (time-projection phase scale time)
+  "Compute projection time from the mean gradient of the phase from time until end of the analysis period"
+  (let* ((phase-datum (.aref phase scale time))
+	 (mean-gradient (mean (phase-diff (.row phase scale))))
+	 (phase-projected-time (+ (/ (* 2 pi) mean-gradient) phase-datum)))
+    (format t "Total: time projection ~,3f phase-projected-time ~,3f~%" time-projection phase-projected-time)
+    (+ time phase-projected-time)))
 
-;; (plot (list (impulses-at (phase-zero-samples phase scale) (.array-dimension phase 1)) (.row phase scale)) nil)
+(defun phase-corrected-time-final-diff (time-projection phase scale time)
+  "Compute projection time from the mean gradient of the phase from time until end of the analysis period"
+  (let* ((final-phase-diff (phase-diff (.subarray phase (list scale (list time t)))))
+	 (phase-datum (.aref phase scale time))
+	 (mean-gradient (mean final-phase-diff))
+	 (phase-projected-time (+ (/ (* 2 pi) mean-gradient) phase-datum)))
+    ;; (plot (.row phase scale) nil
+    ;; 	  :aspect-ratio 0.66
+    ;; 	  :title (format nil "Phase at ~a" scale))
+    ;; (read-line)
+    ;; (plot projected-phase nil)
+    ;; (read-line)
+    ;; (plot phase-diff nil)
+    (format t "Final: time projection ~,3f phase-projected-time ~,3f~%" time-projection phase-projected-time)
+    (+ time phase-projected-time)))
 
 ;;; TODO can we replace with (phase-occurrances )?
 (defun phase-corrected-time-chasing (time-projection phase scale time)
@@ -297,7 +321,9 @@
 	 (projection (time-support scale vpo))
 	 (uncorrected-time (+ time projection))
 	 ;; Compute the time prediction, modified by the phase.
-	 (phase-corrected-time (phase-corrected-time-chasing projection (scaleogram-phase scaleogram) scale time))
+	 (phase-corrected-time (phase-corrected-time-total-diff projection (scaleogram-phase scaleogram) scale time))
+	 ;; (phase-corrected-time (phase-corrected-time-final-diff projection (scaleogram-phase scaleogram) scale time))
+	 ;; (phase-corrected-time (phase-corrected-time-chasing projection (scaleogram-phase scaleogram) scale time))
 	 ;; (phase-corrected-time (phase-corrected-time-computed projection (scaleogram-phase scaleogram) scale time))
 	 ;; (phase-corrected-time (phase-corrected-time-from projection time phase-correct-from))
 	 (expected-time (if phase-correct-from phase-corrected-time uncorrected-time)))
@@ -316,6 +342,10 @@
 (defun expectancy-of-ridge-at-time (ridge time scaleogram all-precision all-peaks sample-rate
 				    &key (time-limit-expectancies nil) (phase-correct-from nil))
   "Return an expectation instance holding the expection time, the confidence and the precision" 
+  ;; (plot-phase ridge (scaleogram-phase scaleogram))
+  (plot (phase-of ridge scaleogram) nil :aspect-ratio 0.15)
+  (format t "time of ridge at ~,3f" time)
+  (read-line)
   (expectation-of-scale-at-time (scale-at-time ridge time) 
 				time
 				scaleogram 
@@ -441,7 +471,7 @@
 
 (defun most-likely-scales (ridge-persistency &key
 			   ;; max. # of simultaneous expectations listeners can possibly hold (cf Miller 1956).
-			   (memory-limit 7) 
+			   (memory-limit 3) 
 			   ;; 0.5 standard deviation above the mean is our definition of worthwhile.
 			   (worthwhile 0.5d0))
   "Returns a list of scales given the ridge persistency which are most likely to be expectation periods"
@@ -512,6 +542,7 @@
 	    cutoff-scale (time-support cutoff-scale (voices-per-octave rhythm-scaleogram)))
     (expectancies-of-skeleton-at-times skeleton times-to-check rhythm-scaleogram 
 				       precision (.normalise (scaleogram-magnitude rhythm-scaleogram))
+				       (sample-rate rhythm)
 				       :cutoff-scale cutoff-scale :phase-correct-from phase-correct-from)))
 
 ;;; Accumulation of onset expectations.
@@ -529,16 +560,17 @@
 (defmethod plot-expectations+rhythm ((rhythm-to-expect rhythm) (all-expectations list)
 				     &key (title (format nil "Accumulated expectations of ~a" (name rhythm-to-expect))))
   "Plot the expectation times, confidences and precision and the rhythm."
-  (let* ((expectancy-confidences (accumulated-confidence-of-expectations all-expectations)))
-    (format t "expectancy-confidences ~a rhythm ~a~%" expectancy-confidences rhythm-to-expect)
-    (plot (list expectancy-confidences (time-signal rhythm-to-expect))
-	   nil
-	   :styles '("impulses" "impulses")
-	   :legends (list "accumulated expectations" "original rhythm")
-	   :xlabel "Time"
-	   :ylabel "Confidence" 
-	   :aspect-ratio 0.15
-	   :title title)))
+  (let* ((expectancy-confidences (accumulated-confidence-of-expectations all-expectations))
+	 (expect-times (.find expectancy-confidences))
+	 (expect-confidences (.arefs expectancy-confidences expect-times)))
+    (plot (list (time-signal rhythm-to-expect) expect-confidences expect-confidences)
+	  (list (.iseq 0 (1- (duration-in-samples rhythm-to-expect))) expect-times expect-times)
+	  :styles '("impulses linetype 3" "points linetype 1 pointtype 10" "impulses linetype 1")
+	  :legends (list "original rhythm" "accumulated expectations" "")
+	  :xlabel "Time"
+	  :ylabel "Confidence" 
+	  :aspect-ratio 0.15
+	  :title title)))
 
 (defmethod plot-expectations (all-expectations title)
   "Plot the expectation times, confidences and precision."
@@ -565,7 +597,7 @@
 			(duration-in-samples rhythm-to-expect)
 			(1- (.length expectancy-confidences)))))))
     
-;;; last-expectations, Charles Dickens undiscovered work from his secret life as a Lisp programmer...
+;;; (great) last-expectations, Charles Dickens undiscovered work from his secret life as a Lisp programmer...
 ;;; This is needed to throw away the time and break the last expectation out of the list.
 (defun last-expectations (rhythm-to-expect 
 			  &key (last-time (1- (duration-in-samples rhythm-to-expect)))
@@ -573,22 +605,25 @@
   "Return the list of expectations for the last moment in the rhythm"
   (format t "Using ~a~%" expectancies-generator)
   (let ((expectations (funcall expectancies-generator rhythm-to-expect 
-			       :times-to-check (list last-time)
 			       ;; Do no phase correction when testing metrical expectancies.
-			       ;; :phase-correct-from nil)))
-			       :phase-correct-from (last-onset-time rhythm-to-expect))))
+			       ;; :phase-correct-from nil
+			       :phase-correct-from (last-onset-time rhythm-to-expect)
+			       :times-to-check (list last-time))))
     (print-expectations expectations)
     (second (first expectations))))
   
 ;;; This is needed to throw away the time and break the last expectation out of the list.
-(defun last-onset-expectations (rhythm-to-expect)
-  "Return the list of expectations for the last onset in the rhythm"
-  (let ((last-time (last-onset-time rhythm-to-expect)))
-    (second (first (expectancies-of-rhythm rhythm-to-expect :times-to-check (list last-time))))))
+;; (defun last-onset-expectations (rhythm-to-expect)
+;;   "Return the list of expectations for the last onset in the rhythm"
+;;   (let ((last-time (last-onset-time rhythm-to-expect)))
+;;     (second (first (expectancies-of-rhythm rhythm-to-expect 
+;; 					   :times-to-check (list last-time)
+;; 					   :phase-correct-from last-time)))))
 
 ;;; TODO last-onset-expectations could be a macro, except for the phase-correct-from parameter.
-;; (defmacro last-onset-expectations (rhythm-to-expect)
-;;   `(last-expectations ,rhythm-to-expect 
-;; 		      :expectancies-generator #'expectancies-of-rhythm 
-;; 		      :last-time (last-onset-time ,rhythm-to-expect)))
+(defmacro last-onset-expectations (rhythm-to-expect)
+  `(last-expectations ,rhythm-to-expect 
+ 		      :expectancies-generator #'expectancies-of-rhythm 
+ 		      :last-time (last-onset-time ,rhythm-to-expect)))
 
+;; (plot (list (phase-of tactus rhythm-scaleogram) (.row (mrr::scaleogram-phase rhythm-scaleogram) 100)) nil :aspect-ratio 0.15)
