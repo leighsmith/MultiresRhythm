@@ -30,8 +30,8 @@
 (defun evaluate-within-annotation (computed-beat-times annotation-times precision-window)
   "Remove times before and after the annotation times"
   (let ((time-limited-markers (mrr::prune-outliers computed-beat-times 
-						   :lower-limit (- (.aref annotation-times 0) precision-window)
-						   :upper-limit (+ (.last annotation-times) precision-window))))
+						   :lower-limit (- (.aref annotation-times 0) (.last precision-window))
+						   :upper-limit (+ (.last annotation-times) (.aref precision-window 0)))))
     (evaluate-beat-times time-limited-markers annotation-times precision-window)))
 
 (defun evaluate-ircambeat (ircambeat-marker-filepath annotation-filepath precision-window
@@ -40,8 +40,8 @@
   (let* ((annotation-times (annotated-beats annotation-filepath))
 	 (filtered-annotation-times (if annotation-filter (funcall annotation-filter annotation-times)
 					annotation-times))
-	 (absolute-precision-window (if relative-precision 
-					(precision-window-of-times annotation-times precision-window) 
+	 (absolute-precision-window (if relative-precision
+					(precision-window-of-times filtered-annotation-times precision-window) 
 					precision-window))
 	 (ircambeat-marker-times (read-ircam-marker-times ircambeat-marker-filepath)))
     (plot-min-distance (format nil "~a ~a" (pathname-name annotation-filepath) annotation-filter)
@@ -53,18 +53,18 @@
   (loop
      with analysis-directory = (merge-pathnames (make-pathname :directory (list :relative corpus-name)) *rhythm-data-directory*)
      for annotation-filepath in corpus
-     for nothing = (format t "~a~%" annotation-filepath)
+     for nothing = (format t "~a~%" annotation-filepath) ; print the filename before processing
      for audio-filepath = (make-pathname :name (pathname-name (pathname-name annotation-filepath)) :type "wav")
      for ircambeat-marker-filepath = (beat-marker-filepath audio-filepath :analysis-directory analysis-directory)
      for annotation-times = (annotated-beats annotation-filepath)
      for filtered-annotation-times = (if annotation-filter (funcall annotation-filter annotation-times) annotation-times)
      for ircambeat-marker-times = (read-ircam-marker-times ircambeat-marker-filepath)
      for absolute-precision-window = (if relative-precision 
-					 (precision-window-of-times annotation-times precision-window) 
+					 (precision-window-of-times filtered-annotation-times precision-window) 
 					 precision-window)
-     for (precision recall f-score) = (evaluate-within-annotation ircambeat-marker-times filtered-annotation-times absolute-precision-window)
-     do (format t "precision-window ~,3f recall ~,3f precision ~,3f f-score ~,3f~%" precision-window recall precision f-score)
-     collect (list precision recall f-score) into scores-list
+     for scores = (evaluate-within-annotation ircambeat-marker-times filtered-annotation-times absolute-precision-window)
+     do (format t "precision-window ~,3f ~a~%" precision-window (print-prf scores))
+     collect scores into scores-list
      finally (return (make-narray scores-list))))
 
 (defun evaluate-ircambeat-computed-tempo (bpm-filepath annotation-filepath precision-window)
@@ -122,7 +122,8 @@
 	    (.row (nth (.aref max-score-indices track-index) scores) track-index)))))
 
 (defun evaluate-accuracy-2 (corpus-name corpus precision-window &key relative-precision) 
-  "Selects the best evaluations between the annotations and filterings thereof on the given corpus"
+  "Selects the best evaluations between the annotations and filterings thereof on the
+   given corpus. We score on original annotations, half and interpolated beats."
   (loop
      for annotation-filter in (list nil #'interpolate-beats #'half-beats) 
      for scores-per-track = (evaluate-ircambeat-on-corpus corpus-name 
@@ -175,6 +176,7 @@
      collect (cons precision-window (mean-scores scores-per-track)) into scores
      finally (return (make-narray scores))))
 
+;; TODO perhaps we can parameterise evaluate-accuracy-2 and collapse this into evaluate-releative-precision-window
 (defun evaluate-relative-accuracy-2 (corpus-name corpus)
   "Runs the evaluation on the given corpus over a range of relative precision widths"
   (loop
@@ -249,6 +251,7 @@
     (plot f-scores nil 
     	  :styles "boxes fill solid border 9" 
     	  :legends (list (nth f-score-index '("precision" "recall" "f-score")))
+	  :title (format nil "Individual F-scores for ~a" corpus-name)
     	  :aspect-ratio 0.66)
     (close-window)
     (window)
@@ -257,7 +260,7 @@
 		  (loop 
 		     for name in low-score-corpus
 		     for name-index = 0 then (1+ name-index)
-		     collect (list (pathname-name name) name-index)))
+		     collect (list (subseq (pathname-name name) 0 10) name-index)))
     (plot-histogram (make-narray (list (.arefs f-scores indices-of-low-f-scores) 
 				       (.arefs c-f-scores indices-of-low-f-scores)))
 		    nil
@@ -301,7 +304,7 @@
     (format t "mean scores for tempo evaluation ~a~%" mean-scores)))
     ;; (plot-ircambeat-evaluation corpus-name scores "% of annotated BPM")
 
-(defun evaluate-all-parameter-sets ()
+(defun evaluate-all-RWC-parameter-sets ()
   "The full enchilda..."
   ;; Evaluate RWC with relative scores
   (plot-evaluation "RWC" *rwc-annotations-directory*)
@@ -312,28 +315,46 @@
 ;; (plot-low-scores "RWC"  *rwc-annotations-directory*)
 ;; (plot-tempo-evaluation "RWC" *rwc-annotations-directory*)
 
+(defun evaluate-quaero-selection ()
 ;; (quaero-subset (random-select (cl-fad:list-directory *quaero-annotations-directory*) 100))
 ;; (plot-ircambeat-evaluation "Quaero" scores "% of beat")
-;; (quaero-evaluation)
+  (plot-evaluation "Quaero_Selection" *quaero-selection-annotations-directory*)
+  (plot-low-scores "Quaero_Selection" *quaero-selection-annotations-directory*))
 
-(defun examine-bad-file (name &key (precision 0.100d0))
+(defun examine-file (name &key (precision 0.100d0) (corpus "RWC"))
   (let* ((annotation-path (make-pathname :defaults *rwc-annotations-directory* :name name :type "BEAT.xml"))
-	 (marker-path (corpus-beat-marker-filepath "RWC" annotation-path))
+	 (marker-path (corpus-beat-marker-filepath corpus annotation-path))
 	 (standard-score (evaluate-ircambeat marker-path annotation-path precision
 					     :relative-precision t :annotation-filter nil))
 	 (counter-beat-score (evaluate-ircambeat marker-path annotation-path precision
 						 :relative-precision t :annotation-filter #'counter-beats))
 	 (counter-half-beat-score (evaluate-ircambeat marker-path annotation-path precision
 						      :relative-precision t :annotation-filter #'counter-half-beats)))
-    (format t "standard score ~a~%counter beat score ~a~%counter half beat score ~a~%" 
-	    standard-score counter-beat-score counter-half-beat-score)))
+    (format t "~a/~a standard score ~a~%counter beat score ~a~%counter half beat score ~a~%" 
+	    corpus name 
+	    (print-prf standard-score) (print-prf counter-beat-score) (print-prf counter-half-beat-score))))
 
 
 #|
 
-(examine-bad-file "RM-P041")
-(examine-bad-file "RM-P095")
-(examine-bad-file "RM-P073")
+;; Low performing versions
+(examine-file "RM-P041" :precision 0.20)
+(examine-file "RM-P041" :corpus "RWC_Problems" :precision 0.20)
+(examine-file "RM-P041")
+(examine-file "RM-P095")
+(examine-file "RM-P073")
+
+;;; High performing versions
+(examine-file "RM-P006")
+(examine-file "RM-P016")
+
+(let* ((precision 0.50d0)
+       (name "0312 - Emilia - Big Big World")
+       (annotation-path (make-pathname :defaults *quaero-selection-annotations-directory* :name name :type "b_l.xml"))
+       (marker-path (corpus-beat-marker-filepath "Quaero_Selection" annotation-path)))
+  (evaluate-ircambeat marker-path annotation-path precision
+			   :relative-precision t :annotation-filter nil))
+
 
 
 (setf x (evaluate-ircambeat #P"/Users/lsmith/Research/Data/IRCAM-Beat/Quaero/Analysis/0005 - Pink Floyd - Dark Side of the Moon - 05 Great Gig in the sky.wav.markers.xml"
@@ -410,6 +431,13 @@
 
 ;; Below 50%
 (.length (.find (.< (nth 2 score-list) 0.5d0)))
+
+(plot-ircambeat-evaluation "Quaero Selection" 
+			   (evaluate-relative-precision-window 
+			    "Quaero_Selection" 
+			    (no-hidden-files (cl-fad:list-directory *quaero-selection-annotations-directory*)))
+			   "% of beat")
+
 
 |#
 

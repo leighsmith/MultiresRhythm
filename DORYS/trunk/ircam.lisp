@@ -24,6 +24,9 @@
 ;;; annotations-directory #P"/Volumes/Quaerodb/annotation/annotation current state/"
 (defparameter *quaero-annotations-directory* #P"/Volumes/Quaerodb/doc/quaero_site/content/18_current/beat_XML/")
 
+(defparameter *quaero-selection-annotations-directory* 
+  (merge-pathnames (make-pathname :directory '(:relative "Quaero_Selection" "Annotation")) *rhythm-data-directory*))
+
 ;;; The location of the audio files that were annotated.
 (defparameter *quaero-audio-directory* #P"/Volumes/Quaerodb/annotation/wav-m22k/")
 

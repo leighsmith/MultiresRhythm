@@ -58,15 +58,23 @@
 	 (minimum-distance (mrr::reduce-dimension (vector-distance time-limited-markers annotation-times) 
 						  #'.min)))
     (window)
-    (plot minimum-distance nil :aspect-ratio 0.66 :title title)
+    (plot minimum-distance nil 
+	  :aspect-ratio 0.66 
+	  :title title 
+	  :xlabel "annotated beats"
+	  :ylabel "minimum distance (seconds)")
     (close-window)))
 
 ;; Recall = number correct / number annotated => determines deletions
 ;; Precision = number correct / number computed => determines additions
 ;; Single combined value.
 (defun evaluate-beat-times (computed-beat-times annotation-times precision-window)
-  "Return the precision, recall and f-scores given the times of computed and annotated beats"
-  (let* ((within-precision (.< (vector-distance computed-beat-times annotation-times) precision-window))
+  "Return the precision, recall and f-scores given the times of computed and annotated beats.
+   Precision-window can be scalar or a vector of annotation-times length."
+  (let* ((precision-windows (if (.vectorp precision-window)
+				(.transpose (mrr::expand-dimension precision-window (.length computed-beat-times)))
+				precision-window))
+	 (within-precision (.< (vector-distance computed-beat-times annotation-times) precision-windows))
 	 (matches-per-annotation (mrr::.partial-sum within-precision))
 	 (matching-annotations-per-marker (mrr::.partial-sum (.transpose within-precision)))
 	 (duplicated-matches (.sum (.> matching-annotations-per-marker 1)))
@@ -85,15 +93,24 @@
 (defun precision-window-of-times (annotation-times relative-precision-window)
   "Retrieve the precision window in seconds from annotated beat times and relative
   precision window as a proportion of the beat period"
-  (let* ((average-annotated-beat-period (mean (.diff annotation-times)))
-	 (precision-window (* average-annotated-beat-period relative-precision-window)))
-    (format t "average annotated beat period ~,3f absolute precision window ~,3f~%" 
-	    average-annotated-beat-period precision-window)
-    precision-window))
+  ;; Add an extra beat period at the start to match the number of annotations.
+  (let* ((annotated-beat-periods (.concatenate (.diff (.subseq annotation-times 0 2))
+					       (.diff annotation-times)))
+	 (precision-windows (.* annotated-beat-periods relative-precision-window)))
+    (format t "annotated beat periods ~a~%absolute precision windows ~a~%" 
+	    (.subseq annotated-beat-periods 0 5) (.subseq precision-windows 0 5))
+    precision-windows))
+
+;;; TODO perhaps change this into print-object and define an information-retrieval class?
+(defmacro print-prf (scores)
+  "Returns a formatted description of the precision, recall and f-score measures for a list of those values"
+  `(format nil "~{precision ~,3f recall ~,3f f-score ~,3f~}" ,scores))
+;; TODO or use:
+;; (format nil "~:{~a ~,3f ~}~%" (mapcar #'list '("precision" "recall" "f-score") mean-scores))
 
 (defun mean-scores (scores-per-track)
   "Returns mean precision, recall and f-score measures as a list, printing the mean values, from the track scores"
   (let* ((mean-scores (nlisp::array-to-list (mrr::reduce-dimension scores-per-track #'mean))))
-    (format t "Mean ~:{~a ~,3f ~}~%" (mapcar #'list '("precision" "recall" "f-score") mean-scores))
+    (format t "Mean ~a~%" (print-prf mean-scores))
     mean-scores))
 
