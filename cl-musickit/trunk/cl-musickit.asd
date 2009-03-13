@@ -9,7 +9,7 @@
 ;;;; Copyright (c) 2007-2009
 ;;;;
 
-(require 'cl-objc)
+;; (require 'cl-objc)
 
 (defsystem :cl-musickit
   :description "Common Lisp interface to the MusicKit"

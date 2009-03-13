@@ -64,7 +64,7 @@ frameworks into Common Lisp interfaces."
 
 (defun read-score-named (filename)
   "Read the filename into the score object and return it"
-  (cl-objc:objc-let ((scorefile-name 'objc:ns-string :init-with-utf8-string filename)
+  (cl-objc:objc-let ((scorefile-name 'objc:ns-string :init-with-utf8-string (namestring filename))
 		     (score 'mk-score objc:init))
     (format t "Reading from ~a~%" (cl-objc:invoke scorefile-name objc:utf8-string))
     (cl-objc:invoke score :read-scorefile scorefile-name)
@@ -72,7 +72,7 @@ frameworks into Common Lisp interfaces."
 
 (defun read-smf-named (filename)
   "Read the filename of the standard MIDI file into the score object and return it"
-  (cl-objc:objc-let ((midifile-name 'objc:ns-string :init-with-utf8-string filename)
+  (cl-objc:objc-let ((midifile-name 'objc:ns-string :init-with-utf8-string (namestring filename))
 		     (score 'mk-score objc:init))
     (format t "Reading from ~a~%" (cl-objc:invoke midifile-name objc:utf8-string))
     (cl-objc:invoke score :read-midifile midifile-name)
@@ -141,6 +141,7 @@ frameworks into Common Lisp interfaces."
      for note-index from 0 below note-count
      collect (cl-objc:invoke notes :object-at-index note-index)))
 
-;; (defmethod print-object ((note mk-note))
-;; (format t "~a~%" (cl-objc:invoke (cl-objc:invoke note objc:description) objc:utf8-string)))
+;;; Check if I am overriding an existing method, perhaps I should call the next method?
+(defmethod print-object ((objc-instance objc-cffi:objc-object) stream)
+  (format stream "~a" (cl-objc:invoke (cl-objc:invoke objc-instance objc:description) objc:utf8-string)))
 
