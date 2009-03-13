@@ -127,8 +127,5 @@
 ;;; (setf performed-44 (essen-of-meter "4/4"))
 ;;; (setf performed-34 (essen-of-meter "3/4"))
 ;;; (setf performed-68 (essen-of-meter "6/8"))
-;;; (setf expectancy-set (mapcar #'last-expectations (load-essen-rhythms performed-34)))
-;;; (setf all-expectations (reduce #'append expectancy-set))
-;;; (cl-musickit:play-timed-notes (cl-musickit::note-list-of-part (part-of-melisma-file
-;;; (make-pathname *essen-perform-directory* "deut0214.notes"))))
+
 

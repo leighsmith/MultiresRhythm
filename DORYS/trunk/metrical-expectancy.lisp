@@ -130,31 +130,6 @@
       (random-rhythm-of-meter meter number-of-bars)
     (multires-rhythm::plot-profile-and-persistency-of-rhythm one-rhythm one-iois meter number-of-bars)))
 
-(defun test-phase-correction (r)
-  (format t "rhythm ~a~%onsets at samples ~a~%" r (multires-rhythm::onsets-in-samples r))
-  ;; trim the end of the rhythm
-  (let ((trimmed-rhythm (multires-rhythm::limit-rhythm r :maximum-samples (- (multires-rhythm::duration-in-samples r) 
-									     (random 100)))))
-    (multires-rhythm::last-expectations r :expectancies-generator #'multires-rhythm::expectancies-of-rhythm-ridge-persistency) 
-    ;; With a limited rhythm, the phase is the same for a highly persistent ridge upto the
-    ;; region which is trimmed. Actually the phase zero points match even on low
-    ;; persistency ridges. The projection from the zero phase value of the limited rhythm won't necessarily
-    ;; match that of the longer rhythm since the phase warps in and out over the extra
-    ;; region. Need to test what the projection point would be if we used the phase value,
-    ;; not chasing.
-    (multires-rhythm::last-expectations trimmed-rhythm)))
-
-(defun test-phase-offset (r)
-  "Tests where the expectancies fall with an inserted space at the start of the rhythm"
-  (format t "rhythm ~a~%onsets at samples ~a~%" r (multires-rhythm::onsets-in-samples r))
-  (multires-rhythm::last-expectations r :expectancies-generator #'multires-rhythm::expectancies-of-rhythm-ridge-persistency) 
-  (multires-rhythm::last-expectations (multires-rhythm::append-rhythm (random-offset 100) r) ; shift the start of the rhythm
-				      :expectancies-generator #'multires-rhythm::expectancies-of-rhythm-ridge-persistency))
-
-;; (defun x (meter number-of-bars) (test-phase-correction (random-rhythm-of-meter meter number-of-bars)))
-;; (test-phase-correction (rhythm-of-grid "Isochronous Rhythm" '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1) :shortest-ioi 256))
-
-
 ;;;; ICMPC plots.
 (defun icmpc-plots ()
   ;;; Generate the tempo profile.
@@ -258,29 +233,12 @@
 ;; (plot-expectancies-histogram (last-expectations mo) (name mo))
 (mapcar (lambda (e) (time-in-seconds e 200.0)) (last-expectations mo))
 
-(setf iso-rhythm (rhythm-of-grid "Isochronous Rhythm" '(1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1) :shortest-ioi 256))
-
-(setf rhythm-offset (append-rhythm (random-offset 100) iso-rhythm))
-
-(pushnew 'weighted-beat-ridge *plotting*)
-(pushnew 'scale-energy-profile *plotting*)
-(pushnew 'unweighted-profile *plotting*)
-(pushnew 'tempo-preference *plotting*)
-;; Do no phase correction when testing metrical expectancies.
-(expectancies-of-rhythm-integrator iso-rhythm 
-				   :times-to-check (list (1- (duration-in-samples iso-rhythm)))
-				   :phase-correct-from nil)
-
-
-(setf x (tempo-salience-weighting-vector (preferred-tempo-scale 16 200) 128 :octaves-per-stddev 1.0))
-
-(setf m (scaleogram-magnitude (scaleogram (analysis-of-rhythm iso-rhythm))))
-(plot (.subseq (.column m 2048) 75 86) (.iseq 75 85) :aspect-ratio 0.66)
-
 ;;; The average number of bars in an anthem is 18, so we create the same to match the waltz-anthem-16ths
 ;;; Produces a very nice profile.
 (plot-profile-and-persistency 7 18 '(3 2 2))
 
+;; (setf x (tempo-salience-weighting-vector (preferred-tempo-scale 16 200) 128 :octaves-per-stddev 1.0))
+;; (defun x (meter number-of-bars) (test-phase-correction (random-rhythm-of-meter meter number-of-bars)))
 
 ;;; Test the meter determination code.
 (dolist (rhythm random-34-rhythms)

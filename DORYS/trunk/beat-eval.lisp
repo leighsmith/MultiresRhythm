@@ -102,9 +102,9 @@
     precision-windows))
 
 ;;; TODO perhaps change this into print-object and define an information-retrieval class?
-(defmacro print-prf (scores)
+(defun print-prf (scores)
   "Returns a formatted description of the precision, recall and f-score measures for a list of those values"
-  `(format nil "~{precision ~,3f recall ~,3f f-score ~,3f~}" ,scores))
+  (format nil "~{precision ~,3f recall ~,3f f-score ~,3f~}" scores))
 ;; TODO or use:
 ;; (format nil "~:{~a ~,3f ~}~%" (mapcar #'list '("precision" "recall" "f-score") mean-scores))
 
