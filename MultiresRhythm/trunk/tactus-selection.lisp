@@ -52,14 +52,15 @@
     (nlisp::peak-x (.* indexes-of-neighbourhood 1d0) maximal-neighbourhood 15)))
 
 ;; TODO expand to return a list of ridges when there is a discontinuity.
-(defun ridges-of-max-scales (weighted-persistency-profile)
-  "Returns a single ridge along the magnitude-scale plane"
+(defun ridges-of-max-scales (magnitude-profile)
+  "Returns a single ridge along the magnitude-scale plane maximum"
   (loop
-     for time from 0 below (.array-dimension weighted-persistency-profile 1)
-     for scale-persistency-profile = (.column weighted-persistency-profile time)
+     for time from 0 below (.array-dimension magnitude-profile 1)
+     for scale-profile = (.column magnitude-profile time)
      ;; Maximum peak of energy is assumed to be the beat scale.
-     collect (argmax scale-persistency-profile) into beat-scales ; For integer scales.
-     ;; collect (max-scale-of-profile scale-persistency-profile) into beat-scales ; For fractional scales.
+     for beat-scale = (argmax scale-profile)
+     ;; for beat-scale = (max-scale-of-profile scale-profile)  ; For fractional scales.
+     collect beat-scale into beat-scales  ; For integer scales.
      finally (return (make-instance 'ridge
 				    :start-sample 0 ; TODO could be when beat period is confirmed.
 				    :scales beat-scales))))
@@ -99,8 +100,8 @@
 		  :title (format nil "weighted persistency profile of ~a" (name rhythm-to-analyse))))
     (ridges-of-max-scales weighted-persistency-profile)))
 
-(defmethod unwindowed-weighted-beat-ridge ((rhythm-to-analyse rhythm) (analysis multires-analysis))
-  "Creates a ridge using the maximum value of the cumulative sum of the scaleogram energy"
+(defmethod select-weighted-beat-ridge ((rhythm-to-analyse rhythm) (analysis multires-analysis))
+  "Selects a ridge using the maximum value of the tempo weighted scaleogram energy"
   (let* ((scaleogram (scaleogram analysis))
 	 (magnitude (scaleogram-magnitude scaleogram))
 	 (vpo (voices-per-octave scaleogram))
@@ -113,17 +114,7 @@
       (plot-image #'magnitude-image (list weighted-magnitude) '((1.0 0.5) (0.0 0.3))
 		  (axes-labelled-in-seconds scaleogram sample-rate 4)
 		  :title (format nil "weighted magnitude profile of ~a" (name rhythm-to-analyse))))
-    ;; TODO replace with (ridges-of-max-scales weighted-magnitude)?
-    (loop
-       for time from 0 below (duration-in-samples scaleogram)
-       for weighted-magnitude-profile = (.column weighted-magnitude time)
-       ;; Maximum peak of energy is assumed to be the beat scale.
-       ;; for beat-scale = (argmax weighted-magnitude-profile)
-       for beat-scale = (max-scale-of-profile weighted-magnitude-profile)
-       collect beat-scale into beat-scales
-       finally (return (make-instance 'ridge
-				      :start-sample 0 ; TODO could be when beat period is confirmed.
-				      :scales beat-scales)))))
+    (ridges-of-max-scales weighted-magnitude)))
 
 (defun create-beat-ridge (rhythm-to-analyse analysis)
   "Creates a ridge using the maximum value of the cumulative sum of the scaleogram energy"
@@ -131,15 +122,7 @@
 	 (cumulative-scale-persistency (cumsum (scaleogram-magnitude scaleogram))))
 	 ;; (vpo (voices-per-octave scaleogram)))
 	 ;; (sample-rate (sample-rate rhythm-to-analyse))
-    ;; TODO replace with (ridges-of-max-scales weighted-magnitude)?
-    (loop
-       for time from 0 below (duration-in-samples scaleogram)
-       for scale-persistency-profile = (.column cumulative-scale-persistency time)
-       ;; Maximum peak of energy is assumed to be the beat scale.
-       collect (argmax scale-persistency-profile) into beat-scales
-       finally (return (make-instance 'ridge
-				      :start-sample 0 ; TODO could be when beat period is confirmed.
-				      :scales beat-scales)))))
+    (ridges-of-max-scales cumulative-scale-persistency)))
 
 (defmethod select-tactus-by-beat-multiple ((performed-rhythm rhythm) (rhythm-analysis multires-analysis))
   "Returns the ridges that are the most commonly occurring lowest integer multiples of the beat"
@@ -178,15 +161,7 @@
 	 (tempo-beat-preference (tempo-salience-weighting salient-scale (.array-dimensions windowed-scale-persistency)))
  	 (weighted-persistency-profile (.* windowed-scale-persistency tempo-beat-preference)))
     (image weighted-persistency-profile nil nil :aspect-ratio 0.2)
-    ;; TODO replace with (ridges-of-max-scales weighted-magnitude)?
-    (loop
-       for time from 0 below (duration-in-samples scaleogram)
-       for scale-persistency-profile = (.column weighted-persistency-profile time)
-       ;; Maximum peak of energy is assumed to be the beat scale.
-       collect (argmax scale-persistency-profile) into beat-scales
-       finally (return (make-instance 'ridge
-				      :start-sample 0 ; could be when beat period is confirmed.
-				      :scales beat-scales)))))
+    (ridges-of-max-scales weighted-persistency-profile)))
 
 ;;; Can return bar-scale to emulate create-beat-ridge
 (defun determine-beat-scale-at-time (cumulative-scale-persistency time vpo &key diagnose)
@@ -248,6 +223,25 @@
 ;; 				      :start-sample 0 ; could be when beat period is confirmed.
 ;; 				      :scales beat-scales)))))
 
+(defmethod select-probable-beat-ridge ((performed-rhythm rhythm) (rhythm-analysis multires-analysis))
+  "Returns the ridge with most evidence using Viterbi decoding to trace the ridge"
+  (let* ((path-inertia 0.9d0) ;; Probability of staying on the same path.
+	 (scaleogram (scaleogram rhythm-analysis))
+	 (vpo (voices-per-octave scaleogram))
+	 (scaleogram-magnitude (scaleogram-magnitude scaleogram))
+	 (number-of-scales (.row-count scaleogram-magnitude))
+	 (salient-scale (preferred-tempo-scale vpo (sample-rate rhythm-analysis)))
+	 (stddev-span 10.0) ; Match the mean to a span across -5 < mean < 5 standard deviations.
+	 ;; Create a Gaussian envelope spanning the number of scales.
+	 (tempo-beat-preference (gaussian-envelope number-of-scales 
+						   :mean (- (/ (* stddev-span salient-scale) number-of-scales) 
+							    (/ stddev-span 2.0))
+						   :stddev (/ (* vpo stddev-span) number-of-scales)))
+	 (transition-probs (make-double-array (list number-of-scales number-of-scales)
+					      :initial-element (/ (- 1.0d0 path-inertia) (1- number-of-scales))))
+	 (state-path (viterbi tempo-beat-preference scaleogram-magnitude transition-probs)))
+    (make-instance 'ridge :start-sample 0 :scales (nlisp::array-to-list state-path))))
+
 (defmethod choose-tactus ((analysis-rhythm rhythm) (analysis multires-analysis)
 			  &key (tactus-selector #'select-longest-lowest-tactus))
   "Returns the selected tactus given the rhythm."
@@ -271,4 +265,3 @@
   "Returns the selected tactus given the rhythm."
   (let* ((analysis (analysis-of-rhythm analysis-rhythm :voices-per-octave voices-per-octave)))
     (values (choose-tactus analysis-rhythm analysis :tactus-selector tactus-selector) analysis)))
-

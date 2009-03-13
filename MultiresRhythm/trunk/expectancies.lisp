@@ -313,6 +313,19 @@
        for likely-scale across (val mls)
        do (phase-histogram (scaleogram a) likely-scale (onsets-in-samples rhythm)))))
 
+(defun random-expectations (subset-rhythm full-rhythm)
+  "Generate 3 random values between the end of the rhythm and the maximum rhythm"
+  (loop
+     repeat 3
+     with max-time = (- (duration-in-samples full-rhythm) (duration-in-samples subset-rhythm))
+     for projection = (random max-time)
+     collect (make-instance 'expectation 
+			    :time (+ (duration-in-samples subset-rhythm) projection)
+			    :period projection
+			    :sample-rate (sample-rate subset-rhythm)
+			    :confidence (random 1.0d0)
+			    :precision (random 1.0d0))))
+
 (defun expectation-of-scale-at-time (scale time scaleogram confidence precision sample-rate
 				     &key (phase-correct-from nil) (time-limit-expectancies nil))
   "Returns an expectation instance. Effectively a factory method with phase correction of expectation time"
@@ -321,9 +334,9 @@
 	 (projection (time-support scale vpo))
 	 (uncorrected-time (+ time projection))
 	 ;; Compute the time prediction, modified by the phase.
-	 (phase-corrected-time (phase-corrected-time-total-diff projection (scaleogram-phase scaleogram) scale time))
+	 ;; (phase-corrected-time (phase-corrected-time-total-diff projection (scaleogram-phase scaleogram) scale time))
 	 ;; (phase-corrected-time (phase-corrected-time-final-diff projection (scaleogram-phase scaleogram) scale time))
-	 ;; (phase-corrected-time (phase-corrected-time-chasing projection (scaleogram-phase scaleogram) scale time))
+	 (phase-corrected-time (phase-corrected-time-chasing projection (scaleogram-phase scaleogram) scale time))
 	 ;; (phase-corrected-time (phase-corrected-time-computed projection (scaleogram-phase scaleogram) scale time))
 	 ;; (phase-corrected-time (phase-corrected-time-from projection time phase-correct-from))
 	 (expected-time (if phase-correct-from phase-corrected-time uncorrected-time)))
@@ -343,9 +356,9 @@
 				    &key (time-limit-expectancies nil) (phase-correct-from nil))
   "Return an expectation instance holding the expection time, the confidence and the precision" 
   ;; (plot-phase ridge (scaleogram-phase scaleogram))
-  (plot (phase-of ridge scaleogram) nil :aspect-ratio 0.15)
-  (format t "time of ridge at ~,3f" time)
-  (read-line)
+  ;; (plot (phase-of ridge scaleogram) nil :aspect-ratio 0.15)
+  ;; (format t "time of ridge at ~,3f" time)
+  ;; (read-line)
   (expectation-of-scale-at-time (scale-at-time ridge time) 
 				time
 				scaleogram 

@@ -16,8 +16,6 @@
 (in-package :multires-rhythm)
 (use-package :nlisp)
 
-(defparameter *mra-cache-path* "/Users/leigh/Data/")
-
 ;;; An analysis includes a textual description, skeleton, scaleogram and
 ;;; correlated-ridge-scale-peaks instances. 
 (defclass multires-analysis ()
@@ -41,6 +39,9 @@
 (defgeneric analysis-of-rhythm-cached (rhythm-to-analyse &key voices-per-octave cache-directory)
   (:documentation "Reads the skeleton, scaleogram and ridge-scale-peaks from disk if they have been cached,
 otherwise, generates them and writes to disk, and returns a multires-analysis instance."))
+
+(defgeneric phase-congruency (scaleogram)
+  (:documentation "Returns the phase congruency of the complex valued data."))
 
 ;;;; Implementation
 
@@ -257,20 +258,47 @@ otherwise, generates them and writes to disk, and returns a multires-analysis in
     ;; the ridge to be valid.
     (clamp-to-bounds congruency magnitude :low-bound magnitude-minimum :clamp-low 0)))
 
-(defun phase-congruency (magnitude phase)
-  "Calculate a dimensionless measure of local energy at each time point,
+#|
+(defmethod phase-congruency ((scaleogram-to-analyse scaleogram))
+  "Calculate a normalised measure of local energy at each time point,
 given magnitude and phase components of the wavelet coefficients. 
 Phase is assumed to be -pi to pi."
-  (let* ((real-bit (.* magnitude (.cos phase)))
+  (let* ((magnitude (scaleogram-magnitude scaleogram-to-analyse))
+	 (phase (scaleogram-phase scaleogram-to-analyse))
+	 (real-bit (.* magnitude (.cos phase)))
 	 (imag-bit (.* magnitude (.sin phase)))
+	 ;; Perform the partial sum of the real and imaginary components separately so we
+	 ;; measure the congruence on the two planes, then compute the magnitude of the congruence
 	 (local-energy (.sqrt (.+ (.expt (.partial-sum real-bit) 2) (.expt (.partial-sum imag-bit) 2))))
-	 (local-magnitude (.sum magnitude)))
+	 (local-magnitude (.partial-sum magnitude)))
+    (./ local-energy local-magnitude)))
+|#
+
+(defmethod phase-congruency ((scaleogram-to-analyse scaleogram))
+  "Calculate a normalised measure of local energy at each time point,
+given magnitude and phase components of the wavelet coefficients. 
+Phase is assumed to be -pi to pi."
+  (let* ((magnitude (scaleogram-magnitude scaleogram-to-analyse))
+	 (phase (scaleogram-phase scaleogram-to-analyse))
+	 ;; corrects for the energy localisation by kernel time-support
+	 (energy-localisation (time-support (.iseq 0 (.row-count magnitude)) (voices-per-octave scaleogram-to-analyse)))
+	 (energy-scaling (expand-dimension energy-localisation (.column-count magnitude)))
+	 (scaled-magnitude (.* magnitude energy-scaling))
+	 (real-bit (.* scaled-magnitude (.cos phase)))
+	 (imag-bit (.* scaled-magnitude (.sin phase)))
+	 ;; Perform the partial sum of the real and imaginary components separately so we
+	 ;; measure the congruence on the two planes, then compute the magnitude of the congruence
+	 (local-energy (.sqrt (.+ (.expt (.partial-sum real-bit) 2) (.expt (.partial-sum imag-bit) 2))))
+	 ;; (local-magnitude (.partial-sum scaled-magnitude)))
+	 ;; (local-magnitude 1.0d0))
+	 (local-magnitude (.partial-sum magnitude)))
     (./ local-energy local-magnitude)))
 
-(defmethod normalised-phase-congruency ((analysis multires-analysis))
-  (let ((pc (phase-congruency (scaleogram-magnitude (scaleogram analysis))
-			      (scaleogram-phase (scaleogram analysis)))))
-    (.normalise pc)))
+
+
+(defmethod phase-congruency ((analysis multires-analysis))
+  "Returns the phase congruency of the analysis"
+  (phase-congruency (scaleogram analysis)))
 
 ;;; TODO alternatively return normalised-magnitude, stationary-phase or
 ;;; local-phase-congruency individually.
@@ -388,6 +416,10 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
 
 ;;; Plotting
 
+(defmethod print-object ((analysis-to-print multires-analysis) stream)
+  (call-next-method analysis-to-print stream) ; print superclass
+  (format stream " ~a sample-rate ~aHz" (description analysis-to-print) (sample-rate analysis-to-print)))
+
 ;; TODO should be a method plot.
 (defmethod plot-analysis ((analysis-to-plot multires-analysis))
   (plot-cwt (scaleogram analysis-to-plot) :title (description analysis-to-plot)))
@@ -413,7 +445,7 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
 		 :ridge-peaks (.load (make-pathname :defaults path-to-read :type "peaks") :format :binary)))
 
 (defmethod analysis-of-rhythm-cached ((analysis-rhythm rhythm) &key (voices-per-octave 16)
-				      (cache-directory *mra-cache-path*))
+				      (cache-directory))
   "Reads the skeleton, scaleogram and ridge-scale-peaks from disk if they have been cached,
 otherwise, generates them and writes to disk."
   (let ((cache-root-pathname (make-pathname :directory cache-directory :name (name analysis-rhythm))))

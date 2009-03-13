@@ -445,7 +445,7 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 	(let ((analysis (analysis-of-rhythm ODF-fragment :padding #'causal-pad)))
 	  (plot-analysis analysis)
 	  (window)
-	  (plot (normalised-phase-congruency analysis) nil 
+	  (plot (phase-congruency analysis) nil 
 		:title (format nil "normalised phase congruency of ~a" (name ODF-fragment)) 
 		:aspect-ratio 0.2)
 	  (close-window)

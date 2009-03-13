@@ -146,7 +146,7 @@
 (defmethod onsets-of-salience ((odf-rhythm salience-trace-rhythm))
   "Determine the onset times from the salience trace"
   (let* (;; (a (analysis-of-rhythm odf-rhythm))
-	 ;; (npc (normalised-phase-congruency a)) ; if we include phase congruency to filter the ODF-RHYTHM.
+	 ;; (npc (phase-congruency a)) ; if we include phase congruency to filter the ODF-RHYTHM.
 	 ;; (filtered-odf (.* (normalise (time-signal odf-rhythm)) npc))
 	 (filtered-odf (time-signal odf-rhythm))
 	 (onset-signal (.* (significant filtered-odf :threshold 0.75) (extrema-points-vector filtered-odf)))

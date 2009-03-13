@@ -29,7 +29,7 @@
   (:documentation "Function to plot the magnitude and phase components of the result of a continuous wavelet transform on a rhythm signal."))
 
 (defgeneric plot-cwt+ridges (scaleogram ridges rhythm &key title time-axis-decimation)
-  (:documentation "Plot the magnitude in greyscale overlaid with the computed tactus in red, the phase overlaid with the tactus in black."))
+  (:documentation "Plot the magnitude in greyscale overlaid with the computed tactus in red, the phase overlaid with the tactus in white."))
 
 (defgeneric plot-cwt+ridges-of (scaleogram-to-plot highlighted-ridges analysis-rhythm 
 						   &key title time-axis-decimation)

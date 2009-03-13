@@ -78,6 +78,15 @@ Anything clipped will be set to the clamp-low, clamp-high values"
      do (setf (.aref result column-index) (.* (funcall fn (.column a column-index)) 1d0))
      finally (return result)))
 
+;;; Is there already something like this?
+(defun expand-dimension (a n)
+  "Expands the given array or matrix by another dimension of norm. length n, with duplicates of the array"
+  (let* ((array-dimensions (.array-dimensions a))
+	 (rank (length array-dimensions))
+	 (new-array (nlisp::narray-of-type a (append array-dimensions (list n))))) ; TODO array-of-type
+    (dotimes (i n new-array)
+      (setf (.subarray new-array (list t i)) a)))) ; TODO produce a list of rank # of t's.
+
 ;;; Really good candidate to replace with a GSL/BLAS routine...
 ;;; Actually this should become a macro using (reduce-dimension a #'.+)
 (defun .partial-sum (a &key (dimension 1)) 

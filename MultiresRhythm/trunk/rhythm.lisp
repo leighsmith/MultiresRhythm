@@ -77,7 +77,7 @@
 
 (defmethod print-object ((rhythm-to-print rhythm) stream)
   (call-next-method rhythm-to-print stream) ;; to print the superclass.
-  (format stream " ~a ~a sample-rate ~f duration ~d samples" 
+  (format stream " ~a ~a sample-rate ~fHz duration ~d samples" 
 	  (name rhythm-to-print) (description rhythm-to-print) (sample-rate rhythm-to-print) 
 	  (duration-in-samples rhythm-to-print)))
 

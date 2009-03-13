@@ -30,7 +30,7 @@
   :version "2.8"
   :author "Leigh M. Smith"
   :license "Copyright (c) 2005-2009"
-  :depends-on (:nlisp)
+  :depends-on (:nlisp :cli-parser :cxml)
   :properties ((#:author-email . "Leigh.Smith@ircam.fr")
 	       (#:date . "2009")	; Compute this automatically?
 	       ((#:albert #:output-dir) . "documentation")
