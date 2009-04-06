@@ -97,8 +97,8 @@
   (let* ((annotated-beat-periods (.concatenate (.diff (.subseq annotation-times 0 2))
 					       (.diff annotation-times)))
 	 (precision-windows (.* annotated-beat-periods relative-precision-window)))
-    (format t "annotated beat periods ~a~%absolute precision windows ~a~%" 
-	    (.subseq annotated-beat-periods 0 5) (.subseq precision-windows 0 5))
+    ;;(format t "annotated beat periods ~a~%absolute precision windows ~a~%" 
+    ;;	    (.subseq annotated-beat-periods 0 5) (.subseq precision-windows 0 5))
     precision-windows))
 
 ;;; TODO perhaps change this into print-object and define an information-retrieval class?
@@ -106,11 +106,11 @@
   "Returns a formatted description of the precision, recall and f-score measures for a list of those values"
   (format nil "~{precision ~,3f recall ~,3f f-score ~,3f~}" scores))
 ;; TODO or use:
-;; (format nil "~:{~a ~,3f ~}~%" (mapcar #'list '("precision" "recall" "f-score") mean-scores))
+;; (format nil "~:{~a ~,3f ~}~%" (mapcar #'list '("precision" "recall" "f-score") scores))
 
 (defun mean-scores (scores-per-track)
   "Returns mean precision, recall and f-score measures as a list, printing the mean values, from the track scores"
   (let* ((mean-scores (nlisp::array-to-list (mrr::reduce-dimension scores-per-track #'mean))))
-    (format t "Mean ~a~%" (print-prf mean-scores))
+;;    (format t "Mean ~a~%" (print-prf mean-scores))
     mean-scores))
 

@@ -17,25 +17,29 @@
 (use-package :nlisp)
 (use-package :multires-rhythm)
 
-(defun eval-expectation-subset (full-rhythm subset-duration &key (prev-expectations) (precision-window 0.050d0))
+(declaim (optimize (speed 0) (safety 3) (debug 3)))
+
+(defun eval-expectation-subset (full-rhythm subset-window onset-times
+				&key (prev-expectations) (precision-window 0.050d0))
   "Evaluate the expectations of a given subset of the rhythm"
-  (let* ((onset-times (onsets-in-samples full-rhythm))
-	 (sample-rate (sample-rate full-rhythm))
+  (let* ((sample-rate (sample-rate full-rhythm))
 	 (window-in-samples (* precision-window sample-rate))
-	 (subset-in-samples (floor (* subset-duration sample-rate)))
-	 (subset-rhythm (mrr::subset-of-rhythm full-rhythm (list 0 subset-in-samples)))
+	 (subset-in-samples (mapcar (lambda (edge) (floor (* edge sample-rate))) subset-window))
+	 (subset-rhythm (mrr::subset-of-rhythm full-rhythm subset-in-samples))
 	 ;; Compare both, and check if we need the absolute-duration-confidence weighting
 	 ;; (expectations (mrr::last-onset-expectations subset-rhythm))
-	 ;; (expectations (mrr:last-expectations subset-rhythm))
+	 (expectations (mrr::offset-expectation (mrr:last-expectations subset-rhythm) (first subset-in-samples))) 
 	 ;; Test with no knowledge
-	 (expectations (mrr::random-expectations subset-rhythm full-rhythm))
+	 ;; (expectations (mrr::random-expectations subset-rhythm full-rhythm))
 	 (expected-times (make-narray (mapcar #'mrr::expected-time expectations)))
 	 ;; Limit the times compared to those between the last of the expected and the end of the window.
 	 (compare-times (mrr::prune-outliers onset-times 
-					     :lower-limit subset-in-samples
+					     :lower-limit (second subset-in-samples)
 					     :upper-limit (+ (.max expected-times) window-in-samples))))
-    (if (find 'accumulative-expectations *plotting*) ;; instead of diag-plot so we display on the same window.
-      (mrr::plot-expectations+rhythm subset-rhythm (append prev-expectations expectations)))
+    ;; instead of diag-plot so we display on the same window, for each iteration.
+    (if (find 'accumulative-expectations *plotting*) 
+	(mrr::plot-expectations+rhythm subset-rhythm (append prev-expectations expectations)
+				       :rhythm-starts-at (first subset-in-samples)))
     (format t "expected-times ~a~%compare-times ~a~%" expected-times compare-times)
     (list 
      (if (zerop (.length compare-times))
@@ -45,13 +49,13 @@
 
 ;;; Should compare against the rhythm times and the annotated beat times.
 (defun evaluate-expectancy (full-rhythm &key 
+			    (onset-times (mrr::onsets-in-seconds full-rhythm))
 			    (precision-window 0.050d0)
 			    (expectation-increment 1.0d0)
 			    (minimum-period 5.0d0)) ; in seconds, TODO This should probably be based on number of events.
 
   "Given a set of times in a rhythm, produce an evaluation as to how well an expected event is actually then played"
   (loop
-     with onset-times = (mrr::onsets-in-seconds full-rhythm)
      with last-onset = (.last onset-times)
      with onsets-in-expectation-range = (mrr::prune-outliers onset-times 
 							     :lower-limit minimum-period
@@ -61,7 +65,9 @@
      ;; last expectations from the entire rhythm, only those expectations from the
      ;; penultimate period that exceeds the last onset of the rhythm.
      for subset-duration from minimum-period below last-onset by expectation-increment
-     for (subset-evaluation expectations) = (eval-expectation-subset full-rhythm subset-duration 
+     for (subset-evaluation expectations) = (eval-expectation-subset full-rhythm 
+								     (list 0.0d0 subset-duration)
+								     (onsets-in-samples full-rhythm)
 								     :prev-expectations all-expectations
 								     :precision-window precision-window)
      append expectations into all-expectations
@@ -74,6 +80,41 @@
 					  onsets-in-expectation-range
 					  precision-window))))
 
+;;; TODO we can probably merge this with evaluate-expectancy by using :onset-times beat-times
+(defun evaluate-expectancy-on-beat (odf-rhythm beat-times &key 
+				    (precision-window 0.050d0)
+				    (expectation-increment 1.0d0)
+				    (maximum-period 8.0d0) ; in seconds
+				    (minimum-period 5.0d0)) ; in seconds, TODO This should probably be based on number of events.
+
+  "Given a set of times in a rhythm, produce an evaluation as to how well an expected event is actually then played"
+  (loop
+     with last-onset = (.last beat-times)
+     with onsets-in-expectation-range = (mrr::prune-outliers beat-times 
+							     :lower-limit minimum-period
+							     :upper-limit (+ last-onset precision-window))
+     ;; TODO should be incrementing by event times.
+     ;; We loop up until the last period of the rhythm, so we are generating no
+     ;; last expectations from the entire rhythm, only those expectations from the
+     ;; penultimate period that exceeds the last onset of the rhythm.
+     for window-end from minimum-period below last-onset by expectation-increment
+     for window = (list (max 0.0d0 (- window-end maximum-period)) window-end)
+     for (subset-evaluation expectations) = (eval-expectation-subset odf-rhythm 
+								     window
+								     (.* beat-times (sample-rate odf-rhythm))
+								     :prev-expectations all-expectations
+								     :precision-window precision-window)
+     append expectations into all-expectations
+     collect subset-evaluation into evaluations
+     finally (mrr::plot-expectations+rhythm odf-rhythm all-expectations)
+     finally (format t "for window ~a onsets-in-expectation-range ~a~%" window onsets-in-expectation-range)
+     ;; finally (format t "all expectations ~a~%" (mrr::.sort (make-narray (mapcar #'mrr::expected-time-seconds all-expectations))))
+     ;; finally (format t "per segment: ~a~%" (make-narray evaluations))
+     finally (return (evaluate-beat-times (make-narray (mapcar #'mrr::expected-time-seconds all-expectations))
+					  onsets-in-expectation-range
+					  precision-window))))
+
+
 (defun eval-essen-expectation (filename)
   (let ((score (evaluate-expectancy (essen-rhythm filename) :minimum-period 3.0d0)))
     (format t "evaluation against all expectations of ~a: ~a~%" filename (print-prf score))
@@ -82,6 +123,21 @@
 (defun eval-expectation-of-times (rhythm-times &key (title "anonymous rhythm"))
   (format t "evaluation against all expectations: ~a~%"
 	  (evaluate-expectancy (mrr::rhythm-of-onsets title rhythm-times :sample-rate 200))))
+
+(defun eval-quaero-expectation (annotation-filepath)
+  (let* ((odf-filepath (merge-pathnames
+			(make-pathname :directory '(:relative "Quaero_Selection" "Analysis")
+				       :name (pathname-name (pathname-name annotation-filepath))
+				       :type "odf")
+			*rhythm-data-directory*))
+	 (odf-rhythm (rhythm-from-ircam-odf odf-filepath :sample-rate 172.27d0))
+	 (beat-times (mrr::read-ircam-annotation annotation-filepath))
+	 (score (evaluate-expectancy-on-beat odf-rhythm beat-times :minimum-period 3.0d0)))
+    (format t "evaluation against all expectations of ~a: ~a~%" annotation-filepath (print-prf score))
+    score))
+
+;; (eval-quaero-expectation (first (no-hidden-files (cl-fad:list-directory *quaero-selection-annotations-directory*)))) 
+
 
 (defun test-phase-offset (rhythm)
   "Tests where the expectancies fall with an inserted space at the start of the rhythm"
