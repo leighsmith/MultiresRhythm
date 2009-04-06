@@ -27,6 +27,9 @@
 (defparameter *quaero-selection-annotations-directory* 
   (merge-pathnames (make-pathname :directory '(:relative "Quaero_Selection" "Annotation")) *rhythm-data-directory*))
 
+(defparameter *quaero-selection-analysis-directory* 
+  (merge-pathnames (make-pathname :directory '(:relative "Quaero_Selection" "Analysis")) *rhythm-data-directory*))
+
 ;;; The location of the audio files that were annotated.
 (defparameter *quaero-audio-directory* #P"/Volumes/Quaerodb/annotation/wav-m22k/")
 
@@ -64,24 +67,28 @@
 (defun beat-marker-filepath (original-sound-path &key (analysis-directory *rhythm-data-directory*))
   "Returns the filepath of the beat marker file associated with the given sound file"
   (merge-pathnames
-   (make-pathname :directory '(:relative "Analysis")
-		  :name (concatenate 'string (file-namestring original-sound-path) ".markers")
+   (make-pathname :name (concatenate 'string (file-namestring original-sound-path) ".markers")
 		  :type "xml")
    analysis-directory))
+
+(defun beat-marker-filepath-anno (annotation-path)
+  "Returns the filepath of the beat marker file associated with the given annotation file"
+  (make-pathname :defaults annotation-path
+		 :directory (append (butlast (pathname-directory annotation-path)) '("Analysis"))
+		 :name (concatenate 'string (file-namestring (pathname-name (pathname-name annotation-path))) ".wav.markers")
+		 :type "xml"))
 
 (defun bpm-filepath (original-sound-path &key (analysis-directory *rhythm-data-directory*))
   "Returns the filepath of the tempo file associated with the given sound file"
   (merge-pathnames
-   (make-pathname :directory '(:relative "Analysis")
-		  :name (concatenate 'string (file-namestring original-sound-path) ".bpm")
+   (make-pathname :name (concatenate 'string (file-namestring original-sound-path) ".bpm")
 		  :type "xml")
    analysis-directory))
 
 (defun odf-filepath (original-sound-path &key (analysis-directory *rhythm-data-directory*))
   "Returns the filepath of the onset detection function file associated with the given sound file"
   (merge-pathnames
-   (make-pathname :directory '(:relative "Analysis")
-		  :name (pathname-name original-sound-path)
+   (make-pathname :name (pathname-name original-sound-path)
 		  :type "odf")
    analysis-directory))
 
@@ -261,9 +268,11 @@
   (let* ((rhythm (rhythm-from-ircam-odf odf-filepath :sample-rate sample-rate :weighted nil))
 	 (bpm (ircambeat-computed-bpm bpm-filepath))
 	 (odf-subset (mrr::subset-of-rhythm rhythm (list (round (* sample-rate start-from)) t))))
+    (format t "Starting downbeat finding from ~,3f seconds~%" start-from)
     ;; TODO beats-per-measure is derived from time signature. hardwired to 4/4 for now.
-    ;; (mrr::downbeat-estimation-fixed odf-subset bpm '(2 2 2) 4))) ; Test the null hypothesis
-    (mrr::downbeat-estimation-phase odf-subset bpm '(2 2 2) 4)))
+    (mrr::downbeat-estimation-fixed odf-subset bpm '(2 2 2) 4))) ; Test the null hypothesis
+    ;; (mrr::downbeat-estimation-random odf-subset bpm '(2 2 2) 4))) ; Test the null hypothesis
+    ;; (mrr::downbeat-estimation-phase odf-subset bpm '(2 2 2) 4)))
     ;; (mrr::downbeat-estimation-duration odf-subset bpm '(2 2 2) 4)))
     ;; (mrr::downbeat-estimation-amplitude odf-subset bpm '(2 2 2) 4)))
     ;; (mrr::downbeat-estimation odf-subset bpm '(2 2 2) 4)))
@@ -279,6 +288,8 @@
 	 (bpm-file (bpm-filepath original-sound-path :analysis-directory analysis-directory))
 	 (bpm (.aref (mrr::read-ircambeat-bpm bpm-file) 0))
 	 (first-ircambeat-time (.aref ircambeat-markers 0))
+	 ;; TODO Start the odf based on the first marker. This needs replacing
+	 ;; with starting from the first identified onset.
 	 (found-downbeat (ircam-find-downbeat odf-file bpm-file :start-from first-ircambeat-time))
 	 ;; Since the downbeat is determined from an ODF that begins on the first IRCAMbeat
 	 ;; marker, we assume the beat matches.
@@ -287,150 +298,16 @@
 	    found-downbeat nearest-marker (.aref ircambeat-markers nearest-marker))
     found-downbeat))
 
-;;; (ircambeat-marker-of-downbeat #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/Quaero_excerpts/Audio/0186 - Dillinger_excerpt.wav"  :analysis-directory #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/Quaero_excerpts/Analysis")
+(defun quaero-downbeat (filename)
+  "To analyse a single Quaero selection example"
+  (ircambeat-marker-of-downbeat
+   (merge-pathnames (make-pathname :directory '(:relative "Quaero_Selection" "Audio")
+				   :name filename
+				   :type "wav")
+		    *rhythm-data-directory*)
+   :analysis-directory *quaero-selection-analysis-directory*))
 
-;;; take the ground truth downbeat locations and print out where they would be.
-(defun groundtruth-downbeat-locations (original-sound-path annotation-path)
-  (let* ((sample-rate 172.27d0)
-	 (ircambeat-markers (read-ircam-marker-times (beat-marker-filepath original-sound-path)))
-	 (first-ircambeat-time (.aref ircambeat-markers 0))
-	 (last-ircambeat-time (nlisp::.last ircambeat-markers))
-	 (downbeat-times (annotated-downbeats annotation-path))
-	 (excerpt-downbeat-times (mrr::prune-to-limit downbeat-times last-ircambeat-time))
-	 (downbeat-samples (.round (.* excerpt-downbeat-times sample-rate))))
-    ;; Align to the measure windows
-    (.- downbeat-samples (round (* first-ircambeat-time sample-rate)))))
-
-;;; (groundtruth-downbeat-locations #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/0186 - Dillinger_excerpt.wav"
-;;; #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/0186b - Dillinger - Cocaine - 01 Cocaine In My Brain.xml")
-;;; Calculate the offset from the bar region
-;;; (.- a (.* (.iseq 0 (.length a)) (* 106 4)))
-
-
-(defun odf-markers-verify-first (original-sound-path)
-  "Plots the first fragment of the ODF against the IRCAM beat marker positions"
-  (let* ((fragment-duration 1000)
-	 (odf-file (odf-filepath original-sound-path))
-	 (odf (rhythm-from-ircam-odf odf-file :sample-rate 172.27))
-	 (fragment (mrr::subset-of-rhythm odf (list 0 fragment-duration)))
-	 (markers (read-ircam-marker-times (beat-marker-filepath original-sound-path)))
-	 (marker-samples (.round (.* markers (sample-rate fragment))))
-	 (fragment-marker-samples (.arefs marker-samples (.find (.< marker-samples fragment-duration)))))
-    (window)
-    (plot-rhythm fragment :time-in-seconds t)
-    (close-window)
-    (format t "markers in samples ~a~%" marker-samples)
-    (window)
-    (plot (list (mrr::time-signal fragment) 
-		(.arefs (mrr::time-signal fragment) fragment-marker-samples))
-	  (list (.iseq 0 (duration-in-samples fragment)) fragment-marker-samples)
-	  :aspect-ratio 0.2
-	  :styles '("lines" "points pointtype 2"))
-    (close-window)))
-
-(defun odf-annotation-verify-start (original-sound-path annotation-path)
-  "Plots just the first fragment of the ODF against the annotated downbeat positions. Does this
-  to verify we aren't doing something stupid with annotation times."
-  (let* ((fragment-duration 1200)
-	 (odf-file (odf-filepath original-sound-path))
-	 (odf (rhythm-from-ircam-odf odf-file :sample-rate 172.27))
-	 (fragment (mrr::subset-of-rhythm odf (list 0 fragment-duration)))
-	 ;; These are the hand annotated downbeats
-	 (annotated-downbeat-times (annotated-downbeats annotation-path))
-	 (downbeat-samples (.round (.* annotated-downbeat-times (sample-rate odf))))
-	 (fragment-downbeat-samples (mrr::prune-to-limit downbeat-samples fragment-duration)))
-    (format t "annotated downbeats in samples ~a~%" fragment-downbeat-samples)
-    (window)
-    (plot-rhythm fragment :time-in-seconds t)
-    (close-window)
-    ;; (format t "Amplitude computed Onsets in seconds ~a~%" (mrr::onsets-in-seconds fragment))
-    (window)
-    (plot (list (mrr::time-signal fragment) 
-		(.arefs (mrr::time-signal fragment) fragment-downbeat-samples))
-	  (list (.iseq 0 (duration-in-samples fragment)) fragment-downbeat-samples)
-	  :aspect-ratio 0.2
-	  :styles '("lines" "points pointtype 3 linecolor 2")
-	  :title (format nil "First fragment of ~a with annotated downbeats" (mrr::name fragment)))
-    (close-window)))
-
-;;;(odf-annotation-verify-start #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/0186 - Dillinger_excerpt.wav"  #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/0186b - Dillinger - Cocaine - 01 Cocaine In My Brain.xml")
-
-;;; (odf-annotation-verify-start #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/0144 - The Beatles - A Hard Days Night - 01 A Hard Day s Night.wav" #P"0144b - The Beatles - A Hard Days Night - 01 A Hard Day s Night.xml"
-
-(defun verify-annotated-downbeats (original-sound-path annotation-path &key (odf-type "odf") (bar-search 2))
-  "Plots 2 bar fragment of the ODF against the annotated downbeat positions"
-  (let* ((beats-per-measure 4)
-	 (tempo-in-bpm (ircambeat-computed-bpm (bpm-filepath original-sound-path)))
-	 (odf-file (odf-filepath original-sound-path))
-	 (odf (rhythm-from-ircam-odf odf-file :sample-rate 172.27))
-	 (beat-duration (round (* (/ 60.0 tempo-in-bpm) (sample-rate odf)))) ; in samples
-	 (bar-duration (* beats-per-measure beat-duration)) ; in samples
-	 (search-duration (* bar-search bar-duration)) ; in samples
-	 (number-of-measures (1- (* (floor (duration-in-samples odf) bar-duration))))
-	 ;; These are the hand annotated downbeats
-	 (annotated-downbeat-times (annotated-downbeats annotation-path))
-	 (excerpt-downbeat-times (mrr::prune-to-limit annotated-downbeat-times (duration-in-samples odf)))
-	 (downbeat-samples (.round (.* excerpt-downbeat-times (sample-rate odf)))))
-    (format t "Beat duration ~d, bar duration ~d~%" beat-duration bar-duration)
-    (loop
-       for measure-index from 0 below (min number-of-measures 10)
-       for start-sample from 0 below (duration-in-samples odf) by bar-duration
-       for search-region = (list start-sample (1- (min (duration-in-samples odf) (+ start-sample search-duration))))
-       for fragment-of-ODF = (mrr::subset-of-rhythm odf search-region)
-       ;;    (fragment-marker-samples (.arefs marker-samples (.find (.< marker-samples fragment-duration)))))
-       do
-	 (format t "Downbeat for measure ~d, sample ~d, shift by ~d samples~%" measure-index 
-				  (.aref downbeat-samples measure-index)
-				  (- (.aref downbeat-samples measure-index) start-sample))
-	 (window) 
-	 (mrr::visualise-downbeat '(2 2 2) tempo-in-bpm fragment-of-ODF 
-				  (- (.aref downbeat-samples measure-index) start-sample)
-				  (1- bar-search))
-	 (close-window))))
-
-;;(verify-annotated-downbeats #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/0186 - Dillinger_excerpt.wav"  #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/0186b - Dillinger - Cocaine - 01 Cocaine In My Brain.xml")
-
-;;; Examine LP version
-;;(verify-annotated-downbeats #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/0186 - Dillinger_excerpt.wav"  #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/0186b - Dillinger - Cocaine - 01 Cocaine In My Brain.xml" :odf-type "lp.odf")
-
-;;(verify-annotated-downbeats #P"/Volumes/Quaerodb/annotation/wav-22km/0245 - The Beatles - Magical Mystery Tour - 10 Baby Youre A Rich Man.wav" #P"/Volumes/Quaerodb/annotation//0245 - The Beatles - Magical Mystery Tour - 10 Baby Youre A Rich Man.b_q.xml")
-
-;; (make-pathname :defaults *quaero-annotations-directory* 
-;; 	       :name (concatenate 'string (first (track-named "0245" full-quaero)) ".b_q")
-;; 	       :type "xml")
-
-(defun verify-ircambeat-downbeat-markers (original-sound-path anacrusis)
-  "Plots 2 bar fragment of the ODF against the IRCAM beat _generated_ marker positions"
-  (let* ((beats-per-measure 4)
-	 (odf-file (odf-filepath original-sound-path))
-	 (tempo-in-bpm (ircambeat-computed-bpm (bpm-filepath original-sound-path)))
-	 (odf (rhythm-from-ircam-odf odf-file :sample-rate 172.27))
-	 (beat-duration (round (* (/ 60.0 tempo-in-bpm) (sample-rate odf)))) ; in samples
-	 (bar-duration (* beats-per-measure beat-duration)) ; in samples
-	 (bar-search 2) ; Number of bars to search over.
-	 (search-duration (* bar-search bar-duration)) ; in samples
-	 (number-of-measures (1- (* (floor (duration-in-samples odf) bar-duration))))
- 	 (markers (read-ircam-marker-times (beat-marker-filepath original-sound-path)))
- 	 (downbeat-marker-indices (.+ (.* (.iseq 0 (1- number-of-measures)) beats-per-measure) anacrusis))
- 	 (downbeat-samples (.round (.* (.arefs markers downbeat-marker-indices) (sample-rate odf)))))
-    (format t "Beat duration ~d, bar duration ~d~%" beat-duration bar-duration)
-    (loop
-       for measure-index from 0 below number-of-measures
-       for start-sample from 0 below (duration-in-samples odf) by bar-duration
-       for search-region = (list start-sample (1- (min (duration-in-samples odf) (+ start-sample search-duration))))
-       for fragment-of-ODF = (mrr::subset-of-rhythm odf search-region)
-       ;;    (fragment-marker-samples (.arefs marker-samples (.find (.< marker-samples fragment-duration)))))
-       do
-	 (format t "Downbeat for measure ~d, sample ~d, shift by ~d samples~%" measure-index 
-				  (.aref downbeat-samples measure-index)
-				  (- (.aref downbeat-samples measure-index) start-sample))
-	 (window) 
-	 (mrr::visualise-downbeat '(2 2 2) tempo-in-bpm fragment-of-ODF 
-				  (- (.aref downbeat-samples measure-index) start-sample))
-	 (close-window))))
-
-;;(verify-ircambeat-downbeat-markers #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/0186 - Dillinger_excerpt.wav" 1)
-;; (verify-ircambeat-downbeat-markers #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/rwc_p_89_excerpt.wav" 3)
+;; (quaero-downbeat "0001 - U2 - The Joshua Tree - With or without you")
 
 ;;;
 ;;; Evaluate the downbeat finder.
@@ -449,32 +326,37 @@
 (defun evaluate-quaero-downbeat (ircam-example)
   "Simply reassigns directories where the sounds are located"
   (evaluate-ircam-downbeat ircam-example
-			   :analysis-directory (merge-pathnames (make-pathname :directory '(:relative "Quaero"))
-								*rhythm-data-directory*)
+			   :analysis-directory *quaero-selection-analysis-directory*
 			   :audio-directory *quaero-audio-directory*))
 
-(defun annotated-anacrusis (ircam-annotation-path ircambeat-marker-path)
+(defun annotated-anacrusis (ircam-annotation-path ircambeat-marker-path beats-per-measure)
   "Returns the beat location of the ircambeat marker nearest the first annotated downbeat"
   (let* ((annotated-downbeat-times (annotated-downbeats ircam-annotation-path))
-	 (ircambeat-markers (read-ircam-marker-times ircambeat-marker-path)))
-;;    (format t "downbeat times ~a~%first ircambeat markers ~a~%" 
-;;	    (.subseq annotated-downbeat-times 0 4) (.subseq ircambeat-markers 0 6))
-    (nearest-beat-to-time (.aref annotated-downbeat-times 0) ircambeat-markers)))
+	 (ircambeat-markers (read-ircam-marker-times ircambeat-marker-path))
+	 ;; TODO this could be expanded to find the number of ircambeat-markers across the whole rhythm.
+	 (nearest-beat (nearest-beat-to-time (.aref annotated-downbeat-times 0) ircambeat-markers)))
+    (format t "nearest-beat ~a = ~a~%" nearest-beat (.aref ircambeat-markers nearest-beat))
+    (format t "downbeat times ~a~%first ircambeat markers ~a~%" 
+	    (.subseq annotated-downbeat-times 0 2) 
+	    (.subseq ircambeat-markers (max (1- nearest-beat) 0) (1+ nearest-beat)))
+    ;; folds pieces with long preceding non-metrical intervals to the nearest beat-phase.
+    (mod nearest-beat beats-per-measure)))
 
-(defun make-quaero-dataset (max every)
-  "Generate a list of entries suitables for testing evaluate-quaero-downbeat with"
+(defun make-quaero-dataset (max every &key (annotations-directory *quaero-annotations-directory*))
+  "Generate a list of entries containing names and anacruses, suitable for testing evaluate-quaero-downbeat with"
   (loop
-     with annotation-files = (cl-fad:list-directory *quaero-annotations-directory*)
-     with analysis-directory = (merge-pathnames (make-pathname :directory '(:relative "Quaero")) *rhythm-data-directory*)
-     with anacrusis
+     with annotation-files = (cl-fad:list-directory annotations-directory)
      for song-index from 0 below max by every
      for annotation-pathname = (nth song-index annotation-files)
      for annotation-name = (pathname-name (pathname-name annotation-pathname))
-     for ircambeat-marker-pathname = (beat-marker-filepath (make-pathname :defaults annotation-name :type "wav")
-							   :analysis-directory analysis-directory)
-     do (format t "~a~%" (pathname-name annotation-pathname))
-     when (cl-fad:file-exists-p ircambeat-marker-pathname)
-     when (< (setf anacrusis (annotated-anacrusis annotation-pathname ircambeat-marker-pathname)) 6)
+     for ircambeat-marker-pathname = (beat-marker-filepath-anno annotation-pathname)
+     for beats-per-measure = 4 ; TODO hardwired for now (should get from annotation).
+     ;; Get the initial upbeat
+     for anacrusis = (annotated-anacrusis annotation-pathname ircambeat-marker-pathname beats-per-measure)
+     do (format t "~a anacrusis ~d~%" annotation-name anacrusis)
+     when (cl-fad:file-exists-p ircambeat-marker-pathname) ; TODO this is rather useless here.
+     ;; if we want to exclude pieces with long preceding non-metrical intervals.
+     ;; when (< anacrusis beats-per-measure) 
      collect (list annotation-name :anacrusis anacrusis)))
 
 (defun remove-bad-anacruses (data-set)
@@ -482,9 +364,10 @@
   well before the first downbeat"
   (remove-if (lambda (x) (> x 6)) data-set :key #'third))
 
-;; (setf small-quaero (make-quaero-dataset 60 3))
-;; (setf half-quaero (make-quaero-dataset 250 2))
-;; (setf bad-examples (evaluate-with-music #'evaluate-quaero-downbeat :music-dataset half-quaero :music-name #'first))
+;; (setf small-quaero (make-quaero-dataset 10 1 :annotations-directory *quaero-selection-annotations-directory*))
+;; (setf half-quaero (make-quaero-dataset 300 2))
+;; (setf select-quaero (make-quaero-dataset 100 1 :annotations-directory *quaero-selection-annotations-directory*))
+;; (setf bad-examples (evaluate-with-music #'evaluate-quaero-downbeat :music-dataset select-quaero :music-name #'first))
 
 (defun save-annotations ()
   "Determines the anacruses for all of the Quaero dataset and writes the anacruses to a file"
@@ -536,5 +419,3 @@
 (plot (make-double-array (.length rwc95-onsets) :initial-element 1.0d0) (.column rwc95-onsets 0) :style "impulses" :aspect-ratio 0.2)
 
 |#
-
-
