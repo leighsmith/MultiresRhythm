@@ -51,12 +51,12 @@
 	       (:file "test-anthems" :depends-on ("national anthems" "anthem-evaluation"))
 	       (:file "NIPS-examples")
 	       (:file "metrical-expectancy")
-	       (:file "expectation")
 	       (:file "ritard" :depends-on ("evaluation"))
 	       (:file "tempo-change")
 	       (:file "test-clapping")
 	       (:file "ircam" :depends-on ("evaluation"))
-	       (:file "ircambeat-eval" :depends-on ("ircam" "beat-eval"))))
+	       (:file "ircambeat-eval" :depends-on ("ircam" "beat-eval"))
+	       (:file "expectation" :depends-on ("ircam"))))
 
 #|
 
