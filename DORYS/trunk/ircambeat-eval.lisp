@@ -133,7 +133,7 @@
 							  :annotation-filter annotation-filter)
      for f-scores = (nlisp::array-to-list (.column scores-per-track 2))
      do
-       (format t "~%for ~a ~a mean scores ~a~%" corpus-name annotation-filter (mean-scores scores-per-track))
+       (format t "~%for ~a ~a mean scores ~a~%" corpus-name annotation-filter (print-prf (mean-scores scores-per-track)))
      collect scores-per-track into scores
      collect f-scores into f-score-comparison
      finally (return (select-from-indices scores (mrr::find-column-maxima (make-narray f-score-comparison))))))
@@ -149,7 +149,7 @@
 							 precision-window
 							 :relative-precision relative-precision
 							 :annotation-filter annotation-filter)))
-    (mean-scores scores-per-track)))
+    (format t "Mean ~a~%" (print-prf (mean-scores scores-per-track)))))
 
 (defun evaluate-precision-window (corpus-name corpus &key annotation-filter)
   "Runs the evaluation on the given corpus over a range of precision widths"
@@ -161,7 +161,9 @@
 							  precision-window
 							  :relative-precision nil
 							  :annotation-filter annotation-filter)
-     collect (cons precision-window (mean-scores scores-per-track)) into scores
+     for mean-scores = (mean-scores scores-per-track)
+     do (format t "Mean ~a~%" (print-prf mean-scores))
+     collect (cons precision-window mean-scores) into scores
      finally (return (make-narray scores))))
 
 (defun evaluate-relative-precision-window (corpus-name corpus &key annotation-filter)
@@ -173,10 +175,13 @@
 							  precision-window
 							  :relative-precision t
 							  :annotation-filter annotation-filter)
-     collect (cons precision-window (mean-scores scores-per-track)) into scores
+     for mean-scores = (mean-scores scores-per-track)
+     do (format t "Accuracy 1 measure for ~a ~a, precision window ~,3f Mean ~a~%" 
+		corpus-name annotation-filter precision-window mean-scores)
+     collect (cons precision-window mean-scores) into scores
      finally (return (make-narray scores))))
 
-;; TODO perhaps we can parameterise evaluate-accuracy-2 and collapse this into evaluate-releative-precision-window
+;; TODO perhaps we can parameterise evaluate-accuracy-2 and collapse this into evaluate-relative-precision-window
 (defun evaluate-relative-accuracy-2 (corpus-name corpus)
   "Runs the evaluation on the given corpus over a range of relative precision widths"
   (loop
@@ -185,7 +190,10 @@
 						 corpus 
 						 precision-window
 						 :relative-precision t)
-     collect (cons precision-window (mean-scores scores-per-track)) into scores
+     for mean-scores = (mean-scores scores-per-track)
+     do (format t "Accuracy 2 measure for ~a precision window ~,3f Mean ~a~%"
+		corpus-name precision-window mean-scores)
+     collect (cons precision-window mean-scores) into scores
      finally (return (make-narray scores))))
 
 (defun random-select (list maximum-selection)
@@ -316,10 +324,13 @@
 ;; (plot-tempo-evaluation "RWC" *rwc-annotations-directory*)
 
 (defun evaluate-quaero-selection ()
-;; (quaero-subset (random-select (cl-fad:list-directory *quaero-annotations-directory*) 100))
-;; (plot-ircambeat-evaluation "Quaero" scores "% of beat")
   (plot-evaluation "Quaero_Selection" *quaero-selection-annotations-directory*)
   (plot-low-scores "Quaero_Selection" *quaero-selection-annotations-directory*))
+
+;; (evaluate-quaero-selection)
+
+;; (quaero-subset (random-select (cl-fad:list-directory *quaero-annotations-directory*) 100))
+;; (plot-ircambeat-evaluation "Quaero" scores "% of beat")
 
 (defun examine-file (name &key (precision 0.100d0) (corpus "RWC"))
   (let* ((annotation-path (make-pathname :defaults *rwc-annotations-directory* :name name :type "BEAT.xml"))
