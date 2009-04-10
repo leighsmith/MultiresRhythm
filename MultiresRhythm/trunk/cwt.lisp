@@ -276,8 +276,8 @@
 	   ;; Create the .subarray trim description.
 	   (list matrix-or-vector (list to-pad (1- padded-length)))))))
 
-(defun end-pad (the-signal padded-length)
-  "Pad the end of the-signal with silence. Handles matrices as well
+(defun end-pad (the-signal padded-length &key (value 0.0d0))
+  "Pad the end of the-signal with value, default to silence. Handles matrices as well
    as signal vectors, in the former case, assuming the columns
    are to be padded to the given length. Returns multiple values
    of the padded signal, and the region to trim (on time-axis)."
@@ -290,7 +290,7 @@
 	(values
 	 ;; Create the zero padded signal.
 	 (let* ((end-region (if (eq matrix-or-vector t) (list signal-rows to-pad) to-pad)))
-	   (.concatenate the-signal (make-double-array end-region)))
+	   (.concatenate the-signal (make-double-array end-region :initial-element value)))
 	   ;; Create the .subarray trim description.
 	   (list matrix-or-vector (list 0 (1- signal-length)))))))
 
