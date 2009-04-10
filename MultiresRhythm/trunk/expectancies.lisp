@@ -34,6 +34,9 @@
 (defgeneric absolute-duration-confidence (expectation rhythm)
   (:documentation "Scales the confidence of the expectation by the absolute duration of the rhythm"))
 
+(defgeneric offset-expectation (expectation by-samples)
+  (:documentation "Offsets the expected time by a given amount in samples, can be negative"))
+
 ;;; Implementation
 
 (defmethod print-object ((expectation-to-print expectation) stream)
@@ -75,6 +78,13 @@
 	 (loop 
 	    for expect in (second (first expectations))
 	    collect (absolute-duration-confidence expect rhythm-expected)))))
+
+(defmethod offset-expectation ((expectation-to-modify expectation) by-samples)
+  (incf (expected-time expectation-to-modify) by-samples)
+  expectation-to-modify) ; return the modified expectation.
+
+(defmethod offset-expectation ((expectations list) by-samples)
+  (mapcar (lambda (x) (offset-expectation x by-samples)) expectations))
 
 (defun pad-minima (minima number-of-scales)
   "Inserts the zero index and the last scale index either end of the minima as boundaries
@@ -570,14 +580,17 @@
 	  (incf (.aref projection-confidences (floor (expected-time expectation))) (confidence expectation)))
 	projection-confidences)))
   
-(defmethod plot-expectations+rhythm ((rhythm-to-expect rhythm) (all-expectations list)
-				     &key (title (format nil "Accumulated expectations of ~a" (name rhythm-to-expect))))
+(defmethod plot-expectations+rhythm ((rhythm-to-expect rhythm) (all-expectations list) &key 
+				     (rhythm-starts-at 0)
+				     (title (format nil "Accumulated expectations of ~a" (name rhythm-to-expect))))
   "Plot the expectation times, confidences and precision and the rhythm."
   (let* ((expectancy-confidences (accumulated-confidence-of-expectations all-expectations))
 	 (expect-times (.find expectancy-confidences))
 	 (expect-confidences (.arefs expectancy-confidences expect-times)))
     (plot (list (time-signal rhythm-to-expect) expect-confidences expect-confidences)
-	  (list (.iseq 0 (1- (duration-in-samples rhythm-to-expect))) expect-times expect-times)
+	  (list (.iseq rhythm-starts-at (+ rhythm-starts-at (1- (duration-in-samples rhythm-to-expect)))) 
+		expect-times 
+		expect-times)
 	  :styles '("impulses linetype 3" "points linetype 1 pointtype 10" "impulses linetype 1")
 	  :legends (list "original rhythm" "accumulated expectations" "")
 	  :xlabel "Time"
