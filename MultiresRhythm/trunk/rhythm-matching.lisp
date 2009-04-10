@@ -178,7 +178,7 @@
     (cross-correlation-match normalised-odf metric-accent-gaussian :highest-correlations maximum-matches)))
 
 (defun visualise-downbeat (meter tempo-bpm onset-detection-rhythm downbeat-sample measures)
-  "Plots the metrical  against the onset detection rhythm at the selected downbeat"
+  "Plots the metrical profile against the onset detection rhythm at the selected downbeat"
   (let* ((metric-accent-gaussian (.normalise (gaussian-rhythm-envelope
 					      (metrically-scaled-rhythm meter measures tempo-bpm 
 					       :sample-rate (sample-rate onset-detection-rhythm)
@@ -189,7 +189,7 @@
 
 (defun visualise-downbeat-index (meter tempo-bpm onset-detection-rhythm downbeat-index)
   (visualise-downbeat meter tempo-bpm onset-detection-rhythm
-		      (round (* (/ 60.0 tempo-bpm) (sample-rate onset-detection-rhythm) downbeat-index))))
+		      (round (* (/ 60.0 tempo-bpm) (sample-rate onset-detection-rhythm) downbeat-index)) 1))
 
 (defun test-correlation-matching ()
   "Visually verifies the cross-correlation finds the shift to align the two rhythms"
