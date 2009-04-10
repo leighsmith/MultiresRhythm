@@ -53,4 +53,5 @@
 	   :save-rhythm-and-claps
 	   :save-rhythm-mix
 	   :sample-rate
+	   :time-signal
 	   :last-expectations))
