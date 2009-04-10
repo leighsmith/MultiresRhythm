@@ -372,7 +372,10 @@ start-onset, these measures are in samples"
 	  (setf (.arefs beat-count beats-matching-condition) 1d0)))
     beat-count))
 
-(defparameter *plots-per-rhythm* 10)
+(defparameter *plots-per-rhythm* 2)
+
+;; Resolution of the beat position estimation states in subdivisions of each beat (4 = semiquavers).
+(defparameter *subdivisions-of-beat* 16)
 
 ;;; We have a singularly perceptually longer interval (i.e. markedly longer) than other
 ;;; events in the sequence, in which case the onset starting the first relatively long
@@ -383,31 +386,36 @@ start-onset, these measures are in samples"
 					 beats-per-measure tempo-in-bpm bar-duration beat-duration)
   "Returns the probabilities of the downbeat at each beat location. Estimates formed by
 when the gap exceeds the beat period. bar-duration and beat-duration in samples"
-  (let ((time-limited-iois (rhythm-iois-samples rhythm-to-analyse))
-	(downbeat-probabilities (make-double-array beats-per-measure))) ; initialised to 0.0
-    ;; (format t "time limited iois ~a, beat-duration ~a~%" time-limited-iois beat-duration)
-    (if (plusp (.length time-limited-iois))
-	(let* ((perceptual-categories (rhythm-categories (.concatenate (make-narray (list beat-duration))
-								       time-limited-iois) 
-							 (sample-rate rhythm-to-analyse)))
-	       (categorised-beat (.aref perceptual-categories 0))
-	       (categorised-iois (.subseq perceptual-categories 1))
-	       ;; Convert from IOIs to beats
-	       (exceeding-beat-count (count-occurrence-on-beats rhythm-to-analyse 
-								(.>= categorised-iois categorised-beat)
-								"equal or exceeding beat duration"
-								beats-per-measure beat-duration)))
-	  ;; (format t "categorised-iois ~a, categorised beat ~a~%" categorised-iois categorised-beat)
-	  (format t "categorised-iois ~a~%" categorised-iois)
-	  (diag-plot 'categorised-iois
-	    (if (plusp (decf *plots-per-rhythm*))
-		(plot-rhythm rhythm-to-analyse :title (format nil " ~d" *plots-per-rhythm*))))
-	  ;; TODO Should Find the earliest maximum IOI
-	  (if (plusp (.sum exceeding-beat-count))
-	      (setf downbeat-probabilities (./ exceeding-beat-count (.sum exceeding-beat-count))))))
-    ;; By returning P(downbeat) = 0 for all downbeat locations we indicate the lack of
-    ;; decision as all are equally likely and none contribute to the final decision.
-    downbeat-probabilities))
+    (loop
+       with semiquavers-per-measure = (* beats-per-measure *subdivisions-of-beat*)
+       with downbeat-probabilities = (make-double-array semiquavers-per-measure) ; initialised to 0.0
+       with rhythm-length = (duration-in-samples rhythm-to-analyse)
+       with region-length = (round (* beat-duration 1.5)) ; look ahead 1.5 beats
+       with distance-weighting = (.rseq 0 1.0d0 region-length)
+       for downbeat-index from 0 below semiquavers-per-measure
+       for downbeat-location = (round (* downbeat-index (/ bar-duration semiquavers-per-measure)))
+       for gap-end = (min (+ downbeat-location region-length) rhythm-length)
+       for silence-evaluation-region = (.subseq (time-signal rhythm-to-analyse) downbeat-location gap-end) 
+       for distance-weighted-region = (.* silence-evaluation-region distance-weighting)
+       do
+	 (setf (.aref downbeat-probabilities downbeat-index)
+	       (- 1.0d0 (/ (- (.max distance-weighted-region) (mean distance-weighted-region))
+			   (.max distance-weighted-region))))
+	 ;;(format t "Silence probability (~a ~a) = ~,3f~%" downbeat-location gap-end 
+	 ;;	 (.aref downbeat-probabilities downbeat-index))
+	 ;; (if (plusp (decf *plots-per-rhythm*))
+	 ;;     (diag-plot 'gap-evaluation 
+	 ;;       (plot (.* silence-evaluation-region distance-weighting) nil :aspect-ratio 0.2)))
+       ;; By returning P(downbeat) = 0 for all downbeat locations we indicate the lack of
+       ;; decision as all are equally likely and none contribute to the final decision.
+       finally (diag-plot 'gap-evaluation
+		 (if (plusp (decf *plots-per-rhythm*))
+		     (plot (list (time-signal rhythm-to-analyse) downbeat-probabilities)
+			   (list (.iseq 0 (1- rhythm-length))
+				 (.* (.iseq 0 (1- semiquavers-per-measure)) (round (/ rhythm-length semiquavers-per-measure))))
+			   :aspect-ratio 0.2
+			   :styles '("lines" "linespoints"))))
+       finally (return downbeat-probabilities)))
 
 ;;; Check when we have intervals which are non-unique, i.e other intervals of similar length reoccur
 ;;; in the initial sequence.  
@@ -496,11 +504,14 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
     (multiple-value-bind (shift-positions shift-scores) 
 	(match-ODF-meter meter tempo-in-bpm ODF-fragment metrical-profile-length :maximum-matches *max-amp-matches*) 
       	     ;; Convert shift positions into downbeats.
-      (let* ((downbeats (.mod (./ shift-positions (coerce beat-duration 'double-float)) beats-per-measure))
+      (let* ((scores (make-double-array (* beats-per-measure *subdivisions-of-beat*)))
+	     (downbeats (.mod (./ shift-positions (coerce beat-duration 'double-float)) beats-per-measure))
+	     (semiquaver-grid (.floor (.* downbeats *subdivisions-of-beat*)))
 	     ;; balance by the relative score values into probabilities.
-	     (scores-as-probabilities (if (zerop (.sum maximum-scores))
-					  maximum-scores
-					  (./ maximum-scores (.sum maximum-scores)))))
+	     (scores-as-probabilities (if (zerop (.sum shift-scores))
+					  shift-scores
+					  (./ shift-scores (.sum shift-scores)))))
+	(setf (.arefs scores semiquaver-grid) scores-as-probabilities)
 	;; (format t "===============================================~%")
 	(format t "shift positions ~a~%downbeats ~a~%downbeat probabilities ~,5f~%"
 	 	shift-positions downbeats scores-as-probabilities)
@@ -509,7 +520,7 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 	(diag-plot 'selected-downbeat
 	    (if (plusp (decf *plots-per-rhythm*))
 		(visualise-downbeat-index meter tempo-in-bpm ODF-fragment (argmax scores-as-probabilities))))
-	scores-as-probabilities))))
+	scores))))
 
 ;; TODO Perhaps add these: meter beats-per-measure tempo-in-bpm bar-duration beat-duration
 ;; as accessors to rhythm? or as a metrical-structure or just meter
@@ -528,7 +539,6 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 ;; 			     metrical-profile-length)
 ;;     (close-window)))
 
-
 (defun observe-downbeat-of (rhythm tempo-in-bpm meter beats-per-measure bar-search downbeat-estimator)
   "Returns an estimate of downbeat location across the entire ODF rhythm using an estimator"
   ;; bar-search = Number of bars to search over.
@@ -540,7 +550,7 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
      ;; Reduce by one measure to ensure the last search region is a full two bars,
      ;; avoiding a bias in the amplitude profile towards starting beats.
      with number-of-measures = (1- (* (floor (duration-in-samples rhythm) bar-duration))) ; floor avoids partial bars
-     with downbeat-estimates = (make-double-array (list beats-per-measure number-of-measures))
+     with downbeat-estimates = (make-double-array (list (* beats-per-measure *subdivisions-of-beat*) number-of-measures))
      initially (format t "~%~a~%rhythm duration ~a samples~%beat duration in samples ~a, meter ~a number of measures ~a~%"
 		       downbeat-estimator (duration-in-samples rhythm) beat-duration meter number-of-measures)
      for measure-index from 0 below number-of-measures
@@ -629,13 +639,13 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 						       #'gap-accent-downbeat-evidence))
          ;; (combined-observations gap-accent-observations))
 	 ;; (combined-observations duration-maxima-observations))
-	 (combined-observations amplitude-observations))
+	 ;; (combined-observations amplitude-observations))
 	 ;; Use the union of observations, normalised by dividing by the number of observations.
 	 ;; (combined-observations (./ (.+ gap-accent-observations duration-maxima-observations) 2.0d0)))
 	 ;; (combined-observations (./ (.+ gap-accent-observations duration-maxima-observations amplitude-observations) 3.0d0)))
 	 ;; combine the observations into a single state vs. time matrix.
-	 ;;(combined-observations (.transpose (.concatenate (.transpose amplitude-observations)
-	;;						  (.transpose gap-accent-observations)))))
+	 (combined-observations (.transpose (.concatenate (.transpose amplitude-observations)
+							  (.transpose gap-accent-observations)))))
     ;; (assess-evidence duration-maxima-observations "Duration Maxima observations" rhythm)
     ;; (assess-evidence gap-accent-observations "Gap Accent" rhythm)))
     ;; (assess-evidence amplitude-observations "Amplitude observations" rhythm)
