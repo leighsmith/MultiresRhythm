@@ -33,30 +33,6 @@
 ;;; The location of the audio files that were annotated.
 (defparameter *quaero-audio-directory* #P"/Volumes/Quaerodb/annotation/wav-m22k/")
 
-;;; Holds the ground truth for the anacrusis (number of beats to shift to find the
-;;; downbeat) or each example.
-(defparameter *ircam-downbeats*
-  '(("rwc_p_81_excerpt" :anacrusis 1)
-    ("rwc_p_82_excerpt" :anacrusis 0) ; There is an anacrusis which IRCAM beat skips
-    ("rwc_p_83_excerpt" :anacrusis 0)
-    ("rwc_p_84_excerpt" :anacrusis 0)
-;    ("rwc_p_85_excerpt" :anacrusis 0) ; This isn't correct, off by a quaver
-    ("rwc_p_86_excerpt" :anacrusis 0)
-    ("rwc_p_87_excerpt" :anacrusis 0)
-    ("rwc_p_88_excerpt" :anacrusis 3)
-    ("rwc_p_89_excerpt" :anacrusis 3)
-    ("rwc_p_90_excerpt" :anacrusis 1)
-    ("rwc_p_91_excerpt" :anacrusis 0)
-    ("rwc_p_92_excerpt" :anacrusis 2)
-    ("rwc_p_93_excerpt" :anacrusis 0)
-    ("rwc_p_94_excerpt" :anacrusis 0)
-;    ("rwc_p_95_excerpt" :anacrusis 2) ;This is hard to identify, it seems to change.
-    ("rwc_p_96_excerpt" :anacrusis 0)
-    ("rwc_p_97_excerpt" :anacrusis 0)
-    ("rwc_p_98_excerpt" :anacrusis 1)
-    ("rwc_p_99_excerpt" :anacrusis 1)
-    ("rwc_p_100_excerpt" :anacrusis 3)))
-
 (defun rhythm-from-ircam-odf (&rest params)
   "IRCAMbeat ODF has 100mS silence appended onto the audio file before calculating the
   ODF, which is then compensated for when calculating the markers. We remove it."
@@ -263,39 +239,38 @@
     (format t "From ircambeat markers (search from first):~%~,3a~%" (.subseq beat-markers 0 5))
     nearest))
 
-(defun ircam-find-downbeat (odf-filepath bpm-filepath &key (start-from 0.0d0) (sample-rate 172.27d0))
+(defun ircam-find-downbeat (odf-filepath beat-markers-filepath &key (sample-rate 172.27d0))
   "Given the files, compute the downbeat"
   (let* ((rhythm (rhythm-from-ircam-odf odf-filepath :sample-rate sample-rate :weighted nil))
-	 (bpm (ircambeat-computed-bpm bpm-filepath))
+	 (beat-markers (read-ircam-marker-times beat-markers-filepath))
+	 (start-from (.aref beat-markers 0))
 	 (odf-subset (mrr::subset-of-rhythm rhythm (list (round (* sample-rate start-from)) t))))
     (format t "Starting downbeat finding from ~,3f seconds~%" start-from)
     ;; TODO beats-per-measure is derived from time signature. hardwired to 4/4 for now.
-    (mrr::downbeat-estimation-fixed odf-subset bpm '(2 2 2) 4))) ; Test the null hypothesis
+    ;; (mrr::downbeat-estimation-fixed odf-subset bpm '(2 2 2) 4))) ; Test the null hypothesis
     ;; (mrr::downbeat-estimation-random odf-subset bpm '(2 2 2) 4))) ; Test the null hypothesis
     ;; (mrr::downbeat-estimation-phase odf-subset bpm '(2 2 2) 4)))
     ;; (mrr::downbeat-estimation-duration odf-subset bpm '(2 2 2) 4)))
     ;; (mrr::downbeat-estimation-amplitude odf-subset bpm '(2 2 2) 4)))
-    ;; (mrr::downbeat-estimation odf-subset bpm '(2 2 2) 4)))
+    (mrr::downbeat-estimation odf-subset beat-markers '(2 2 2) 4)))
 
-;;; (ircam-find-downbeat #P"/Users/lsmith/Research/Data/IRCAM-Beat/Quaero_excerpts/Analysis/0186 - Dillinger_excerpt.odf" #P"/Users/lsmith/Research/Data/IRCAM-Beat/Quaero_excerpts/Analysis/0186 - Dillinger_excerpt.wav.bpm.xml")
+;;; (ircam-find-downbeat #P"/Users/lsmith/Research/Data/IRCAM-Beat/Quaero_excerpts/Analysis/0186 - Dillinger_excerpt.odf" #P"/Users/lsmith/Research/Data/IRCAM-Beat/Quaero_excerpts/Analysis/0186 - Dillinger_excerpt.wav.markers.xml")
 
 (defun ircambeat-marker-of-downbeat (original-sound-path &key (analysis-directory *rhythm-data-directory*))
   "Given the original sound file, determine the downbeat, and find the marker produced by
   IRCAMbeat that matches it in time"
-  (let* ((ircambeat-markers (read-ircam-marker-times (beat-marker-filepath original-sound-path 
-						      :analysis-directory analysis-directory)))
+  (let* ((beat-markers-file (beat-marker-filepath original-sound-path :analysis-directory analysis-directory))
 	 (odf-file (odf-filepath original-sound-path :analysis-directory analysis-directory))
-	 (bpm-file (bpm-filepath original-sound-path :analysis-directory analysis-directory))
-	 (bpm (.aref (mrr::read-ircambeat-bpm bpm-file) 0))
-	 (first-ircambeat-time (.aref ircambeat-markers 0))
+;;	 (bpm-file (bpm-filepath original-sound-path :analysis-directory analysis-directory))
+;;	 (bpm (.aref (mrr::read-ircambeat-bpm bpm-file) 0))
 	 ;; TODO Start the odf based on the first marker. This needs replacing
 	 ;; with starting from the first identified onset.
-	 (found-downbeat (ircam-find-downbeat odf-file bpm-file :start-from first-ircambeat-time))
+	 (found-downbeat (ircam-find-downbeat odf-file beat-markers-file)))
 	 ;; Since the downbeat is determined from an ODF that begins on the first IRCAMbeat
 	 ;; marker, we assume the beat matches.
-	 (nearest-marker (nearest-beat-to-downbeat ircambeat-markers found-downbeat bpm)))
-    (format t "Found downbeat shifted by ~d beats, nearest ircambeat marker ~d, starts at ~,3f seconds~%" 
-	    found-downbeat nearest-marker (.aref ircambeat-markers nearest-marker))
+;;;	 (nearest-marker (nearest-beat-to-downbeat ircambeat-markers found-downbeat bpm)))
+;;;    (format t "Found downbeat shifted by ~d beats, nearest ircambeat marker ~d, starts at ~,3f seconds~%" 
+;;;	    found-downbeat nearest-marker (.aref ircambeat-markers nearest-marker))
     found-downbeat))
 
 (defun quaero-downbeat (filename)
@@ -308,6 +283,7 @@
    :analysis-directory *quaero-selection-analysis-directory*))
 
 ;; (quaero-downbeat "0001 - U2 - The Joshua Tree - With or without you")
+;; (quaero-downbeat "0008 - Pink Floyd - Dark Side of the Moon - 08 Any color you like")
 
 ;;;
 ;;; Evaluate the downbeat finder.
