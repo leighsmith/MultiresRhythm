@@ -274,6 +274,7 @@ Phase is assumed to be -pi to pi."
     (./ local-energy local-magnitude)))
 |#
 
+;; TODO should be named compensated-phase-congruency
 (defmethod phase-congruency ((scaleogram-to-analyse scaleogram))
   "Calculate a normalised measure of local energy at each time point,
 given magnitude and phase components of the wavelet coefficients. 
