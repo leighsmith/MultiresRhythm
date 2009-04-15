@@ -492,21 +492,24 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
   ;; metrical profile length in bars
   (let ((tempo-in-bpm (mean (./ 60.0d0 (./ beat-durations-in-measure (sample-rate ODF-fragment)))))
 	(metrical-profile-length (1- (floor (duration-in-samples ODF-fragment) bar-duration))))
-    (format t "tempo in bpm ~a~%" tempo-in-bpm)
     (multiple-value-bind (shift-positions shift-scores) 
 	(match-ODF-meter meter tempo-in-bpm ODF-fragment metrical-profile-length :maximum-matches *max-amp-matches*) 
+      ;; TODO I'm not sure removing these is the best option, we should probably fold them.
+      (let* ((prune-beyond-1-measure (.find (.>= shift-positions bar-duration)))
+	     (shift-positions-in-measure (remove-arefs shift-positions prune-beyond-1-measure))
+	     (shift-scores-in-measure (remove-arefs shift-scores prune-beyond-1-measure))
+	     (scores (make-double-array (* beats-per-measure *subdivisions-of-beat*)))
       	     ;; Convert shift positions into downbeats.
-      (let* ((scores (make-double-array (* beats-per-measure *subdivisions-of-beat*)))
-	     (downbeats (ratio-of-times beat-durations-in-measure shift-positions))
+	     (downbeats (ratio-of-times beat-durations-in-measure shift-positions-in-measure))
 	     (semiquaver-grid (.floor (.* downbeats *subdivisions-of-beat*)))
 	     ;; balance by the relative score values into probabilities.
-	     (scores-as-probabilities (if (zerop (.sum shift-scores))
-					  shift-scores
-					  (./ shift-scores (.sum shift-scores)))))
+	     (scores-as-probabilities (if (zerop (.sum shift-scores-in-measure))
+					  shift-scores-in-measure
+					  (./ shift-scores-in-measure (.sum shift-scores-in-measure)))))
 	(setf (.arefs scores semiquaver-grid) scores-as-probabilities)
 	;; (format t "===============================================~%")
 	(format t "shift positions ~a~%downbeats ~a~%downbeat probabilities ~,5f~%"
-	 	shift-positions downbeats scores-as-probabilities)
+	 	shift-positions-in-measure downbeats scores-as-probabilities)
 	;; (format t "Downbeat expected value ~a vs. combined rounded argmax ~a~%"
 	;; 	(.sum (.* (.iseq 0 (1- beats-per-measure)) scores-as-probabilities)) (argmax scores-as-probabilities))
 	(diag-plot 'selected-downbeat
@@ -551,19 +554,19 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 					      (* beats-per-measure (1+ measure-index)))
      for bar-duration = (.sum beat-durations-in-measure) ; in samples
      and start-sample = 0 then (+ start-sample bar-duration)
+     ;; collect probabilities of the downbeat occuring at each measure location.
      for downbeat-probabilities =  
        (let* ((search-duration (* bar-search bar-duration)) ; in samples TODO not really accurate.
 	      (search-region (list start-sample (1- (min (duration-in-samples rhythm) (+ start-sample search-duration)))))
 	      (fragment-of-ODF (subset-of-rhythm rhythm search-region)))
-	 ;; collect probabilities of the downbeat occuring at each measure location.
 	 (format t "beat duration in samples ~a = ~a~%" beat-durations-in-measure bar-duration)
-	 (format t "search region ~a search duration ~a~%" search-region search-duration)
+	 ;; (format t "search region ~a search duration ~a~%" search-region search-duration)
 	 ;; (format t "observed at sample ~d~%~%"
 	 ;;	       (+ start-sample (* (argmax downbeat-probabilities) beat-duration)))
 	 (funcall downbeat-estimator fragment-of-ODF meter beats-per-measure
 		  bar-duration beat-durations-in-measure))
-     do
-       (setf (.column downbeat-estimates measure-index) downbeat-probabilities)  ; collect likelihood in downbeat-estimates
+     do					; collect likelihood in downbeat-estimates
+       (setf (.column downbeat-estimates measure-index) downbeat-probabilities) 
      finally (return downbeat-estimates)))
 
 (defun amass-evidence (estimates)
@@ -613,7 +616,7 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
     (format t "Decoding (~d) and maximum accumulated evidence (~d) ~s~%" 
 	    viterbi-estimation argmax-estimation
 	    (if (= viterbi-estimation argmax-estimation) "match" "don't match"))
-    argmax-estimation))
+    (round argmax-estimation *subdivisions-of-beat*)))
 
 (defun downbeat-estimation (rhythm beat-times meter beats-per-measure)
   "Use competing features to form an estimation of downbeat. Returns a single number mod beats-per-measure"
@@ -638,12 +641,13 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
          ;; (combined-observations gap-accent-observations))
 	 ;; (combined-observations duration-maxima-observations))
 	 ;; (combined-observations amplitude-observations))
+	 ;; Combine the observations into a single state vs. time matrix.
 	 ;; Use the union of observations, normalised by dividing by the number of observations.
 	 ;; (combined-observations (./ (.+ gap-accent-observations duration-maxima-observations) 2.0d0)))
 	 ;; (combined-observations (./ (.+ gap-accent-observations duration-maxima-observations amplitude-observations) 3.0d0)))
-	 ;; combine the observations into a single state vs. time matrix.
-	 (combined-observations (.transpose (.concatenate (.transpose amplitude-observations)
-	 						  (.transpose gap-accent-observations)))))
+	 (combined-observations (./ (.+ gap-accent-observations amplitude-observations) 2.0d0)))
+	 ;; (combined-observations (.transpose (.concatenate (.transpose amplitude-observations)
+	 ;;						  (.transpose gap-accent-observations)))))
     ;; (assess-evidence duration-maxima-observations "Duration Maxima observations" rhythm)
     ;; (assess-evidence gap-accent-observations "Gap Accent" rhythm)))
     ;; (assess-evidence amplitude-observations "Amplitude observations" rhythm)
