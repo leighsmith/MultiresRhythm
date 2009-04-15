@@ -465,35 +465,24 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 	  (plot-rhythm ODF-fragment)))
     downbeat-probabilities))
 
-#|
-(defmethod amplitude-profile-downbeat-evidence ((ODF-fragment rhythm)
-						meter beats-per-measure tempo-in-bpm
-						bar-duration beat-duration)
-  "Estimate the downbeat of the fragment of the onset detection function. Returns a vector
-   of length beats-in-measure with the probabilty of the downbeat at each beat indicated."
-  ;; metrical profile length in bars
-  (let ((metrical-profile-length (1- (floor (duration-in-samples ODF-fragment) bar-duration))))
-    (multiple-value-bind (shift-options shift-scores) 
-	(match-ODF-meter meter tempo-in-bpm ODF-fragment metrical-profile-length :maximum-matches *max-amp-matches*) 
-      (let* ((downbeats (.mod (./ shift-options (coerce beat-duration 'double-float)) beats-per-measure))
-	     ;; Convert shift positions into downbeats. Rounds values unevenly -0.25 < x < 0.75
-	     ;; since the shift measure is too fine to round up a shift of 0.5 to the next beat.
-	     (maximum-scores (maximum-state-values (.mod (.floor (.+ downbeats 0.25d0)) beats-per-measure) 
-						   shift-scores beats-per-measure))
-	     ;; balance by the relative score values into probabilities.
-	     (scores-as-probabilities (if (zerop (.sum maximum-scores))
-					  maximum-scores
-					  (./ maximum-scores (.sum maximum-scores)))))
-	;; (format t "===============================================~%")
-	;; (format t "shift options ~a~%downbeats ~a~%downbeat probabilities ~,5f~%"
-	;; 	shift-options downbeats scores-as-probabilities)
-	;; (format t "Downbeat expected value ~a vs. combined rounded argmax ~a~%"
-	;; 	(.sum (.* (.iseq 0 (1- beats-per-measure)) scores-as-probabilities)) (argmax scores-as-probabilities))
-	(diag-plot 'selected-downbeat
-	    (if (plusp (decf *plots-per-rhythm*))
-		(visualise-downbeat-index meter tempo-in-bpm ODF-fragment (argmax scores-as-probabilities))))
-	scores-as-probabilities))))
-|#
+(defun ratio-of-times (durations times)
+  "Returns the closest relative location within each beat (ordered list) of each time (an unordered list)"
+  (format t "durations ~a times ~a~%" durations times)
+  (loop
+     ;; Convert the durations to onsets, dropping the last onset, matching the number of durations.
+     with onsets = (make-narray (butlast (iois-to-onsets (nlisp::array-to-list durations))))
+     for time across (val times)
+     for beat-ratio = (loop
+			 for onset across (val onsets)
+			 for onset-index from 0
+			 for duration across (val durations)
+			 for difference = (- time onset)
+			 ;; since the onsets are ordered, we can exit the loop on first +ve difference.
+			 when (and (plusp difference) (<= difference duration))
+			 ;; do (format t "time ~a onset ~a duration ~a~%" time onset duration)
+			 return (coerce (+ onset-index (/ difference duration)) 'double-float))
+     collect beat-ratio into beat-ratios
+     finally (return (make-narray beat-ratios))))
 
 (defmethod amplitude-profile-downbeat-evidence ((ODF-fragment rhythm)
 						meter beats-per-measure 
@@ -501,13 +490,14 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
   "Estimate the downbeat of the fragment of the onset detection function. Returns a vector
    of length beats-in-measure with the probabilty of the downbeat at each beat indicated."
   ;; metrical profile length in bars
-  (let ((tempo-in-bpm (.mean (./ 60.0d0 beat-durations-in-measure (sample-rate ODF-fragment))))
+  (let ((tempo-in-bpm (mean (./ 60.0d0 (./ beat-durations-in-measure (sample-rate ODF-fragment)))))
 	(metrical-profile-length (1- (floor (duration-in-samples ODF-fragment) bar-duration))))
+    (format t "tempo in bpm ~a~%" tempo-in-bpm)
     (multiple-value-bind (shift-positions shift-scores) 
 	(match-ODF-meter meter tempo-in-bpm ODF-fragment metrical-profile-length :maximum-matches *max-amp-matches*) 
       	     ;; Convert shift positions into downbeats.
       (let* ((scores (make-double-array (* beats-per-measure *subdivisions-of-beat*)))
-	     (downbeats (.mod (./ shift-positions (coerce beat-duration 'double-float)) beats-per-measure))
+	     (downbeats (ratio-of-times beat-durations-in-measure shift-positions))
 	     (semiquaver-grid (.floor (.* downbeats *subdivisions-of-beat*)))
 	     ;; balance by the relative score values into probabilities.
 	     (scores-as-probabilities (if (zerop (.sum shift-scores))
@@ -627,12 +617,12 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 
 (defun downbeat-estimation (rhythm beat-times meter beats-per-measure)
   "Use competing features to form an estimation of downbeat. Returns a single number mod beats-per-measure"
-  (let* (;; (amplitude-observations (observe-downbeat-of rhythm 
-	 ;; 					      beat-times
-	 ;; 					      meter
-	 ;; 					      beats-per-measure
-	 ;; 					      *bars-of-amplitude-profile*
-	 ;; 					      #'amplitude-profile-downbeat-evidence)) 
+  (let* ((amplitude-observations (observe-downbeat-of rhythm 
+	  					      beat-times
+	  					      meter
+	  					      beats-per-measure
+	  					      *bars-of-amplitude-profile*
+	  					      #'amplitude-profile-downbeat-evidence)) 
 	 ;; (duration-maxima-observations (observe-downbeat-of rhythm
 	 ;; 						    beat-times
 	 ;; 						    meter
@@ -645,15 +635,15 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 						       beats-per-measure
 						       1
 						       #'gap-accent-downbeat-evidence))
-         (combined-observations gap-accent-observations))
+         ;; (combined-observations gap-accent-observations))
 	 ;; (combined-observations duration-maxima-observations))
 	 ;; (combined-observations amplitude-observations))
 	 ;; Use the union of observations, normalised by dividing by the number of observations.
 	 ;; (combined-observations (./ (.+ gap-accent-observations duration-maxima-observations) 2.0d0)))
 	 ;; (combined-observations (./ (.+ gap-accent-observations duration-maxima-observations amplitude-observations) 3.0d0)))
 	 ;; combine the observations into a single state vs. time matrix.
-	 ;; (combined-observations (.transpose (.concatenate (.transpose amplitude-observations)
-	 ;;						  (.transpose gap-accent-observations)))))
+	 (combined-observations (.transpose (.concatenate (.transpose amplitude-observations)
+	 						  (.transpose gap-accent-observations)))))
     ;; (assess-evidence duration-maxima-observations "Duration Maxima observations" rhythm)
     ;; (assess-evidence gap-accent-observations "Gap Accent" rhythm)))
     ;; (assess-evidence amplitude-observations "Amplitude observations" rhythm)
