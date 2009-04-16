@@ -327,10 +327,13 @@ start-onset, these measures are in samples"
 ;; Number of bars used in the matching of the amplitude profile.
 (defparameter *bars-of-amplitude-profile* 2)
 
+;; Number of bars used in the gap accent evaluation of the onset detection function.
+(defparameter *bars-of-gap-profile* 2)
+
 (defparameter *plots-per-rhythm* 2)
 
 ;; Resolution of the beat position estimation states in subdivisions of each beat (4 = semiquavers).
-(defparameter *subdivisions-of-beat* 16)
+(defparameter *subdivisions-of-beat* 4)
 
 ;;; Since the likelihoods are ordered, simply comparing the first and second likelihoods is
 ;;; sufficient to generalise a measure of likelihood into binary classes (low/high).
@@ -381,41 +384,45 @@ start-onset, these measures are in samples"
 ;;; events in the sequence, in which case the onset starting the first relatively long
 ;;; (perceptually significant) interval longer than the beat period is likely to be the downbeat event.
 ;;; TODO We could check if there are several IOIs that are the same as earlier initial intervals.
-;;; TODO perhaps all we need to have passed in is the rhythm, beat-duration and bar-duration in samples?
+;;; TODO perhaps all we need to have passed in is the rhythm, beat-durations-in-measure in samples?
 (defmethod gap-accent-downbeat-evidence ((rhythm-to-analyse rhythm) meter
 					 beats-per-measure bar-duration beat-durations-in-measure)
   "Returns the probabilities of the downbeat at each beat location. Estimates formed by
 when the gap exceeds the beat period. bar-duration and beat-duration in samples"
     (loop
-       with semiquavers-per-measure = (* beats-per-measure *subdivisions-of-beat*)
-       with downbeat-probabilities = (make-double-array semiquavers-per-measure) ; initialised to 0.0
+       with subbeats-per-measure = (* beats-per-measure *subdivisions-of-beat*)
+       with downbeat-probabilities = (make-double-array subbeats-per-measure) ; initialised to 0.0
        with rhythm-length = (duration-in-samples rhythm-to-analyse)
-       for downbeat-index from 0 below semiquavers-per-measure
+       ;; Calculate the stddev over the entire rhythm, not just a single bar, perhaps we should?
+       with stddev-amplitude = (stddev (time-signal rhythm-to-analyse))
+       for downbeat-index from 0 below subbeats-per-measure
        ;; look ahead 1.5 beats for a gap.
        for region-length = (round (* (.aref beat-durations-in-measure (floor downbeat-index *subdivisions-of-beat*)) 1.5))
-       for distance-weighting = (.rseq 0 1.0d0 region-length)
-       for downbeat-location = (round (* downbeat-index (/ bar-duration semiquavers-per-measure)))
+       for downbeat-location = (round (* downbeat-index (/ bar-duration subbeats-per-measure)))
        for gap-end = (min (+ downbeat-location region-length) rhythm-length)
        for silence-evaluation-region = (.subseq (time-signal rhythm-to-analyse) downbeat-location gap-end) 
+       for distance-weighting = (.rseq 0 1.0d0 region-length)
        for distance-weighted-region = (.* silence-evaluation-region distance-weighting)
        do
+	 ;; (setf (.aref downbeat-probabilities downbeat-index)
+	 ;;      (/ (mean silence-evaluation-region) mean-amplitude))
+	 ;; Put a hard limit on the ratio of deviations.
 	 (setf (.aref downbeat-probabilities downbeat-index)
-	       (- 1.0d0 (/ (- (.max distance-weighted-region) (mean distance-weighted-region))
-			   (.max distance-weighted-region))))
-	 ;;(format t "Silence probability (~a ~a) = ~,3f~%" downbeat-location gap-end 
-	 ;;	 (.aref downbeat-probabilities downbeat-index))
-	 ;; (if (plusp (decf *plots-per-rhythm*))
-	 ;;     (diag-plot 'gap-evaluation 
-	 ;;       (plot (.* silence-evaluation-region distance-weighting) nil :aspect-ratio 0.2)))
-       ;; By returning P(downbeat) = 0 for all downbeat locations we indicate the lack of
-       ;; decision as all are equally likely and none contribute to the final decision.
+	       (- 1.0d0 (min (/ (stddev silence-evaluation-region) stddev-amplitude) 1.0d0)))
+	 (if (plusp *plots-per-rhythm*)
+	     (format t "~a Silence probability (~a ~a) = ~,3f~%" *plots-per-rhythm*
+		     downbeat-location gap-end (.aref downbeat-probabilities downbeat-index)))
        finally (diag-plot 'gap-evaluation
 		 (if (plusp (decf *plots-per-rhythm*))
 		     (plot (list (time-signal rhythm-to-analyse) downbeat-probabilities)
 			   (list (.iseq 0 (1- rhythm-length))
-				 (.* (.iseq 0 (1- semiquavers-per-measure)) (round (/ rhythm-length semiquavers-per-measure))))
+				 (.* (.iseq 0 (1- subbeats-per-measure)) (round (/ bar-duration subbeats-per-measure))))
 			   :aspect-ratio 0.2
+			   :title (format nil "plot ~a" *plots-per-rhythm*)
+			   :legends '("ODF" "beat gap likelihood")
 			   :styles '("lines" "linespoints"))))
+       ;; By returning P(downbeat) = 0 for all downbeat locations we indicate the lack of
+       ;; decision as all are equally likely and none contribute to the final decision.
        finally (return downbeat-probabilities)))
 
 ;;; Check when we have intervals which are non-unique, i.e other intervals of similar length reoccur
@@ -501,12 +508,12 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 	     (scores (make-double-array (* beats-per-measure *subdivisions-of-beat*)))
       	     ;; Convert shift positions into downbeats.
 	     (downbeats (ratio-of-times beat-durations-in-measure shift-positions-in-measure))
-	     (semiquaver-grid (.floor (.* downbeats *subdivisions-of-beat*)))
+	     (subbeat-grid (.floor (.* downbeats *subdivisions-of-beat*)))
 	     ;; balance by the relative score values into probabilities.
 	     (scores-as-probabilities (if (zerop (.sum shift-scores-in-measure))
 					  shift-scores-in-measure
 					  (./ shift-scores-in-measure (.sum shift-scores-in-measure)))))
-	(setf (.arefs scores semiquaver-grid) scores-as-probabilities)
+	(setf (.arefs scores subbeat-grid) scores-as-probabilities)
 	;; (format t "===============================================~%")
 	(format t "shift positions ~a~%downbeats ~a~%downbeat probabilities ~,5f~%"
 	 	shift-positions-in-measure downbeats scores-as-probabilities)
@@ -636,16 +643,16 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 						       beat-times
 						       meter
 						       beats-per-measure
-						       1
+						       *bars-of-gap-profile*
 						       #'gap-accent-downbeat-evidence))
-         ;; (combined-observations gap-accent-observations))
+         (combined-observations gap-accent-observations))
 	 ;; (combined-observations duration-maxima-observations))
 	 ;; (combined-observations amplitude-observations))
 	 ;; Combine the observations into a single state vs. time matrix.
 	 ;; Use the union of observations, normalised by dividing by the number of observations.
 	 ;; (combined-observations (./ (.+ gap-accent-observations duration-maxima-observations) 2.0d0)))
 	 ;; (combined-observations (./ (.+ gap-accent-observations duration-maxima-observations amplitude-observations) 3.0d0)))
-	 (combined-observations (./ (.+ gap-accent-observations amplitude-observations) 2.0d0)))
+	 ;; (combined-observations (./ (.+ gap-accent-observations amplitude-observations) 2.0d0)))
 	 ;; (combined-observations (.transpose (.concatenate (.transpose amplitude-observations)
 	 ;;						  (.transpose gap-accent-observations)))))
     ;; (assess-evidence duration-maxima-observations "Duration Maxima observations" rhythm)
