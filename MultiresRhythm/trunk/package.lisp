@@ -54,4 +54,5 @@
 	   :save-rhythm-mix
 	   :sample-rate
 	   :time-signal
-	   :last-expectations))
+	   :last-expectations
+	   :downbeat-estimation))

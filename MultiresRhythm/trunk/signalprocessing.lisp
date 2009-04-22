@@ -27,11 +27,6 @@
 						       (if lower-limit-supplied (>= x lower-limit) t)))
 				      (val a))))
 
-(defun pad-end-to-length (vector length)
-  "Pad a vector with zeros out to the length given"
-  (let ((pad-length (- length (.length vector))))
-    (.concatenate vector (make-double-array pad-length))))
-
 ;;thresholdMag = magnitude > threshold;
 ;;newphase = (thresholdMag .* phase) + (!thresholdMag .* clamp);
 (defun clamp-to-bounds (signal test-signal 
@@ -53,6 +48,11 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 (defun half-wave-rectify (x) 
   (.* x (.> x 0)))
 
+(defun pad-end-to-length (vector length)
+  "Pad a vector with zeros out to the length given"
+  (let ((pad-length (- length (.length vector))))
+    (.concatenate vector (make-double-array pad-length))))
+
 ;; Only good for vectors, of course.
 (defun .subseq (a start &optional end)
   (make-instance (class-of a) :ival (subseq (val a) start end)))
@@ -69,7 +69,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
   (let ((rotate-by (if (plusp by) by (+ (.length sig) by))))
     (.concatenate (.subseq sig rotate-by) (.subseq sig 0 rotate-by))))
 
-;;; TODO Generalise over any dimension.
+;;; TODO Generalise over any dimension, currently fixed on dimension 1
 (defun reduce-dimension (a fn &optional (dimension 1))
   "Applies the given function to each column, storing the result in a vector"
   (loop
@@ -129,8 +129,9 @@ Anything clipped will be set to the clamp-low, clamp-high values"
 
 (defun find-local-maxima (vector &key (extrema :max))
   "Returns the indices of the vector which are maximal"
-  (let ((comparison-fn (if (eql extrema :max) #'.< #'.>)))
-    (.+ (.find (funcall comparison-fn (.diff (.signum (.diff vector))) 0)) 1)))
+  (let* ((comparison-fn (if (eql extrema :max) #'.< #'.>))
+	 (indices-of-extrema (.find (funcall comparison-fn (.diff (.signum (.diff vector))) 0))))
+    (if (plusp (.length indices-of-extrema)) (.+ indices-of-extrema 1) indices-of-extrema)))
 
 ;;; Perhaps we can make this a generic function
 (defun extrema-points-vector (vector &rest arguments)

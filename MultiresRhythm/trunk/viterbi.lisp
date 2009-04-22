@@ -11,7 +11,7 @@
 ;;;;
 ;;;; By Leigh M. Smith <leigh.smith@ircam.fr> 
 ;;;;
-;;;; Copyright (c) 2009
+;;;; Copyright (c) 2009 All Rights Reserved.
 ;;;;
 
 (declaim (optimize (speed 3) (safety 0) (debug 0)))
@@ -20,6 +20,7 @@
 (in-package :multires-rhythm)
 (use-package :nlisp)
 
+;;; TODO we currently assume an identity matrix for the emission probabilities.
 (defun viterbi (initial-probabilities probability-of-observations state-transition-probabilities)
   "Viterbi decoding algorithm. Returns the path of transitions between states across time and the likelihood.
   Observations of states and times are specified by probabilities-of-observations,
@@ -30,7 +31,7 @@
   (let* ((state-time-dimensions (.array-dimensions probability-of-observations))
 	 (number-of-states (first state-time-dimensions))
 	 (number-of-times (second state-time-dimensions))
-	 (epsilon 0.000001d0)
+	 (epsilon 0.000001d0) ; avoids log 0 computations.
 	 (log-prob-observe (.log (.+ probability-of-observations epsilon)))
 	 (log-prob-transitions (.log (.+ state-transition-probabilities epsilon)))
          (maximising-state (make-integer-array state-time-dimensions))
@@ -51,7 +52,7 @@
 	     for max-transition-index = (argmax transition-likelihoods)
 	     do
 	       (setf (.aref maximising-state state time) max-transition-index)
-	     ;; Compute the cumulative probability
+	       ;; Compute the cumulative probability
 	       (setf (.aref maximum-likelihood state time) 
 		     (+ (.aref maximum-likelihood max-transition-index (1- time))
 			(.aref transition-to-state max-transition-index)
