@@ -239,20 +239,26 @@
     (format t "From ircambeat markers (search from first):~%~,3a~%" (.subseq beat-markers 0 5))
     nearest))
 
+;;; Holds the learnt probabilities derived from observations of anacrusis from locations
+;;; of beat gaps.
+(defparameter *downbeat-probabilities* nil)
+
 (defun ircam-find-downbeat (odf-filepath beat-markers-filepath &key (sample-rate 172.27d0))
   "Given the files, compute the downbeat"
   (let* ((rhythm (rhythm-from-ircam-odf odf-filepath :sample-rate sample-rate :weighted nil))
 	 (beat-markers (read-ircam-marker-times beat-markers-filepath))
+	 ;; TODO beats-per-measure is derived from time signature. hardwired to 4/4 for now.
+	 (meter '(2 2 2))		; TODO hardwired for now
+	 (beats-per-measure 4)		; TODO hardwired for now
 	 (start-from (.aref beat-markers 0))
 	 (odf-subset (mrr::subset-of-rhythm rhythm (list (round (* sample-rate start-from)) t))))
     (format t "Starting downbeat finding from ~,3f seconds~%" start-from)
-    ;; TODO beats-per-measure is derived from time signature. hardwired to 4/4 for now.
-    ;; (mrr::downbeat-estimation-fixed odf-subset bpm '(2 2 2) 4))) ; Test the null hypothesis
-    ;; (mrr::downbeat-estimation-random odf-subset bpm '(2 2 2) 4))) ; Test the null hypothesis
-    ;; (mrr::downbeat-estimation-phase odf-subset bpm '(2 2 2) 4)))
-    ;; (mrr::downbeat-estimation-duration odf-subset bpm '(2 2 2) 4)))
-    ;; (mrr::downbeat-estimation-amplitude odf-subset bpm '(2 2 2) 4)))
-    (mrr::downbeat-estimation odf-subset beat-markers '(2 2 2) 4)))
+    ;; (mrr::downbeat-estimation-fixed odf-subset bpm meter beats-per-measure))) ; Test the null hypothesis
+    ;; (mrr::downbeat-estimation-random odf-subset bpm meter beats-per-measure))) ; Test the null hypothesis
+    ;; (mrr::downbeat-estimation-phase odf-subset bpm meter beats-per-measure)))
+    ;; (mrr::downbeat-estimation-duration odf-subset bpm meter beats-per-measure)))
+    ;; (mrr::downbeat-estimation-amplitude odf-subset bpm meter beats-per-measure)))
+    (mrr:downbeat-estimation odf-subset beat-markers meter beats-per-measure *downbeat-probabilities*)))
 
 ;;; (ircam-find-downbeat #P"/Users/lsmith/Research/Data/IRCAM-Beat/Quaero_excerpts/Analysis/0186 - Dillinger_excerpt.odf" #P"/Users/lsmith/Research/Data/IRCAM-Beat/Quaero_excerpts/Analysis/0186 - Dillinger_excerpt.wav.markers.xml")
 
@@ -268,7 +274,7 @@
 	 (found-downbeat (ircam-find-downbeat odf-file beat-markers-file)))
 	 ;; Since the downbeat is determined from an ODF that begins on the first IRCAMbeat
 	 ;; marker, we assume the beat matches.
-;;;	 (nearest-marker (nearest-beat-to-downbeat ircambeat-markers found-downbeat bpm)))
+;;;	 (nearest-marker (nearest-beat-to-time ircambeat-markers found-downbeat bpm)))
 ;;;    (format t "Found downbeat shifted by ~d beats, nearest ircambeat marker ~d, starts at ~,3f seconds~%" 
 ;;;	    found-downbeat nearest-marker (.aref ircambeat-markers nearest-marker))
     found-downbeat))
@@ -284,6 +290,51 @@
 
 ;; (quaero-downbeat "0001 - U2 - The Joshua Tree - With or without you")
 ;; (quaero-downbeat "0008 - Pink Floyd - Dark Side of the Moon - 08 Any color you like")
+;; (quaero-downbeat "0028 - Jedi Mind Tricks - Visions of Ghandi - 02 Tibetan Black Magician")
+;; (quaero-downbeat "0100 - Madcon - So Dark The Con Of Man - Beggin")
+
+(defun learn-observation-probabilities (corpus &key 
+					(sample-rate 172.27d0)
+					(analysis-directory 
+					 (merge-pathnames (make-pathname :directory '(:relative "Quaero_Selection" "Analysis"))
+							  *rhythm-data-directory*)))
+
+  "Given the corpus, compute the observation probabilties and return as a matrix"
+  (loop
+     with meter = '(2 2 2)		; TODO hardwired! read this from annotation file.
+     with beats-per-measure = 4		; TODO hardwired! read this from annotation file.
+     with observation-symbols = (* beats-per-measure mrr::*subdivisions-of-beat*)
+     with observation-probs = (make-double-array (list beats-per-measure observation-symbols))
+     with number-of-anacruses = (make-double-array beats-per-measure)
+     for music in corpus
+     for filename = (first music)
+     for original-sound-path = (merge-pathnames (make-pathname :directory '(:relative "Quaero_Selection" "Audio")
+							       :name filename
+							       :type "wav")
+						*rhythm-data-directory*)
+     for anacrusis = (third music)
+     for first-downbeat-time = (fifth music)
+     do
+       (format t "Evaluating ~a~%" filename)
+       (let* ((beat-markers-filepath (beat-marker-filepath original-sound-path :analysis-directory analysis-directory))
+	      (odf-filepath (odf-filepath original-sound-path :analysis-directory analysis-directory))
+	      (rhythm (rhythm-from-ircam-odf odf-filepath :sample-rate sample-rate :weighted nil))
+	      (beat-markers (read-ircam-marker-times beat-markers-filepath))
+	      (time-limited-markers (mrr::prune-outliers beat-markers :lower-limit first-downbeat-time))
+	      (start-from first-downbeat-time) ; was (.aref beat-markers 0), now skip the intro's.
+	      (odf-subset (mrr::subset-of-rhythm rhythm (list (round (* sample-rate start-from)) t)))
+	      (rhythm-obs-probs (mrr::observation-probabilities odf-subset time-limited-markers meter beats-per-measure)))
+	 (format t "For anacrusis ~a observation probs ~a~%" anacrusis rhythm-obs-probs)
+	 (setf (.row observation-probs anacrusis) (.+ (.row observation-probs anacrusis) rhythm-obs-probs))
+	 (incf (.aref number-of-anacruses anacrusis)))
+     finally 
+       (return 
+	 (progn
+	   ;; Set any 0 valued counts to 1 to avoid divide by zero errors.
+	   (setf (.arefs number-of-anacruses (.find (.not number-of-anacruses))) 1.0d0)
+	   (dotimes (beat-index beats-per-measure observation-probs)
+	     (setf (.row observation-probs beat-index) (./ (.row observation-probs beat-index)
+							   (.aref number-of-anacruses beat-index))))))))
 
 ;;;
 ;;; Evaluate the downbeat finder.
@@ -316,7 +367,7 @@
 	    (.subseq annotated-downbeat-times 0 2) 
 	    (.subseq ircambeat-markers (max (1- nearest-beat) 0) (1+ nearest-beat)))
     ;; folds pieces with long preceding non-metrical intervals to the nearest beat-phase.
-    (mod nearest-beat beats-per-measure)))
+    (list (mod nearest-beat beats-per-measure) (.aref annotated-downbeat-times 0))))
 
 (defun make-quaero-dataset (max every &key (annotations-directory *quaero-annotations-directory*))
   "Generate a list of entries containing names and anacruses, suitable for testing evaluate-quaero-downbeat with"
@@ -328,19 +379,27 @@
      for ircambeat-marker-pathname = (beat-marker-filepath-anno annotation-pathname)
      for beats-per-measure = 4 ; TODO hardwired for now (should get from annotation).
      ;; Get the initial upbeat
-     for anacrusis = (annotated-anacrusis annotation-pathname ircambeat-marker-pathname beats-per-measure)
+     for (anacrusis downbeat-time) = (annotated-anacrusis annotation-pathname ircambeat-marker-pathname beats-per-measure)
      do (format t "~a anacrusis ~d~%" annotation-name anacrusis)
      when (cl-fad:file-exists-p ircambeat-marker-pathname) ; TODO this is rather useless here.
      ;; if we want to exclude pieces with long preceding non-metrical intervals.
      ;; when (< anacrusis beats-per-measure) 
-     collect (list annotation-name :anacrusis anacrusis)))
+     collect (list annotation-name :anacrusis anacrusis :first-downbeat-time downbeat-time)))
 
-(defun remove-bad-anacruses (data-set)
-  "Remove those anacruses which are excessively long because IRCAMbeat starts clapping
-  well before the first downbeat"
-  (remove-if (lambda (x) (> x 6)) data-set :key #'third))
+(defun train-on-quaero-dataset (size)
+  (let ((training-dataset (make-quaero-dataset (* size 2) 2 :annotations-directory *quaero-selection-annotations-directory*)))
+    (setf *downbeat-probabilities* (learn-observation-probabilities training-dataset))
+    ;; (diag-plot 'downbeat-probabilities
+    (image *downbeat-probabilities* nil nil 
+	   :title (format nil "Emission probability of observing gap location given downbeat from ~a examples" 
+			  (length training-dataset))
+	   :xlabel "Observed Gap location" 
+	   :ylabel "Actual downbeat (hidden)")
+    *downbeat-probabilities*))
+
 
 ;; (setf small-quaero (make-quaero-dataset 10 1 :annotations-directory *quaero-selection-annotations-directory*))
+;; (setf bad-examples (evaluate-with-music #'evaluate-quaero-downbeat :music-dataset small-quaero :music-name #'first))
 ;; (setf half-quaero (make-quaero-dataset 300 2))
 ;; (setf select-quaero (make-quaero-dataset 100 1 :annotations-directory *quaero-selection-annotations-directory*))
 ;; (setf bad-examples (evaluate-with-music #'evaluate-quaero-downbeat :music-dataset select-quaero :music-name #'first))
