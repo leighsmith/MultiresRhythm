@@ -116,6 +116,24 @@
 ;;(write-ircam-beat-marker-document #P"/Volumes/iDisk/Research/Data/IRCAM-Beat/test.xml"
 ;; "testfile.wav" (make-narray '(1.0d0 2.0d0 2.5d0 3.0d0)) 9.0d0)
 
+(defun read-ircam-annotation-timesignatures (filepath &key (marker-name "marker"))
+  "Read the time signatures in the annotation file and return an array of the beats per measure"
+  (let* ((marker-document (cxml:parse filepath (cxml-dom:make-dom-builder)))
+	 (markers (dom:get-elements-by-tag-name (dom:document-element marker-document) marker-name)))
+    (loop
+       for marker-index from 0 below (dom:length markers)
+       for marker-node = (dom:item markers marker-index)
+       for comment = (dom:get-attribute marker-node "comment")
+       for time = (read-from-string (dom:get-attribute marker-node "time"))
+       for beats-per-measure = (cond ((string= comment "timesignature-4/4") 4)
+				     ((string= comment "timesignature-6/8") 6)
+				     ((string= comment "timesignature-12/8") 12)
+				     ((string= comment "timesignature-3/4") 3))
+       when beats-per-measure 
+       collect (list beats-per-measure time) into marker-timesignature-list
+       finally (return marker-timesignature-list))))
+  
+
 (defun read-annotation-time (marker-node)
   (read-from-string (dom:get-attribute marker-node "time") 0))
 
