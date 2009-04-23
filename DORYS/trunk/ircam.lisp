@@ -303,38 +303,25 @@
   (loop
      with meter = '(2 2 2)		; TODO hardwired! read this from annotation file.
      with beats-per-measure = 4		; TODO hardwired! read this from annotation file.
-     with observation-symbols = (* beats-per-measure mrr::*subdivisions-of-beat*)
-     with observation-probs = (make-double-array (list beats-per-measure observation-symbols))
-     with number-of-anacruses = (make-double-array beats-per-measure)
+     with observation-probs = (make-double-array beats-per-measure)
      for music in corpus
      for filename = (first music)
+     for annotation-filepath = (fifth music)
      for original-sound-path = (merge-pathnames (make-pathname :directory '(:relative "Quaero_Selection" "Audio")
 							       :name filename
 							       :type "wav")
 						*rhythm-data-directory*)
-     for anacrusis = (third music)
-     for first-downbeat-time = (fifth music)
      do
        (format t "Evaluating ~a~%" filename)
-       (let* ((beat-markers-filepath (beat-marker-filepath original-sound-path :analysis-directory analysis-directory))
-	      (odf-filepath (odf-filepath original-sound-path :analysis-directory analysis-directory))
+       (let* ((odf-filepath (odf-filepath original-sound-path :analysis-directory analysis-directory))
 	      (rhythm (rhythm-from-ircam-odf odf-filepath :sample-rate sample-rate :weighted nil))
-	      (beat-markers (read-ircam-marker-times beat-markers-filepath))
-	      (time-limited-markers (mrr::prune-outliers beat-markers :lower-limit first-downbeat-time))
-	      (start-from first-downbeat-time) ; was (.aref beat-markers 0), now skip the intro's.
+	      (annotated-beat-markers (annotated-beats annotation-filepath))
+	      (start-from (.aref annotated-beat-markers 0))
 	      (odf-subset (mrr::subset-of-rhythm rhythm (list (round (* sample-rate start-from)) t)))
-	      (rhythm-obs-probs (mrr::observation-probabilities odf-subset time-limited-markers meter beats-per-measure)))
-	 (format t "For anacrusis ~a observation probs ~a~%" anacrusis rhythm-obs-probs)
-	 (setf (.row observation-probs anacrusis) (.+ (.row observation-probs anacrusis) rhythm-obs-probs))
-	 (incf (.aref number-of-anacruses anacrusis)))
-     finally 
-       (return 
-	 (progn
-	   ;; Set any 0 valued counts to 1 to avoid divide by zero errors.
-	   (setf (.arefs number-of-anacruses (.find (.not number-of-anacruses))) 1.0d0)
-	   (dotimes (beat-index beats-per-measure observation-probs)
-	     (setf (.row observation-probs beat-index) (./ (.row observation-probs beat-index)
-							   (.aref number-of-anacruses beat-index))))))))
+	      (rhythm-obs-probs (mrr::observation-probabilities odf-subset annotated-beat-markers meter beats-per-measure)))
+	 (format t "Observation probs ~a~%" rhythm-obs-probs)
+	 (setf observation-probs (.+ observation-probs rhythm-obs-probs)))
+     finally (return (./ observation-probs (length corpus)))))
 
 ;;;
 ;;; Evaluate the downbeat finder.
@@ -369,7 +356,7 @@
     ;; folds pieces with long preceding non-metrical intervals to the nearest beat-phase.
     (list (mod nearest-beat beats-per-measure) (.aref annotated-downbeat-times 0))))
 
-(defun make-quaero-dataset (max every &key (annotations-directory *quaero-annotations-directory*))
+(defun make-quaero-dataset (max every &key (only-measures-of-beats 4) (annotations-directory *quaero-annotations-directory*))
   "Generate a list of entries containing names and anacruses, suitable for testing evaluate-quaero-downbeat with"
   (loop
      with annotation-files = (cl-fad:list-directory annotations-directory)
@@ -377,14 +364,19 @@
      for annotation-pathname = (nth song-index annotation-files)
      for annotation-name = (pathname-name (pathname-name annotation-pathname))
      for ircambeat-marker-pathname = (beat-marker-filepath-anno annotation-pathname)
-     for beats-per-measure = 4 ; TODO hardwired for now (should get from annotation).
-     ;; Get the initial upbeat
-     for (anacrusis downbeat-time) = (annotated-anacrusis annotation-pathname ircambeat-marker-pathname beats-per-measure)
-     do (format t "~a anacrusis ~d~%" annotation-name anacrusis)
-     when (cl-fad:file-exists-p ircambeat-marker-pathname) ; TODO this is rather useless here.
+     for beats-per-measure = (mapcar #'first (mrr::read-ircam-annotation-timesignatures annotation-pathname))
+     ;; when (cl-fad:file-exists-p ircambeat-marker-pathname) ; TODO this is rather useless here.
      ;; if we want to exclude pieces with long preceding non-metrical intervals.
      ;; when (< anacrusis beats-per-measure) 
-     collect (list annotation-name :anacrusis anacrusis :first-downbeat-time downbeat-time)))
+     when (equal beats-per-measure (list only-measures-of-beats))      ; TODO exclude non-strict 4/4 for now.
+     collect
+       ;; Get the initial upbeat
+       (destructuring-bind (anacrusis downbeat-time)
+	   (annotated-anacrusis annotation-pathname ircambeat-marker-pathname (first beats-per-measure))
+	 (format t "~a anacrusis ~d, beats-per-measure ~a~%" annotation-name anacrusis beats-per-measure)
+	 (list annotation-name :anacrusis anacrusis
+	       :annotation-filepath annotation-pathname 
+	       :first-downbeat-time downbeat-time))))
 
 (defun train-on-quaero-dataset (size)
   (let ((training-dataset (make-quaero-dataset (* size 2) 2 :annotations-directory *quaero-selection-annotations-directory*)))
