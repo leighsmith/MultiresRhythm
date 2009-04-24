@@ -99,8 +99,7 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
        with downbeat-score = (make-double-array subbeats-per-measure) ; initialised to 0.0
        with rhythm-length = (duration-in-samples rhythm-to-analyse)
        ;; Calculate the stddev over the entire rhythm, not just a single bar, perhaps we should?
-       with stddev-amplitude = (stddev (time-signal rhythm-to-analyse))
-       with mean-amplitude = (mean (time-signal rhythm-to-analyse))
+       with coeff-of-variation = (/ (stddev (time-signal rhythm-to-analyse)) (mean (time-signal rhythm-to-analyse)))
        for downbeat-index from 0 below subbeats-per-measure
        for beat-duration = (.aref beat-durations-in-measure (floor downbeat-index *subdivisions-of-beat*))
        ;; look ahead a certain number of beats for a gap.
@@ -116,18 +115,17 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 	 ;; Put a hard limit on the ratio of deviations. Stddev's are just RMS measures of
          ;; the amplitude envelope.
 	 (setf (.aref downbeat-score downbeat-index)
-	       (- 1.0d0 (min (* (/ (stddev silence-evaluation-region) stddev-amplitude)
-				(/ (mean silence-evaluation-region) mean-amplitude)) 1.0d0)))
+	       (- 1.0d0 (min (/ (/ (stddev silence-evaluation-region) (mean silence-evaluation-region))
+				coeff-of-variation) 1.0d0)))
 	 (if (zerop (mod *measure-count* *plots-per-rhythm*))
 	     (progn
 	       (format t "Measure ~a ~a silence region (~a ~a) score = ~,3f~%"
 		       *measure-count* downbeat-location gap-start gap-end (.aref downbeat-score downbeat-index))
-	       (format t "mean silence ~,3f whole ~,3f ratio ~,3f~%"
-		       (mean silence-evaluation-region) mean-amplitude
-		       (/ (mean silence-evaluation-region) mean-amplitude))
-	       (format t "stddev silence ~,3f whole ~,3f ratio ~,3f~%"
-		       (stddev silence-evaluation-region) stddev-amplitude
-		       (/ (stddev silence-evaluation-region) stddev-amplitude))))
+	       (format t "cov silence ~,3f cov whole ~,3f ratio ~,3f~%"
+		       (/ (stddev silence-evaluation-region) (mean silence-evaluation-region))
+		       coeff-of-variation
+		       (/ (/ (stddev silence-evaluation-region) (mean silence-evaluation-region))
+			  coeff-of-variation))))
        finally (return 
 		 ;; Normalise the downbeat location likelihood, since there is only one location per measure.
 		 (let ((downbeat-probabilities 
