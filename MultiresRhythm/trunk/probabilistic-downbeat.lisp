@@ -93,29 +93,41 @@
   "Returns the probabilities of the downbeat at each beat location. Estimates formed by
 when the gap exceeds the beat period. bar-duration and beat-duration in samples"
     (loop
-       with look-ahead = 1.5d0
+       with look-ahead = 1.25d0		; look ahead a number of beats for a gap.
+       with attack-skip = 0.20d0	; skip over the relative attack portion on the beat.
        with subbeats-per-measure = (* beats-per-measure *subdivisions-of-beat*)
        with downbeat-score = (make-double-array subbeats-per-measure) ; initialised to 0.0
        with rhythm-length = (duration-in-samples rhythm-to-analyse)
        ;; Calculate the stddev over the entire rhythm, not just a single bar, perhaps we should?
        with stddev-amplitude = (stddev (time-signal rhythm-to-analyse))
+       with mean-amplitude = (mean (time-signal rhythm-to-analyse))
        for downbeat-index from 0 below subbeats-per-measure
+       for beat-duration = (.aref beat-durations-in-measure (floor downbeat-index *subdivisions-of-beat*))
        ;; look ahead a certain number of beats for a gap.
-       for region-length = (round (* (.aref beat-durations-in-measure (floor downbeat-index *subdivisions-of-beat*)) 
-				     look-ahead))
+       for region-length = (round (* beat-duration look-ahead))
        for downbeat-location = (round (* downbeat-index (/ bar-duration subbeats-per-measure)))
-       for gap-end = (min (+ downbeat-location region-length) rhythm-length)
-       for silence-evaluation-region = (.subseq (time-signal rhythm-to-analyse) downbeat-location gap-end) 
+       ;; we don't look exactly at the start of the beat, since we assume that will be loud.
+       for gap-start = (round (+ downbeat-location (* beat-duration attack-skip)))
+       for gap-end = (min (+ gap-start region-length) rhythm-length)
+       for silence-evaluation-region = (.subseq (time-signal rhythm-to-analyse) gap-start gap-end) 
        ;; for distance-weighting = (.rseq 0 1.0d0 region-length)
        ;; for distance-weighted-region = (.* silence-evaluation-region distance-weighting)
        do
 	 ;; Put a hard limit on the ratio of deviations. Stddev's are just RMS measures of
          ;; the amplitude envelope.
 	 (setf (.aref downbeat-score downbeat-index)
-	       (- 1.0d0 (min (/ (stddev silence-evaluation-region) stddev-amplitude) 1.0d0)))
+	       (- 1.0d0 (min (* (/ (stddev silence-evaluation-region) stddev-amplitude)
+				(/ (mean silence-evaluation-region) mean-amplitude)) 1.0d0)))
 	 (if (zerop (mod *measure-count* *plots-per-rhythm*))
-	     (format t "Measure ~a silence probability (~a ~a) = ~,3f~%" *measure-count*
-	  	     downbeat-location gap-end (.aref downbeat-score downbeat-index)))
+	     (progn
+	       (format t "Measure ~a ~a silence region (~a ~a) score = ~,3f~%"
+		       *measure-count* downbeat-location gap-start gap-end (.aref downbeat-score downbeat-index))
+	       (format t "mean silence ~,3f whole ~,3f ratio ~,3f~%"
+		       (mean silence-evaluation-region) mean-amplitude
+		       (/ (mean silence-evaluation-region) mean-amplitude))
+	       (format t "stddev silence ~,3f whole ~,3f ratio ~,3f~%"
+		       (stddev silence-evaluation-region) stddev-amplitude
+		       (/ (stddev silence-evaluation-region) stddev-amplitude))))
        finally (return 
 		 ;; Normalise the downbeat location likelihood, since there is only one location per measure.
 		 (let ((downbeat-probabilities 
@@ -426,7 +438,7 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 	 (argmaxes (reduce-dimension gap-observations (lambda (y) (position (.max y) (val y))))) ; argmax fn
 	 (percentage-correct (./ (.sum (.= argmaxes 1)) (.length argmaxes))))
     (image gap-observations nil nil
-	   :title (format nil "~a observations of ~a" "gap accent" (name rhythm)) 
+	   :title (format nil "~a observations of ~a" "Gap accent" (name rhythm)) 
 	   :xlabel "Time (measures)"
 	   :ylabel "Downbeat location (beat)"
 	   :aspect-ratio 0.666)
