@@ -93,7 +93,7 @@
   "Returns the probabilities of the downbeat at each beat location. Estimates formed by
 when the gap exceeds the beat period. bar-duration and beat-duration in samples"
     (loop
-       with look-ahead = 1.75d0		; look ahead a number of beats for a gap.
+       with look-ahead = 1.25d0		; look ahead a number of beats for a gap.
        with attack-skip = 0.20d0	; skip over the relative attack portion on the beat.
        with subbeats-per-measure = (* beats-per-measure *subdivisions-of-beat*)
        with downbeat-score = (make-double-array subbeats-per-measure) ; initialised to 0.0
@@ -123,7 +123,9 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 
          ;; Values > 1 indicate the variation of the silence evaluation region is less than the two measures, 
          ;; i.e more likely to be silence.
-	 (setf (.aref downbeat-score downbeat-index) (/ coeff-of-variation cov-silence-region))
+	 (setf (.aref downbeat-score downbeat-index) (if (zerop cov-silence-region)
+							 4.0d0 ; if we are in true silence
+							 (/ coeff-of-variation cov-silence-region)))
 
 	 (format t "Measure ~a beat location ~a silence region (~a ~a) score = ~,3f~%"
 		 *measure-count* downbeat-location gap-start gap-end (.aref downbeat-score downbeat-index))
@@ -137,7 +139,7 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 			(if (zerop (.sum downbeat-score)) downbeat-score (./ downbeat-score (.sum downbeat-score)))))
 		   (format t "Downbeat probabilities ~a~%" downbeat-probabilities)
 		   (diag-plot 'gap-evaluation
-		     (if (find *measure-count* '(41 96 97)) ; (zerop (mod *measure-count* *plots-per-rhythm*))
+		     (if (find *measure-count* '(82 83)) ; (zerop (mod *measure-count* *plots-per-rhythm*))
 			 (progn
 			   (plot (list (.normalise (time-signal rhythm-to-analyse)) downbeat-probabilities)
 				 (list (.iseq 0 (1- rhythm-length))
@@ -277,7 +279,8 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
      with number-of-measures = (1- (floor (.length beat-durations) beats-per-measure)) ; floor avoids partial bars
      with downbeat-estimates = (make-double-array (list (* beats-per-measure *subdivisions-of-beat*) number-of-measures))
      initially (format t "~%~a~%rhythm duration ~a samples, meter ~a number of measures ~a~%"
-		       downbeat-estimator (duration-in-samples rhythm) meter number-of-measures)
+		       downbeat-estimator (duration-in-samples rhythm) meter number-of-measures) 
+       (format t "First beat-durations ~a~%" (.subseq beat-durations 0 16))
      for measure-index from 0 below number-of-measures
      ;; in samples
      for beat-durations-in-measure = (.subseq beat-durations
