@@ -84,88 +84,103 @@
     beat-count))
 
 #|
-;;; We have a singularly perceptually longer interval (i.e. markedly longer) than other
-;;; events in the sequence, in which case the onset starting the first relatively long
-;;; (perceptually significant) interval longer than the beat period is likely to be the downbeat event.
-;;; TODO We could check if there are several IOIs that are the same as earlier initial intervals.
-;;; TODO perhaps all we need to have passed in is the rhythm, beat-durations-in-measure in samples?
-(defmethod gap-accent-downbeat-evidence ((rhythm-to-analyse rhythm) meter
-					 beats-per-measure bar-duration beat-durations-in-measure)
-  "Returns the probabilities of the downbeat at each beat location. Estimates formed by
-when the gap exceeds the beat period. bar-duration and beat-duration in samples"
-    (loop
-       with look-ahead = 1.25d0		; look ahead a number of beats for a gap.
-       with attack-skip = 0.20d0	; skip over the relative attack portion on the beat.
-       with subbeats-per-measure = (* beats-per-measure *subdivisions-of-beat*)
-       with downbeat-score = (make-double-array subbeats-per-measure) ; initialised to 0.0
-       with rhythm-length = (duration-in-samples rhythm-to-analyse)
-       ;; Calculate the stddev over the entire rhythm, not just a single bar, perhaps we should?
-       ;; Stddev's are just RMS measures of the amplitude envelope. 
-       ;; with single-bar = (.subseq (time-signal rhythm-to-analyse) 0 (1- bar-duration))
-       with stddev-measures = (stddev (time-signal rhythm-to-analyse))
-       with mean-measures = (mean (time-signal rhythm-to-analyse))
-       with coeff-of-variation = (/ stddev-measures mean-measures)
-       for downbeat-index from 0 below subbeats-per-measure
-       for beat-duration = (.aref beat-durations-in-measure (floor downbeat-index *subdivisions-of-beat*))
-       ;; look ahead a certain number of beats for a gap.
-       for region-length = (round (* beat-duration look-ahead))
-       for downbeat-location = (round (* downbeat-index (/ bar-duration subbeats-per-measure)))
-       ;; we don't look exactly at the start of the beat, since we assume that will be loud.
-       for gap-start = (round (+ downbeat-location (* beat-duration attack-skip)))
-       for gap-end = (min (+ gap-start region-length) rhythm-length)
-       for silence-evaluation-region = (.subseq (time-signal rhythm-to-analyse) gap-start gap-end) 
-       ;; for distance-weighting = (.rseq 0 1.0d0 region-length)
-       ;; for distance-weighted-region = (.* silence-evaluation-region distance-weighting)
-       for stddev-silence-region = (stddev silence-evaluation-region)
-       for mean-silence-region = (mean silence-evaluation-region)
-       for cov-silence-region = (/ stddev-silence-region mean-silence-region)
-       for min-divisor = 0.01d0
-       do
-	 (setf (.aref downbeat-score downbeat-index)
-	       (* (/ stddev-measures (if (zerop stddev-silence-region) min-divisor stddev-silence-region))
-	 	  (/ mean-measures (if (zerop mean-silence-region) min-divisor mean-silence-region))))
+(defun silence-score (silence-evaluation-region comparison-region)
+  "Values > 1 indicate the variation and mean of the silence evaluation region is less
+   than the comparison region, i.e more likely to be silence."
+  ;; Calculate the stddev & mean over the region of interest, 2 measures.
+  (let* ((stddev-measures (stddev comparison-region))
+	 (mean-measures (mean comparison-region))
+	 ;; (coeff-of-variation (/ stddev-measures mean-measures))
+	 ;; Stddev's are just RMS measures of the amplitude envelope. 
+	 (stddev-silence-region (stddev silence-evaluation-region))
+	 (mean-silence-region (mean silence-evaluation-region))
+	 ;; (cov-silence-region (/ stddev-silence-region mean-silence-region))
+	 (epsilon 0.01d0)
+	 (silence-score (* (/ stddev-measures (if (zerop stddev-silence-region) epsilon stddev-silence-region))
+			   (/ mean-measures (if (zerop mean-silence-region) epsilon mean-silence-region)))))
 
-         ;; Values > 1 indicate the variation of the silence evaluation region is less than the two measures, 
-         ;; i.e more likely to be silence.
-	 ;; (setf (.aref downbeat-score downbeat-index) (if (zerop cov-silence-region)
-	 ;; 						 4.0d0 ; if we are in true silence
-	 ;; 						 (/ coeff-of-variation cov-silence-region)))
-
-	 (format t "Measure ~a beat location ~a silence region (~a ~a) score = ~,3f~%"
-		 *measure-count* downbeat-location gap-start gap-end (.aref downbeat-score downbeat-index))
-	 (format t "cov whole ~,3f cov silence ~,3f ratio ~,3f~%"
-		 coeff-of-variation cov-silence-region (/ coeff-of-variation cov-silence-region))
-	 (format t "max whole ~,3f max silence ~,3f~%"
-		 (.max (time-signal rhythm-to-analyse)) (.max silence-evaluation-region))
-	 (format t "silence stddev ~,3f mean ~,3f~%" stddev-silence-region mean-silence-region)
-	 (format t "ratio ~,3f~%"
-		 (* (/ stddev-measures (if (zerop stddev-silence-region) min-divisor stddev-silence-region))
-		    (/ mean-measures (if (zerop mean-silence-region) min-divisor mean-silence-region))))
-       finally (return 
-		 ;; Normalise the downbeat location likelihood, since there is only one location per measure.
-		 (let ((downbeat-probabilities 
-			;; When returning P(downbeat) = 0 for all downbeat locations we indicate the lack of
-			;; decision as all are equally likely and none contribute to the final decision.
-			(if (zerop (.sum downbeat-score)) downbeat-score (./ downbeat-score (.sum downbeat-score)))))
-		   (format t "Downbeat probabilities ~a~%" downbeat-probabilities)
-		   (diag-plot 'gap-evaluation
-		     (if (find *measure-count* '(82 83 84)) ; (zerop (mod *measure-count* *plots-per-rhythm*))
-			 (progn
-			   (plot (list (.normalise (time-signal rhythm-to-analyse)) downbeat-probabilities)
-				 (list (.iseq 0 (1- rhythm-length))
-				       (.* (.iseq 0 (1- subbeats-per-measure)) (round (/ bar-duration subbeats-per-measure))))
-				 :aspect-ratio 0.2
-				 :title (format nil "plot of measure ~a" *measure-count*)
-				 :legends '("ODF" "beat gap likelihood")
-				 :styles '("lines" "linespoints")))))
-		   downbeat-probabilities))))
+    ;; (setf (.aref downbeat-score downbeat-index) (if (zerop cov-silence-region)
+    ;; 						 4.0d0 ; if we are in true silence
+    ;; 						 (/ coeff-of-variation cov-silence-region)))
+    
+    ;;(format t "cov whole ~,3f cov silence ~,3f ratio ~,3f~%"
+    ;;	    coeff-of-variation cov-silence-region (/ coeff-of-variation cov-silence-region))
+    (format t "comparison stddev ~,3f mean ~,3f~%" stddev-measures mean-measures)
+    (format t "silence stddev ~,3f mean ~,3f~%" stddev-silence-region mean-silence-region)
+    (format t "max whole ~,3f max silence ~,3f~%"
+	    (.max comparison-region) (.max silence-evaluation-region))
+    (format t "silence score from intersection of stddev & mean ratios ~,3f~%" silence-score)
+    silence-score))
 |#
 
+(defun silence-score (silence-evaluation-region comparison-region)
+  "Values > 1 indicate the variation and mean of the silence evaluation region is less
+   than the comparison region, i.e more likely to be silence."
+  ;; Calculate the stddev & mean over the region of interest, 2 measures.
+  (let* ((stddev-measures (stddev comparison-region))
+	 (mean-measures (mean comparison-region))
+	 (max-silence-region (.max silence-evaluation-region))
+	 (epsilon 0.001d0)
+	 (silence-score (/ (.max comparison-region) (if (zerop max-silence-region) epsilon max-silence-region))))
+    (format t "comparison stddev ~,3f mean ~,3f~%" stddev-measures mean-measures)
+    (format t "max whole ~,3f max silence ~,3f~%"
+	    (.max comparison-region) (.max silence-evaluation-region))
+    (format t "silence score from intersection of stddev & mean ratios ~,3f~%" silence-score)
+    silence-score))
+
+(defmethod silence-evidence ((rhythm-to-analyse rhythm)
+			     measure-start-sample ; begining of our region of interest
+			     measure-index
+			     beats-per-measure bar-duration beat-durations-in-measure)
+  "Determines if each beat is a silent region"
+  (loop
+     with subbeats-per-measure = (* beats-per-measure *subdivisions-of-beat*)
+     with downbeat-score = (make-double-array subbeats-per-measure) ; initialised to 0.0
+     with rhythm-length = (duration-in-samples rhythm-to-analyse)
+     with search-region = (.subseq (time-signal rhythm-to-analyse) measure-start-sample 
+				   (min rhythm-length (+ measure-start-sample (1- (* bar-duration *bars-of-gap-profile*)))))
+     for downbeat-index from 0 below subbeats-per-measure
+     for beat-duration = (.aref beat-durations-in-measure (floor downbeat-index *subdivisions-of-beat*))
+     for downbeat-location = (round (* downbeat-index (/ bar-duration subbeats-per-measure)))
+     for gap-start = (round (+ measure-start-sample downbeat-location (* beat-duration -0.5)))
+     for gap-end = (min (+ gap-start beat-duration) rhythm-length)
+     for silence-score = (silence-score (.subseq (time-signal rhythm-to-analyse) (max 0 gap-start) gap-end)
+					(time-signal rhythm-to-analyse))
+     do
+       (setf (.aref downbeat-score downbeat-index) silence-score)
+       (format t "Measure ~a beat location ~a silence region (~a ~a) score = ~,3f~%"
+	       measure-index downbeat-location gap-start gap-end
+	       (.aref downbeat-score downbeat-index))
+     finally
+       (return 
+	 ;; Normalise the downbeat location likelihood, since there is only one location per measure.
+	 ;; TODO however, that assumes a direct relationship between silence
+	 ;; following and preceding a note and it being a downbeat.
+	 (let ((downbeat-probabilities 
+		;; When returning P(downbeat) = 0 for all downbeat locations we indicate the lack of
+		;; decision as all are equally likely and none contribute to the final decision.
+		;; downbeat-score))
+		(if (zerop (.sum downbeat-score)) downbeat-score (./ downbeat-score (.sum downbeat-score)))))
+	   
+	   (format t "Downbeat probabilities ~a~%" downbeat-probabilities)
+	   (diag-plot 'gap-evaluation
+	     (if (find measure-index '(125 126 127 128)) ; (zerop (mod measure-index *plots-per-rhythm*))
+		 (progn
+		   (plot (list (.normalise search-region) downbeat-probabilities downbeat-probabilities)
+			 (list (.iseq 0 (1- (.length search-region)))
+			       (.* (.iseq 0 (1- subbeats-per-measure)) (round (/ bar-duration subbeats-per-measure)))
+			       (.* (.iseq 0 (1- subbeats-per-measure)) (round (/ bar-duration subbeats-per-measure))))
+			 :aspect-ratio 0.2
+			 :title (format nil "plot of measure ~a" measure-index)
+			 :legends '("ODF" "beat gap likelihood")
+			 :styles '("lines" "linespoints" "impulses")))))
+	   downbeat-probabilities))))
+
 
 ;;; We have a singularly perceptually longer interval (i.e. markedly longer) than other
 ;;; events in the sequence, in which case the onset starting the first relatively long
 ;;; (perceptually significant) interval longer than the beat period is likely to be the downbeat event.
-;;; TODO perhaps all we need to have passed in is the rhythm, beat-durations-in-measure in samples?
+;;; TODO perhaps all we need to have passed in is the rhythm, beat-durations-in-measure & calculate the rest.
 (defmethod gap-accent-downbeat-evidence ((rhythm-to-analyse rhythm) 
 					 measure-start-sample ; begining of our region of interest
 					 measure-index
@@ -178,13 +193,8 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
        with subbeats-per-measure = (* beats-per-measure *subdivisions-of-beat*)
        with downbeat-score = (make-double-array subbeats-per-measure) ; initialised to 0.0
        with rhythm-length = (duration-in-samples rhythm-to-analyse)
-       ;; Calculate the stddev over the entire rhythm, not just a single bar, perhaps we should?
        with search-region = (.subseq (time-signal rhythm-to-analyse) measure-start-sample 
-				     (min rhythm-length (+ measure-start-sample (1- (* bar-duration 2)))))
-       ;; Stddev's are just RMS measures of the amplitude envelope. 
-       with stddev-measures = (stddev search-region)
-       with mean-measures = (mean search-region)
-       with coeff-of-variation = (/ stddev-measures mean-measures)
+				     (min rhythm-length (+ measure-start-sample (1- (* bar-duration *bars-of-gap-profile*)))))
        for downbeat-index from 0 below subbeats-per-measure
        for beat-duration = (.aref beat-durations-in-measure (floor downbeat-index *subdivisions-of-beat*))
        ;; look ahead a certain number of beats for a gap.
@@ -193,51 +203,39 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
        ;; we don't look exactly at the start of the beat, since we assume that will be loud.
        for gap-start = (round (+ measure-start-sample downbeat-location (* beat-duration attack-skip)))
        for gap-end = (min (+ gap-start region-length) rhythm-length)
-       for silence-evaluation-region = (.subseq (time-signal rhythm-to-analyse) gap-start gap-end) 
-       ;; for distance-weighting = (.rseq 0 1.0d0 region-length)
-       ;; for distance-weighted-region = (.* silence-evaluation-region distance-weighting)
-       for stddev-silence-region = (stddev silence-evaluation-region)
-       for mean-silence-region = (mean silence-evaluation-region)
-       for cov-silence-region = (/ stddev-silence-region mean-silence-region)
-       for min-divisor = 0.01d0
+       for preceding-gap-end = (+ measure-start-sample downbeat-location)
+       for preceding-gap-start = (max (- preceding-gap-end region-length) 0)
+       for following-silence-score = (silence-score (.subseq (time-signal rhythm-to-analyse) gap-start gap-end) search-region)
+       for preceding-silence-score = (if (zerop preceding-gap-start)
+					 0.0d0
+					 (silence-score (.subseq (time-signal rhythm-to-analyse) preceding-gap-start preceding-gap-end)
+							search-region))
        do
-	 (setf (.aref downbeat-score downbeat-index)
-	       (* (/ stddev-measures (if (zerop stddev-silence-region) min-divisor stddev-silence-region))
-	 	  (/ mean-measures (if (zerop mean-silence-region) min-divisor mean-silence-region))))
-
-         ;; Values > 1 indicate the variation of the silence evaluation region is less than the two measures, 
-         ;; i.e more likely to be silence.
-	 ;; (setf (.aref downbeat-score downbeat-index) (if (zerop cov-silence-region)
-	 ;; 						 4.0d0 ; if we are in true silence
-	 ;; 						 (/ coeff-of-variation cov-silence-region)))
-
-	 (format t "Measure ~a beat location ~a silence region (~a ~a) score = ~,3f~%"
-		 measure-index downbeat-location gap-start gap-end (.aref downbeat-score downbeat-index))
-	 (format t "cov whole ~,3f cov silence ~,3f ratio ~,3f~%"
-		 coeff-of-variation cov-silence-region (/ coeff-of-variation cov-silence-region))
-	 (format t "max whole ~,3f max silence ~,3f~%"
-		 (.max (time-signal rhythm-to-analyse)) (.max silence-evaluation-region))
-	 (format t "silence stddev ~,3f mean ~,3f~%" stddev-silence-region mean-silence-region)
-	 (format t "ratio ~,3f~%"
-		 (* (/ stddev-measures (if (zerop stddev-silence-region) min-divisor stddev-silence-region))
-		    (/ mean-measures (if (zerop mean-silence-region) min-divisor mean-silence-region))))
+	 (setf (.aref downbeat-score downbeat-index) (+ following-silence-score preceding-silence-score))
+	 (format t "Measure ~a beat location ~a preceding silence region (~a ~a) following silence region (~a ~a) score = ~,3f~%"
+		 measure-index downbeat-location preceding-gap-start preceding-gap-end gap-start gap-end
+		 (.aref downbeat-score downbeat-index))
        finally (return 
 		 ;; Normalise the downbeat location likelihood, since there is only one location per measure.
+		 ;; TODO however, that assumes a direct relationship between silence
+		 ;; following and preceding a note and it being a downbeat.
 		 (let ((downbeat-probabilities 
 			;; When returning P(downbeat) = 0 for all downbeat locations we indicate the lack of
 			;; decision as all are equally likely and none contribute to the final decision.
+			;; downbeat-score))
 			(if (zerop (.sum downbeat-score)) downbeat-score (./ downbeat-score (.sum downbeat-score)))))
 		   (format t "Downbeat probabilities ~a~%" downbeat-probabilities)
 		   (diag-plot 'gap-evaluation
-		     (if (find measure-index '(82 83 84)) ; (zerop (mod measure-index *plots-per-rhythm*))
+		     (if (find measure-index '(20 21 22 23 24 25 26)) ; (zerop (mod measure-index *plots-per-rhythm*))
 			 (progn
-			   (plot (list (.normalise search-region) downbeat-probabilities)
+			   (plot (list (.normalise search-region) downbeat-probabilities downbeat-probabilities)
 				 (list (.iseq 0 (1- (.length search-region)))
+				       (.* (.iseq 0 (1- subbeats-per-measure)) (round (/ bar-duration subbeats-per-measure)))
 				       (.* (.iseq 0 (1- subbeats-per-measure)) (round (/ bar-duration subbeats-per-measure))))
 				 :aspect-ratio 0.2
 				 :title (format nil "plot of measure ~a" measure-index)
 				 :legends '("ODF" "beat gap likelihood")
-				 :styles '("lines" "linespoints")))))
+				 :styles '("lines" "linespoints" "impulses")))))
 		   downbeat-probabilities))))
 
 
@@ -359,7 +357,7 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 
 (defun observe-downbeat-of (rhythm beat-times meter beats-per-measure bar-search downbeat-estimator)
   "Returns an estimate of downbeat location across the entire ODF rhythm using an estimator"
-  ;; bar-search = Number of bars to search over.
+  (declare (ignore bar-search))   ;; bar-search = Number of bars to search over, now within downbeat estimator
   (loop
      ;; Convert beat-times in seconds to durations of each beat in samples.
      with beat-durations = (.round (.* (.diff beat-times) (sample-rate rhythm)))
@@ -376,7 +374,9 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 					      (* beats-per-measure measure-index) 
 					      (* beats-per-measure (1+ measure-index)))
      for bar-duration = (.sum beat-durations-in-measure) ; in samples
-     and start-sample = 0 then (+ start-sample bar-duration)
+     for start-sample = (round (* (- (.aref beat-times (* measure-index beats-per-measure))
+				     (.aref beat-times 0))
+				  (sample-rate rhythm)))
      ;; collect probabilities of the downbeat occuring at each measure location.
      for downbeat-probabilities =  
        (progn 
@@ -389,13 +389,6 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
      do					; collect likelihood in downbeat-estimates
        (setf (.column downbeat-estimates measure-index) downbeat-probabilities) 
      finally (return downbeat-estimates)))
-
-
- ;; (let* ((search-duration (* bar-search bar-duration)) ; in samples TODO not really accurate.
- ;; 	      (search-region (list start-sample (1- (min (duration-in-samples rhythm) (+ start-sample search-duration)))))
- ;; 	      (fragment-of-ODF (subset-of-rhythm rhythm search-region)))
-
-
 
 (defun amass-evidence (estimates)
   "Returns the row number (downbeat estimate) with most evidence"
@@ -532,7 +525,8 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 						meter
 						beats-per-measure
 						*bars-of-gap-profile*
-						#'gap-accent-downbeat-evidence))
+						#'silence-evidence))
+;;						#'gap-accent-downbeat-evidence))
 	 (argmaxes (reduce-dimension gap-observations (lambda (y) (position (.max y) (val y))))) ; argmax fn
 	 (percentage-correct (./ (.sum (.= argmaxes 1)) (.length argmaxes))))
     (image gap-observations nil nil
