@@ -31,9 +31,11 @@
 (defparameter *bars-of-gap-profile* 2)
 
 ;; Resolution of the beat position estimation states in subdivisions of each beat (4 = semiquavers).
-(defparameter *subdivisions-of-beat* 1)
+(defparameter *subdivisions-of-beat* 4)
 
 (defparameter *plots-per-rhythm* 10)
+
+(defparameter *measures-to-plot* nil)
 
 ;; TODO should be a closure, not a parameter.
 (defparameter *measure-count* 0)
@@ -120,14 +122,45 @@
   (let* ((stddev-measures (stddev comparison-region))
 	 (mean-measures (mean comparison-region))
 	 (max-silence-region (.max silence-evaluation-region))
-	 (epsilon 0.001d0)
+	 (epsilon 0.001d0) ; Avoid div by 0 errors.
 	 (silence-score (/ (.max comparison-region) (if (zerop max-silence-region) epsilon max-silence-region))))
     (format t "comparison stddev ~,3f mean ~,3f~%" stddev-measures mean-measures)
     (format t "max whole ~,3f max silence ~,3f~%"
 	    (.max comparison-region) (.max silence-evaluation-region))
-    (format t "silence score from intersection of stddev & mean ratios ~,3f~%" silence-score)
+    (format t "silence score from ratio of local and global maxima ~,3f~%" silence-score)
     silence-score))
 
+(defmethod silence-evidence ((rhythm-to-analyse rhythm)
+			     measure-start-sample ; beginning of our region of interest
+			     measure-index
+			     beat-durations-in-measure
+			     subdivisions-of-beat)
+  "From the rhythm, for one measure, starting at measure-start-sample, determines if each 
+beat and subdivision thereof is a silent region"
+  (let* ((bar-duration (.sum beat-durations-in-measure)) ; in samples
+	 (beats-per-measure (.length beat-durations-in-measure))
+	 (tatums-per-measure (* beats-per-measure subdivisions-of-beat))
+	 (downbeat-score (make-double-array tatums-per-measure)) ; initialised to 0.0
+	 (rhythm-length (duration-in-samples rhythm-to-analyse)))
+  (dotimes (tatum-index tatums-per-measure
+	    ;; Normalise the downbeat location likelihood, since there is only one location per measure.
+	    ;; TODO however, that assumes a direct relationship between silence
+	    ;; following and preceding a note and it being a downbeat.
+	    ;; When returning P(downbeat) = 0 for all downbeat locations we indicate the lack of
+	    ;; decision as all are equally likely and none contribute to the final decision.
+	    (if (zerop (.sum downbeat-score)) downbeat-score (./ downbeat-score (.sum downbeat-score))))
+    (let* ((beat-duration (.aref beat-durations-in-measure (floor tatum-index subdivisions-of-beat)))
+	   (downbeat-location (round (* tatum-index (/ bar-duration tatums-per-measure))))
+	   (gap-start (round (+ measure-start-sample downbeat-location (* beat-duration -0.5))))
+	   (gap-end (min (+ gap-start beat-duration) rhythm-length))
+	   (silence-score (silence-score (.subseq (time-signal rhythm-to-analyse) (max 0 gap-start) gap-end)
+					 (time-signal rhythm-to-analyse))))
+      (setf (.aref downbeat-score tatum-index) silence-score)
+      (format t "Measure ~a beat location ~a silence region (~a ~a) score = ~,3f~%"
+	      measure-index downbeat-location gap-start gap-end
+	      (.aref downbeat-score tatum-index))))))
+
+#|
 (defmethod silence-evidence ((rhythm-to-analyse rhythm)
 			     measure-start-sample ; begining of our region of interest
 			     measure-index
@@ -164,7 +197,7 @@
 	   
 	   (format t "Downbeat probabilities ~a~%" downbeat-probabilities)
 	   (diag-plot 'gap-evaluation
-	     (if (find measure-index '(125 126 127 128)) ; (zerop (mod measure-index *plots-per-rhythm*))
+	     (if (find measure-index *measures-to-plot*)
 		 (progn
 		   (plot (list (.normalise search-region) downbeat-probabilities downbeat-probabilities)
 			 (list (.iseq 0 (1- (.length search-region)))
@@ -175,7 +208,7 @@
 			 :legends '("ODF" "beat gap likelihood")
 			 :styles '("lines" "linespoints" "impulses")))))
 	   downbeat-probabilities))))
-
+|#
 
 ;;; We have a singularly perceptually longer interval (i.e. markedly longer) than other
 ;;; events in the sequence, in which case the onset starting the first relatively long
@@ -226,7 +259,7 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 			(if (zerop (.sum downbeat-score)) downbeat-score (./ downbeat-score (.sum downbeat-score)))))
 		   (format t "Downbeat probabilities ~a~%" downbeat-probabilities)
 		   (diag-plot 'gap-evaluation
-		     (if (find measure-index '(20 21 22 23 24 25 26)) ; (zerop (mod measure-index *plots-per-rhythm*))
+		     (if (find measure-index *measures-to-plot*)
 			 (progn
 			   (plot (list (.normalise search-region) downbeat-probabilities downbeat-probabilities)
 				 (list (.iseq 0 (1- (.length search-region)))
@@ -255,9 +288,9 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 								 "maximum duration"
 								 beats-per-measure beat-duration)))
 	  (format t "categorised-iois ~a~%" categorised-iois)
-	  (diag-plot 'categorised-iois
-	    (if (zerop (floor *measure-count* *plots-per-rhythm*))
-		(plot-rhythm rhythm-to-analyse :title (format nil " ~d" *plots-per-rhythm*))))
+	  ;; (diag-plot 'categorised-iois
+	  ;;   (if (find measure-index *measures-to-plot*)
+	  ;; 	(plot-rhythm rhythm-to-analyse :title (format nil " ~d" measure-index))))
 	  ;; TODO Find the earliest maximum IOI
 	  (if (plusp (.sum duration-maxima-count))
 	      (setf downbeat-probabilities (./ duration-maxima-count (.sum duration-maxima-count))))))
@@ -355,9 +388,23 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 ;; 			     metrical-profile-length)
 ;;     (close-window)))
 
-(defun observe-downbeat-of (rhythm beat-times meter beats-per-measure bar-search downbeat-estimator)
+(defun onsets-at-subdivisions (beat-durations-in-measure subdivisions-of-beat)
+  "Converts from IOI's for main beats to onset times in samples for tatums"
+  (loop
+     with beat-onset-sample = 0
+     with onsets = (make-integer-array (* (.length beat-durations-in-measure) subdivisions-of-beat))
+     with tatum-durations = (./ beat-durations-in-measure (coerce subdivisions-of-beat 'double-float))
+     for beat-index from 0 below (.length beat-durations-in-measure)
+     do
+       (loop
+	  for subdiv-index from 0 below subdivisions-of-beat
+	  do
+	    (setf (.aref onsets (+ (* beat-index subdivisions-of-beat) subdiv-index)) beat-onset-sample)
+	    (setf beat-onset-sample (+ beat-onset-sample (.aref tatum-durations beat-index))))
+     finally (return onsets))))
+
+(defun observe-downbeat-of (rhythm beat-times meter beats-per-measure downbeat-estimator)
   "Returns an estimate of downbeat location across the entire ODF rhythm using an estimator"
-  (declare (ignore bar-search))   ;; bar-search = Number of bars to search over, now within downbeat estimator
   (loop
      ;; Convert beat-times in seconds to durations of each beat in samples.
      with beat-durations = (.round (.* (.diff beat-times) (sample-rate rhythm)))
@@ -382,11 +429,25 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
        (progn 
 	 (format t "Measure ~3d start sample ~a~%" measure-index start-sample)
 	 (format t "beat duration in samples ~a = ~a~%" beat-durations-in-measure bar-duration)
-	 ;; (format t "observed at sample ~d~%~%"
-	 ;;	       (+ start-sample (* (argmax downbeat-probabilities) beat-duration)))
-	 (funcall downbeat-estimator rhythm start-sample measure-index beats-per-measure
-		  bar-duration beat-durations-in-measure))
+	 (funcall downbeat-estimator rhythm start-sample measure-index
+		  beat-durations-in-measure *subdivisions-of-beat*))
      do					; collect likelihood in downbeat-estimates
+       (format t "Downbeat probabilities ~a~%" downbeat-probabilities)
+       ;; (format t "observed at sample ~d~%~%"
+       ;;	       (+ start-sample (* (argmax downbeat-probabilities) beat-duration)))
+       (diag-plot 'gap-evaluation
+       	 (if (find measure-index *measures-to-plot*)
+       	     (let ((search-region (.subseq (time-signal rhythm) start-sample 
+       					   (min (duration-in-samples rhythm) (+ start-sample (1- (* bar-duration 2)))))))
+       	       (plot (list (.normalise search-region) downbeat-probabilities 
+			   (.arefs downbeat-probabilities (.* (.iseq 0 (1- beats-per-measure)) *subdivisions-of-beat*)))
+       		     (list (.iseq 0 (1- (.length search-region)))
+       			   (onsets-at-subdivisions beat-durations-in-measure *subdivisions-of-beat*)
+       			   (onsets-at-subdivisions beat-durations-in-measure 1))
+		     :aspect-ratio 0.2
+		     :title (format nil "plot of measure ~a" measure-index)
+		     :legends '("ODF" "beat gap likelihood" "beat location")
+		     :styles '("lines" "linespoints" "impulses")))))
        (setf (.column downbeat-estimates measure-index) downbeat-probabilities) 
      finally (return downbeat-estimates)))
 
@@ -524,7 +585,6 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 						beat-times
 						meter
 						beats-per-measure
-						*bars-of-gap-profile*
 						#'silence-evidence))
 ;;						#'gap-accent-downbeat-evidence))
 	 (argmaxes (reduce-dimension gap-observations (lambda (y) (position (.max y) (val y))))) ; argmax fn
@@ -536,4 +596,6 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 	   :aspect-ratio 0.666)
     ;; Normalise the observations to make them probabilities.
     (./ (.partial-sum (.transpose gap-observations)) (.column-count gap-observations))))
+;;  (reduce-dimension (.transpose gap-observations) #'nlisp::.mult)))
+
 
