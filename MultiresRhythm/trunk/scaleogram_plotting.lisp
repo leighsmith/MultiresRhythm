@@ -297,7 +297,7 @@
   "Plots the magnitude response of several single wavelet voices (dilation scale) to a rhythm."
   (let ((scaleogram-mag (scaleogram-magnitude scaleogram-to-plot)))
     (plot (append (mapcar (lambda (voice) (.row scaleogram-mag voice)) voices)
-		   (list (.* (.max scaleogram-mag) (time-signal original-rhythm))))
+		   (list (.* (.max scaleogram-mag) (onset-time-signal original-rhythm))))
 	   nil
 	   :legends (append (mapcar (lambda (voice) (format nil "Voice ~a" voice)) voices) 
 			    (list (name original-rhythm)))

@@ -18,10 +18,10 @@
 (use-package :nlisp)
 
 (defclass salience-trace-rhythm (rhythm)
-  ((onsets-time-signal :initarg :onsets-time-signal :accessor onsets-time-signal :initform (make-double-array '(1))))
-  (:documentation "A subclass of rhythm that holds the full salience trace and the onset data."))
+  ((odf :initarg :odf :accessor odf)) ; Onset detection function
+   (:documentation "A subclass of rhythm that holds the full salience trace and the onset data."))
 
-;; (setf ps (perceptual-salience-rhythm "/Volumes/iDisk/Research/Sources/OtherResearchers/UoP/AuditorySaliencyModel/ines1.saliency" "/Volumes/iDisk/Research/Sources/OtherResearchers/UoP/AuditorySaliencyModel/ines1.onsets" :weighted t))
+;; (setf ps (perceptual-salience-rhythm "Research/Sources/OtherResearchers/UoP/AuditorySaliencyModel/ines1.saliency" "Research/Sources/OtherResearchers/UoP/AuditorySaliencyModel/ines1.onsets" :weighted t))
 ;; (setf res1 (perceptual-onsets-to-rhythm "res1/res1_1_resp_text" "res1/res1_1_pOnsets" :weighted t))
 
 (defmethod plot-rhythm ((rhythm-to-plot salience-trace-rhythm) &key 
@@ -31,8 +31,8 @@
       (plot-command "set xtics (~{~{\"~5,2f\" ~5d~}~^, ~})~%" 
 		    (label-samples-as-seconds (duration-in-samples rhythm-to-plot)
 					      (sample-rate rhythm-to-plot))))
-  (plot (list (.arefs (time-signal rhythm-to-plot) (onsets-in-samples rhythm-to-plot)) 
-	      (time-signal rhythm-to-plot))
+  (plot (list (.arefs (odf rhythm-to-plot) (onsets-in-samples rhythm-to-plot)) 
+	      (odf rhythm-to-plot))
 	;; different x axes for each y parameters in the list.
 	(list (onsets-in-samples rhythm-to-plot) (.iseq 0 (1- (duration-in-samples rhythm-to-plot))))
 	:aspect-ratio 0.2 
@@ -43,7 +43,7 @@
 	:title (format nil "Salience trace and onsets of ~a~a" (name rhythm-to-plot) title)))
 
 ;; (plot-rhythm res1)
-;; (plot (time-signal res1) nil :aspect-ratio 0.66)
+;; (plot (odf res1) nil :aspect-ratio 0.66)
 ;; (plot-cwt salience-scaleogram :title "res(1,1) continuous salience")
 
 ;; (intervals-in-samples (nlisp::array-to-list (.column perceptual-onsets 0)) :sample-rate 100)
@@ -77,7 +77,7 @@
       (plot-rhythm salience-trace-rhythm))
     (diag-plot 'onsets ;; Plot the salience trace, the produced onsets, & zero phase.
       (plot-claps salience-trace-rhythm 
-		  (.find (onsets-time-signal salience-trace-rhythm))
+		  (.find (onset-time-signal salience-trace-rhythm))
 		  ;; empty phase
 		  (make-double-array (duration-in-samples salience-trace-rhythm))
 		  :signal-name (format nil "perceptual onsets plot of ~a" (name salience-trace-rhythm))))
@@ -101,20 +101,20 @@
 ;; (defmethod onset-time-of-note ((rhythm salience-trace-rhythm) note-numbers)
 ;;   "Returns the sample number of the beat-number'th beat in the given rhythm"
 ;;   (let* ((onsets-rhythm (make-instance 'rhythm 
-;; 				       :time-signal (onsets-time-signal rhythm)
+;; 				       :time-signal (onset-time-signal rhythm)
 ;; 				       :sample-rate (sample-rate rhythm))))
 ;;     (onset-time-of-note onsets-rhythm note-numbers)))
 
 (defmethod onset-time-of-note ((rhythm-to-analyse salience-trace-rhythm) (note-numbers n-array))
   "Returns the sample number of the beat-number'th beat in the given rhythm"
-  (.arefs (.find (onsets-time-signal rhythm-to-analyse)) note-numbers))
+  (.arefs (.find (onset-time-signal rhythm-to-analyse)) note-numbers))
 
 (defmethod onset-time-of-note ((rhythm-to-analyse salience-trace-rhythm) note-number)
   "Returns the sample number of the beat-number'th beat in the given rhythm"
-  (.aref (.find (onsets-time-signal rhythm-to-analyse)) note-number))
+  (.aref (.find (onset-time-signal rhythm-to-analyse)) note-number))
 
 (defmethod onsets-in-samples ((rhythm-to-analyse salience-trace-rhythm))
-  (.find (onsets-time-signal rhythm-to-analyse)))
+  (.find (onset-time-signal rhythm-to-analyse)))
 
 (defun remove-double-onsets (rhythm onset-times &key (filter-window-in-seconds 0.05))
   "Remove all but the highest valued onsets that fall within the filter-window (specified in samples)"
@@ -125,8 +125,8 @@
 	onset-times
 	;; Determine the reliability (amplitude) of the within window onset candidates and the
 	;; following candidates.
-	(let* ((reliability-within-window (.arefs (time-signal rhythm) (.arefs onset-times within-window)))
-	       (next-reliability-within-window (.arefs (time-signal rhythm) (.arefs onset-times (.+ within-window 1))))
+	(let* ((reliability-within-window (.arefs (odf rhythm) (.arefs onset-times within-window)))
+	       (next-reliability-within-window (.arefs (odf rhythm) (.arefs onset-times (.+ within-window 1))))
 	       ;; Remove whichever is less. The inequality operator will return a binary increment value.
 	       (first-are-greater (.> reliability-within-window next-reliability-within-window))
 	       ;; Form the array of indices of onset-times to remove.
@@ -137,25 +137,90 @@
 ;;; the discrete time values for the onsets. Probably the solution is to factor the
 ;;; rerieval methods so that onsets are more clearly separated from a rhythm time signal.
 (defmethod subset-of-rhythm ((rhythm-to-subset salience-trace-rhythm) time-region)
-  "Subset the onsets-time-signal as well as the time-signal"
+  "Subset the onset-time-signal as well as the odf"
   (let ((subset-rhythm (call-next-method rhythm-to-subset time-region)))
     ;; TODO we put the time region inside a list to appease .subarray when working on a vector.
-    (setf (onsets-time-signal subset-rhythm) (.subarray (onsets-time-signal rhythm-to-subset) (list time-region)))
+    (setf (onset-time-signal subset-rhythm) (.subarray (onset-time-signal rhythm-to-subset) (list time-region)))
     subset-rhythm))
+
+;; Should factor this into a windowing operation using a given function.
+(defun windowed-kurtosis (odf-signal &key onset-window-duration (hop 0.5d0))
+  "Compute a running (overlapping windows) kurtosis on the signal"
+  (loop 
+     with kurtosis-values = (make-double-array (list (.length odf-signal)))
+     for window-start from 0 below (- (.length odf-signal) onset-window-duration) by (floor (* hop onset-window-duration))
+     for window-end = (min (1- (.length odf-signal)) (+ window-start onset-window-duration))
+     for windowed-signal = (.subseq odf-signal window-start window-end)
+     for kurtosis = (gsl:kurtosis (nlisp::nlisp->gsl windowed-signal))
+     do
+       ;; (format t "~a ~a~%" window-start window-end))
+       (setf (.subarray kurtosis-values (list 0 (list window-start window-end))) 
+	     (make-double-array (list (- window-end window-start)) :initial-element kurtosis))
+     finally (return kurtosis-values)))
+
+(defun plot-windowed-kurtosis (rhythm)
+  (let* ((window-size 25)
+	 (wk (windowed-kurtosis (odf rhythm) :onset-window-duration window-size)))
+    (plot-command "set yscale -2 2")
+    (plot (list (odf rhythm) (.signum wk))
+	  nil
+	  :reset nil
+	  :aspect-ratio 0.2 :styles '("lines" "impulses"))))
+
+;;; Onset detection attempts
+#|
+(setf onsets (.* (.subseq (mrr::autocorrelation (mrr::odf rhythm))
+			  (duration-in-samples rhythm))
+		 (mrr::extrema-points-vector (mrr::odf
+					      rhythm))))
+
+(setf wk (mrr::windowed-kurtosis (mrr::odf rhythm) :onset-window-duration window-size))
+(setf onsets (.* (.< wk 0) (mrr::extrema-points-vector
+						     (mrr::odf rhythm))))
+
+(plot (list (mrr::odf rhythm) onsets) nil :aspect-ratio 0.2)
+|#
+
+(defun beat-prototype-envelope (odf beat-periods)
+  "Given the ODF and the periods of the beat, compute a prototype beat by multiplying"
+    (loop
+       ;; TODO We could also do this by gradually expanding the window.
+       with max-window-length = (.max beat-periods)
+       with min-window-length = (.min beat-periods)
+       for beat-period across (val beat-periods)
+       for beat-window-start = 0 then (+ beat-window-start beat-period)
+       for odf-beat-fragment = (.subseq odf beat-window-start (+ beat-window-start beat-period))
+       for padded-fragment = (end-pad odf-beat-fragment max-window-length :value 1.0d0)
+       for prototype-window = (make-double-array max-window-length :initial-element 1.0d0) then
+	 (.* prototype-window padded-fragment)
+       finally (return prototype-window)))
+
+(defun windowed-significance (odf-signal &key (threshold) (window-length))
+  "Mark those onsets which are significant within a perceptual window"
+  (loop
+     with windowed-significance = (make-double-array (list (.length odf-signal)))
+     for window-start from 0 below (- (.length odf-signal) window-length) by window-length
+     for window-end = (+ window-start window-length)
+     for windowed-signal = (.subseq odf-signal window-start window-end)
+     do ; (format t "~a ~a~%" window-start window-end))
+       (setf (.subarray windowed-significance (list 0 (list window-start window-end))) 
+	     (significant windowed-signal :threshold threshold))
+     finally (return windowed-significance)))
 
 (defmethod onsets-of-salience ((odf-rhythm salience-trace-rhythm))
   "Determine the onset times from the salience trace"
   (let* (;; (a (analysis-of-rhythm odf-rhythm))
 	 ;; (npc (phase-congruency a)) ; if we include phase congruency to filter the ODF-RHYTHM.
-	 ;; (filtered-odf (.* (normalise (time-signal odf-rhythm)) npc))
-	 (filtered-odf (time-signal odf-rhythm))
-	 (onset-signal (.* (significant filtered-odf :threshold 0.75) (extrema-points-vector filtered-odf)))
+	 ;; (filtered-odf (.* (normalise (odf odf-rhythm)) npc))
+	 (filtered-odf (odf odf-rhythm))
+	 (onset-signal (.* (windowed-significance filtered-odf :threshold 0.75
+						  :window-length (floor (* 3.0d0 (sample-rate odf-rhythm))))
+			   (extrema-points-vector filtered-odf)))
 	 (onset-times (.find onset-signal)))
     (diag-plot 'onset-signal 
       (plot (list (normalise filtered-odf) onset-signal) nil :aspect-ratio 0.2))
     (remove-double-onsets odf-rhythm onset-times)))
 ;; onset-times))
-
 
 (defun rhythm-from-odf (salience-filepath &key (sample-rate 200.0d0) (description "") (weighted t))
   "Reads the onset detection function (perceptual salience) data and returns a salience-trace-rhythm instance. Weighted keyword
@@ -167,12 +232,12 @@
 	  (make-instance 'salience-trace-rhythm 
 			 :name (pathname-name salience-filepath)
 			 :description description
-			 :time-signal perceptual-salience
-			 :onsets-time-signal (make-double-array (.length perceptual-salience))
+			 :odf perceptual-salience
+			 :onset-time-signal (make-double-array (.length perceptual-salience))
 			 :sample-rate sample-rate))
 	 (onset-indices (onsets-of-salience perceptual-salience-rhythm)))
     ;; Assign the onsets from the computed times derived from the salience trace.
-    (setf (.arefs (onsets-time-signal perceptual-salience-rhythm) onset-indices)
+    (setf (.arefs (onset-time-signal perceptual-salience-rhythm) onset-indices)
 	  (if weighted
 	      (.arefs perceptual-salience onset-indices)
 	      (make-double-array (.length onset-indices) :initial-element 1d0)))
@@ -188,8 +253,8 @@
 	 ;; Assumes onset times are in seconds, converts to samples
 	 (onset-times (.floor (.* (.column perceptual-onsets 0) sample-rate)))
 	 ;; TODO perhaps rhythm-of-weighted-onsets can be used instead?
-	 (onsets-time-signal (make-double-array (.length perceptual-salience))))
-    (setf (.arefs onsets-time-signal onset-times)
+	 (onset-time-signal (make-double-array (.length perceptual-salience))))
+    (setf (.arefs onset-time-signal onset-times)
 	  (if weighted
 	      (.column perceptual-onsets 1)
 	      (make-double-array (.length onset-times) :initial-element 1.0d0)))
@@ -197,6 +262,6 @@
     (make-instance 'salience-trace-rhythm 
 		   :name (pathname-name salience-filepath)
 		   :description description
-		   :time-signal perceptual-salience
-		   :onsets-time-signal onsets-time-signal
+		   :odf perceptual-salience
+		   :onset-time-signal onset-time-signal
 		   :sample-rate sample-rate)))

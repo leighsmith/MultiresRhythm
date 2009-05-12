@@ -587,7 +587,7 @@
   (let* ((expectancy-confidences (accumulated-confidence-of-expectations all-expectations))
 	 (expect-times (.find expectancy-confidences))
 	 (expect-confidences (.arefs expectancy-confidences expect-times)))
-    (plot (list (time-signal rhythm-to-expect) expect-confidences expect-confidences)
+    (plot (list (onset-time-signal rhythm-to-expect) expect-confidences expect-confidences)
 	  (list (.iseq rhythm-starts-at (+ rhythm-starts-at (1- (duration-in-samples rhythm-to-expect)))) 
 		expect-times 
 		expect-times)

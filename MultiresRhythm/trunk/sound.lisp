@@ -182,7 +182,7 @@
 ;; (setf down-sampled-rhythm (make-double-array down-sampled-length))
 ;; (setf (.arefs down-sampled-rhythm down-sampled) (make-double-array (.length down-sampled) :initial-element 1d0))
 ;; (plot down-sampled-rhythm nil)
-;; (setf jw-prelude-3 (make-instance 'rhythm :time-signal down-sampled-rhythm :name "jw prelude 3"))
+;; (setf jw-prelude-3 (make-instance 'rhythm :onset-time-signal down-sampled-rhythm :name "jw prelude 3"))
 
 (defmethod down-sample ((sound-to-decimate sound) factor)
   "Downsample the sound by a given integer factor"

@@ -20,15 +20,19 @@
 
 ;;;; Declarations
 
+;;; Holds the the low level detection function, as times, and as onset times represented as a sampled signal.
+;;; The onset-time-signal representation allows representing a rhythm as a continuum
+;;; between a signal processing representation (high sample rate) and a symbolic
+;;; representation (low sample rate).
 ;;; TODO Do we need a distinction between a description and a name, if we use the name of
 ;;; the variable pointing to the rhythm object anyway?
 (defclass rhythm ()
   ((name        :initarg :name        :accessor name        :initform "unnamed")
    (description :initarg :description :accessor description :initform "")
-   (time-signal :initarg :time-signal :accessor time-signal :initform (make-double-array '(1)))
+   (onset-time-signal :initarg :onset-time-signal :accessor onset-time-signal :initform (make-double-array '(1)))
+   (onset-times :initarg :onset-times :accessor onset-times)  ; onsets are cached from the onset-time-signal.
    (sample-rate :initarg :sample-rate :accessor sample-rate :initform 200))
-  (:documentation "A rhythm includes a textual description, the sample rate and a signal. This allows representing a rhythm as a continuum between a signal processing representation (high sample rate) and a symbolic representation
-(low sample rate)."))
+  (:documentation "A rhythm represents onsets as times, as a sampled signal, and a continuous onset detection function."))
 
 (defgeneric duration (rhythm-to-analyse)
   (:documentation "Returns the length of the rhythm in seconds."))
@@ -132,7 +136,7 @@
   "Returns a binary valued rhythm based on the threshold"
   (make-instance 'rhythm
 		 :name (name rhythm)
-		 :time-signal (.> (time-signal rhythm) threshold)
+		 :onset-time-signal (.> (onset-time-signal rhythm) threshold)
 		 :description ""
 		 :sample-rate (sample-rate rhythm)))
 
@@ -142,7 +146,7 @@
   (make-instance 'rhythm 
 		 :name name
 		 :description name ; TODO transliterate '-' for ' '.
-		 :time-signal (.* (make-narray 
+		 :onset-time-signal (.* (make-narray 
 				   (butlast 
 				    (onsets-to-grid 
 				     ;; We compute the intervals in samples after the onsets to avoid
@@ -161,7 +165,7 @@
   (make-instance 'rhythm 
 		 :name name
 		 :description name ; TODO transliterate '-' for ' '.
-		 :time-signal (.* 1d0 (make-narray (onsets-to-grid (nlisp::array-to-list (.round (.* onsets sample-rate))))))
+		 :onset-time-signal (.* 1d0 (make-narray (onsets-to-grid (nlisp::array-to-list (.round (.* onsets sample-rate))))))
 		 :sample-rate sample-rate))
 
 (defun rhythm-of-grid (name grid &key (tempo 80 tempo-supplied-p)
@@ -184,20 +188,20 @@
     (make-instance 'rhythm 
 		   :name name
 		   :description name
-		   :time-signal time-sig
+		   :onset-time-signal time-sig
 		   :sample-rate sample-rate)))
 
 ;; (clap-signal (make-double-array (.array-dimensions rhythm-signal) :initial-element 0d0))
 ;; (map nil (lambda (index) (setf (.aref clap-signal index) max-computed-scale)) (val onsets))
 
 (defmethod duration-in-samples ((rhythm-to-analyse rhythm))
-  (.length (time-signal rhythm-to-analyse)))
+  (.length (onset-time-signal rhythm-to-analyse)))
 
 (defmethod duration ((rhythm-to-analyse rhythm))
   (/ (duration-in-samples rhythm-to-analyse) (.* 1.0 (sample-rate rhythm-to-analyse))))
 
 (defmethod onsets-in-samples ((rhythm-to-analyse rhythm))
-  (.find (time-signal rhythm-to-analyse)))
+  (.find (onset-time-signal rhythm-to-analyse)))
 
 (defmethod onset-time-of-note ((rhythm-to-analyse rhythm) note-number)
   "Returns the sample number of the note-number'th note in the given rhythm"
@@ -256,7 +260,7 @@
   (plot-command "set size 0.83,0.35")
   (plot-command "set origin 0.055,0.65")
   (plot-command "unset key")
-  (plot (time-signal rhythm-to-plot) nil
+  (plot (onset-time-signal rhythm-to-plot) nil
 	;; :legends (list (format nil "Rhythm onsets of ~a" (description rhythm-to-plot)))
 	:styles '("impulses linetype 6")
 	:xlabel (if time-in-seconds "Time in seconds"
@@ -275,7 +279,7 @@
   (plot-command "set format y \"%3.1f\"")
   (plot-command "set ytics 0.0, 0.20, 1.0")
   (plot-command "unset key")
-  (plot (time-signal rhythm-to-plot) nil
+  (plot (onset-time-signal rhythm-to-plot) nil
 	;; :legends (list (format nil "Rhythm onsets of ~a" (description rhythm-to-plot)))
 	:styles '("impulses linetype 6")
 	:xlabel (if time-in-seconds "Time in seconds"
@@ -293,20 +297,20 @@
   "Generate a rhythm from a note-list specifying time, duration (both in seconds) & amplitude"
   (let* ((last-note (first (last note-list)))
 	 (rhythm-length (ceiling (* (+ (first last-note) (second last-note)) sample-rate)))
-	 (time-signal (make-double-array rhythm-length)))
+	 (onset-time-signal (make-double-array rhythm-length)))
     (loop
        for (time duration amplitude) in note-list
        for onset-time-in-samples = (round (* time sample-rate))
        for duration-samples = (round (* duration sample-rate))
        do (if make-envelope-p
-	      (setf (.subarray time-signal (list 0 (list onset-time-in-samples 
+	      (setf (.subarray onset-time-signal (list 0 (list onset-time-in-samples 
 							 (+ onset-time-in-samples duration-samples))))
 		    (make-envelope amplitude :attack attack :release release :sustain (- duration attack release)))
-	      (setf (.aref time-signal onset-time-in-samples) (coerce amplitude 'double-float))))
+	      (setf (.aref onset-time-signal onset-time-in-samples) (coerce amplitude 'double-float))))
     (make-instance 'rhythm
 		   :name name
 		   :description name
-		   :time-signal time-signal
+		   :onset-time-signal onset-time-signal
 		   :sample-rate sample-rate)))
 
 (defun part-from-rhythm (rhythm &key (fixed-duration 0.25) (fixed-key-number *low-woodblock*)
@@ -337,7 +341,7 @@
 	 (length-of-sound (round (+ (* (duration rhythm-to-sonify) (sample-rate clap-sound))
 				    (sound-length clap-sound))))
 	 (note-times (onsets-in-seconds rhythm-to-sonify))
-	 (note-amplitudes (.arefs (time-signal rhythm-to-sonify) (onsets-in-samples rhythm-to-sonify))))
+	 (note-amplitudes (.arefs (onset-time-signal rhythm-to-sonify) (onsets-in-samples rhythm-to-sonify))))
     (sample-at-times length-of-sound clap-sound note-times :amplitudes note-amplitudes)))
 
 (defmethod write-as-audio ((rhythm-to-save rhythm) (filepath-to-save pathname) (clap-pathname pathname))
@@ -359,17 +363,17 @@
 
 (defun add-rhythm (&rest rhythms-to-add)
   "Adds multiple rhythms together. Returns the shortest? longest? rhythm."
-  (let* ((added-rhythms (apply #'.+ (mapcar #'time-signal rhythms-to-add)))
+  (let* ((added-rhythms (apply #'.+ (mapcar #'onset-time-signal rhythms-to-add)))
 	(clamped-rhythms (clamp-to-bounds added-rhythms added-rhythms :high-bound 1.0d0 :clamp-high 1.0d0)))
     (make-instance 'rhythm 
 		   :name "polyrhythm" 
 		   :description "polyrhythm"
-		   :time-signal clamped-rhythms
+		   :onset-time-signal clamped-rhythms
 		   :sample-rate 200)))
 
 (defmethod scale-amplitude ((rhythm-to-scale rhythm) scale-factor)
   "Scales the amplitude of each onset by the given scale-factor"
-  (setf (time-signal rhythm-to-scale) (.* (time-signal rhythm-to-scale) scale-factor))
+  (setf (onset-time-signal rhythm-to-scale) (.* (onset-time-signal rhythm-to-scale) scale-factor))
   rhythm-to-scale)
 
 (defmethod subset-of-rhythm ((rhythm-to-subset rhythm) time-region)
@@ -379,7 +383,7 @@
 		   :name (name rhythm-to-subset) 
 		   :description (format nil "subset of ~a" (name rhythm-to-subset))
 		   ;; TODO .subarray isn't handling vectors with trailing 't regions correctly.
-		   :time-signal (.subarray (time-signal rhythm-to-subset) (list time-region))
+		   :onset-time-signal (.subarray (onset-time-signal rhythm-to-subset) (list time-region))
 		   :sample-rate (sample-rate rhythm-to-subset)))
 
 ;;; TODO this should also allow limitation by the number of notes, number of bars etc.
@@ -399,5 +403,5 @@
   (make-instance 'rhythm 
 		 :name (name (first rhythms)) 
 		 :description (name (first rhythms))
-		 :time-signal (apply #'.concatenate (mapcar #'time-signal rhythms))
+		 :onset-time-signal (apply #'.concatenate (mapcar #'onset-time-signal rhythms))
 		 :sample-rate (sample-rate (first rhythms))))

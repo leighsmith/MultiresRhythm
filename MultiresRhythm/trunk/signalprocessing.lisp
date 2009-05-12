@@ -88,7 +88,7 @@ Anything clipped will be set to the clamp-low, clamp-high values"
       (setf (.subarray new-array (list t i)) a)))) ; TODO produce a list of rank # of t's.
 
 ;;; Really good candidate to replace with a GSL/BLAS routine...
-;;; Actually this should become a macro using (reduce-dimension a #'.+)
+;;; Actually this should become a macro using (reduce-dimension a #'.sum)
 (defun .partial-sum (a &key (dimension 1)) 
   (declare (optimize (speed 3) (space 0) (safety 1)))
   (let* ((result-length (.array-dimension a dimension))

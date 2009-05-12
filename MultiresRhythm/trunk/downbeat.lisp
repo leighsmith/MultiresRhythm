@@ -50,14 +50,14 @@ start-onset, these measures are in samples"
   ;; scale down all the other beats
   (let* ((rhythm-sample-length (duration-in-samples rhythm-to-accent))
 	 (duration-of-metric-region (- rhythm-sample-length start-onset))
-	 (time-signal (time-signal rhythm-to-accent))
+	 (onset-time-signal (onset-time-signal rhythm-to-accent))
 	 (onset-times (.floor (.rseq start-onset 
 				     (- rhythm-sample-length period)
 				     (/ duration-of-metric-region period))))
-	 (scaled-notes (.* (.arefs time-signal onset-times) accent))
-	 (scaled-time-signal (.* time-signal (/ 1 accent))))
+	 (scaled-notes (.* (.arefs onset-time-signal onset-times) accent))
+	 (scaled-time-signal (.* onset-time-signal (/ 1 accent))))
     (setf (.arefs scaled-time-signal onset-times) scaled-notes)
-    (setf (time-signal rhythm-to-accent) scaled-time-signal)
+    (setf (onset-time-signal rhythm-to-accent) scaled-time-signal)
     rhythm-to-accent))
 
 (defun long-silence-dyadic-pad (signal)
@@ -69,7 +69,7 @@ start-onset, these measures are in samples"
 ;; anacrusis. We should be able to set a maximum time region covering beat or bar period.
 (defmethod scaleogram-of-rhythm-silence ((analysis-rhythm rhythm) &key (voices-per-octave 16))
   (format t "Length of Rhythm ~f seconds~%" (duration analysis-rhythm))
-  (let ((silence-padded-rhythm (long-silence-dyadic-pad (time-signal analysis-rhythm))))
+  (let ((silence-padded-rhythm (long-silence-dyadic-pad (onset-time-signal analysis-rhythm))))
     (cwt silence-padded-rhythm voices-per-octave)))
 
 ;; (setf scaleogram (scaleogram-of-rhythm-silence rhythm))

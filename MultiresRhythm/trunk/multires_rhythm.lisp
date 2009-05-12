@@ -374,7 +374,7 @@ and stationary phase measures, optionally weighed by absolute tempo preferences.
 (defmethod scaleogram-of-rhythm ((analysis-rhythm rhythm) &key (voices-per-octave 16)
 				 (padding #'mirror-pad))
   (format t "Length of rhythm \"~a\" is ~f seconds~%" (name analysis-rhythm) (duration analysis-rhythm))
-  (cwt (time-signal analysis-rhythm) voices-per-octave :padding padding))
+  (cwt (onset-time-signal analysis-rhythm) voices-per-octave :padding padding))
 
 (defmethod skeleton-of-scaleogram ((analysis-scaleogram scaleogram) sample-rate)
   "Returns the skeleton given the scaleogram and sample-rate."

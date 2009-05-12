@@ -139,7 +139,7 @@
     ;; (format t "silence score from ratio of local and global maxima ~,3f~%" silence-score)
     silence-score))
 
-(defmethod silence-evidence ((rhythm-to-analyse rhythm)
+(defmethod silence-evidence ((rhythm-to-analyse salience-trace-rhythm)
 			     measure-start-sample ; beginning of our region of interest
 			     measure-index
 			     beat-durations-in-measure
@@ -162,8 +162,8 @@ beat and subdivision thereof is a silent region"
 	   (tatum-duration (.aref tatum-durations (floor tatum-index subdivisions-of-beat)))
 	   (gap-start (round (+ measure-start-sample tatum-location (* tatum-duration -0.5))))
 	   (gap-end (min (round (+ gap-start tatum-duration)) rhythm-length))
-	   (silence-score (silence-score-stddev (.subseq (time-signal rhythm-to-analyse) (max 0 gap-start) gap-end)
-					 (time-signal rhythm-to-analyse))))
+	   (silence-score (silence-score-stddev (.subseq (odf rhythm-to-analyse) (max 0 gap-start) gap-end)
+					 (odf rhythm-to-analyse))))
       (setf (.aref tatum-score tatum-index) silence-score)
       (format t "Measure ~a tatum location ~a samples, silence region (~a ~a) score = ~,3f~%"
 	      measure-index tatum-location gap-start gap-end silence-score)))))
@@ -171,7 +171,7 @@ beat and subdivision thereof is a silent region"
 ;;; We have a singularly perceptually longer interval (i.e. markedly longer) than other
 ;;; events in the sequence, in which case the onset starting the first relatively long
 ;;; (perceptually significant) interval longer than the beat period is likely to be the downbeat event.
-(defmethod gap-accent-downbeat-evidence ((rhythm-to-analyse rhythm) 
+(defmethod gap-accent-downbeat-evidence ((rhythm-to-analyse salience-trace-rhythm) 
 					 measure-start-sample ; begining of our region of interest
 					 measure-index
 					 beat-durations-in-measure
@@ -179,6 +179,7 @@ beat and subdivision thereof is a silent region"
   "Returns the probabilities of the downbeat at each beat location. Estimates formed by
 when the gap exceeds the beat period. bar-duration and beat-duration in samples"
     (loop
+       with gap-position = :preceding
        with look-ahead = 1.0d0		; look ahead a number of beats for a gap.
        ;; with look-ahead = 1.25d0		; look ahead a number of beats for a gap.
        ;; with attack-skip = 0.20d0	; skip over the relative attack portion on the beat.
@@ -188,7 +189,7 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
        with downbeat-score = (make-double-array tatums-per-measure) ; initialised to 0.0
        with rhythm-length = (duration-in-samples rhythm-to-analyse)
        with bar-duration = (.sum beat-durations-in-measure) ; in samples
-       with search-region = (.subseq (time-signal rhythm-to-analyse) measure-start-sample 
+       with search-region = (.subseq (odf rhythm-to-analyse) measure-start-sample 
 				     (min rhythm-length (+ measure-start-sample (1- (* bar-duration *bars-of-gap-profile*)))))
        for tatum-index from 0 below tatums-per-measure
        for tatum-location across (val tatum-locations)
@@ -200,18 +201,19 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
        for gap-end = (min (+ gap-start lookahead-length) rhythm-length)
        for preceding-gap-end = (round (+ measure-start-sample tatum-location))
        for preceding-gap-start = (max (- preceding-gap-end lookahead-length) 0)
-       ;; for following-silence-score = (silence-score-stddev (.subseq (time-signal rhythm-to-analyse) gap-start gap-end)
-	;; 						   (time-signal rhythm-to-analyse))
-       for following-silence-score = (silence-score-stddev (.subseq (time-signal rhythm-to-analyse) gap-start gap-end) search-region)
+       ;; for following-silence-score = (silence-score-stddev (.subseq (odf rhythm-to-analyse) gap-start gap-end)
+	;; 						   (odf rhythm-to-analyse))
+       for following-silence-score = (silence-score-stddev (.subseq (odf rhythm-to-analyse) gap-start gap-end) search-region)
        for preceding-silence-score = (if (zerop preceding-gap-start)
 					 0.0d0
-					 (silence-score-stddev (.subseq (time-signal rhythm-to-analyse) preceding-gap-start preceding-gap-end)
+					 (silence-score-stddev (.subseq (odf rhythm-to-analyse) preceding-gap-start preceding-gap-end)
 							search-region))
        do
-	 ;; Gap precedes OR follows the downbeat.
-	 (setf (.aref downbeat-score tatum-index) (+ following-silence-score preceding-silence-score))
-	 ;; (setf (.aref downbeat-score tatum-index) following-silence-score)
-	 ;; (setf (.aref downbeat-score tatum-index) preceding-silence-score)
+	 (setf (.aref downbeat-score tatum-index) 	 ;; Gap precedes OR follows the downbeat.
+	       (ccase gap-position
+		 (:following following-silence-score)
+		 (:preceding preceding-silence-score)
+		 (:both (+ following-silence-score preceding-silence-score))))
 	 (format t "Measure ~a tatum ~a location ~a preceding region (~a ~a) following region (~a ~a) score = ~,3f~%"
 		 measure-index tatum-index tatum-location preceding-gap-start preceding-gap-end gap-start gap-end
 		 (.aref downbeat-score tatum-index))
@@ -226,8 +228,9 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 
 ;;; Check when we have intervals which are non-unique, i.e other intervals of similar length reoccur
 ;;; in the initial sequence.  
-(defmethod duration-maxima-downbeat-evidence ((rhythm-to-analyse rhythm) meter
-						beats-per-measure tempo-in-bpm bar-duration beat-duration)
+(defmethod duration-maxima-downbeat-evidence ((rhythm-to-analyse salience-trace-rhythm)
+					      meter
+					      beats-per-measure tempo-in-bpm bar-duration beat-duration)
   "Returns the probabilities of the downbeat at each beat location. bar-duration and beat-duration in samples"
   (let ((time-limited-iois (rhythm-iois-samples rhythm-to-analyse))
 	(downbeat-probabilities (make-double-array beats-per-measure))) ; initialised to 0.0
@@ -255,7 +258,7 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 ;;; TODO: Examine full phase congruency and phase congruency over a focused range, for
 ;;; example, weighted by energy and over multiple frequency points of metrical harmonics.
 ;;; Try sampling the phase where the known downbeats are, & plotting the cross-scale profiles.
-(defmethod mrr-phase-downbeat-evidence ((ODF-fragment rhythm)
+(defmethod mrr-phase-downbeat-evidence ((ODF-fragment salience-trace-rhythm)
 					meter beats-per-measure tempo-in-bpm
 					bar-duration beat-duration)
   "Examine the CWT phase of the fragment"
@@ -290,7 +293,7 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
      collect beat-ratio into beat-ratios
      finally (return (make-narray beat-ratios))))
 
-(defmethod amplitude-profile-downbeat-evidence ((ODF-fragment rhythm)
+(defmethod amplitude-profile-downbeat-evidence ((ODF-fragment salience-trace-rhythm)
 						meter beats-per-measure 
 						bar-duration beat-durations-in-measure)
   "Estimate the downbeat of the fragment of the onset detection function. Returns a vector
@@ -328,7 +331,7 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 ;; instance. We are saving the meter and it's relation to tempo. Of course, bar duration
 ;; is computed from beat-duration and beats-per-measure.
 
-;; (defmethod diagnose-amplitude-profile ((ODF-fragment rhythm) meter beats-per-measure tempo-in-bpm bar-duration beat-duration)
+;; (defmethod diagnose-amplitude-profile ((ODF-fragment salience-trace-rhythm) meter beats-per-measure tempo-in-bpm bar-duration beat-duration)
 ;;   ;; metrical profile length in bars
 ;;   (let ((metrical-profile-length (1- (/ (duration-in-samples ODF-fragment) bar-duration))))
 ;;     (format t "Downbeat for measure ~d, sample ~d, shift by ~d samples~%" measure-index 
@@ -373,7 +376,7 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
        ;;	       (+ start-sample (* (argmax downbeat-probabilities) beat-duration)))
        (diag-plot 'downbeat-observations
        	 (if (find measure-index *measures-to-plot*)
-       	     (let ((search-region (.subseq (time-signal rhythm) start-sample 
+       	     (let ((search-region (.subseq (odf rhythm) start-sample 
        					   (min (duration-in-samples rhythm) (+ start-sample (1- (* bar-duration 2)))))))
        	       (plot (list (.normalise search-region) downbeat-probabilities 
 			   (.arefs downbeat-probabilities (.* (.iseq 0 (1- beats-per-measure)) *subdivisions-of-beat*)))

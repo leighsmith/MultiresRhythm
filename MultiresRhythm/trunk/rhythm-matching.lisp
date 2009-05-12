@@ -117,7 +117,7 @@
 (defun gaussian-rhythm-envelope (rhythm &key (temporal-discrimination 0.60d0))
   "Given a rhythm, return a vector with Gaussian envelopes centered at the impulse."
   (let* ((envelope-width (round (* temporal-discrimination (sample-rate rhythm))))
-	 (convolved-impulses (convolve (time-signal rhythm) (gaussian-envelope envelope-width)))
+	 (convolved-impulses (convolve (onset-time-signal rhythm) (gaussian-envelope envelope-width)))
 	 ;; Rotate so that the Gaussian mean is centered on each impulse.
 	 (rotated-envelope (rotate-vector convolved-impulses :by (round envelope-width 2))))
     ;; Since we are interested in the convolved rhythm envelope alone, we remove the
@@ -174,7 +174,7 @@
 					       :sample-rate (sample-rate onset-detection-rhythm)
 					       :hierarchy #'backbeat-metric-hierarchy)  ; #'metric-hierarchy
 					      :temporal-discrimination *matching-temporal-discrimination*))) 
-	 (normalised-odf (.normalise (time-signal onset-detection-rhythm))))
+	 (normalised-odf (.normalise (odf onset-detection-rhythm))))
     (cross-correlation-match normalised-odf metric-accent-gaussian :highest-correlations maximum-matches)))
 
 (defun visualise-downbeat (meter tempo-bpm onset-detection-rhythm downbeat-sample measures)
@@ -184,7 +184,7 @@
 					       :sample-rate (sample-rate onset-detection-rhythm)
 					       :hierarchy #'backbeat-metric-hierarchy)
 					      :temporal-discrimination *matching-temporal-discrimination*)))
-	 (normalised-odf (.normalise (time-signal onset-detection-rhythm))))
+	 (normalised-odf (.normalise (odf onset-detection-rhythm))))
     (plot-correlation-matching normalised-odf metric-accent-gaussian downbeat-sample)))
 
 (defun visualise-downbeat-index (meter tempo-bpm onset-detection-rhythm downbeat-index)
@@ -211,5 +211,5 @@
       (cross-correlation-match rhythm-envelope match-prototype))))
 
 
-;;; (setf dillinger-ac (.subseq (autocorrelation (time-signal dillinger)) (.length (time-signal dillinger))))
+;;; (setf dillinger-ac (.subseq (autocorrelation (odf dillinger)) (.length (odf dillinger))))
 

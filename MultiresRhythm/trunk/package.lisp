@@ -53,6 +53,7 @@
 	   :save-rhythm-and-claps
 	   :save-rhythm-mix
 	   :sample-rate
-	   :time-signal
+	   :onset-time-signal
+	   :odf
 	   :last-expectations
 	   :downbeat-estimation))
