@@ -24,11 +24,14 @@
 ;;; annotations-directory #P"/Volumes/Quaerodb/annotation/annotation current state/"
 (defparameter *quaero-annotations-directory* #P"/Volumes/Quaerodb/doc/quaero_site/content/18_current/beat_XML/")
 
+(defparameter *quaero-selection-directory*
+  (merge-pathnames (make-pathname :directory '(:relative "Quaero_Selection")) *rhythm-data-directory*))
+
 (defparameter *quaero-selection-annotations-directory* 
-  (merge-pathnames (make-pathname :directory '(:relative "Quaero_Selection" "Annotation")) *rhythm-data-directory*))
+  (merge-pathnames (make-pathname :directory '(:relative "Annotation")) *quaero-selection-directory*))
 
 (defparameter *quaero-selection-analysis-directory* 
-  (merge-pathnames (make-pathname :directory '(:relative "Quaero_Selection" "Analysis")) *rhythm-data-directory*))
+  (merge-pathnames (make-pathname :directory '(:relative "Analysis")) *quaero-selection-directory*))
 
 ;;; The location of the audio files that were annotated.
 (defparameter *quaero-audio-directory* #P"/Volumes/Quaerodb/annotation/wav-m22k/")
@@ -299,12 +302,15 @@
 					 (merge-pathnames (make-pathname :directory '(:relative "Quaero_Selection" "Analysis"))
 							  *rhythm-data-directory*)))
 
-  "Given the corpus, compute the observation probabilties and return as a matrix"
+  "Given the corpus, compute the observation probabilties and return as a vector"
   (loop
      with meter = '(2 2 2)		; TODO hardwired! read this from annotation file.
      with beats-per-measure = 4		; TODO hardwired! read this from annotation file.
-     with observation-probs = (make-double-array beats-per-measure)
+     with tatums-per-measure = (* beats-per-measure mrr::*subdivisions-of-beat*)
+     with observation-probs = (make-double-array (list tatums-per-measure (length corpus)))
+     with averaged-observations = (make-double-array tatums-per-measure)
      for music in corpus
+     for music-index from 0
      for filename = (first music)
      for annotation-filepath = (fifth music)
      for original-sound-path = (merge-pathnames (make-pathname :directory '(:relative "Quaero_Selection" "Audio")
@@ -320,8 +326,21 @@
 	      (odf-subset (mrr::subset-of-rhythm rhythm (list (round (* sample-rate start-from)) t)))
 	      (rhythm-obs-probs (mrr::observation-probabilities odf-subset annotated-beat-markers meter beats-per-measure)))
 	 (format t "Observation probs ~a~%" rhythm-obs-probs)
-	 (setf observation-probs (.+ observation-probs rhythm-obs-probs)))
-     finally (return (./ observation-probs (length corpus)))))
+	 (setf (.column observation-probs music-index) rhythm-obs-probs)
+	 (mrr::diag-plot 'corpus-observations
+	   (plot rhythm-obs-probs nil)))
+     finally 
+       (if (> (length corpus) 1)
+	   (mrr::diag-plot 'corpus-observations
+	     (image observation-probs nil nil
+		    :title "Corpus downbeat observations"
+		    :xlabel "Track number"
+		    :ylabel "Beat Location")))
+       (setf averaged-observations (./ (mrr::.partial-sum (.transpose observation-probs)) (length corpus)))
+       (window)
+       (plot-histogram averaged-observations nil :title "Downbeat observation likelihood")
+       (close-window)
+       (return averaged-observations)))
 
 ;;;
 ;;; Evaluate the downbeat finder.
@@ -379,21 +398,21 @@
 	       :first-downbeat-time downbeat-time))))
 
 (defun train-on-quaero-dataset (size)
-  (let ((training-dataset (make-quaero-dataset (* size 2) 2 :annotations-directory *quaero-selection-annotations-directory*)))
-    (setf *downbeat-probabilities* (learn-observation-probabilities training-dataset))
-    ;; (diag-plot 'downbeat-probabilities
-    (image *downbeat-probabilities* nil nil 
+  (let* ((training-dataset (make-quaero-dataset (* size 2) 2 
+						:annotations-directory *quaero-selection-annotations-directory*))
+	 (downbeat-probabilities (learn-observation-probabilities training-dataset)))
+    (image downbeat-probabilities nil nil 
 	   :title (format nil "Emission probability of observing gap location given downbeat from ~a examples" 
 			  (length training-dataset))
 	   :xlabel "Observed Gap location" 
 	   :ylabel "Actual downbeat (hidden)")
-    *downbeat-probabilities*))
+    downbeat-probabilities))
 
 
 ;; (setf small-quaero (make-quaero-dataset 10 1 :annotations-directory *quaero-selection-annotations-directory*))
 ;; (setf bad-examples (evaluate-with-music #'evaluate-quaero-downbeat :music-dataset small-quaero :music-name #'first))
 ;; (setf half-quaero (make-quaero-dataset 300 2))
-;; (setf select-quaero (make-quaero-dataset 100 1 :annotations-directory *quaero-selection-annotations-directory*))
+;; (setf select-quaero (make-quaero-dataset 50 1 :annotations-directory *quaero-selection-annotations-directory*))
 ;; (setf bad-examples (evaluate-with-music #'evaluate-quaero-downbeat :music-dataset select-quaero :music-name #'first))
 
 (defun save-annotations ()
