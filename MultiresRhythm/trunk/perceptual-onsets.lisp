@@ -18,8 +18,8 @@
 (use-package :nlisp)
 
 (defclass salience-trace-rhythm (rhythm)
-  ((odf :initarg :odf :accessor odf)) ; Onset detection function
-   (:documentation "A subclass of rhythm that holds the full salience trace and the onset data."))
+  ((odf :initarg :odf :accessor odf :initform (make-double-array '(1)))) ; Onset detection function
+  (:documentation "A subclass of rhythm that holds the full salience trace in addition to the onset data."))
 
 ;; (setf ps (perceptual-salience-rhythm "Research/Sources/OtherResearchers/UoP/AuditorySaliencyModel/ines1.saliency" "Research/Sources/OtherResearchers/UoP/AuditorySaliencyModel/ines1.onsets" :weighted t))
 ;; (setf res1 (perceptual-onsets-to-rhythm "res1/res1_1_resp_text" "res1/res1_1_pOnsets" :weighted t))
@@ -133,14 +133,11 @@
 	       (to-remove (.+ within-window (.floor first-are-greater))))
 	  (remove-arefs onset-times (.remove-duplicates to-remove))))))
 
-;;; TODO Perhaps we are beginning to reach the limit of the representation, where we are swapping
-;;; the discrete time values for the onsets. Probably the solution is to factor the
-;;; rerieval methods so that onsets are more clearly separated from a rhythm time signal.
 (defmethod subset-of-rhythm ((rhythm-to-subset salience-trace-rhythm) time-region)
-  "Subset the onset-time-signal as well as the odf"
+  "Subset the ODF as well as the onset-time-signal"
   (let ((subset-rhythm (call-next-method rhythm-to-subset time-region)))
     ;; TODO we put the time region inside a list to appease .subarray when working on a vector.
-    (setf (onset-time-signal subset-rhythm) (.subarray (onset-time-signal rhythm-to-subset) (list time-region)))
+    (setf (odf subset-rhythm) (.subarray (odf rhythm-to-subset) (list time-region)))
     subset-rhythm))
 
 ;; Should factor this into a windowing operation using a given function.
@@ -223,8 +220,8 @@
 ;; onset-times))
 
 (defun rhythm-from-odf (salience-filepath &key (sample-rate 200.0d0) (description "") (weighted t))
-  "Reads the onset detection function (perceptual salience) data and returns a salience-trace-rhythm instance. Weighted keyword
-   produces onsets which are weighted by relative values of the saliency measure."
+  "Reads the onset detection function (perceptual salience) data and returns a salience-trace-rhythm instance.
+    Weighted keyword produces onsets which are weighted by relative values of the saliency measure."
   (let* ((perceptual-salience-matrix (.load salience-filepath :format :text))
 	 (perceptual-salience (.column perceptual-salience-matrix 0))
 	 (perceptual-salience-rhythm

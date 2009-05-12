@@ -16,6 +16,16 @@
 (in-package :multires-rhythm)
 (use-package :nlisp)
 
+;; Defines metrical structure of a rhythm, including location of each beat.
+(defclass meter ()
+  ((beat-times  :initarg :beat-times  :accessor beat-times)
+   (hierarchy :initarg :hierarchy :accessor hierarchy)
+   (time-signature :initarg :time-signature :accessor time-signature)
+   ;; TODO This should probably be a list of beats-per-measure over the whole piece.
+   (beats-per-measure :initarg :beats-per-measure :accessor beats-per-measure :initform 4)
+   (anacrusis   :initarg :anacrusis   :accessor anacrusis   :initform 0))
+  (:documentation "Holds the metrical structure of a rhythm, the times of beats, and descriptions of the meter"))
+
 ;; Calculates the persistency of period multiples in the skeleton.
 (defun meter-of-analysis-and-tactus (analysis tactus &key (meters '(3 4)))
   "Returns the evidence of harmonicity of the beat to the given beat-multiple."

@@ -179,7 +179,7 @@ beat and subdivision thereof is a silent region"
   "Returns the probabilities of the downbeat at each beat location. Estimates formed by
 when the gap exceeds the beat period. bar-duration and beat-duration in samples"
     (loop
-       with gap-position = :preceding
+       with gap-position = :following
        with look-ahead = 1.0d0		; look ahead a number of beats for a gap.
        ;; with look-ahead = 1.25d0		; look ahead a number of beats for a gap.
        ;; with attack-skip = 0.20d0	; skip over the relative attack portion on the beat.
@@ -536,4 +536,14 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
     (./ (.partial-sum (.transpose gap-observations)) (.column-count gap-observations))))
 ;;  (reduce-dimension (.transpose gap-observations) #'nlisp::.mult)))
 
+#|
+(defmethod observation-probabilities ((rhythm-to-analyse annotated-rhythm))
+  (let* (gap-observations (observe-downbeat-of (rhythm rhythm-to-analyse) (meter rhythm-to-analyse)
+			    (beat-times )
+			    (beats-per-measure (meter rhythm-to-analyse)
 
+(setf preceding-gaps (mrr::observe-downbeat-of (rhythm u2) 
+					       (mrr::beat-times (mrr::meter u2))
+					       (mrr::beats-per-measure (mrr::meter u2))
+					       #'mrr::gap-accent-downbeat-evidence))
+|#
