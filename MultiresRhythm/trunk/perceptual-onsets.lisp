@@ -240,6 +240,13 @@
 	      (make-double-array (.length onset-indices) :initial-element 1d0)))
     perceptual-salience-rhythm))
 
+(defun rhythm-from-ircam-odf (&rest params)
+  "IRCAMbeat ODF has 100mS silence appended onto the audio file before calculating the
+  ODF, which is then compensated for when calculating the markers. We remove it."
+  (let* ((leading-silence-seconds 0.1d0)
+	 (raw-odf (apply #'rhythm-from-odf params)))
+    (subset-of-rhythm raw-odf (list (round (* leading-silence-seconds (sample-rate raw-odf))) t))))
+
 (defun perceptual-salience-rhythm (salience-filepath onsets-filepath &key 
 				      (sample-rate 200) (description "") (weighted t))
   "Reads the salience data and returns a salience-trace-rhythm instance. Weighted keyword

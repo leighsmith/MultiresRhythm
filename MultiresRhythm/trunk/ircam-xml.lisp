@@ -181,3 +181,11 @@
 	   (read-ircam-annotation filepath :marker-name "segment"))
 	  (t (format t "Unusual ircambeat format ~a discovered" first-tagname)))))
 
+(defun read-annotated-beats (ircam-annotation-path)
+  "Retrieve the times of beats and downbeats, skipping beat = 0, which are tatums, in the IRCAM annotation convention"
+  (multiple-value-bind (times beats) 
+      (read-ircam-annotation ircam-annotation-path)
+    (let* ((beat-indices (.find (.> beats 0)))
+	   (beat-times (.arefs times beat-indices)))
+      (values beat-times beat-indices))))
+

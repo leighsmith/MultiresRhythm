@@ -18,6 +18,8 @@
 
 ;;; Free parameters.
 
+(defparameter *epsilon* 0.0001d0) ; Used to avoid divide by zero errors.
+
 ;;; The number of amplitude profile alignments considered per bar. Defines the contrast
 ;;; and threshold between highest and lowest probability for all possible downbeat
 ;;; locations. Must be greater than the number of beats-per-measure. Shouldn't need
@@ -31,7 +33,7 @@
 (defparameter *bars-of-gap-profile* 2)
 
 ;; Resolution of the beat position estimation states in subdivisions of each beat (4 = semiquavers).
-(defparameter *subdivisions-of-beat* 4)
+(defparameter *subdivisions-of-beat* 1)
 
 (defparameter *plots-per-rhythm* 10)
 
@@ -111,10 +113,9 @@
 	 (stddev-silence-region (stddev silence-evaluation-region))
 	 (mean-silence-region (mean silence-evaluation-region))
 	 ;; (cov-silence-region (/ stddev-silence-region mean-silence-region))
-	 (epsilon 0.001d0) ;; Avoid div by zero errors.
-	 (silence-score (* (/ stddev-comparison (+ stddev-silence-region epsilon))
-			   (/ mean-comparison (+ mean-silence-region epsilon)))))
-	 ;; (/ (.max comparison-region) (+ (.max silence-evaluation-region) epsilon)))))
+	 (silence-score (* (/ stddev-comparison (+ stddev-silence-region *epsilon*))
+			   (/ mean-comparison (+ mean-silence-region *epsilon*))
+			   (/ (.max comparison-region) (+ (.max silence-evaluation-region) *epsilon*)))))
 
     ;; (setf (.aref downbeat-score downbeat-index) (if (zerop cov-silence-region)
     ;; 						 4.0d0 ; if we are in true silence
@@ -133,8 +134,7 @@
    than the comparison region, i.e more likely to be silence."
   ;; Calculate the stddev & mean over the region of interest, 2 measures.
   (let* ((max-silence-region (.max silence-evaluation-region))
-	 (epsilon 0.001d0) ; Avoid div by 0 errors.
-	 (silence-score (/ (.max comparison-region) (+ max-silence-region epsilon))))
+	 (silence-score (/ (.max comparison-region) (+ max-silence-region *epsilon*))))
     ;; (format t "max whole ~,3f max silence ~,3f~%" (.max comparison-region) max-silence-region)
     ;; (format t "silence score from ratio of local and global maxima ~,3f~%" silence-score)
     silence-score))
@@ -157,7 +157,7 @@ beat and subdivision thereof is a silent region"
 	    ;; following and preceding a note and it being a downbeat.
 	    ;; When returning P(downbeat) = 0 for all downbeat locations we indicate the lack of
 	    ;; decision as all are equally likely and none contribute to the final decision.
-	    (if (zerop (.sum tatum-score)) tatum-score (./ tatum-score (.sum tatum-score))))
+	    (./ tatum-score (+ (.sum tatum-score) *epsilon*)))
     (let* ((tatum-location (.aref tatum-locations tatum-index))
 	   (tatum-duration (.aref tatum-durations (floor tatum-index subdivisions-of-beat)))
 	   (gap-start (round (+ measure-start-sample tatum-location (* tatum-duration -0.5))))
@@ -165,8 +165,8 @@ beat and subdivision thereof is a silent region"
 	   (silence-score (silence-score-stddev (.subseq (odf rhythm-to-analyse) (max 0 gap-start) gap-end)
 					 (odf rhythm-to-analyse))))
       (setf (.aref tatum-score tatum-index) silence-score)
-      (format t "Measure ~a tatum location ~a samples, silence region (~a ~a) score = ~,3f~%"
-	      measure-index tatum-location gap-start gap-end silence-score)))))
+      (format t "Measure ~a tatum ~a location ~a samples, silence region (~a ~a) score = ~,3f~%"
+	      measure-index tatum-index tatum-location gap-start gap-end silence-score)))))
 
 ;;; We have a singularly perceptually longer interval (i.e. markedly longer) than other
 ;;; events in the sequence, in which case the onset starting the first relatively long
@@ -179,7 +179,7 @@ beat and subdivision thereof is a silent region"
   "Returns the probabilities of the downbeat at each beat location. Estimates formed by
 when the gap exceeds the beat period. bar-duration and beat-duration in samples"
     (loop
-       with gap-position = :following
+       with gap-position = :both
        with look-ahead = 1.0d0		; look ahead a number of beats for a gap.
        ;; with look-ahead = 1.25d0		; look ahead a number of beats for a gap.
        ;; with attack-skip = 0.20d0	; skip over the relative attack portion on the beat.
@@ -224,7 +224,7 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 		 ;; When returning P(downbeat) = 0 for all downbeat locations we indicate the lack of
 		 ;; decision as all are equally likely and none contribute to the final decision.
 		 ;; downbeat-score)))
-		 (if (zerop (.sum downbeat-score)) downbeat-score (./ downbeat-score (.sum downbeat-score))))))
+		 (./ downbeat-score (+ (.sum downbeat-score) *epsilon*)))))
 
 ;;; Check when we have intervals which are non-unique, i.e other intervals of similar length reoccur
 ;;; in the initial sequence.  
@@ -293,29 +293,33 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
      collect beat-ratio into beat-ratios
      finally (return (make-narray beat-ratios))))
 
-(defmethod amplitude-profile-downbeat-evidence ((ODF-fragment salience-trace-rhythm)
-						meter beats-per-measure 
-						bar-duration beat-durations-in-measure)
+(defmethod amplitude-profile-downbeat-evidence ((whole-rhythm salience-trace-rhythm)
+						measure-start-sample ; begining of our region of interest
+						measure-index
+						beat-durations-in-measure
+						subdivisions-of-beat)
   "Estimate the downbeat of the fragment of the onset detection function. Returns a vector
    of length beats-in-measure with the probabilty of the downbeat at each beat indicated."
   ;; metrical profile length in bars
-  (let ((tempo-in-bpm (mean (./ 60.0d0 (./ beat-durations-in-measure (sample-rate ODF-fragment)))))
-	(metrical-profile-length (1- (floor (duration-in-samples ODF-fragment) bar-duration))))
+  (let* ((meter '(2 2 2 2)) ;; TODO
+	 (beats-per-measure (.length beat-durations-in-measure))
+	 (bar-duration (.sum beat-durations-in-measure))
+	 (tempo-in-bpm (mean (./ 60.0d0 (./ beat-durations-in-measure (sample-rate whole-rhythm)))))
+	 (odf-fragment (subset-of-rhythm whole-rhythm 
+					 (list measure-start-sample (+ measure-start-sample (* bar-duration 2))))))
     (multiple-value-bind (shift-positions shift-scores) 
-	(match-ODF-meter meter tempo-in-bpm ODF-fragment metrical-profile-length :maximum-matches *max-amp-matches*) 
-      ;; TODO I'm not sure removing these is the best option, perhaps we should fold them.
+	(match-ODF-meter meter tempo-in-bpm odf-fragment 2 :maximum-matches *max-amp-matches*)
+      ;; TODO I'm not sure removing these shift positions is the best option, perhaps we should fold them.
       (let* ((prune-beyond-1-measure (.find (.>= shift-positions bar-duration)))
 	     (shift-positions-in-measure (remove-arefs shift-positions prune-beyond-1-measure))
 	     (shift-scores-in-measure (remove-arefs shift-scores prune-beyond-1-measure))
-	     (scores (make-double-array (* beats-per-measure *subdivisions-of-beat*)))
-      	     ;; Convert shift positions into downbeats.
+	     (scores (make-double-array (* beats-per-measure subdivisions-of-beat)))
+      	     ;; Convert shift positions into downbeats estimates.
 	     (downbeats (ratio-of-times beat-durations-in-measure shift-positions-in-measure))
-	     (subbeat-grid (.floor (.* downbeats *subdivisions-of-beat*)))
+	     (tatum-grid (.floor (.* downbeats subdivisions-of-beat)))
 	     ;; balance by the relative score values into probabilities.
-	     (scores-as-probabilities (if (zerop (.sum shift-scores-in-measure))
-					  shift-scores-in-measure
-					  (./ shift-scores-in-measure (.sum shift-scores-in-measure)))))
-	(setf (.arefs scores subbeat-grid) scores-as-probabilities)
+	     (scores-as-probabilities (./ shift-scores-in-measure (+ (.sum shift-scores-in-measure) *epsilon*))))
+	(setf (.arefs scores tatum-grid) scores-as-probabilities)
 	;; (format t "===============================================~%")
 	(format t "shift positions ~a~%downbeats ~a~%downbeat probabilities ~,5f~%"
 	 	shift-positions-in-measure downbeats scores-as-probabilities)
@@ -323,7 +327,7 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 	;; 	(.sum (.* (.iseq 0 (1- beats-per-measure)) scores-as-probabilities)) (argmax scores-as-probabilities))
 	(diag-plot 'selected-downbeat
 	    (if (plusp (decf *plots-per-rhythm*))
-		(visualise-downbeat-index meter tempo-in-bpm ODF-fragment (argmax scores-as-probabilities))))
+		(visualise-downbeat-index meter tempo-in-bpm odf-fragment (argmax scores-as-probabilities))))
 	scores))))
 
 ;; TODO Perhaps add these: meter beats-per-measure tempo-in-bpm bar-duration beat-duration
@@ -343,7 +347,7 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 ;; 			     metrical-profile-length)
 ;;     (close-window)))
 
-(defun observe-downbeat-of (rhythm beat-times beats-per-measure downbeat-estimator)
+(defun observe-downbeat-of (rhythm beat-times beats-per-measure subdivisions-of-beat downbeat-estimator)
   "Returns an estimate of downbeat location across the entire ODF rhythm using an estimator"
   (loop
      ;; Convert beat-times in seconds to durations of each beat in samples.
@@ -351,7 +355,7 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
      ;; Reduce by one measure to ensure the last search region is a full two bars,
      ;; avoiding a bias in the downbeat-estimator towards starting beats.
      with number-of-measures = (1- (floor (.length beat-durations) beats-per-measure)) ; floor avoids partial bars
-     with downbeat-estimates = (make-double-array (list (* beats-per-measure *subdivisions-of-beat*) number-of-measures))
+     with downbeat-estimates = (make-double-array (list (* beats-per-measure subdivisions-of-beat) number-of-measures))
      initially (format t "~%~a~%rhythm duration ~a samples, number of measures ~a~%"
 		       downbeat-estimator (duration-in-samples rhythm) number-of-measures) 
        (format t "First beat-durations ~a~%" (.subseq beat-durations 0 16))
@@ -369,7 +373,7 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 	 (format t "Measure ~3d start sample ~a seconds ~,3f~%" measure-index start-sample start-time)
 	 (format t "beat duration in samples ~a = ~a~%" beat-durations-in-measure bar-duration)
 	 (funcall downbeat-estimator rhythm start-sample measure-index
-		  beat-durations-in-measure *subdivisions-of-beat*))
+		  beat-durations-in-measure subdivisions-of-beat))
      do					; collect likelihood in downbeat-estimates
        (format t "Downbeat probabilities ~a~%" downbeat-probabilities)
        ;; (format t "observed at sample ~d~%~%"
@@ -379,9 +383,9 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
        	     (let ((search-region (.subseq (odf rhythm) start-sample 
        					   (min (duration-in-samples rhythm) (+ start-sample (1- (* bar-duration 2)))))))
        	       (plot (list (.normalise search-region) downbeat-probabilities 
-			   (.arefs downbeat-probabilities (.* (.iseq 0 (1- beats-per-measure)) *subdivisions-of-beat*)))
+			   (.arefs downbeat-probabilities (.* (.iseq 0 (1- beats-per-measure)) subdivisions-of-beat)))
        		     (list (.iseq 0 (1- (.length search-region)))
-       			   (onsets-at-subdivisions beat-durations-in-measure *subdivisions-of-beat*)
+       			   (onsets-at-subdivisions beat-durations-in-measure subdivisions-of-beat)
        			   (onsets-at-subdivisions beat-durations-in-measure 1))
 		     :aspect-ratio 0.2
 		     :title (format nil "plot of measure ~a of ~a" measure-index (name rhythm))
@@ -444,21 +448,18 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
   "Use competing features to form an estimation of downbeat. Returns a single number mod beats-per-measure"
   (let* (;; (amplitude-observations (observe-downbeat-of rhythm 
 	 ;;  					      beat-times
-	 ;;  					      meter
 	 ;;  					      beats-per-measure
-	 ;;  					      *bars-of-amplitude-profile*
+	 ;;  					      *subdivisions-of-beat*
 	 ;;  					      #'amplitude-profile-downbeat-evidence)) 
 	 ;; (duration-maxima-observations (observe-downbeat-of rhythm
 	 ;; 						    beat-times
-	 ;; 						    meter
 	 ;; 						    beats-per-measure
-	 ;; 						    1
+	 ;; 						    *subdivisions-of-beat*
 	 ;; 						    #'duration-maxima-downbeat-evidence))
  	 (gap-accent-observations (observe-downbeat-of rhythm
 						       beat-times
-						       meter
 						       beats-per-measure
-						       *bars-of-gap-profile*
+						       *subdivisions-of-beat*
 						       #'gap-accent-downbeat-evidence))
          (combined-observations gap-accent-observations))
 	 ;; (combined-observations duration-maxima-observations))
@@ -477,23 +478,22 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
     ;; fold that back to the first using modulo.
     (mod (assess-evidence combined-observations "Combined" rhythm prior-evidence) beats-per-measure)))
 
-(defun downbeat-estimation-amplitude (rhythm beat-times meter beats-per-measure)
+;; Uses rhythm-description, needs to be incorporated.
+(defmethod downbeat-estimation-amplitude ((analysed-rhythm rhythm-description))
   "Use amplitude only to form an estimation of downbeat. Returns a single number mod beats-per-measure"
-  (let* ((amplitude-observations (observe-downbeat-of rhythm 
-						      beat-times
-						      meter
-						      beats-per-measure
-						      *bars-of-amplitude-profile*
+  (let* ((amplitude-observations (observe-downbeat-of (rhythm analysed-rhythm)
+						      (beat-times (meter analysed-rhythm))
+						      (beats-per-measure (meter analysed-rhythm))
+						      *subdivisions-of-beat*
 						      #'amplitude-profile-downbeat-evidence)))
-    (assess-evidence amplitude-observations "Amplitude profile" rhythm)))
+    (assess-evidence amplitude-observations "Amplitude profile" (rhythm analysed-rhythm))))
 
 (defun downbeat-estimation-duration (rhythm beat-times meter beats-per-measure)
   "Use duration only to form an estimation of downbeat. Returns a single number mod beats-per-measure"
   (let* ((duration-observations (observe-downbeat-of rhythm
 						     beat-times
-						     meter
 						     beats-per-measure
-						     1
+						     *subdivisions-of-beat*
 						     #'duration-maxima-downbeat-evidence)))
     (assess-evidence duration-observations "Duration maxima" rhythm)))
 
@@ -510,11 +510,10 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 (defun downbeat-estimation-phase (rhythm beat-times meter beats-per-measure)
   "Use amplitude only to form an estimation of downbeat. Returns a single number mod beats-per-measure"
   (let* ((phase-observations (observe-downbeat-of rhythm 
-						      beat-times
-						      meter
-						      beats-per-measure
-						      4
-						      #'mrr-phase-downbeat-evidence)))
+						  beat-times
+						  beats-per-measure
+						  *subdivisions-of-beat*
+						  #'mrr-phase-downbeat-evidence)))
     (assess-evidence phase-observations "Amplitude profile" rhythm)))
 
 
@@ -523,6 +522,7 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
   (let* ((gap-observations (observe-downbeat-of rhythm
 						beat-times
 						beats-per-measure
+						*subdivisions-of-beat*
 ;;						#'silence-evidence))
 						#'gap-accent-downbeat-evidence))
 	 (argmaxes (reduce-dimension gap-observations (lambda (y) (position (.max y) (val y))))) ; argmax fn
