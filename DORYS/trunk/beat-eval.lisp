@@ -67,7 +67,7 @@
 
 ;; Recall = number correct / number annotated => determines deletions
 ;; Precision = number correct / number computed => determines additions
-;; Single combined value.
+;; F-score = Single combined value.
 (defun evaluate-beat-times (computed-beat-times annotation-times precision-window)
   "Return the precision, recall and f-scores given the times of computed and annotated beats.
    Precision-window can be scalar or a vector of annotation-times length."

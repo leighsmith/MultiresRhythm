@@ -36,13 +36,6 @@
 ;;; The location of the audio files that were annotated.
 (defparameter *quaero-audio-directory* #P"/Volumes/Quaerodb/annotation/wav-m22k/")
 
-(defun rhythm-from-ircam-odf (&rest params)
-  "IRCAMbeat ODF has 100mS silence appended onto the audio file before calculating the
-  ODF, which is then compensated for when calculating the markers. We remove it."
-  (let* ((leading-silence-seconds 0.1d0)
-	 (raw-odf (apply #'mrr::rhythm-from-odf params)))
-    (mrr::subset-of-rhythm raw-odf (list (round (* leading-silence-seconds (sample-rate raw-odf))) t))))
-
 (defun beat-marker-filepath (original-sound-path &key (analysis-directory *rhythm-data-directory*))
   "Returns the filepath of the beat marker file associated with the given sound file"
   (merge-pathnames
@@ -109,14 +102,6 @@
 	   (downbeats (.arefs times downbeat-indices)))
       ;; (format t "~a~%first downbeat indices ~a~%" (pathname-name ircam-annotation-path) (.subseq downbeat-indices 0 10))
       (values downbeats downbeat-indices))))
-
-(defun annotated-beats (ircam-annotation-path)
-  "Retrieve the times of beats and downbeats, skipping beat = 0, which are tatums, in the IRCAM annotation convention"
-  (multiple-value-bind (times beats) 
-      (mrr::read-ircam-annotation ircam-annotation-path)
-    (let* ((beat-indices (.find (.> beats 0)))
-	   (beat-times (.arefs times beat-indices)))
-      (values beat-times beat-indices))))
 
 (defun track-named (number corpus)
   "Find the example with the leading text matching the number"
@@ -296,16 +281,10 @@
 ;; (quaero-downbeat "0028 - Jedi Mind Tricks - Visions of Ghandi - 02 Tibetan Black Magician")
 ;; (quaero-downbeat "0100 - Madcon - So Dark The Con Of Man - Beggin")
 
-(defun learn-observation-probabilities (corpus &key 
-					(sample-rate 172.27d0)
-					(analysis-directory 
-					 (merge-pathnames (make-pathname :directory '(:relative "Quaero_Selection" "Analysis"))
-							  *rhythm-data-directory*)))
-
+;;; TODO the beats-per-measure is assumed constant across the corpus which is tragically wrong.
+(defun learn-observation-probabilities (corpus &key (sample-rate 172.27d0) (beats-per-measure 4))
   "Given the corpus, compute the observation probabilties and return as a vector"
   (loop
-     with meter = '(2 2 2)		; TODO hardwired! read this from annotation file.
-     with beats-per-measure = 4		; TODO hardwired! read this from annotation file.
      with tatums-per-measure = (* beats-per-measure mrr::*subdivisions-of-beat*)
      with observation-probs = (make-double-array (list tatums-per-measure (length corpus)))
      with averaged-observations = (make-double-array tatums-per-measure)
@@ -313,18 +292,12 @@
      for music-index from 0
      for filename = (first music)
      for annotation-filepath = (fifth music)
-     for original-sound-path = (merge-pathnames (make-pathname :directory '(:relative "Quaero_Selection" "Audio")
-							       :name filename
-							       :type "wav")
-						*rhythm-data-directory*)
      do
        (format t "Evaluating ~a~%" filename)
-       (let* ((odf-filepath (odf-filepath original-sound-path :analysis-directory analysis-directory))
-	      (rhythm (rhythm-from-ircam-odf odf-filepath :sample-rate sample-rate :weighted nil))
-	      (annotated-beat-markers (annotated-beats annotation-filepath))
-	      (start-from (.aref annotated-beat-markers 0))
-	      (odf-subset (mrr::subset-of-rhythm rhythm (list (round (* sample-rate start-from)) t)))
-	      (rhythm-obs-probs (mrr::observation-probabilities odf-subset annotated-beat-markers meter beats-per-measure)))
+       (let* ((annotated-rhythm-description (read-annotated-rhythm filename 
+								   :rhythm-directory-root *quaero-selection-directory*
+								   :sample-rate sample-rate))
+	      (rhythm-obs-probs (mrr::observation-probabilities annotated-rhythm-description)))
 	 (format t "Observation probs ~a~%" rhythm-obs-probs)
 	 (setf (.column observation-probs music-index) rhythm-obs-probs)
 	 (mrr::diag-plot 'corpus-observations
@@ -410,6 +383,7 @@
 
 
 ;; (setf small-quaero (make-quaero-dataset 10 1 :annotations-directory *quaero-selection-annotations-directory*))
+;; (setf u2 (list (first small-quaero)))
 ;; (setf bad-examples (evaluate-with-music #'evaluate-quaero-downbeat :music-dataset small-quaero :music-name #'first))
 ;; (setf half-quaero (make-quaero-dataset 300 2))
 ;; (setf select-quaero (make-quaero-dataset 50 1 :annotations-directory *quaero-selection-annotations-directory*))
