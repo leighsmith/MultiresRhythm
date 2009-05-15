@@ -108,26 +108,25 @@
   ;; Calculate the stddev & mean over the region of interest, 2 measures.
   (let* ((stddev-comparison (stddev comparison-region))
 	 (mean-comparison (mean comparison-region))
-	 ;; (coeff-of-variation (/ stddev-comparison mean-comparison))
 	 ;; Stddev's are just RMS measures of the amplitude envelope. 
 	 (stddev-silence-region (stddev silence-evaluation-region))
 	 (mean-silence-region (mean silence-evaluation-region))
-	 ;; (cov-silence-region (/ stddev-silence-region mean-silence-region))
-	 (silence-score (* (/ stddev-comparison (+ stddev-silence-region *epsilon*))
-			   (/ mean-comparison (+ mean-silence-region *epsilon*))
-			   (/ (.max comparison-region) (+ (.max silence-evaluation-region) *epsilon*)))))
-
-    ;; (setf (.aref downbeat-score downbeat-index) (if (zerop cov-silence-region)
-    ;; 						 4.0d0 ; if we are in true silence
-    ;; 						 (/ coeff-of-variation cov-silence-region)))
-    
-    ;;(format t "cov whole ~,3f cov silence ~,3f ratio ~,3f~%"
-    ;;	    coeff-of-variation cov-silence-region (/ coeff-of-variation cov-silence-region))
-    (format t "comparison stddev ~,3f mean ~,3f~%" stddev-comparison mean-comparison)
-    (format t "silence stddev ~,3f mean ~,3f~%" stddev-silence-region mean-silence-region)
-    ;; (format t "max whole ~,3f max silence ~,3f~%" (.max comparison-region) (.max silence-evaluation-region))
+	 (silence-score (/ (* (/ stddev-comparison (+ stddev-silence-region *epsilon*))
+			      (/ mean-comparison (+ mean-silence-region *epsilon*)))
+			   (+ mean-silence-region *epsilon*))))
+    ;; (format t "comparison stddev ~,3f mean ~,3f~%" stddev-comparison mean-comparison)
+    ;; (format t "silence stddev ~,3f mean ~,3f~%" stddev-silence-region mean-silence-region)
+    ;; (format t "reciprical mean ~,3f~%" (/ 1.0d0 (+ mean-silence-region *epsilon*)))
     ;; (format t "silence score from intersection of stddev & mean ratios ~,3f~%" silence-score)
     silence-score))
+
+;; (coeff-of-variation (/ stddev-comparison mean-comparison))
+;; (cov-silence-region (/ stddev-silence-region mean-silence-region))
+;; (setf (.aref downbeat-score downbeat-index) (if (zerop cov-silence-region)
+;; 						 4.0d0 ; if we are in true silence
+;; 						 (/ coeff-of-variation cov-silence-region)))
+;;(format t "cov whole ~,3f cov silence ~,3f ratio ~,3f~%"
+;;	    coeff-of-variation cov-silence-region (/ coeff-of-variation cov-silence-region))
 
 (defun silence-score-max (silence-evaluation-region comparison-region)
   "Values > 1 indicate the variation and mean of the silence evaluation region is less
@@ -424,7 +423,7 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
     ;; TODO or should it be the mode of the path values?
     (.last state-path)))
 
-(defun assess-evidence (evidence evidence-name rhythm)
+(defun assess-evidence (evidence evidence-name rhythm prior-evidence)
   (format t "~a change in observation over time ~a~%" 
 	  evidence-name
 	  ;; find argmax for each.
@@ -444,13 +443,41 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 	    (if (= viterbi-estimation argmax-estimation) "match" "don't match"))
     (round argmax-estimation *subdivisions-of-beat*)))
 
-(defun downbeat-estimation (rhythm beat-times meter beats-per-measure prior-evidence)
+(defun sensor-value (i sensors)
+  "Returns the sensor indices for the given index. Effectively a row-major-aref calculation"
+  (if sensors
+      (let ((span (reduce #'* sensors)))
+	(cons (floor i span) (sensor-value (mod i span) (rest sensors))))
+      (list i)))
+
+;;; All sensors are assumed to be of the same time dimension.
+(defun joint-evidence (&rest sensors)
+  "Combines the evidence from the supplied list of sensors into a single megavariable
+  whole values are all possible tuples of values of the individual state variables."
+  (let* ((sensor-states (mapcar #'.row-count sensors))
+	 (state-indices)
+	 (number-of-tuples (reduce #'* sensor-states))
+	 (joint-evidence (make-double-array (list number-of-tuples (.column-count (first sensors)))
+					    :initial-element 1d0)))
+    (dotimes (joint-index number-of-tuples joint-evidence)
+      (setf state-indices (sensor-value joint-index (rest sensor-states)))
+      (dotimes (sensor-index (length sensors))
+	;; (format t "joint index ~a pulling from row ~a of sensor ~a~%" 
+	;;	joint-index (nth sensor-index state-indices) sensor-index)
+	(setf (.row joint-evidence joint-index)
+	      (.* (.row joint-evidence joint-index)
+		  (.row (nth sensor-index sensors) (nth sensor-index state-indices))))))))
+
+(defmethod downbeat-estimation ((analysed-rhythm rhythm-description) prior-evidence)
   "Use competing features to form an estimation of downbeat. Returns a single number mod beats-per-measure"
-  (let* (;; (amplitude-observations (observe-downbeat-of rhythm 
-	 ;;  					      beat-times
-	 ;;  					      beats-per-measure
-	 ;;  					      *subdivisions-of-beat*
-	 ;;  					      #'amplitude-profile-downbeat-evidence)) 
+  (let* ((rhythm (rhythm analysed-rhythm))
+	 (beat-times (beat-times (meter analysed-rhythm)))
+	 (beats-per-measure (beats-per-measure (meter analysed-rhythm)))
+	 (amplitude-observations (observe-downbeat-of rhythm 
+	   					      beat-times
+	   					      beats-per-measure
+	   					      *subdivisions-of-beat*
+	   					      #'amplitude-profile-downbeat-evidence)) 
 	 ;; (duration-maxima-observations (observe-downbeat-of rhythm
 	 ;; 						    beat-times
 	 ;; 						    beats-per-measure
@@ -461,24 +488,30 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 						       beats-per-measure
 						       *subdivisions-of-beat*
 						       #'gap-accent-downbeat-evidence))
-         (combined-observations gap-accent-observations))
+	 ;; Combine the observations into a single state vs. time matrix.
+	 (combined-observations (joint-evidence gap-accent-observations amplitude-observations)))
+         ;; (combined-observations gap-accent-observations))
 	 ;; (combined-observations duration-maxima-observations))
 	 ;; (combined-observations amplitude-observations))
-	 ;; Combine the observations into a single state vs. time matrix.
 	 ;; Use the union of observations, normalised by dividing by the number of observations.
 	 ;; (combined-observations (./ (.+ gap-accent-observations duration-maxima-observations) 2.0d0)))
 	 ;; (combined-observations (./ (.+ gap-accent-observations duration-maxima-observations amplitude-observations) 3.0d0)))
 	 ;(combined-observations (./ (.+ gap-accent-observations amplitude-observations) 2.0d0)))
 	 ;; (combined-observations (.transpose (.concatenate (.transpose amplitude-observations)
 	 ;;						  (.transpose gap-accent-observations)))))
+    (diag-plot 'downbeat-observations
+      (image amplitude-observations nil nil
+	     :title (format nil "~a observations of ~a" "Amplitude" (name (rhythm analysed-rhythm)))
+	     :xlabel "Time (measures)"
+	     :ylabel "Downbeat location (beat)"
+	     :aspect-ratio 0.666))
     ;; (assess-evidence duration-maxima-observations "Duration Maxima observations" rhythm)
     ;; (assess-evidence gap-accent-observations "Gap Accent" rhythm)))
     ;; (assess-evidence amplitude-observations "Amplitude observations" rhythm)
     ;; Since the rounding from assess-evidence can round to the end of the last beat, we
     ;; fold that back to the first using modulo.
-    (mod (assess-evidence combined-observations "Combined" rhythm prior-evidence) beats-per-measure)))
+    (assess-evidence combined-observations "Combined" rhythm prior-evidence)))
 
-;; Uses rhythm-description, needs to be incorporated.
 (defmethod downbeat-estimation-amplitude ((analysed-rhythm rhythm-description))
   "Use amplitude only to form an estimation of downbeat. Returns a single number mod beats-per-measure"
   (let* ((amplitude-observations (observe-downbeat-of (rhythm analysed-rhythm)
@@ -488,47 +521,35 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 						      #'amplitude-profile-downbeat-evidence)))
     (assess-evidence amplitude-observations "Amplitude profile" (rhythm analysed-rhythm))))
 
-(defun downbeat-estimation-duration (rhythm beat-times meter beats-per-measure)
-  "Use duration only to form an estimation of downbeat. Returns a single number mod beats-per-measure"
-  (let* ((duration-observations (observe-downbeat-of rhythm
-						     beat-times
-						     beats-per-measure
-						     *subdivisions-of-beat*
-						     #'duration-maxima-downbeat-evidence)))
-    (assess-evidence duration-observations "Duration maxima" rhythm)))
-
-(defun downbeat-estimation-fixed (rhythm beat-times meter beats-per-measure)
+(defmethod downbeat-estimation-fixed ((analysed-rhythm rhythm-description))
   "The null hypothesis that all downbeats are on the first beat location"
-  (declare (ignore rhythm beat-times meter beats-per-measure))
+  (declare (ignore analysed-rhythm))
   0)
 
-(defun downbeat-estimation-random (rhythm beat-times meter beats-per-measure)
+(defmethod downbeat-estimation-random ((analysed-rhythm rhythm-description))
   "The null hypothesis that all downbeats are randomly one of the beat locations"
-  (declare (ignore rhythm beat-times meter))
-  (random beats-per-measure))
+  (random (beats-per-measure (meter analysed-rhythm))))
 
-(defun downbeat-estimation-phase (rhythm beat-times meter beats-per-measure)
+(defmethod downbeat-estimation-phase ((analysed-rhythm rhythm-description))
   "Use amplitude only to form an estimation of downbeat. Returns a single number mod beats-per-measure"
-  (let* ((phase-observations (observe-downbeat-of rhythm 
-						  beat-times
-						  beats-per-measure
+  (let* ((phase-observations (observe-downbeat-of (rhythm analysed-rhythm)
+						  (beat-times (meter analysed-rhythm))
+						  (beats-per-measure (meter analysed-rhythm))
 						  *subdivisions-of-beat*
 						  #'mrr-phase-downbeat-evidence)))
-    (assess-evidence phase-observations "Amplitude profile" rhythm)))
+    (assess-evidence phase-observations "Amplitude profile" (rhythm analysed-rhythm))))
 
-
-(defun observation-probabilities (rhythm beat-times meter beats-per-measure)
+(defmethod observation-probabilities ((analysed-rhythm rhythm-description))
   "Use duration only to return probabilities of downbeat location for each position of gap duration."
-  (let* ((gap-observations (observe-downbeat-of rhythm
-						beat-times
-						beats-per-measure
+  (let* ((gap-observations (observe-downbeat-of (rhythm analysed-rhythm)
+						(beat-times (meter analysed-rhythm))
+						(beats-per-measure (meter analysed-rhythm))
 						*subdivisions-of-beat*
-;;						#'silence-evidence))
 						#'gap-accent-downbeat-evidence))
 	 (argmaxes (reduce-dimension gap-observations (lambda (y) (position (.max y) (val y))))) ; argmax fn
 	 (percentage-correct (./ (.sum (.= argmaxes 1)) (.length argmaxes))))
     (image gap-observations nil nil
-	   :title (format nil "~a observations of ~a" "Gap accent" (name rhythm)) 
+	   :title (format nil "~a observations of ~a" "Gap accent" (name (rhythm analysed-rhythm)))
 	   :xlabel "Time (measures)"
 	   :ylabel "Downbeat location (beat)"
 	   :aspect-ratio 0.666)
@@ -537,11 +558,6 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 ;;  (reduce-dimension (.transpose gap-observations) #'nlisp::.mult)))
 
 #|
-(defmethod observation-probabilities ((rhythm-to-analyse annotated-rhythm))
-  (let* (gap-observations (observe-downbeat-of (rhythm rhythm-to-analyse) (meter rhythm-to-analyse)
-			    (beat-times )
-			    (beats-per-measure (meter rhythm-to-analyse)
-
 (setf preceding-gaps (mrr::observe-downbeat-of (rhythm u2) 
 					       (mrr::beat-times (mrr::meter u2))
 					       (mrr::beats-per-measure (mrr::meter u2))

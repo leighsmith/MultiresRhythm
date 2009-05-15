@@ -56,4 +56,5 @@
 	   :onset-time-signal
 	   :odf
 	   :last-expectations
-	   :downbeat-estimation))
+	   :downbeat-estimation
+	   :read-annotated-rhythm))
