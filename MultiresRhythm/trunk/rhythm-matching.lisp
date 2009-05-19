@@ -33,9 +33,10 @@
         finally (return salience)))
 
 ;;; Just needs the syncopation package loaded.
-(defun metric-hierarchy (meter &key (max-amp 1.0d0) (min-amp 0.12d0))
+(defun metric-hierarchy (meter beats-per-measure &key (max-amp 1.0d0) (min-amp 0.12d0))
   "Derive from Longuet-Higgin's & Lee's metric salience measure (which is inverted in
    polarity) an amplitude weighting"
+  (declare (ignore beats-per-measure))
   (let* ((lhl-metric-salience (make-narray (lh-metric-salience meter)))
 	 (max-salience (.max lhl-metric-salience))
 	 (min-salience (.min lhl-metric-salience))
@@ -43,21 +44,21 @@
     ;; TODO need to scale the minimum above 0.
     (.+ 1d0 (./ (.* 1d0 lhl-metric-salience) amp-scaling))))
 
-(defun binary-metric-hierarchy (meter &key (max-amp 1.0d0) (min-amp (/ max-amp 2.0d0)))
+(defun binary-metric-hierarchy (meter beats-per-measure &key (max-amp 1.0d0) (min-amp (/ max-amp 2.0d0)))
   "Returns a two level hierarchy (major downbeat, all other beats) for the given meter"
+  (declare (ignore beats-per-measure))
   (let* ((grid-length (apply #'* meter))
 	 (binary-hierarchy (make-double-array grid-length :initial-element min-amp)))
     (setf (.aref binary-hierarchy 0) max-amp)
     binary-hierarchy))
 
-(defun backbeat-metric-hierarchy (meter &key (max-amp 1.0d0) (min-amp (/ max-amp 2.0d0)))
-  "Returns a two level hierarchy with a low downbeat, and two accented backbeats, the
+(defun backbeat-metric-hierarchy (meter beats-per-measure &key (max-amp 1.0d0) (min-amp (/ max-amp 2.0d0)))
+  "Returns a two level hierarchy with a low downbeat, and two accented backbeats, being the
   classic rock-n-roll structure"
   (let* ((grid-length (apply #'* meter))
 	 (backbeat-hierarchy (make-double-array grid-length :initial-element min-amp))
 	 (top-level-interval (.* (.iseq 0 (1- (first meter))) (reduce #'* (rest meter)))) 
-	 ;; TODO we cheat using second level subdivision. We should use beats-per-measure
-	 (backbeat-intervals (.+ top-level-interval (second meter))))
+	 (backbeat-intervals (.+ top-level-interval (/ grid-length beats-per-measure))))
     (setf (.arefs backbeat-hierarchy backbeat-intervals) max-amp)
     backbeat-hierarchy))
 
@@ -67,7 +68,7 @@
 				 &key (sample-rate 200.0d0) (beats-per-measure 4)
 				 (hierarchy #'binary-metric-hierarchy))  ; #'metric-hierarchy
   "Returns a rhythm with weighted onsets matching the metrical structure"
-  (let* ((metrical-weights (funcall hierarchy meter))
+  (let* ((metrical-weights (funcall hierarchy meter beats-per-measure))
 	 (number-of-tatums (1+ (* (.length metrical-weights) measures))) ; +1 for the next downbeat
 	 (tatums-per-beat (/ (reduce #'* meter) beats-per-measure))
 	 (tatum-duration (/ 60.0d0 tempo tatums-per-beat)) ; in seconds
