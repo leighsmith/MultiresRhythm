@@ -10,7 +10,7 @@ rhythm_length = length(rhythm_to_analyse);
 
 for tatum_index = 1 : tatums_per_measure
     tatum_location = tatum_locations(tatum_index);
-	tatum_duration = tatum_durations(floor((tatum_index - 1) / subdivisions_of_beat) + 1)
+	tatum_duration = tatum_durations(floor((tatum_index - 1) / subdivisions_of_beat) + 1);
 	gap_start = round(measure_start_sample + tatum_location + (tatum_duration * -0.5));
 	gap_end = min(round(gap_start + tatum_duration), rhythm_length);
 	% silence_score = silence_score_max(rhythm_to_analyse(max(1, gap_start) : gap_end), rhythm_to_analyse);

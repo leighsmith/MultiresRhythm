@@ -13,10 +13,10 @@ stddev_silence_region = std(silence_evaluation_region);
 mean_silence_region = mean(silence_evaluation_region);
 silence_score = ((stddev_comparison / (stddev_silence_region + epsilon)) * (mean_comparison / (mean_silence_region + epsilon))) / ...
                     (mean_silence_region + epsilon);
-fprintf('silence-eval-region length %d sum %d\n', length(silence_evaluation_region), sum(silence_evaluation_region));
-fprintf('comparison stddev %.3f mean %.3f\n', stddev_comparison, mean_comparison);
-fprintf('silence stddev %.3f mean %.3f\n', stddev_silence_region, mean_silence_region);
-%% fprintf('reciprocal mean %.3f\n', (/ 1.0d0 (mean_silence_region + epsilon)))
+%fprintf('silence-eval-region length %d sum %d\n', length(silence_evaluation_region), sum(silence_evaluation_region));
+%fprintf('comparison stddev %.3f mean %.3f\n', stddev_comparison, mean_comparison);
+%fprintf('silence stddev %.3f mean %.3f\n', stddev_silence_region, mean_silence_region);
+%fprintf('reciprocal mean %.3f\n', (/ 1.0d0 (mean_silence_region + epsilon)))
 %fprintf('silence score from intersection of stddev & mean ratios %.3f\n', silence_score)
 
 end

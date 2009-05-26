@@ -5,11 +5,11 @@ function [ syncopation_profile ] = eval_syncopation_measures ( analysed_rhythm )
 rhythm_name = analysed_rhythm.name;
 onset_observations = observe_onsets(analysed_rhythm);
 dim = size(onset_observations);
-metric_profile = sum(onset_observations') ./ dim(1); % normalised by the number of measures.
+num_of_measures = dim(2);
+metric_profile = sum(onset_observations') ./ num_of_measures;
 rhythm_syncopation_measures = syncopation_measures(onset_observations, analysed_rhythm.meter);
 dim = size(rhythm_syncopation_measures);
-num_of_tatums = dim(1);
-num_of_measures = dim(2);
+num_of_tatums = dim(1); % recalc this in case the syncopation measures differ from the tatums.
 syncopation_profile = sum(rhythm_syncopation_measures') ./ num_of_measures;
 syncopation_variation = sum(rhythm_syncopation_measures) ./ num_of_tatums;
      
@@ -17,7 +17,7 @@ syncopation_variation = sum(rhythm_syncopation_measures) ./ num_of_tatums;
 
 figure()
 % (plot_histogram (make_narray (list metric_profile syncopation_profile)) nil 
-hist(syncopation_profile, num_of_tatums);
+bar([metric_profile; syncopation_profile]');
 title(sprintf('Metric profile of %s', rhythm_name));
 % 		    :legends '('Beat Occurrence' 'Syncopation Intensity')
 % 		    :xlabel 'Metric Location'
@@ -34,7 +34,7 @@ figure();
 plot(syncopation_variation);
 % 	  :aspect_ratio 0.66
 title(sprintf('Evolution of syncopation of %s', rhythm_name))
-close();
+% close();
 
 end
 
