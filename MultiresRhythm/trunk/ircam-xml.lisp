@@ -181,6 +181,11 @@
 	   (read-ircam-annotation filepath :marker-name "segment"))
 	  (t (format t "Unusual ircambeat format ~a discovered" first-tagname)))))
 
+(defun read-ircam-marker-times (beat-marker-filepath)
+  (let* ((clap-times-in-seconds (read-ircambeat-markers beat-marker-filepath)))
+    ;; Remove the clap times that are negative (!)
+   (.arefs clap-times-in-seconds (.find (.> clap-times-in-seconds 0.0d0)))))
+
 (defun read-annotated-beats (ircam-annotation-path)
   "Retrieve the times of beats and downbeats, skipping beat = 0, which are tatums, in the IRCAM annotation convention"
   (multiple-value-bind (times beats) 

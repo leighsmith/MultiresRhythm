@@ -20,11 +20,9 @@
    (meter :initarg :meter :accessor meter))   ; of meter 
   (:documentation "Holds a rhythm, annotated with metrical set detection function, beat times and metrical structure"))
 
-(defun read-annotated-rhythm (filename &key 
-			      (rhythm-directory-root)
-			      (sample-rate 172.27d0))
-  "Returns an instance of annotated rhythm with the onset detection function, times of
-   each beat, beats per measure, downbeat times, meter assigned."
+(defun read-annotated-rhythm (filename &key (rhythm-directory-root) (sample-rate 172.27d0))
+  "Returns an instance of rhythm-description with the onset detection function, times of
+   each beat, beats per measure, downbeat times, meter assigned from the annotation."
   (let* ((odf-filepath (merge-pathnames (make-pathname :directory '(:relative "Analysis")
 						       :name filename 
 						       :type "odf")
@@ -38,6 +36,7 @@
 	 (start-from (.aref annotated-beat-times 0))
 	 (odf-subset (subset-of-rhythm odf (list (round (* sample-rate start-from)) t)))
 	 (beats-per-measure (mapcar #'first (read-ircam-annotation-timesignatures annotation-filepath))))
+    (format t "start-from ~a start sample ~a~%" start-from (round (* sample-rate start-from)))
     (make-instance 'rhythm-description
 		   :rhythm odf-subset
 		   :meter (make-instance 'meter
@@ -53,3 +52,37 @@
 
 ;; (setf wes (read-annotated-rhythm "0300 - Wes - Alane" :rhythm-directory-root *quaero-selection-directory*))
 
+(defun read-analysed-rhythm (filename &key (rhythm-directory-root) (sample-rate 172.27d0))
+  "Returns an instance of rhythm-description with the onset detection function, times of
+   each beat, beats per measure, downbeat times, meter assigned from the ircambeat computed values."
+  (let* ((odf-filepath (merge-pathnames (make-pathname :directory '(:relative "Analysis")
+						       :name filename 
+						       :type "odf")
+					rhythm-directory-root))
+	 (beat-markers-filepath (merge-pathnames 
+				 (make-pathname :directory '(:relative "Analysis")
+						:name (concatenate 'string filename ".wav.markers")
+						:type "xml")
+				 rhythm-directory-root))
+	 (odf (rhythm-from-ircam-odf odf-filepath :sample-rate sample-rate :weighted nil))
+	 (beat-times (read-ircam-marker-times beat-markers-filepath))
+	 (start-from (.aref beat-times 0))
+	 (odf-subset (subset-of-rhythm odf (list (round (* sample-rate start-from)) t)))
+	 (beats-per-measure '(4))) ;; TODO hardwired
+    (format t "Starting downbeat finding from ~,3f seconds~%" start-from)
+    (make-instance 'rhythm-description
+		   :rhythm odf-subset
+		   :meter (make-instance 'meter
+					 :beat-times beat-times
+					 ;; TODO hardwired! should match beats-per-measure * subdivision-per-beat
+					 :hierarchy '(2 2 2 2)
+					 :beats-per-measure (first beats-per-measure)))))
+
+(defmethod subset-of-rhythm ((rhythm-to-subset rhythm-description) start-from-beat)
+  "Subset the rhythm, preserving the beat times"
+  (let* ((beat-times (beat-times (meter rhythm-to-subset)))
+	 (seconds-to-skip (- (.aref beat-times start-from-beat) (.aref beat-times 0)))
+	 (samples-to-skip (round (* seconds-to-skip (sample-rate (rhythm rhythm-to-subset))))))
+    (setf (rhythm rhythm-to-subset) (subset-of-rhythm (rhythm rhythm-to-subset) (list samples-to-skip t)))
+    (setf (beat-times (meter rhythm-to-subset)) (.arefs beat-times (.iseq start-from-beat (1- (.length beat-times)))))
+  rhythm-to-subset))

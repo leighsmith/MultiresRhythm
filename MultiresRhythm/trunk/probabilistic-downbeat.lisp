@@ -24,7 +24,7 @@
 ;;; and threshold between highest and lowest probability for all possible downbeat
 ;;; locations. Must be greater than the number of beats-per-measure. Shouldn't need
 ;;; adjustment. Could be infinity, it just saves memory.
-(defparameter *max-amp-matches* 8)
+(defparameter *max-amp-matches* 12)
 
 ;; Number of bars used in the matching of the amplitude profile.
 (defparameter *bars-of-amplitude-profile* 2)
@@ -112,9 +112,11 @@
 	 (silence-score (/ (* (/ stddev-comparison (+ stddev-silence-region *epsilon*))
 			      (/ mean-comparison (+ mean-silence-region *epsilon*)))
 			   (+ mean-silence-region *epsilon*))))
+    ;; (format t "silence-eval-region length ~d sum ~d~%"
+    ;;	    (.length silence-evaluation-region) (.sum silence-evaluation-region))
     ;; (format t "comparison stddev ~,3f mean ~,3f~%" stddev-comparison mean-comparison)
     ;; (format t "silence stddev ~,3f mean ~,3f~%" stddev-silence-region mean-silence-region)
-    ;; (format t "reciprical mean ~,3f~%" (/ 1.0d0 (+ mean-silence-region *epsilon*)))
+    ;; (format t "reciprocal mean ~,3f~%" (/ 1.0d0 (+ mean-silence-region *epsilon*)))
     ;; (format t "silence score from intersection of stddev & mean ratios ~,3f~%" silence-score)
     silence-score))
 
@@ -158,9 +160,12 @@ beat and subdivision thereof is a silent region"
     (let* ((tatum-location (.aref tatum-locations tatum-index))
 	   (tatum-duration (.aref tatum-durations (floor tatum-index subdivisions-of-beat)))
 	   (gap-start (round (+ measure-start-sample tatum-location (* tatum-duration -0.5))))
-	   (gap-end (min (round (+ gap-start tatum-duration)) rhythm-length))
+	   ;; (gap-end (min (round (+ gap-start tatum-duration)) rhythm-length))
+	   ;; Attempt to emulate Matlab's rounding function so we get the same results.
+	   (gap-end (min (floor (+ gap-start tatum-duration 1/2)) rhythm-length))
 	   (silence-score (silence-score-stddev (.subseq (odf rhythm-to-analyse) (max 0 gap-start) gap-end)
 					 (odf rhythm-to-analyse))))
+      ;; (format t "Tatum duration ~a~%" tatum-duration)
       (setf (.aref tatum-score tatum-index) silence-score)
       (format t "Measure ~a tatum ~a location ~a samples, silence region (~a ~a) score = ~,3f~%"
 	      measure-index tatum-index tatum-location gap-start gap-end silence-score)))))
@@ -223,6 +228,46 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 		 ;; downbeat-score)))
 		 (./ downbeat-score (+ (.sum downbeat-score) *epsilon*)))))
 
+(defmethod duration-downbeat-evidence ((rhythm-to-analyse salience-trace-rhythm) 
+				       measure-start-sample ; begining of our region of interest
+				       measure-index
+				       beat-durations-in-measure
+				       subdivisions-of-beat)
+  "Returns the probabilities of the downbeat at each beat location. Estimates formed by
+when the gap exceeds the beat period. bar-duration and beat-duration in samples"
+  (loop
+     with attack-skip = 0.25d0	; skip over the relative attack portion on the beat.
+     with tatums-per-measure = (* (.length beat-durations-in-measure) subdivisions-of-beat)
+     with tatum-locations = (onsets-at-subdivisions beat-durations-in-measure subdivisions-of-beat)
+     with downbeat-score = (make-double-array tatums-per-measure) ; initialised to 0.0
+     with rhythm-length = (duration-in-samples rhythm-to-analyse)
+     with bar-duration = (.sum beat-durations-in-measure) ; in samples
+     with search-region = (.subseq (odf rhythm-to-analyse) measure-start-sample 
+				   (min rhythm-length (+ measure-start-sample (1- bar-duration))))
+     with threshold = (* (.max search-region) 0.20) ; 20% of max is deemed silence.
+     for tatum-index from 0 below tatums-per-measure
+     for tatum-location across (val tatum-locations)
+     for beat-duration = (.aref beat-durations-in-measure (floor tatum-index subdivisions-of-beat))
+     ;; we don't look exactly at the start of the beat, since we assume that will be loud.
+     for gap-start = (round (+ measure-start-sample tatum-location (* beat-duration attack-skip)))
+     for lookahead-length = bar-duration
+     for above-threshold = (position-if (lambda (x) (> x threshold)) (val (odf rhythm-to-analyse)) 
+					:start gap-start)
+     do
+       (setf (.aref downbeat-score tatum-index) (/ (- above-threshold gap-start) (coerce lookahead-length 'double-float)))
+       (format t "Measure ~a tatum ~a location ~a from ~a for ~a location ~a score = ~,3f~%"
+		 measure-index tatum-index tatum-location gap-start lookahead-length
+		 above-threshold
+		 (.aref downbeat-score tatum-index))
+       finally (return 
+		 ;; Normalise the downbeat location to a likelihood, since there is only one location per measure.
+		 ;; TODO however, that assumes a direct relationship between silence
+		 ;; following a note and it being a downbeat.
+		 ;; When returning P(downbeat) = 0 for all downbeat locations we indicate the lack of
+		 ;; decision as all are equally likely and none contribute to the final decision.
+		 (./ downbeat-score (+ (.sum downbeat-score) *epsilon*)))))
+
+#|
 ;;; Check when we have intervals which are non-unique, i.e other intervals of similar length reoccur
 ;;; in the initial sequence.  
 (defmethod duration-maxima-downbeat-evidence ((rhythm-to-analyse salience-trace-rhythm)
@@ -250,6 +295,7 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
     ;; By returning P(downbeat) = 0 for all downbeat locations we indicate the lack of
     ;; decision as all are equally likely and none contribute to the final decision.
     downbeat-probabilities))
+|#
 
 
 ;;; TODO: Examine full phase congruency and phase congruency over a focused range, for
@@ -266,8 +312,9 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 					beat-durations-in-measure
 					subdivisions-of-beat)
   "Examine the CWT phase of the fragment"
-  (let ((downbeat-probabilities (make-double-array beats-per-measure)))
-    (if (find (measure-index *measures-to-plot*))
+  (let* ((beats-per-measure (.length beat-durations-in-measure))
+	 (downbeat-probabilities (make-double-array beats-per-measure)))
+    (if (find measure-index *measures-to-plot*)
 	(let* ((bar-duration (.sum beat-durations-in-measure))
 	       (odf-fragment (subset-of-rhythm whole-rhythm 
 					       (list measure-start-sample (+ measure-start-sample bar-duration))))
@@ -365,9 +412,12 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 ;; 			     metrical-profile-length)
 ;;     (close-window)))
 
-(defun observe-downbeat-of (rhythm beat-times beats-per-measure subdivisions-of-beat downbeat-estimator)
+(defmethod observe-downbeat-of ((analysed-rhythm rhythm-description) subdivisions-of-beat downbeat-estimator)
   "Returns an estimate of downbeat location across the entire ODF rhythm using an estimator"
   (loop
+     with rhythm = (rhythm analysed-rhythm)
+     with beat-times = (beat-times (meter analysed-rhythm))
+     with beats-per-measure = (beats-per-measure (meter analysed-rhythm))
      ;; Convert beat-times in seconds to durations of each beat in samples.
      with beat-durations = (.round (.* (.diff beat-times) (sample-rate rhythm)))
      ;; Reduce by one measure to ensure the last search region is a full two bars,
@@ -419,6 +469,10 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
     ;; TODO calc how much more likely: (probability-of-estimate location-evidence)
     (argmax location-evidence)))
 
+(defun mode (x)
+  "Returns the relative counts of each positive value in x"
+  (argmax (incf-arefs (make-integer-array (1+ (.max x))) x (make-integer-array (.length x) :initial-element 1))))
+
 ;;; This uses a Viterbi dynamic path decoder.
 (defun decode-evidence (estimates name &key (downbeat-inertia 0.9d0))
   "Returns the row number (downbeat estimate) with most evidence"
@@ -443,10 +497,15 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
     (.last state-path)))
 
 (defun assess-evidence (evidence evidence-name rhythm prior-evidence)
-  (format t "~a change in observation over time ~a~%" 
-	  evidence-name
-	  ;; find argmax for each.
-	  (reduce-dimension evidence (lambda (y) (coerce (position (.max y) (val y)) 'double-float))))
+  (diag-plot 'max-evidence
+    ;; find argmax for each.
+    (plot (reduce-dimension evidence (lambda (y) (coerce (position (.max y) (val y)) 'double-float)))
+	  nil
+	  :title (format nil "~a change in observation over time" evidence-name)
+	  :styles '("linespoints")
+	  :xlabel "Time (measures)"
+	  :ylabel "Downbeat location (beat)"
+	  :aspect-ratio 0.666))
   (diag-plot 'downbeat-evidence
     ;; For plotting with base 1 labelling.
     ;; (image evidence (.iseq 1 (.column-count evidence)) (.iseq 1 (.row-count evidence))
@@ -523,6 +582,13 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 	     :title (format nil "~a observations of ~a" "Amplitude" (name (rhythm analysed-rhythm)))
 	     :xlabel "Time (measures)"
 	     :ylabel "Downbeat location (beat)"
+	     :aspect-ratio 0.666)
+      (close-window)
+      (window)
+      (image gap-accent-observations nil nil
+	     :title (format nil "~a observations of ~a" "Gap accent" (name (rhythm analysed-rhythm)))
+	     :xlabel "Time (measures)"
+	     :ylabel "Downbeat location (beat)"
 	     :aspect-ratio 0.666))
     ;; (assess-evidence duration-maxima-observations "Duration Maxima observations" rhythm)
     ;; (assess-evidence gap-accent-observations "Gap Accent" rhythm)))
@@ -563,9 +629,8 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 						(beat-times (meter analysed-rhythm))
 						(beats-per-measure (meter analysed-rhythm))
 						*subdivisions-of-beat*
-						#'gap-accent-downbeat-evidence))
-	 (argmaxes (reduce-dimension gap-observations (lambda (y) (position (.max y) (val y))))) ; argmax fn
-	 (percentage-correct (./ (.sum (.= argmaxes 1)) (.length argmaxes))))
+						#'gap-accent-downbeat-evidence)))
+;;						#'duration-downbeat-evidence)))
     (image gap-observations nil nil
 	   :title (format nil "~a observations of ~a" "Gap accent" (name (rhythm analysed-rhythm)))
 	   :xlabel "Time (measures)"
@@ -573,7 +638,17 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 	   :aspect-ratio 0.666)
     ;; Normalise the observations to make them probabilities.
     (./ (.partial-sum (.transpose gap-observations)) (.column-count gap-observations))))
-;;  (reduce-dimension (.transpose gap-observations) #'nlisp::.mult)))
+
+;; (argmaxes (reduce-dimension gap-observations (lambda (y) (position (.max y) (val y))))) ; argmax fn
+;; (percentage-correct (./ (.sum (.= argmaxes 1)) (.length argmaxes))))
+
+(defmethod observation-probabilities-for-anacrusis ((rhythm rhythm-description) anacrusis)
+  "Determine the observation probabilities of a piece, shifted by the given anacrusis"
+  (let* ((beats-per-measure (beats-per-measure (meter rhythm)))
+	 (remove-beats (mod (- beats-per-measure anacrusis) beats-per-measure))
+	 (shortened-rhythm (subset-of-rhythm rhythm remove-beats)))
+    (format t "Removing ~d beats" remove-beats)
+    (observation-probabilities shortened-rhythm)))
 
 #|
 (setf preceding-gaps (mrr::observe-downbeat-of (rhythm u2) 

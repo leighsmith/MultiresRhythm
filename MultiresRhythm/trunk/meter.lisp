@@ -19,12 +19,19 @@
 ;; Defines metrical structure of a rhythm, including location of each beat.
 (defclass meter ()
   ((beat-times  :initarg :beat-times  :accessor beat-times)
-   (hierarchy :initarg :hierarchy :accessor hierarchy)
+   (hierarchy :initarg :hierarchy :accessor hierarchy) ; (representation of meter by subdivisions)
    (time-signature :initarg :time-signature :accessor time-signature)
    ;; TODO This should probably be a list of beats-per-measure over the whole piece.
    (beats-per-measure :initarg :beats-per-measure :accessor beats-per-measure :initform 4)
    (anacrusis   :initarg :anacrusis   :accessor anacrusis   :initform 0))
   (:documentation "Holds the metrical structure of a rhythm, the times of beats, and descriptions of the meter"))
+
+;;; TODO or should I just use the anacrusis instance variable value?
+(defmethod downbeats-for-anacrusis ((meter-to-analyse meter) anacrusis)
+  "Returns an narray of downbeat times, from the given anacrusis"
+  (let* ((beat-times (beat-times meter-to-analyse)))
+    (.arefs beat-times (.iseq-inc anacrusis (- (.length beat-times) anacrusis)
+				  (beats-per-measure meter-to-analyse)))))
 
 ;; Calculates the persistency of period multiples in the skeleton.
 (defun meter-of-analysis-and-tactus (analysis tactus &key (meters '(3 4)))
