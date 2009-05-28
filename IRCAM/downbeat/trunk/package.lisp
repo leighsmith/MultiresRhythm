@@ -13,4 +13,9 @@
   (:nicknames #:downbeat)
   (:use #:cl #:asdf #:multires-rhythm)
   (:export :downbeat-estimation
-	   :read-annotated-rhythm))
+	   :read-ircambeat-bpm
+	   :read-ircam-marker-times
+	   :read-ircam-annotation-timesignatures
+	   :read-annotated-downbeats
+	   :read-annotated-rhythm
+	   :read-analysed-rhythm))

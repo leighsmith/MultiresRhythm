@@ -194,3 +194,12 @@
 	   (beat-times (.arefs times beat-indices)))
       (values beat-times beat-indices))))
 
+(defun read-annotated-downbeats (ircam-annotation-path)
+  "Retrieve the times of nominated downbeats from an annotation file"
+  (multiple-value-bind (times beats) 
+      (read-annotated-beats ircam-annotation-path)
+    (let* ((downbeat-indices (.find (.= beats 1)))
+	   (downbeats (.arefs times downbeat-indices)))
+      ;; (format t "~a~%first downbeat indices ~a~%" (pathname-name ircam-annotation-path) (.subseq downbeat-indices 0 10))
+      (values downbeats downbeat-indices))))
+
