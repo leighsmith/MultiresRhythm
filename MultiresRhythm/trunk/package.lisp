@@ -55,4 +55,5 @@
 	   :sample-rate
 	   :onset-time-signal
 	   :odf
-	   :last-expectations))
+	   :last-expectations
+	   :salience-trace-rhythm))
