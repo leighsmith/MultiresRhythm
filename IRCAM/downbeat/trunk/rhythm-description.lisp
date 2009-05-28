@@ -11,10 +11,12 @@
 ;;;; Copyright (c) 2009
 ;;;;
 
-(in-package :multires-rhythm)
+(in-package :prob-downbeat)
 (use-package :nlisp)
+(use-package :multires-rhythm)
 
-(defclass rhythm-description () ; should this be a mixin of rhythm and meter, or just encapsulation?
+;; TODO Should this be a mixin of rhythm and meter, rather than just an encapsulation of the two classes?
+(defclass rhythm-description () 
   ;; Rhythm without meter:
   ((rhythm :initarg :rhythm :accessor rhythm) ; of salience-trace-rhythm
    (meter :initarg :meter :accessor meter))   ; of meter 

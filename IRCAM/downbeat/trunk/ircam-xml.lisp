@@ -12,8 +12,9 @@
 ;;;; Copyright (c) 2008
 ;;;;
 
-(in-package :multires-rhythm)
+(in-package :prob-downbeat)
 (use-package :nlisp)
+(use-package :multires-rhythm)
 
 (defun read-ircambeat-bpm (filepath)
   (let* ((bpm-document (cxml:parse filepath (cxml-dom:make-dom-builder)))

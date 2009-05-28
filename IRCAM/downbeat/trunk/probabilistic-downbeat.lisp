@@ -13,8 +13,9 @@
 
 (declaim (optimize (speed 0) (safety 3) (debug 3)))
 
-(in-package :multires-rhythm)
+(in-package :prob-downbeat)
 (use-package :nlisp)
+(use-package :multires-rhythm)
 
 ;;; Free parameters.
 

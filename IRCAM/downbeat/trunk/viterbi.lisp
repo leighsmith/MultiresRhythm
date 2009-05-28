@@ -17,8 +17,9 @@
 (declaim (optimize (speed 3) (safety 0) (debug 0)))
 ;; (declaim (optimize (speed 0) (safety 3) (debug 3)))
 
-(in-package :multires-rhythm)
+(in-package :prob-downbeat)
 (use-package :nlisp)
+(use-package :multires-rhythm)
 
 ;;; TODO we currently assume an identity matrix for the emission probabilities.
 (defun viterbi (initial-probabilities probability-of-observations state-transition-probabilities)
