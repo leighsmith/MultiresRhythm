@@ -55,6 +55,4 @@
 	   :sample-rate
 	   :onset-time-signal
 	   :odf
-	   :last-expectations
-	   :downbeat-estimation
-	   :read-annotated-rhythm))
+	   :last-expectations))

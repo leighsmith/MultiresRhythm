@@ -23,14 +23,13 @@
 
 (require 'nlisp)			; For mathematics.
 (require 'cli-parser)			; For command line option interpretation.
-(require 'cxml)				; For IRCAM beat I/O and other XML formats.
 
 (defsystem :multiresrhythm
   :description "A Multiresolution Time-Frequency Analysis and Interpretation of Musical Rhythm"
   :version "2.8"
   :author "Leigh M. Smith"
   :license "Copyright (c) 2005-2009"
-  :depends-on (:nlisp :cli-parser :cxml)
+  :depends-on (:nlisp :cli-parser)
   :properties ((#:author-email . "Leigh.Smith@ircam.fr")
 	       (#:date . "2009")	; Compute this automatically?
 	       ((#:albert #:output-dir) . "documentation")
@@ -40,7 +39,6 @@
 	       (:file "signalprocessing")
 	       (:file "ridges")
 	       (:file "scorefile")
-	       (:file "ircam-xml")
 	       (:file "sound")
 	       (:file "histogram")
 	       (:file "martin-trees")
@@ -54,14 +52,11 @@
 	       (:file "scaleogram_plotting" :depends-on ("multires_rhythm" "cwt" "rhythm" "plotting"))
 	       (:file "tactus-selection" :depends-on ("multires_rhythm" "scaleogram_plotting"))
 	       (:file "rhythm-matching" :depends-on ("signalprocessing"))
-	       (:file "viterbi")
 	       (:file "downbeat" :depends-on ("multires_rhythm"))
 	       (:file "clapping" :depends-on ("multires_rhythm" "downbeat" "tactus-selection" "cwt"))
 	       (:file "perceptual-onsets" :depends-on ("clapping" "sound"))
 	       (:file "expectancies" :depends-on ("clapping" "signalprocessing"))
 	       (:file "meter" :depends-on ("multires_rhythm" "tactus-selection" "expectancies"))
-	       (:file "rhythm-description" :depends-on ("meter" "ircam-xml"))
-	       (:file "probabilistic-downbeat" :depends-on ("rhythm-matching" "viterbi" "perceptual-onsets"))
 	       (:file "metrical-expectancy" :depends-on ("expectancies" "martin-trees" "histogram"))
 	       (:file "emcap-expectancy" :depends-on ("expectancies"))
 	       (:file "commandline" :depends-on ("emcap-expectancy"))))
