@@ -16,6 +16,7 @@
 ;;;;   author =  {Leigh M. Smith},
 ;;;;
 
+(require 'nlisp)
 (require 'multiresrhythm)
 (require 'cxml)				; For IRCAM beat I/O and other XML formats.
 

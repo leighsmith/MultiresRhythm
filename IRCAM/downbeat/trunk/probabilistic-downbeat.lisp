@@ -413,8 +413,8 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 ;; 			     metrical-profile-length)
 ;;     (close-window)))
 
-(defmethod observe-downbeat-of ((analysed-rhythm rhythm-description) subdivisions-of-beat downbeat-estimator)
-  "Returns an estimate of downbeat location across the entire ODF rhythm using an estimator"
+(defmethod observe-evidence-of ((analysed-rhythm rhythm-description) subdivisions-of-beat downbeat-estimator)
+  "Returns an estimate of evidence across the entire ODF rhythm using an estimator"
   (loop
      with rhythm = (rhythm analysed-rhythm)
      with beat-times = (beat-times (meter analysed-rhythm))
@@ -550,21 +550,14 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 (defmethod downbeat-estimation ((analysed-rhythm rhythm-description) prior-evidence)
   "Use competing features to form an estimation of downbeat. Returns a single number mod beats-per-measure"
   (let* ((rhythm (rhythm analysed-rhythm))
-	 (beat-times (beat-times (meter analysed-rhythm)))
 	 (beats-per-measure (beats-per-measure (meter analysed-rhythm)))
-	 (amplitude-observations (observe-downbeat-of rhythm 
-	   					      beat-times
-	   					      beats-per-measure
+	 (amplitude-observations (observe-evidence-of analysed-rhythm 
 	   					      *subdivisions-of-beat*
 	   					      #'amplitude-profile-downbeat-evidence)) 
-	 ;; (duration-maxima-observations (observe-downbeat-of rhythm
-	 ;; 						    beat-times
-	 ;; 						    beats-per-measure
+	 ;; (duration-maxima-observations (observe-evidence-of analysed-rhythm
 	 ;; 						    *subdivisions-of-beat*
 	 ;; 						    #'duration-maxima-downbeat-evidence))
- 	 (gap-accent-observations (observe-downbeat-of rhythm
-						       beat-times
-						       beats-per-measure
+ 	 (gap-accent-observations (observe-evidence-of analysed-rhythm
 						       *subdivisions-of-beat*
 						       #'gap-accent-downbeat-evidence))
 	 ;; Combine the observations into a single state vs. time matrix.
@@ -599,9 +592,7 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 
 (defmethod downbeat-estimation-amplitude ((analysed-rhythm rhythm-description))
   "Use amplitude only to form an estimation of downbeat. Returns a single number mod beats-per-measure"
-  (let* ((amplitude-observations (observe-downbeat-of (rhythm analysed-rhythm)
-						      (beat-times (meter analysed-rhythm))
-						      (beats-per-measure (meter analysed-rhythm))
+  (let* ((amplitude-observations (observe-evidence-of analysed-rhythm
 						      *subdivisions-of-beat*
 						      #'amplitude-profile-downbeat-evidence)))
     (assess-evidence amplitude-observations "Amplitude profile" (rhythm analysed-rhythm))))
@@ -617,18 +608,14 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
 
 (defmethod downbeat-estimation-phase ((analysed-rhythm rhythm-description))
   "Use amplitude only to form an estimation of downbeat. Returns a single number mod beats-per-measure"
-  (let* ((phase-observations (observe-downbeat-of (rhythm analysed-rhythm)
-						  (beat-times (meter analysed-rhythm))
-						  (beats-per-measure (meter analysed-rhythm))
+  (let* ((phase-observations (observe-evidence-of analysed-rhythm
 						  *subdivisions-of-beat*
 						  #'mrr-phase-downbeat-evidence)))
     (assess-evidence phase-observations "Amplitude profile" (rhythm analysed-rhythm))))
 
 (defmethod observation-probabilities ((analysed-rhythm rhythm-description))
   "Use duration only to return probabilities of downbeat location for each position of gap duration."
-  (let* ((gap-observations (observe-downbeat-of (rhythm analysed-rhythm)
-						(beat-times (meter analysed-rhythm))
-						(beats-per-measure (meter analysed-rhythm))
+  (let* ((gap-observations (observe-evidence-of analysed-rhythm
 						*subdivisions-of-beat*
 						#'gap-accent-downbeat-evidence)))
 ;;						#'duration-downbeat-evidence)))
@@ -651,9 +638,35 @@ when the gap exceeds the beat period. bar-duration and beat-duration in samples"
     (format t "Removing ~d beats" remove-beats)
     (observation-probabilities shortened-rhythm)))
 
+(defun metric-grid-from-probabilities (tatum-probabilities grid-length)
+  "Returns a binary grid from probabilities of relative silence in each tatum position"
+  (let* ((threshold (/ 1.0d0 grid-length)))
+    (format t "grid-length ~a, threshold ~a~%" grid-length threshold)
+    (.< tatum-probabilities threshold)))
+
+(defmethod observe-onsets ((analysed-rhythm rhythm-description))
+  (let* ((rhythm (rhythm analysed-rhythm))
+	 ;; Rename observe-downbeat-of to observe-evidence-of
+	 (silence-observations (observe-evidence-of analysed-rhythm
+						    4 ; fixed subdivisions-of-beat to 16ths.
+						    #'silence-evidence))
+	 (onset-observations (metric-grid-from-probabilities silence-observations
+							     (.row-count silence-observations))))
+    (format t "silence-observations ~a~%" (.column silence-observations 0))
+    (diag-plot 'onset-observations
+      (image onset-observations nil nil
+	     :title (format nil "~a observations of ~a" "Onset" (mrr:name rhythm))
+	     :xlabel "Time (measures)"
+	     :ylabel "Tatum location (beat)"
+	     :aspect-ratio 0.666))
+    (diag-plot 'silence-observations
+      (image silence-observations nil nil
+	     :title (format nil "~a observations of ~a" "Silence" (mrr:name rhythm))
+	     :xlabel "Time (measures)"
+	     :ylabel "Tatum location (beat)"
+	     :aspect-ratio 0.666))
+    onset-observations))
+
 #|
-(setf preceding-gaps (mrr::observe-downbeat-of (rhythm u2) 
-					       (mrr::beat-times (mrr::meter u2))
-					       (mrr::beats-per-measure (mrr::meter u2))
-					       #'mrr::gap-accent-downbeat-evidence))
+(setf preceding-gaps (observe-evidence-of u2 4 #'mrr::gap-accent-downbeat-evidence))
 |#

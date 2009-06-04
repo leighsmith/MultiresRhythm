@@ -198,9 +198,43 @@
 (defun read-annotated-downbeats (ircam-annotation-path)
   "Retrieve the times of nominated downbeats from an annotation file"
   (multiple-value-bind (times beats) 
-      (read-annotated-beats ircam-annotation-path)
+      (read-ircam-annotation ircam-annotation-path)
     (let* ((downbeat-indices (.find (.= beats 1)))
-	   (downbeats (.arefs times downbeat-indices)))
+	   (downbeat-times (.arefs times downbeat-indices)))
       ;; (format t "~a~%first downbeat indices ~a~%" (pathname-name ircam-annotation-path) (.subseq downbeat-indices 0 10))
-      (values downbeats downbeat-indices))))
+      (values downbeat-times downbeat-indices))))
 
+(defun write-syncopation (filename syncopation-scores &key (rhythm-directory-root))
+  (let* ((syncopation-filepath (merge-pathnames (make-pathname :directory '(:relative "Analysis")
+							      :name filename 
+							      :type "syncopation.xml")
+					       rhythm-directory-root)))
+    (with-open-file (out-stream syncopation-filepath :direction :output :element-type '(unsigned-byte 8))
+      (cxml:with-xml-output (cxml:make-octet-stream-sink out-stream :indentation 2 :canonical nil)
+	(cxml:with-element "syncopation-description"
+	  (cxml:attribute "tatum-count" (format nil "~d" (.length syncopation-scores)))
+	  (loop
+	     for tatum-syncopation across (val syncopation-scores)
+	     for tatum-index from 0
+	     do (cxml:with-element "tatum"
+		  (cxml:attribute "id" (format nil "~a" tatum-index))
+		  (cxml:attribute "syncopation" (format nil "~f" tatum-syncopation)))))))))
+
+(defun read-syncopation (filename syncopation-scores &key (rhythm-directory-root))
+  (let* ((syncopation-filepath (merge-pathnames (make-pathname :directory '(:relative "Analysis")
+							       :name filename 
+							       :type "syncopation.xml")
+						rhythm-directory-root))
+	 (syncopation-document (cxml:parse syncopation-filepath (cxml-dom:make-dom-builder)))
+	 (first-tagname (dom:tag-name (dom:document-element syncopation-document))))
+
+
+
+	(cxml:with-element "syncopation-description"
+	  (cxml:attribute "tatum-count" (format nil "~d" (.length syncopation-scores)))
+	  (loop
+	     for tatum-syncopation across (val syncopation-scores)
+	     for tatum-index from 0
+	     do (cxml:with-element "tatum"
+		  (cxml:attribute "id" (format nil "~a" tatum-index))
+		  (cxml:attribute "syncopation" (format nil "~f" tatum-syncopation)))))))))
