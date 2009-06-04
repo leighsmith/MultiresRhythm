@@ -20,12 +20,16 @@ for marker_index = 0 : markers.getLength() - 1
     switch comment
     case 'timesignature-4/4'
         beats_per_measure = 4;
+        hierarchy = [2 2 2 2];
     case 'timesignature-6/8'
         beats_per_measure = 6;
+        hierarchy = [2 3 2];
     case 'timesignature-12/8'
         beats_per_measure = 12;
+        hierarchy = [2 2 3 2];
     case 'timesignature-3/4'
         beats_per_measure = 3;
+        hierarchy = [3 2 2];
     end
     if beats_per_measure
        % fprintf('beat %d time %d\n', beats_per_measure, time)

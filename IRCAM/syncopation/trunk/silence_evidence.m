@@ -16,8 +16,8 @@ for tatum_index = 1 : tatums_per_measure
 	% silence_score = silence_score_max(rhythm_to_analyse(max(1, gap_start) : gap_end), rhythm_to_analyse);
     silence_score = silence_score_stddev(rhythm_to_analyse(max(1, gap_start) : gap_end - 1), rhythm_to_analyse);
     tatum_score(tatum_index) = silence_score;
-    fprintf('Measure %d tatum location %.2f samples, silence region (%d %d) score = %.3f\n', ...
-	      measure_index, tatum_location, gap_start, gap_end, silence_score);
+    %fprintf('Measure %d tatum location %.2f samples, silence region (%d %d) score = %.3f\n', ...
+	%      measure_index, tatum_location, gap_start, gap_end, silence_score);
 end
 
 %% Normalise the downbeat location likelihood, since there is only one location per measure.

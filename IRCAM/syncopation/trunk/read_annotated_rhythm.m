@@ -9,7 +9,7 @@ sample_rate = 172.27; % hardwired, again.
 odf = ircam_odf(odf_filepath);
 
 annotated_beat_markers_filepath = [rhythm_directory_root 'Annotation/' filename '.b.xml'];
-beat_times = annotated_beats(annotated_beat_markers_filepath);
+[beat_times, beat_markers] = annotated_beats(annotated_beat_markers_filepath);
 start_from = beat_times(1);
 start_sample = round(sample_rate * start_from) + 1;
 odf_subset = odf(start_sample : end);

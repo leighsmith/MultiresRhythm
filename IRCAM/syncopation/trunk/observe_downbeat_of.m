@@ -3,7 +3,7 @@ function [ downbeat_estimates ] = observe_downbeat_of( annotated_rhythm, subdivi
 %   Detailed explanation goes here
 
 measures_to_plot = [30, 31, 32, 33]; % should be global.
-diag_plot = ''; % should be global.
+plotting = ''; % should be global.
 
 rhythm = annotated_rhythm.odf;
 beat_times = annotated_rhythm.beat_times;
@@ -18,7 +18,7 @@ number_of_measures = floor(length(beat_durations) / beats_per_measure) - 1; % fl
 downbeat_estimates = zeros((beats_per_measure * subdivisions_of_beat), number_of_measures);
 
 fprintf('\nrhythm duration %.3f samples, number of measures %.3f\n', length(rhythm), number_of_measures); 
-fprintf('First beat_durations %s\n', sprintf('%.3f ', beat_durations(1 : 16)))
+% fprintf('First beat_durations %s\n', sprintf('%.3f ', beat_durations(1 : 16)))
 
 for measure_index = 1 : number_of_measures
     % in samples
@@ -26,15 +26,15 @@ for measure_index = 1 : number_of_measures
     beat_durations_in_measure = beat_durations(beat_duration_index  + 1 : beat_duration_index + beats_per_measure);
     bar_duration = sum(beat_durations_in_measure); % in samples
     start_sample = round((beat_times(((measure_index - 1) * beats_per_measure) + 1) - beat_times(1)) * sample_rate) + 1;
-    fprintf('Measure %3d start sample %d\n', measure_index, start_sample);
-    fprintf('beat duration in samples %s = %.3f\n', sprintf('%.3f ', beat_durations_in_measure), bar_duration);
+    % fprintf('Measure %3d start sample %d\n', measure_index, start_sample);
+    % fprintf('beat duration in samples %s = %.3f\n', sprintf('%.3f ', beat_durations_in_measure), bar_duration);
 
     %% collect probabilities of the downbeat occuring at each measure location.    
     downbeat_probabilities = downbeat_estimator(rhythm, start_sample, measure_index, beat_durations_in_measure, subdivisions_of_beat);
 
-    fprintf('Downbeat probabilities %s\n', sprintf('%.5f ', downbeat_probabilities));
+    % fprintf('Downbeat probabilities %s\n', sprintf('%.5f ', downbeat_probabilities));
    
-    if (findstr(diag_plot, 'gap_evaluation') & ismember(measures_to_plot, measure_index))
+    if (strmatch('gap_evaluation', plotting) & ismember(measures_to_plot, measure_index))
        search_region = rhythm(start_sample : min(length(rhythm), start_sample + (bar_duration * 2) - 1));
        title(sprintf('plot of measure %.3f', measure_index));
        set(hlines(1), 'Displayname', 'ODF');
