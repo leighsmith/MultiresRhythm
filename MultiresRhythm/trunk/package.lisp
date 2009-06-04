@@ -56,4 +56,11 @@
 	   :onset-time-signal
 	   :odf
 	   :last-expectations
-	   :salience-trace-rhythm))
+	   :salience-trace-rhythm
+	   :rhythm-from-ircam-odf
+	   :meter
+	   :beat-times
+	   :beats-per-measure
+	   :diag-plot
+	   :name
+	   :hierarchy))
