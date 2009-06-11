@@ -1,7 +1,7 @@
 function [ syncopation_score ] = calculate_syncopations_on_grid (rhythm, meter)
 %calculate_syncopations_on_grid Return list of syncopation strengths from
 %binary rhythm
-%   Detailed explanation goes here
+% $Id$
 
 rhythm = [rhythm, 1]; % place extra onset for following downbeat.
  

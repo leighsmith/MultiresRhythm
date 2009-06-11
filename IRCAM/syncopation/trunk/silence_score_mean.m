@@ -1,6 +1,7 @@
 function [ silence_score ] = silence_score_mean( silence_evaluation_region, comparison_region, debug )
 %silence_score_mean Values > 1 indicate the variation and mean of the silence evaluation region is less
 %   than the comparison region, i.e more likely to be silence.
+% $Id$
 
 epsilon = 0.0001;
 

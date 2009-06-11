@@ -1,6 +1,7 @@
 function [ marker_timesignatures ] = read_ircam_annotation_timesignatures( filepath )
 %read_ircam_annotation_timesignatures Read the time signatures in the annotation file and return an
 %array of the beats per measure.
+% $Id$
 
 marker_name = 'marker';
 marker_document = xmlread(filepath);

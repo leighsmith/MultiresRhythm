@@ -1,6 +1,7 @@
 function [ annotated_rhythm ] = read_annotated_rhythm( filename )
 %read_annotated_rhythm Returns an instance of RhythmDescription with the onset detection function, times of
 %each beat, beats per measure, downbeat times, meter.
+% $Id$
 
 rhythm_directory_root = tilde_expand('~/Research/Data/IRCAM-Beat/Quaero_Selection/');
 

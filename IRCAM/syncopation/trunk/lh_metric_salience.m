@@ -1,6 +1,7 @@
 function [ salience ] = lh_metric_salience (meter)
 %lh_metric_salience calculating metric salience the Longuet-Higgins & Lee way
 %   Return list of metric weights; 0 highest level, -n lowest.
+% $Id$
 
 grid_length = prod(meter);
 salience = zeros(1, grid_length);

@@ -1,6 +1,6 @@
 function [ syncopation ] = syncopation_scalar ( syncopation_measures )
 %syncopation_scalar Summary of this function goes here
-%   Detailed explanation goes here
+% $Id$
 
 dim = size(syncopation_measures);
 rhythm_count = dim(1);

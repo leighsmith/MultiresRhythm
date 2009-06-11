@@ -2,6 +2,7 @@ function [ silence_score ] = silence_score_max( silence_evaluation_region, compa
 %silence_score_max Indicate probability of the evaluated region being silent.
 %   Values > 1 indicate the variation and mean of the silence evaluation region is less
 %   than the comparison region, i.e more likely to be silence.
+% $Id$
 
 max_silence_region = max(silence_evaluation_region);
 epsilon = 0.001; % Avoid div by 0 errors.

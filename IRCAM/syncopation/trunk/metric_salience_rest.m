@@ -1,5 +1,7 @@
 function [ max_rest ] = metric_salience_rest (position, rhythm, salience)
-%metric_salience_rest Return highest metric_salience in note-to-note interval
+%metric_salience_rest Return highest metric_salience in note-to-note
+%interval.
+% $Id$
 
 search_region = (position + 1) : next_note_position(rhythm, position) - 1;
 if(length(search_region) == 0)

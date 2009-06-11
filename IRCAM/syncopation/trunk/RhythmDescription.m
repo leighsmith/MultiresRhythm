@@ -1,5 +1,8 @@
 classdef RhythmDescription
-    % RhythmDescription Holds an rhythm, including onset detection function, beat times and metrical structure
+    % RhythmDescription Holds an rhythm, including onset detection
+    % function, beat times and metrical structure.
+    % $Id$
+    
     properties
         name = '';
         odf = 0;

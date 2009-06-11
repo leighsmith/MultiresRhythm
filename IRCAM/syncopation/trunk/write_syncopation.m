@@ -1,6 +1,6 @@
 function [ success ] = write_syncopation ( filename, syncopation_profile )
 %write_syncopation Writes the syncopation values to XML file.
-%   Detailed explanation goes here
+% $Id$
 
 rhythm_directory_root = tilde_expand('~/Research/Data/IRCAM-Beat/Quaero_Selection/');
 

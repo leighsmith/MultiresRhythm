@@ -1,6 +1,7 @@
 function [ onsets ] = onsets_at_subdivisions( beat_durations_in_measure, subdivisions_of_beat )
 %onsets_at_subdivisions Converts from IOI's for main beats to onset times in samples for tatums
-%   Detailed explanation goes here
+% $Id$
+
 beat_onset_sample = 0;
 onsets = zeros(1, length(beat_durations_in_measure) * subdivisions_of_beat);
 tatum_durations = beat_durations_in_measure / subdivisions_of_beat;

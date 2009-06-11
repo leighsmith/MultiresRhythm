@@ -1,5 +1,7 @@
 function [ beat_times, beat_markers ] = read_ircam_annotation( filepath, marker_name )
 % Read the given XML file to return an array of beat markers
+% $Id$
+
 if(nargin < 2)
     marker_name = 'marker';
 end
