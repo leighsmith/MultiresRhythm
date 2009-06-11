@@ -7,11 +7,15 @@ corpus_syncopation = zeros(length(corpus), 16);
 
 for piece_index = 1 : length(corpus)
     piece = corpus{1, piece_index};
-    analysed_rhythm = read_analysed_rhythm(piece);
-	syncopation_profile = eval_syncopation_measures(analysed_rhythm);
-
+    
+    try
+        syncopation_profile = read_syncopation(piece);
+    catch
+        analysed_rhythm = read_analysed_rhythm(piece);
+        syncopation_profile = eval_syncopation_measures(analysed_rhythm);
+        write_syncopation(piece, syncopation_profile);
+    end
     corpus_syncopation(piece_index, :) = syncopation_profile;
-    % write_syncopation(piece, syncopation_measures);
 end
     
 end

@@ -6,9 +6,9 @@ rhythm_directory_root = tilde_expand('~/Research/Data/IRCAM-Beat/Quaero_Selectio
 
 syncopation_filepath = [rhythm_directory_root 'Analysis/' filename '.syncopation.xml'];
 
-syncopation_dom = com.mathworks.xml.XMLUtils.createDocument('syncopation_description');
+syncopation_dom = com.mathworks.xml.XMLUtils.createDocument('syncopation-description');
 syncopation_description = syncopation_dom.getDocumentElement();
-syncopation_description.setAttribute('tatum_count', sprintf('%d', length(syncopation_profile)));
+syncopation_description.setAttribute('tatum-count', sprintf('%d', length(syncopation_profile)));
 syncopation_dom.createComment(sprintf('Syncopation profile for %s', filename));
 
 for tatum_index = 1 : length(syncopation_profile)

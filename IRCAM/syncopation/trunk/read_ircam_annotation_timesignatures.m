@@ -13,8 +13,8 @@ write_index = 1;
 for marker_index = 0 : markers.getLength() - 1
     marker_node = markers.item(marker_index);
     % Java toCharArray method spits out a column array, so we (sigh) have to transpose it.
-    comment = marker_node.getAttribute('comment').toCharArray().';
-    time = str2double(marker_node.getAttribute('time').toCharArray());
+    comment = char(marker_node.getAttribute('comment'));
+    time = str2double(char(marker_node.getAttribute('time')));
 
     beats_per_measure = 0;
     switch comment
