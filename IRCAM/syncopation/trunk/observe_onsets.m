@@ -1,5 +1,6 @@
 function [ onset_observations, silence_observations ] = observe_onsets (analysed_rhythm)
 %observe_onsets Determines which tatums correspond to onsets or rests.
+% $Id$
 
 rhythm = analysed_rhythm.odf;
 % TODO fixed subdivisions_of_beat to 16ths.

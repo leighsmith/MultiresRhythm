@@ -1,6 +1,6 @@
 function [ syncopation_profile ] = read_syncopation( filename )
 %read_syncopation Returns the syncopation profile of the named file.
-%   Detailed explanation goes here
+% $Id$
 
 rhythm_directory_root = tilde_expand('~/Research/Data/IRCAM-Beat/Quaero_Selection/');
 

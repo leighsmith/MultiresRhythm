@@ -1,6 +1,7 @@
 function [ corpus_syncopation ] = syncopation_for_corpus( corpus )
 %syncopation_for_corpus Generate syncopation pattern measures for the corpus.
 % Assumes corpus is a cell array of strings.
+% $Id$
 
 % We assume all members of the corpus are the same meter.
 corpus_syncopation = zeros(length(corpus), 16);

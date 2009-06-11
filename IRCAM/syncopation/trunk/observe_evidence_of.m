@@ -1,6 +1,6 @@
 function [ downbeat_estimates ] = observe_evidence_of( annotated_rhythm, subdivisions_of_beat, downbeat_estimator )
 %observe_downbeat_of Returns an estimate of downbeat location across the entire ODF rhythm using an estimator
-%   Detailed explanation goes here
+% $Id$
 
 % set(title, 'Interpreter','none');
 measures_to_plot = [40]; % should be global.

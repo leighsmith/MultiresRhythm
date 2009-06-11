@@ -1,6 +1,7 @@
 function [ syncopation_profile ] = eval_syncopation_measures ( analysed_rhythm )
 %eval_syncopation_measures Returns a metrical profile of syncopation
 %measures for the given rhythm.
+% $Id$
 
 rhythm_name = analysed_rhythm.name;
 [onset_observations, silence_observations] = observe_onsets(analysed_rhythm);

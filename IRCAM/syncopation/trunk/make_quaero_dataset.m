@@ -1,7 +1,7 @@
 function [ dataset_for_meter ] = make_quaero_dataset( maximum_examples, every, quaero_directory )
 %make_quaero_dataset Returns a cell vector of names of files in the corpus,
 %stripped of extensions.
-%   Detailed explanation goes here
+% $Id$
 
 start_at = 1;
 only_measures_of_beats = 4;       % TODO exclude non_strict 4/4 for now.

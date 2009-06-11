@@ -1,5 +1,6 @@
 function [ should_plot ] = diag_plot( test_case )
 %diag_plot Checks if the plotting array holds the test_case, returning 1 or 0.
+% $Id$
 
 % plotting = {};
 % plotting = {'onset_observations'};

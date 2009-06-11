@@ -2,6 +2,7 @@ function [ similarity ] = syncopation_similarity( syncopations )
 %syncopation_similarity Return a similarity matrix from the syncopation measures.
 %   All syncopation measures are wrt a single meter. n rhythms * t tatums.
 %   Returns a n * n similarity matrix.
+% $Id$
 
 rhythm_count = length(syncopations);
 similarity = zeros(rhythm_count);

@@ -1,6 +1,7 @@
 function [ marker_times ] = read_ircam_marker_times( beat_marker_filepath )
 %read_ircam_marker_times New version 20090226A just uses the same beattype markers, as
 %annotations, named segments.
+% $Id$
 
 marker_document = xmlread(beat_marker_filepath);
 marker_root = marker_document.getDocumentElement();

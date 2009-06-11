@@ -1,6 +1,6 @@
 function [ output_args ] = select_quaero()
 %select_quaero Summary of this function goes here
-%   Detailed explanation goes here
+% $Id$
 
 select_quaero_names = make_quaero_dataset(100, 1, 'Quaero_Selection');
 

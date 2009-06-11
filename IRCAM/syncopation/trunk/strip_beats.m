@@ -4,6 +4,7 @@ function [ beats_removed ] = strip_beats( rhythms, tatums_per_beat )
 % The reason to strip beats after creating a syncopation measure
 % incorporating them is to retain a full set of tatum values for
 % comparisons & future applications.
+% $Id$
 
 dim = size(rhythms);
 tatum_count = dim(2);

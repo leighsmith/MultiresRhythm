@@ -1,6 +1,7 @@
 function [ silence_probabilities ] = silence_evidence(rhythm_to_analyse, measure_start_sample, measure_index, beat_durations_in_measure, subdivisions_of_beat)
 %silence_evidence From the rhythm_to_analyse, for one measure, starting at measure_start_sample, determines if each 
 % beat and subdivision thereof is a silent region
+% $Id$
 
 tatum_locations = onsets_at_subdivisions(beat_durations_in_measure, subdivisions_of_beat);
 tatums_per_measure = length(tatum_locations);
