@@ -1,4 +1,4 @@
-function [ similarity ] = syncopation_similarity( syncopations )
+function [ similarity ] = pattern_similarity( syncopations )
 %syncopation_similarity Return a similarity matrix from the syncopation measures.
 %   All syncopation measures are wrt a single meter. n rhythms * t tatums.
 %   Returns a n * n similarity matrix.
@@ -21,7 +21,7 @@ similarity = zeros(rhythm_count);
 % * cityblock (Manhattan) distance, measuring the distance by a set of
 % independent dimensions for each metrical location, i.e each doesn't
 % interact.
-% metric = 'cityblock';
+metric = 'cityblock';
 % * Mahalanobis
 % metric = 'mahalanobis';
 % produces: NaNs & Matrix is singular to working precision. This is because
@@ -30,14 +30,25 @@ similarity = zeros(rhythm_count);
 % * spearman Rank correlation between observations, since all data is
 % ordered the same, so we are comparing correlation of each metrical
 % position.
-metric = 'spearman';
-% produces error: Some points have too many ties, making them effectively constant.
-
-fprintf('Comparing by %s distance metric\n', metric);
+% metric = 'spearman';
+% produces error: Some points have too many ties, making them effectively
+% constant.
 
 fprintf('variance across examples %d\n', diag(cov(syncopations)));
 
 similarity = squareform(pdist(syncopations, metric));
+
+if (diag_plot('similarity_matrix'))
+    figure();
+    imagesc(similarity)
+    title(sprintf('Dissimilarity of Syncopation of Quaero Selection by %s distance metric', metric))
+end
+
+if (diag_plot('corpus_dissimilarity'))
+    figure();
+    bar(sum(similarity));
+    title(sprintf('Dissimilarity of Quaero Selection'));
+end
 
 end
 

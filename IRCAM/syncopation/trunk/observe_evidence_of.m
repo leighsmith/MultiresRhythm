@@ -32,7 +32,7 @@ for measure_index = 1 : number_of_measures
     %% collect probabilities of the downbeat occuring at each measure location.    
     downbeat_probabilities = downbeat_estimator(rhythm, start_sample, measure_index, beat_durations_in_measure, subdivisions_of_beat);
 
-    % fprintf('Downbeat probabilities %s\n', sprintf('%.5f ', downbeat_probabilities));
+    % fprintf('Downbeat probabilities %s sum = %f\n', sprintf('%.5f ', downbeat_probabilities), sum(downbeat_probabilities));
    
     if (diag_plot('gap_evaluation') & ismember(measures_to_plot, measure_index))
        search_region = rhythm(start_sample : min(length(rhythm), start_sample + (bar_duration * 2) - 1));

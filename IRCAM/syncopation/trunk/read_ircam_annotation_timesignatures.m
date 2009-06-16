@@ -1,6 +1,6 @@
-function [ marker_timesignatures ] = read_ircam_annotation_timesignatures( filepath )
+function [ marker_timesignatures, hierarchy ] = read_ircam_annotation_timesignatures( filepath )
 %read_ircam_annotation_timesignatures Read the time signatures in the annotation file and return an
-%array of the beats per measure.
+%array of the beats per measure and the hierarchy of subdivisions of the measure.
 % $Id$
 
 marker_name = 'marker';
@@ -13,7 +13,6 @@ write_index = 1;
 
 for marker_index = 0 : markers.getLength() - 1
     marker_node = markers.item(marker_index);
-    % Java toCharArray method spits out a column array, so we (sigh) have to transpose it.
     comment = char(marker_node.getAttribute('comment'));
     time = str2double(char(marker_node.getAttribute('time')));
 

@@ -32,8 +32,7 @@ cov_silence_region = (stddev_silence_region / (mean_silence_region + epsilon));
 
 % silence_score = cov_comparison / cov_silence_region;
 
-% silence_score = cov_comparison / (cov_silence_region * (mean_silence_region + epsilon));
-silence_score = 1.0 / (mean_silence_region + epsilon);
+silence_score = cov_comparison / (cov_silence_region * (mean_silence_region + epsilon));
 
 if(debug)
     fprintf('silence-eval-region length %d sum %f\n', length(silence_evaluation_region), sum(silence_evaluation_region));

@@ -10,7 +10,7 @@ classdef RhythmDescription
         meter = [];
         beats_per_measure = 4;
         sample_rate = 172.27;
-    end
+     end
     methods
         function new_rhythm = RhythmDescription(name, odf, beat_times, meter, beats_per_measure, sample_rate)
             new_rhythm.name = name;
@@ -20,5 +20,6 @@ classdef RhythmDescription
             new_rhythm.beats_per_measure = beats_per_measure;
             new_rhythm.sample_rate = sample_rate;
         end
+        
     end
 end

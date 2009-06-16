@@ -1,4 +1,4 @@
-function [ syncopation_profile ] = eval_syncopation_measures ( analysed_rhythm )
+function [ syncopation_profile, metric_profile ] = eval_syncopation_measures ( analysed_rhythm )
 %eval_syncopation_measures Returns a metrical profile of syncopation
 %measures for the given rhythm.
 % $Id$
@@ -18,7 +18,7 @@ dim = size(normalised_syncopation_measures);
 num_of_tatums = dim(1); % recalc this in case the syncopation measures differ from the tatums.
 syncopation_profile = sum(normalised_syncopation_measures') ./ num_of_measures;
 
-metric_profile = 1 - (sum(silence_observations') ./ num_of_measures);
+metric_profile = 1 - normalise(sum(silence_observations') ./ num_of_measures);
 % metric_profile = sum(onset_observations') ./ num_of_measures;
 %% fprintf('metric profile %s syncopation_profile %s~%', metric_profile, syncopation_profile)
 
