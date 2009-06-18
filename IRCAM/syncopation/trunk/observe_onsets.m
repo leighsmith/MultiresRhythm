@@ -13,8 +13,8 @@ if (diag_plot('onset_observations'))
     colormap([50/255, 94/255, 174/255; 255/255, 254/255, 87/255]);
     imagesc(onset_observations);
     title(sprintf('Onset observations of %s', analysed_rhythm.name),'Interpreter','none');
-    % 	   :xlabel 'Time (measures)'
-    % 	   :ylabel 'Tatum location (beat)'
+    xlabel('Time (measures)');
+    ylabel('Tatum location (beat)');
     % 	   :aspect_ratio 0.666)
     % close();
 end
@@ -23,8 +23,8 @@ if (diag_plot('silence_observations'))
      figure();
      imagesc(silence_observations);
      title(sprintf('Silence observations of %s', analysed_rhythm.name),'Interpreter','none');
-     % :xlabel 'Time (measures)'
-     % :ylabel 'Tatum location (beat)'
+     xlabel('Time (measures)')
+     ylabel('Tatum location (beat)')
      % :aspect_ratio 0.666)
      % close();
 end

@@ -18,12 +18,15 @@ odf = ircam_odf(odf_filepath);
 
 annotated_beat_markers_filepath = [abs_rhythm_directory 'Annotation/' filename annotation_source '.xml'];
 [beat_times, beat_markers] = annotated_beats(annotated_beat_markers_filepath);
-start_from = beat_times(1);
+% fprintf('beat markers %s beat times %s\n', sprintf('%d ', beat_markers(1:10)), sprintf('%f ', beat_times(1:10)))
+downbeats = find(beat_markers == 1); % downbeats are marked as "1".
+anacrusis = downbeats(1) - 1; % number of beats before the first downbeat
+start_from = beat_times(downbeats(1));
 start_sample = round(sample_rate * start_from) + 1;
 odf_subset = odf(start_sample : end);
 
 [all_beats_per_measure, metrical_hierarchy] = read_ircam_annotation_timesignatures(annotated_beat_markers_filepath);
-beats_per_measure = all_beats_per_measure(1); % TODO take the first beats-per-measure as 
+beats_per_measure = all_beats_per_measure(1); % TODO take the first beats-per-measure as the standard
 
-annotated_rhythm = RhythmDescription(filename, odf_subset, beat_times, metrical_hierarchy, beats_per_measure, sample_rate);
+annotated_rhythm = RhythmDescription(filename, odf_subset, beat_times, metrical_hierarchy, beats_per_measure, anacrusis, sample_rate);
 end

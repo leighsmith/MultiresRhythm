@@ -14,17 +14,16 @@ for piece_index = 1 : length(corpus)
     
     try
         patt = RhythmPattern([],[]);
-        pattern_read = read_pattern(patt, piece);
-        corpus_rhythm_pattern(piece_index, :) = [strip_beats(pattern_read.syncopation, 4) pattern_read.metrical_profile];
+        pattern = read_pattern(patt, piece);
     catch
-        analysed_rhythm = read_analysed_rhythm(piece);
-        [syncopation_profile, metrical_profile] = eval_syncopation_measures(analysed_rhythm);
-        pattern_to_write = RhythmPattern(syncopation_profile, metrical_profile);
-        write_pattern(pattern_to_write, piece);
-        % Concatenate the syncopation and metrical profiles.
-        % TODO Hardwired at 4 tatums per beat. 
-        corpus_rhythm_pattern(piece_index, :) = [strip_beats(syncopation_profile, 4) metrical_profile];
+        % We use the annotated rhythms to ensure the downbeats are correct.
+        rhythm_description = read_annotated_rhythm(piece);
+        pattern = pattern_of_rhythm_description(rhythm_description);
+        write_pattern(pattern, piece);
     end
+    % Concatenate the syncopation and metrical profiles.
+    % TODO Hardwired at 4 tatums per beat. 
+    corpus_rhythm_pattern(piece_index, :) = [strip_beats(pattern.syncopation, 4) pattern.metrical_profile];
 end
     
 end

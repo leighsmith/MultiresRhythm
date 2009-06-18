@@ -1,4 +1,4 @@
-function [ output_args ] = select_quaero()
+function [ similarity_matrix ] = select_quaero()
 %select_quaero Summary of this function goes here
 % $Id$
 

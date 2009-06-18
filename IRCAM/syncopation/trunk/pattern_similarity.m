@@ -4,6 +4,9 @@ function [ similarity ] = pattern_similarity( syncopations )
 %   Returns a n * n similarity matrix.
 % $Id$
 
+% TODO should pass in an array of rhythm patterns instead of a matrix.
+% Derive the input matrix here.
+
 rhythm_count = length(syncopations);
 similarity = zeros(rhythm_count);
 
@@ -34,14 +37,14 @@ metric = 'cityblock';
 % produces error: Some points have too many ties, making them effectively
 % constant.
 
-fprintf('variance across examples %d\n', diag(cov(syncopations)));
+fprintf('variance across examples %s\n', sprintf('%f ', diag(cov(syncopations))));
 
 similarity = squareform(pdist(syncopations, metric));
 
 if (diag_plot('similarity_matrix'))
     figure();
     imagesc(similarity)
-    title(sprintf('Dissimilarity of Syncopation of Quaero Selection by %s distance metric', metric))
+    title(sprintf('Dissimilarity of pattern of Quaero Selection by %s distance metric', metric))
 end
 
 if (diag_plot('corpus_dissimilarity'))

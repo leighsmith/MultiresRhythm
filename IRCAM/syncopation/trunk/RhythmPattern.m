@@ -7,13 +7,15 @@ classdef RhythmPattern
 properties
     syncopation = [];
     metrical_profile = [];
+    name = '';
 end
     
 methods
 
-function new_pattern = RhythmPattern(syncopation, metrical_profile)
+function new_pattern = RhythmPattern(name, syncopation, metrical_profile)
     new_pattern.syncopation = syncopation;
     new_pattern.metrical_profile = metrical_profile;
+    new_pattern.name = name;
 end
         
 function setSyncopation(pattern, syncopation)
@@ -80,6 +82,7 @@ function [ new_pattern ] = read_pattern(pattern, filename)
     else
         fprintf('Missing metrical-description format');
     end
+    pattern.name = filename;
     new_pattern = pattern; % return what we were given.
 end
 
@@ -138,7 +141,19 @@ function [ success ] = write_pattern ( pattern, filename )
     
     xmlwrite(syncopation_filepath, dom);
 end
-    
+
+function plot_pattern (pattern)
+    % Display the rhythm pattern instance.
+    figure();
+    bar([pattern.metrical_profile; pattern.syncopation]');
+    % title(sprintf('Metric profile'),'Interpreter','none');
+    title(sprintf('Metric profile of %s', pattern.name),'Interpreter','none');
+    legend('Beat Occurrence', 'Syncopation Intensity');
+    xlabel('Metric Location');
+    ylabel('Relative Occurrence in Piece');
+    % close();
+end
+
 end % methods
 
 end % classdef
