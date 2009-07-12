@@ -52,7 +52,7 @@
   "Defines a rhythm of a random chunk of silence."
   (make-instance 'rhythm 
 		 :name "offset"
-		 :time-signal (make-double-array (random max-length)))) ; region-length
+		 :onset-time-signal (make-double-array (random max-length)))) ; region-length
 
 (defun make-metrical-set (candidate-meter size-of-rhythm-set number-of-bars)
   "Return a set of unique metrical rhythms"
