@@ -114,7 +114,6 @@
 					  onsets-in-expectation-range
 					  precision-window))))
 
-
 (defun eval-essen-expectation (filename)
   (let ((score (evaluate-expectancy (essen-rhythm filename) :minimum-period 3.0d0)))
     (format t "evaluation against all expectations of ~a: ~a~%" filename (print-prf score))

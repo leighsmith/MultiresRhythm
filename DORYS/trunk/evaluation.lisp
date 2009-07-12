@@ -49,3 +49,18 @@
 
 ;;; For example:
 ;;; (evaluate-with-music #'evaluate-downbeat-of-anthem :music-dataset *national-anthems* :music-name #'anthem-name)
+
+
+;;; TODO, need to finalise as general evaluation function
+(defun evaluate-accuracy-with-corpus (corpus-name corpus precision-window evaluation-function) 
+  "Selects the best evaluations between the annotations and filterings thereof on the
+   given corpus. We score on original annotations, half and interpolated beats."
+  (loop
+     for scores-per-track = (funcall evaluation-function corpus-name corpus precision-window)
+     for f-scores = (nlisp::array-to-list (.column scores-per-track 2))
+     do
+       (format t "~%for ~a mean scores ~a~%" corpus-name (mean-scores scores-per-track))
+     collect scores-per-track into scores
+     collect f-scores into f-score-comparison
+     finally (return (select-from-indices scores (mrr::find-column-maxima (make-narray f-score-comparison))))))
+

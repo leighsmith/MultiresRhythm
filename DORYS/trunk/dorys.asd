@@ -20,8 +20,9 @@
 (require 'nlisp)			; For mathematics functions.
 (require 'multiresrhythm)		; For multires-rhythm library.
 (require 'cl-fad)			; For directory access.
+(require 'probdownbeat)			; For probabilistic downbeat library.
 
-(defpackage #:dorys (:use #:cl #:asdf #:nlisp #:multires-rhythm #:shoe)
+(defpackage #:dorys (:use #:cl #:asdf #:nlisp #:multires-rhythm #:shoe #:prob-downbeat)
 	    (:export :*national-anthems*
 		     :anthem-named :meter-numerator :anthem-name
 		     :anthem-beat-duration :anthem-bar-duration :anthem-anacrusis-duration
@@ -36,7 +37,7 @@
   :version "1.1"
   :author "Leigh M. Smith"
   :license "Copyright (c) 2005-2008"
-  :depends-on (:multiresrhythm :shoe :nlisp)
+  :depends-on (:multiresrhythm :shoe :nlisp :probdownbeat)
   :components ((:file "evaluation")
 	       (:file "beat-eval")
 	       (:file "national anthems")
