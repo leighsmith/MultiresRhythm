@@ -217,6 +217,7 @@
 		 :title title
 		 :time-axis-decimation time-axis-decimation)))
 
+;;; TODO this needs to be fully converted to use methods of image-plot class.
 (defmethod plot-cwt+skeleton-of ((analysis multires-analysis)
 				 (highlighted-ridges list)
 				 (analysed-rhythm rhythm)
@@ -227,24 +228,28 @@
   (let* ((rhythm-scaleogram (scaleogram analysis))
 	 (correlated-ridge-scale-peaks (ridge-peaks analysis))
 	 (formatting "set title font \"Times,20\"~%set xlabel font \"Times,20\"~%set ylabel font \"Times,20\"")
-	 (axes-labels (axes-labelled-in-seconds rhythm-scaleogram (sample-rate analysed-rhythm) time-axis-decimation)))
-      (plot-images (list (list #'magnitude-image 
-			       (list (scaleogram-magnitude rhythm-scaleogram))
-			       '((1.0 0.5) (0.0 0.3))
-			       (concatenate 'string axes-labels formatting))
-			 ;; If highlighted-ridges list is empty, just plot the ridge scale
-			 ;; peaks without the highlighted palette.
-			 (if highlighted-ridges
-			     (list #'highlighted-ridges-image
-				   (list (mapcar #'copy-object highlighted-ridges) correlated-ridge-scale-peaks)
-				   '((1.0 0.5) (0.0 0.0))
-				   (concatenate 'string axes-labels formatting))
-			     (list #'magnitude-image
-				   (list correlated-ridge-scale-peaks)
-				   '((1.0 0.5) (0.0 0.0))
-				   (concatenate 'string axes-labels formatting))))
-		   :title title
-		   :time-axis-decimation time-axis-decimation)))
+	 (axes-labels (axes-labelled-in-seconds rhythm-scaleogram (sample-rate analysed-rhythm) time-axis-decimation))
+	 (all-formatting (concatenate 'string axes-labels formatting)))
+      (open-multiplot)
+      (plot-magnitude (scaleogram-magnitude rhythm-scaleogram)
+		      :window-dimensions '((1.0 0.5) (0.0 0.3))
+		      :axes-labels all-formatting
+		      :title (format nil "Scaleogram Magnitude of ~a" title)
+		      :xlabel "")
+      ;; If highlighted-ridges list is empty, just plot the ridge scale
+      ;; peaks without the highlighted palette.
+      (if highlighted-ridges
+	  (plot-image #'highlighted-ridges-image
+		(list (mapcar #'copy-object highlighted-ridges) correlated-ridge-scale-peaks)
+		'((1.0 0.5) (0.0 0.0))
+		all-formatting
+		:title (format nil "Skeleton of ~a" title))
+	  (plot-magnitude correlated-ridge-scale-peaks
+		:window-dimensions '((1.0 0.5) (0.0 0.0))
+		:axes-labels all-formatting
+		:title (format nil "Skeleton of ~a" title)
+		:xlabel "Time (Seconds)"))
+      (close-multiplot)))
 
 (defmethod plot-scale-energy-at-times ((scaleogram-to-plot scaleogram) times &key
 				       (description "unnamed")

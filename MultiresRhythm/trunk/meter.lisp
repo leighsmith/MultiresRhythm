@@ -26,11 +26,11 @@
    (anacrusis   :initarg :anacrusis   :accessor anacrusis   :initform 0))
   (:documentation "Holds the metrical structure of a rhythm, the times of beats, and descriptions of the meter"))
 
-;;; TODO or should I just use the anacrusis instance variable value?
-(defmethod downbeats-for-anacrusis ((meter-to-analyse meter) anacrusis)
-  "Returns an narray of downbeat times, from the given anacrusis"
+(defmethod downbeats ((meter-to-analyse meter))
+  "Returns an narray of downbeat times, from the anacrusis"
   (let* ((beat-times (beat-times meter-to-analyse)))
-    (.arefs beat-times (.iseq-inc anacrusis (- (.length beat-times) anacrusis)
+    (.arefs beat-times (.iseq-inc (anacrusis meter-to-analyse) 
+				  (- (.length beat-times) (anacrusis meter-to-analyse))
 				  (beats-per-measure meter-to-analyse)))))
 
 ;; Calculates the persistency of period multiples in the skeleton.

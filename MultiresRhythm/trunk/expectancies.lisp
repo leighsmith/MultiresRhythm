@@ -582,20 +582,24 @@
   
 (defmethod plot-expectations+rhythm ((rhythm-to-expect rhythm) (all-expectations list) &key 
 				     (rhythm-starts-at 0)
-				     (title (format nil "Accumulated expectations of ~a" (name rhythm-to-expect))))
+				     (title (format nil "Accumulated Expectations of ~a" (name rhythm-to-expect))))
   "Plot the expectation times, confidences and precision and the rhythm."
   (let* ((expectancy-confidences (accumulated-confidence-of-expectations all-expectations))
 	 (expect-times (.find expectancy-confidences))
 	 (expect-confidences (.arefs expectancy-confidences expect-times)))
+    (reset-plot)
+    (plot-command "set yrange [0:1.8]")
+    ;; (plot-command "set key outside right vertical")
     (plot (list (onset-time-signal rhythm-to-expect) expect-confidences expect-confidences)
 	  (list (.iseq rhythm-starts-at (+ rhythm-starts-at (1- (duration-in-samples rhythm-to-expect)))) 
 		expect-times 
 		expect-times)
 	  :styles '("impulses linetype 3" "points linetype 1 pointtype 10" "impulses linetype 1")
-	  :legends (list "original rhythm" "accumulated expectations" "")
-	  :xlabel "Time"
+	  :legends (list "Original rhythm" "Accumulated expectations" "")
+	  :xlabel "Time (Samples)"
 	  :ylabel "Confidence" 
 	  :aspect-ratio 0.15
+	  :reset nil
 	  :title title)))
 
 (defmethod plot-expectations (all-expectations title)

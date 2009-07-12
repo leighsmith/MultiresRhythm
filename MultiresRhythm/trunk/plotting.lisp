@@ -28,10 +28,25 @@
 (defparameter *colour-box-x* 0.88)
 (defparameter *colour-box-y* 0.25)
 
+;;; Define a class that holds the parameters for producing a plot.
+(defclass image-plot ()
+  ((title :initarg :title :accessor title :initform "")
+   (window-dimensions :initarg :window-dimensions :accessor window-dimensions :initform '((1.0 1.0) (0.0 0.0)))
+   (palette :initarg :palette :accessor image-palette :initform :greyscale)
+   (aspect-ratio :initarg :aspect-ratio :accessor aspect-ratio :initform 0.15)
+   (label-font :initarg :label-font :accessor label-font :initform "Times,20")
+   (time-units :initarg :time-units :accessor time-units :initform "Seconds")
+   (label-time-axis :initarg label-time-axis :accessor label-time-access :initform t)
+    ;;; We could do away with this when we can process the data without excess resource strain,
+    ;;; but it also makes diagrams which are not so wide, making them easier to view and interpret.
+   (time-axis-decimation :initarg :time-axis-decimation :accessor time-axis-decimation :initform 4
+			 :documentation "The amount of downsampling of the data along the translation axis before we plot.")))
+
 ;;; Declaration of interface
 
-(defgeneric image-plotter (tf-plane window-dimensions title &key palette aspect-ratio)
-  (:documentation "Plot images TODO"))
+;;; TODO Enable once plot-image is no longer a function
+;;;(defgeneric plot-image (image-to-plot data-to-plot)
+;;;  (:documentation "Plot images with time axis decimation and labelling for multiresolution"))
 
 ;;; Implementation
 
@@ -242,7 +257,7 @@ colourmap, suitable for use by NLISP's palette-defined function."
 ;;; Setting the palette to plot with. (determined by the image-plotter)
 ;;; Plotting the image, with titles (determined by image-plotter) 
 ;;; Setting the colour box display. (determined by image-plotter and window-position)
-(defun magnitude-image (magnitude window-dimensions title &key
+(defun magnitude-image (magnitude window-dimensions title xlabel &key
 			(palette :greyscale)
 			(aspect-ratio 0.15)
 			(units "Seconds"))
@@ -251,8 +266,8 @@ colourmap, suitable for use by NLISP's palette-defined function."
   (set-colour-box magnitude window-dimensions)
   (set-plot-palette palette)
   (image (.flip magnitude) nil nil
-	 :title (format nil "Scaleogram Magnitude of ~a" title)
-	 :xlabel nil
+	 :title title
+	 :xlabel xlabel
 	 :ylabel (format nil "Scale as IOI Range\\n(~a)" units)
 	 :reset nil
 	 :aspect-ratio aspect-ratio))
@@ -277,7 +292,7 @@ colourmap, suitable for use by NLISP's palette-defined function."
     (set-plot-palette palette)
     (image (.flip plotable-phase) nil nil
 	   :title (format nil "Scaleogram Phase of ~a" title)
-	   :xlabel "Time (Seconds)" 
+	   :xlabel (format nil "Time (~a)" units) 
 	   :ylabel (format nil "Scale as IOI Range\\n(~a)" units)
 	   :reset nil
 	   :aspect-ratio aspect-ratio)))
@@ -323,9 +338,41 @@ colourmap, suitable for use by NLISP's palette-defined function."
   "Method to decimate a list of ridges."
   (mapcar (lambda (ridge) (apply #'.decimate ridge reduce-list start-indices)) ridge-list))
 
+#|
+;;; TODO to complete. Should become a method of image-plot
+(defmethod plot-image ((image-to-plot image-plot) data-to-plot)
+   "Plots a displayable image from a given set of data to plot."
+   (reset-plot)
+   ;; Downsample the data 
+   (let* ((down-sampled-data (.decimate data-to-plot (list 1 time-axis-decimation))))
+     (plot-command "set title font \"~a\"" (label-font image-to-plot))
+     (plot-command "set xlabel font \"~a\"" (label-font image-to-plot))
+     (plot-command "set ylabel font \"~a\"" (label-font image-to-plot))
+     ;; Modify the window dimensions for the image dimensions to give room for the colour
+     ;; bar (when using image, not image-pm3d). 
+     (set-image-dimensions (list (* (caar (window-dimensions image-to-plot)) *colour-box-x*) 
+				 (cadar (window-dimensions image-to-plot)))
+			   (second (window-dimensions image-to-plot)))
+     (set-axes-labels (axes-labels image-to-plot))
+     (set-colour-box down-sampled-data (window-dimensions image-to-plot))
+     (set-plot-palette palette)
+     (image (.flip down-sampled-data) nil nil
+	    :title (title image-to-plot)
+	    :xlabel xlabel
+	    :ylabel (format nil "Scale as IOI Range\\n(~a)" (time-units image-to-plot))
+	    :reset nil
+	    :aspect-ratio (aspect-ratio image-to-plot))
+     ;; If we need to do something with the image after plotting, here's where...
+     (reset-plot)))
+
+|#
+
+;;; Replace with method above.
 (defun plot-image (image-plotter data-to-plot window-dimensions axes-labels
 		   &key (title "unnamed")
-		   (time-axis-decimation 4))
+		   (units "Seconds")
+		   (time-axis-decimation 4)
+		   (xlabel (format nil "Time (~a)" units)))
    "Plots a displayable image from a given set of data to plot.
     time-axis-decimation = The amount of downsampling of the data along the translation axis before we plot.
     We could do away with this when we can process the data without excess resource strain,
@@ -338,7 +385,9 @@ colourmap, suitable for use by NLISP's palette-defined function."
    (set-axes-labels axes-labels)
    ;; Downsample the data 
    (let* ((down-sampled-data (.decimate data-to-plot (list 1 time-axis-decimation)))
-	  (plotable-image (apply image-plotter (append down-sampled-data (list window-dimensions title)))))
+	  (plotable-image (apply image-plotter (append down-sampled-data (list
+									  window-dimensions
+									  title xlabel)))))
      ;; If we need to do something with the image after plotting, here's where...
      (reset-plot)
      plotable-image))
@@ -348,23 +397,37 @@ colourmap, suitable for use by NLISP's palette-defined function."
 ;; (plot-image #'highted-ridges-image (list ridges magnitude) '((1.0 0.5) (0.0 0.0)) "")
 ;; (apply #'plot-image (list #'magnitude-image (list magnitude) "" :title "blah")) 
 
-(defun plot-magnitude (data &key (title "blah"))
+;;; TODO should become a method of magnitude-plot 
+(defun plot-magnitude (data &key (title "unnamed") (axes-labels "") (window-dimensions
+								     '((1.0 0.5) (0.0
+										  0.3))) xlabel)
   "Plots a 2D image in grey scale"
-  (plot-image #'magnitude-image (list data) '((1.0 0.5) (0.0 0.3)) "" :title title))
+  (plot-image #'magnitude-image (list data) window-dimensions axes-labels :title title
+	      :xlabel xlabel))
 
-(defun plot-images (image-list &key (title "unnamed") (time-axis-decimation 4))
-  "Plot a number of images as supplied in image-list in the same window"
+;;; TODO Should do this as a image-plot-class and multi-plot-class and subclass from those.
+(defun open-multiplot ()
+  "Plot a number of images in the same window"
   (window)
   (plot-command "set multiplot")
   (plot-command "set title font \"Times,20\"")
   (plot-command "set xlabel font \"Times,20\"")
-  (plot-command "set ylabel font \"Times,20\"")
-  (mapcar 
-   (lambda (x) (apply #'plot-image (append x (list :title title :time-axis-decimation time-axis-decimation))))
-   image-list)
+  (plot-command "set ylabel font \"Times,20\""))
+
+(defun close-multiplot ()
+  "End the multiple plotting"
   (plot-command "unset multiplot")
   (reset-plot)
   (close-window))
+
+;;; TODO deprecated for open/close-multiplot
+(defun plot-images (image-list &key (title "unnamed") (time-axis-decimation 4))
+  "Plot a number of images as supplied in image-list in the same window"
+  (open-multiplot)
+  (mapcar 
+   (lambda (x) (apply #'plot-image (append x (list :title title :time-axis-decimation time-axis-decimation))))
+   image-list)
+  (close-multiplot))
 
 (defun plot-claps (original-rhythm claps beat-phase &key (signal-name (name original-rhythm)))
   "Plot locations of original beats, computed claps, the foot tap
