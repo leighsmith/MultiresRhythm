@@ -50,8 +50,8 @@
 ;;; Should compare against the rhythm times and the annotated beat times.
 (defun evaluate-expectancy (full-rhythm &key 
 			    (onset-times (mrr::onsets-in-seconds full-rhythm))
-			    (precision-window 0.050d0)
-			    (expectation-increment 1.0d0)
+			    (precision-window 0.050d0) ; in seconds
+			    (expectation-increment 1.0d0) ; in seconds
 			    (minimum-period 5.0d0)) ; in seconds, TODO This should probably be based on number of events.
 
   "Given a set of times in a rhythm, produce an evaluation as to how well an expected event is actually then played"
@@ -123,15 +123,18 @@
   (format t "evaluation against all expectations: ~a~%"
 	  (evaluate-expectancy (mrr::rhythm-of-onsets title rhythm-times :sample-rate 200))))
 
-(defun eval-quaero-expectation (annotation-filepath)
+;;; Maximum period in seconds.
+(defun eval-quaero-expectation (annotation-filepath &key (maximum-period 30.0d0))
   (let* ((odf-filepath (merge-pathnames
 			(make-pathname :directory '(:relative "Quaero_Selection" "Analysis")
 				       :name (pathname-name (pathname-name annotation-filepath))
 				       :type "odf")
 			*rhythm-data-directory*))
 	 (odf-rhythm (rhythm-from-ircam-odf odf-filepath :sample-rate 172.27d0))
-	 (beat-times (mrr::read-ircam-annotation annotation-filepath))
-	 (score (evaluate-expectancy-on-beat odf-rhythm beat-times :minimum-period 3.0d0)))
+	 (beat-times (downbeat::read-ircam-annotation annotation-filepath))
+	 (score (evaluate-expectancy-on-beat (mrr::limit-rhythm odf-rhythm :maximum-time maximum-period)
+					     (mrr::prune-outliers beat-times :upper-limit maximum-period)
+					     :minimum-period 3.0d0)))
     (format t "evaluation against all expectations of ~a: ~a~%" annotation-filepath (print-prf score))
     score))
 
@@ -173,6 +176,10 @@
     (pushnew 'accumulative-expectations *plotting*)
     (evaluate-expectancy iso-rhythm :minimum-period 3.0d0)))
 
+;;; (test-isorhythm-expectancy)
+;;; (0.20634920634920634d0 0.9285714285714286d0 0.33766233766233766d0)
+;;; High recall => few deletions, i.e missing onsets for isochronous case.
+
 ;; (test-phase-correction iso-rhythm)
 ;; (setf m (scaleogram-magnitude (scaleogram (analysis-of-rhythm iso-rhythm))))
 ;; (plot (.subseq (.column m 2048) 75 86) (.iseq 75 85) :aspect-ratio 0.66))
@@ -185,7 +192,7 @@
 ;;(defun eval-essen-rhythm (essen-performance)
 ;;  (> (eval-essen-expectation (first essen-performance)) 0.5d0))
 
-(defun eval-all-perf-essen (corpus evaluation-function)
+(defun eval-expectation-of-performances (corpus evaluation-function)
   (loop
      for track in corpus
      for scores-per-track = (funcall evaluation-function (first track))
@@ -195,17 +202,34 @@
      collect scores-per-track into scores
      finally (return (mean-scores (make-narray scores)))))
 
-;; (setf corpus-score (eval-all-perf-essen *essen-perf-meters* #'eval-essen-expectation))
-;; (format t "~%for ~a mean scores ~a~%" corpus-name corpus-score)
-
-;; Random is:
+;; Random with 3 expectations per iteration:
+;;; (setf all-random-prf (make-narray '(
 ;; (0.17984628134853603d0 0.22395800061705326d0 0.19797422856095126d0)
 ;; (0.17229991298754976d0 0.21350901642117517d0 0.18943050419980734d0)
 ;; (0.17311589786391615d0 0.21034012163131482d0 0.18863627827819515d0)
 ;; (0.18561950446188197d0 0.2295361672086161d0  0.20378579632490562d0)
+;; (mrr::reduce-dimension all-random-prf #'mean)
+;; NLISP #(0.17772039916547097d0 0.21933582646953984d0 0.19495670184096484d0)
 
-;;; (setf expectancy-set (eval-all-perf-essen performed-34 #'eval-essen-expectation))
+;;; Random with maximum onsets per iteration:
+;;; (setf all-random-prf (make-narray '(
+;;; (0.133779251825744d0 0.519003668627702d0 0.20373175268838936d0)
+;;; (0.14079497274652328d0 0.5267086324302143d0 0.210364172414575d0)
+;;; (0.1422068788360777d0 0.5200368147072425d0 0.213056705273912d0)
+;;; (0.13347210091473566d0 0.5108521113907261d0 0.203027027223398d0)
+;;; (0.14198797729541862d0 0.5239027496362124d0 0.2120394612960726d0)
+;;; )
+;;; (mrr::reduce-dimension all-random-prf #'mean)
+;;; NLISP #(0.13844823632369985d0 0.5201007953584195d0 0.2084438237792694d0)
+
+
+;;; (setf expectancy-set (eval-expectation-of-performances performed-34 #'eval-essen-expectation))
 ;;; (setf all-expectations (reduce #'append expectancy-set))
 ;;; (cl-musickit:play-timed-notes (cl-musickit::note-list-of-part (part-of-melisma-file
 ;;; (make-pathname *essen-perform-directory* "deut0214.notes"))))
 
+;;; Run the whole show:
+;; (setf mean-corpus-score (eval-expectation-of-performances *essen-perf-meters* #'eval-essen-expectation))
+;; (format t "~%for ~a mean scores ~a~%" corpus-name mean-corpus-score)
+;; (setf quaero-selection (mapcar #'list (no-hidden-files (cl-fad:list-directory *quaero-selection-annotations-directory*))))
+;; (eval-expectation-of-performances quaero-selection #'eval-quaero-expectation)
