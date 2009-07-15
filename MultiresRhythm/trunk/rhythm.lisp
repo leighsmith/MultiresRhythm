@@ -387,8 +387,10 @@
 		   :sample-rate (sample-rate rhythm-to-subset)))
 
 ;;; TODO this should also allow limitation by the number of notes, number of bars etc.
-(defmethod limit-rhythm ((rhythm-to-limit rhythm) &key maximum-samples)
+(defmethod limit-rhythm ((rhythm-to-limit rhythm) &key maximum-samples (maximum-time 0 time-supplied))
   "Returns a rhythm that is bounded in it's length to a maximum number of samples"
+  (when time-supplied
+    (setf maximum-samples (round (* maximum-time (sample-rate rhythm-to-limit)))))
   (if (< (duration-in-samples rhythm-to-limit) maximum-samples)
       rhythm-to-limit	; under maximum, no change
       (subset-of-rhythm rhythm-to-limit (list 0 (1- maximum-samples)))))

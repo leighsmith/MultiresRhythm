@@ -325,8 +325,12 @@
 
 (defun random-expectations (subset-rhythm full-rhythm)
   "Generate 3 random values between the end of the rhythm and the maximum rhythm"
+  (format t "remaining onsets ~d~%" (.length (onsets-in-samples (subset-of-rhythm full-rhythm (list (duration-in-samples subset-rhythm) t)))))
   (loop
-     repeat 3
+     with remaining-onsets = (.length (onsets-in-samples (subset-of-rhythm full-rhythm 
+									   (list (duration-in-samples subset-rhythm) t))))
+     ;; was 3
+     repeat (1+ (random remaining-onsets)) ; Always return at least one expectation.
      with max-time = (- (duration-in-samples full-rhythm) (duration-in-samples subset-rhythm))
      for projection = (random max-time)
      collect (make-instance 'expectation 
@@ -529,7 +533,10 @@
 				       (voices-per-octave scaleogram)))
 	 (time (first times-to-check)))
     (diag-plot 'tempo-ridge-persistency
-      (plot-ridge-persistency tempo-weighted-ridge-persistency scaleogram (name rhythm-to-analyse)))
+      (plot-ridge-persistency tempo-weighted-ridge-persistency scaleogram 
+			      (format nil "~a Expectation from Ridge Presence at ~f seconds"
+						 (name rhythm-to-analyse) (/ time (sample-rate rhythm-to-analyse)))
+			      :sample-rate (* 1.0 (sample-rate rhythm-to-analyse))))
     (list ; over times
      (list time
 	   (loop
@@ -591,12 +598,13 @@
     (plot-command "set yrange [0:1.8]")
     ;; (plot-command "set key outside right vertical")
     (plot (list (onset-time-signal rhythm-to-expect) expect-confidences expect-confidences)
-	  (list (.iseq rhythm-starts-at (+ rhythm-starts-at (1- (duration-in-samples rhythm-to-expect)))) 
-		expect-times 
-		expect-times)
+	  (list (./ (.iseq rhythm-starts-at (+ rhythm-starts-at (1- (duration-in-samples rhythm-to-expect)))) 
+		    (sample-rate rhythm-to-expect))
+		(./ expect-times (sample-rate rhythm-to-expect))
+		(./ expect-times (sample-rate rhythm-to-expect)))
 	  :styles '("impulses linetype 3" "points linetype 1 pointtype 10" "impulses linetype 1")
 	  :legends (list "Original rhythm" "Accumulated expectations" "")
-	  :xlabel "Time (Samples)"
+	  :xlabel "Time (Seconds)"
 	  :ylabel "Confidence" 
 	  :aspect-ratio 0.15
 	  :reset nil
