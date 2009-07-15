@@ -142,7 +142,7 @@
   "Return a list of the beat descriptors, or nil if it is ill-formed"
   (let ((beat-type (dom:item (dom:get-elements-by-tag-name marker-node "beattype") 0)))
     (if beat-type
-	(read-from-string (dom:get-attribute beat-type "b"))
+	(read-from-string (dom:get-attribute beat-type "b")) ;; TODO needs changing to new format.
 	nil)))
 
 (defun read-ircam-annotation (filepath &key (marker-name "marker"))
@@ -226,15 +226,20 @@
 							       :type "syncopation.xml")
 						rhythm-directory-root))
 	 (syncopation-document (cxml:parse syncopation-filepath (cxml-dom:make-dom-builder)))
-	 (first-tagname (dom:tag-name (dom:document-element syncopation-document))))
+	 (sync-element (dom:document-element syncopation-document))
+	 (first-tagname (dom:tag-name sync-element))
+	 (tatums (dom:get-elements-by-tag-name sync-element "tatum"))
+	 (tatum-count (if (string= first-tagname "syncopation-description")
+			  (dom:get-attribute sync-element "tatum-count")
+			  (progn
+			    (format t "Unusual syncopation-description format ~a discovered" first-tagname)
+			    0))))
+    ;; (format t "~a~%" tatums)
+    (loop
+       for tatum-index from 0 below (dom:length tatums)
+       for tatum-node = (dom:item tatums tatum-index)
+       ;; (read-from-string (dom:get-attribute tatum-node "id"))
+       ;; Should actually use id to assign the .arefs rather than collect them.
+       collect (read-from-string (dom:get-attribute tatum-node "syncopation")) into syncopation-profile
+       finally (return (make-narray syncopation-profile)))))
 
-
-
-	(cxml:with-element "syncopation-description"
-	  (cxml:attribute "tatum-count" (format nil "~d" (.length syncopation-scores)))
-	  (loop
-	     for tatum-syncopation across (val syncopation-scores)
-	     for tatum-index from 0
-	     do (cxml:with-element "tatum"
-		  (cxml:attribute "id" (format nil "~a" tatum-index))
-		  (cxml:attribute "syncopation" (format nil "~f" tatum-syncopation)))))))))
