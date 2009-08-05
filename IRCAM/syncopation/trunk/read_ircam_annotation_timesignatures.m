@@ -1,20 +1,23 @@
-function [ marker_timesignatures, hierarchy ] = read_ircam_annotation_timesignatures( filepath )
+function [ segment_timesignatures, hierarchy ] = read_ircam_annotation_timesignatures( filepath, segment_name )
 %read_ircam_annotation_timesignatures Read the time signatures in the annotation file and return an
 %array of the beats per measure and the hierarchy of subdivisions of the measure.
 % $Id$
 
-marker_name = 'marker';
-marker_document = xmlread(filepath);
-marker_root = marker_document.getDocumentElement();
-markers = marker_root.getElementsByTagName(marker_name);
+if nargin < 2
+    segment_name = 'marker';
+end
 
-timesignatures_and_times = zeros(markers.getLength(), 2);
+segment_document = xmlread(filepath);
+segment_root = segment_document.getDocumentElement();
+segments = segment_root.getElementsByTagName(segment_name);
+
+timesignatures_and_times = zeros(segments.getLength(), 2);
 write_index = 1;
 
-for marker_index = 0 : markers.getLength() - 1
-    marker_node = markers.item(marker_index);
-    comment = char(marker_node.getAttribute('comment'));
-    time = str2double(char(marker_node.getAttribute('time')));
+for segment_index = 0 : segments.getLength() - 1
+    segment_node = segments.item(segment_index);
+    comment = char(segment_node.getAttribute('comment'));
+    time = str2double(char(segment_node.getAttribute('time')));
 
     beats_per_measure = 0;
     switch comment
@@ -31,7 +34,7 @@ for marker_index = 0 : markers.getLength() - 1
         beats_per_measure = 3;
         hierarchy = [3 2 2];
     end
-    if beats_per_measure
+    if beats_per_measure ~= 0
        % fprintf('beat %d time %d\n', beats_per_measure, time)
        % collect beats numbers and times in seconds into the dispatch matrix.
        timesignatures_and_times(write_index, :) = [beats_per_measure, time];
@@ -39,7 +42,7 @@ for marker_index = 0 : markers.getLength() - 1
     end
 end
    
-marker_timesignatures = timesignatures_and_times(1 : write_index - 1, :);
+segment_timesignatures = timesignatures_and_times(1 : write_index - 1, :);
 
 end
 

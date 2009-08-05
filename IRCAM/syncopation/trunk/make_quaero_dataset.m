@@ -6,7 +6,7 @@ function [ dataset_for_meter ] = make_quaero_dataset( maximum_examples, every, q
 start_at = 1;
 only_measures_of_beats = 4;       % TODO exclude non_strict 4/4 for now.
 
-annotations_directory = ['/Users/lsmith/Research/Data/IRCAM-Beat/' quaero_directory '/Annotation'];
+annotations_directory = tilde_expand(['~/Research/Data/IRCAM-Beat/' quaero_directory '/Annotation']);
 annotation_files = dir(annotations_directory);
 dataset = cell(1, maximum_examples);
 
@@ -17,7 +17,7 @@ while (dataset_index <= maximum_examples & song_index <= length(annotation_files
      if (annotation_pathname(1) ~= '.') % Remove all hidden files.
         annotation_name = strtok(annotation_pathname, '.');
         % ircambeat_marker_pathname = (beat_marker_filepath_anno annotation_pathname)
-        beats_per_measure = read_ircam_annotation_timesignatures([annotations_directory '/' annotation_pathname]);
+        beats_per_measure = read_ircam_annotation_timesignatures([annotations_directory '/' annotation_pathname], 'marker');
 
         %% if we want to exclude pieces with long preceding non_metrical intervals.
         %% when (< anacrusis beats_per_measure)

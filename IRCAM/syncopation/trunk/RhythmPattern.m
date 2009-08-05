@@ -1,23 +1,26 @@
 classdef RhythmPattern
 %RhythmPattern Holds a description of the rhythmic pattern defining a
 %complete musical piece. (We may need more than one per piece for dramatically
-%varying pieces).
+%varying pieces). 
+
 % $Id$       
 
+% The pattern includes the metrical profile and the profile of syncopation
+% per measure, and the hypermetrical profile over several measures.
 properties
     syncopation = [];
     metrical_profile = [];
+    hypermetrical_profile = [];
     name = '';
 end
     
 methods
 
-function new_pattern = RhythmPattern(name, syncopation, metrical_profile)
-    new_pattern.syncopation = syncopation;
-    new_pattern.metrical_profile = metrical_profile;
+function new_pattern = RhythmPattern(name)
+    % Factory method.
     new_pattern.name = name;
 end
-        
+
 function setSyncopation(pattern, syncopation)
     pattern.syncopation = syncopation;
 end
@@ -26,84 +29,7 @@ function syncopation = syncopation_of(rhythm)
     syncopation = rhythm.syncopation;
 end
 
-function [ syncopation ] = read_syncopation (pattern, dom_element)
-    tatum_count = str2num(char(dom_element.getAttribute('tatum-count')));
-    syncopation = zeros(1, tatum_count);
-
-    tatums = dom_element.getElementsByTagName('tatum');
-    for tatum_index = 1 : tatums.getLength()
-        tatum_syncopation = tatums.item(tatum_index - 1);
-
-        % getAttribute returns Java Strings, convert them to standard Matlab integers and floats.
-        tatum_index_attribute = str2num(char(tatum_syncopation.getAttribute('id')));
-        % TODO should use tatum_index_attribute instead of tatum_index
-        syncopation(1, tatum_index) = str2num(char(tatum_syncopation.getAttribute('syncopation')));
-    end
-end
-
-function [ metrical_profile ] = read_metrical_profile (pattern, dom_element)
-    % tatum_count = 16;
-    tatum_count = str2num(char(dom_element.getAttribute('tatum-count')));
-    metrical_profile = zeros(1, tatum_count);
-
-    tatums = dom_element.getElementsByTagName('tatum');
-    
-    for tatum_index = 1 : tatums.getLength()
-        tatum_occurrence = tatums.item(tatum_index - 1);
-
-        % getAttribute returns Java Strings, convert them to standard Matlab integers and floats.
-        tatum_index_attribute = str2num(char(tatum_occurrence.getAttribute('id')));
-        % TODO should use tatum_index_attribute instead of tatum_index
-        metrical_profile(1, tatum_index) = str2num(char(tatum_occurrence.getAttribute('meter')));
-    end
-end
-
-function [ new_pattern ] = read_pattern(pattern, filename)
-    %read_pattern Returns the rhythm pattern instance of the named file.
-    
-    rhythm_directory_root = tilde_expand('~/Research/Data/IRCAM-Beat/Quaero_Selection/');
-    pattern_filepath = [rhythm_directory_root 'Analysis/' filename '.pattern.xml'];
-
-    pattern_document = xmlread(pattern_filepath);
-    document_root = pattern_document.getDocumentElement();
-    
-    syncopation_descriptions = pattern_document.getElementsByTagName('syncopation-description');
-    if (syncopation_descriptions.length() ~= 0)
-        syncopation_description = syncopation_descriptions.item(0);
-        pattern.syncopation = read_syncopation(pattern, syncopation_description);
-    else
-        fprintf('Missing syncopation-description');
-    end
-    
-    metrical_profiles = pattern_document.getElementsByTagName('metrical-description');
-    if (metrical_profiles.length() ~= 0)
-        metrical_profile = metrical_profiles.item(0);
-        pattern.metrical_profile = read_metrical_profile(pattern, metrical_profile);
-    else
-        fprintf('Missing metrical-description format');
-    end
-    pattern.name = filename;
-    new_pattern = pattern; % return what we were given.
-end
-
-function [ success ] = write_metrical_profile ( pattern, dom, metrical_description )
-    %write_metrical_profile Writes the metrical_profile values to the metrical_description DOM element.
-
-    metrical_description.setAttribute('tatum-count', sprintf('%d', length(pattern.metrical_profile)));
-
-    for tatum_index = 1 : length(pattern.metrical_profile)
-        tatum_meter = pattern.metrical_profile(tatum_index);
-
-        tatum_element = dom.createElement('tatum');
-        tatum_element.setAttribute('id', sprintf('%d', tatum_index - 1));
-        tatum_element.setAttribute('meter', sprintf('%f', tatum_meter));
-
-        metrical_description.appendChild(tatum_element);
-    end
-
-end
-
-function [ success ] = write_syncopation ( pattern, dom, syncopation_description )
+function write_syncopation ( pattern, dom, syncopation_description )
     %write_syncopation Writes the syncopation values to the syncopation_description DOM element.
 
     syncopation_description.setAttribute('tatum-count', sprintf('%d', length(pattern.syncopation)));
@@ -120,8 +46,8 @@ function [ success ] = write_syncopation ( pattern, dom, syncopation_description
 
 end
 
-function [ success ] = write_pattern ( pattern, filename )
-    %write_syncopation Writes the syncopation values to XML file.
+function write_pattern ( pattern, filename )
+    %write_pattern Writes the syncopation and metrical profiles to XML file.
 
     rhythm_directory_root = tilde_expand('~/Research/Data/IRCAM-Beat/Quaero_Selection/');
 
@@ -136,22 +62,46 @@ function [ success ] = write_pattern ( pattern, filename )
     pattern_description.appendChild(syncopation_description);
     
     metrical_description = dom.createElement('metrical-description');
-    write_metrical_profile(pattern, dom, metrical_description);
+    write_metrical_profile(pattern.metrical_profile, dom, metrical_description);
     pattern_description.appendChild(metrical_description);
     
+    hypermetrical_description = dom.createElement('hypermetrical-description');
+    write_metrical_profile(pattern.hypermetrical_profile, dom, hypermetrical_description);
+    pattern_description.appendChild(hypermetrical_description);
+
     xmlwrite(syncopation_filepath, dom);
 end
 
 function plot_pattern (pattern)
     % Display the rhythm pattern instance.
     figure();
+    subplot(2,1,1);
     bar([pattern.metrical_profile; pattern.syncopation]');
     % title(sprintf('Metric profile'),'Interpreter','none');
     title(sprintf('Metric profile of %s', pattern.name),'Interpreter','none');
     legend('Beat Occurrence', 'Syncopation Intensity');
     xlabel('Metric Location');
     ylabel('Relative Occurrence in Piece');
+    subplot(2,1,2);
+    bar(pattern.hypermetrical_profile);
+    ylabel('Relative Occurrence in Piece');
+    xlabel('Tatum Location');
     % close();
+end
+
+function features = featureVector(pattern)
+    % featureVector - Returns a single feature vector from the pattern.
+    % A feature vector of the rhythm pattern is a concatenation of the
+    % syncopation metrical and hypermetrical profiles of each rhythm, with
+    % the tactus beats of the syncopation removed since they will never
+    % return a syncopation and only increase the dimensionality of the distance measures.
+    % TODO Hardwired at 4 tatums per beat.
+    features = [strip_beats(pattern.syncopation, 4) pattern.metrical_profile pattern.hypermetrical_profile];
+end    
+    
+function length = featureVectorLength(pattern)
+    % TODO hardwired to 16 tatums.
+    length = 12 + 16 + 64;
 end
 
 end % methods

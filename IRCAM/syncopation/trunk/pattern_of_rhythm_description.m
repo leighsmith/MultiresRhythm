@@ -9,6 +9,8 @@ rhythm_name = rhythm_description.name;
 dim = size(onset_observations);
 num_of_measures = dim(2);
 
+pattern = RhythmPattern(rhythm_name);
+
 rhythm_syncopation_measures = syncopation_measures(onset_observations, rhythm_description.meter);
 % TODO, we normalise the syncopation measure, to produce an equally
 % comparable measure for each tatum, however this seems counter to the goal
@@ -18,12 +20,15 @@ normalised_syncopation_measures = normalise_syncopation(rhythm_syncopation_measu
 dim = size(normalised_syncopation_measures);
 num_of_tatums = dim(1); % recalc this in case the syncopation measures differ from the tatums.
 syncopation_profile = sum(normalised_syncopation_measures') ./ num_of_measures;
+% setSyncopation(pattern, syncopation_profile); % TODO determine why this doesn't work?
+pattern.syncopation = syncopation_profile;
 
 metrical_profile = 1 - normalise(sum(silence_observations') ./ num_of_measures);
 % metrical_profile = sum(onset_observations') ./ num_of_measures;
 %% fprintf('metric profile %s syncopation_profile %s~%', metric_profile, syncopation_profile)
+pattern.metrical_profile = metrical_profile;
 
-pattern = RhythmPattern(rhythm_name, syncopation_profile, metrical_profile);
+pattern.hypermetrical_profile = hypermetrical_profile(silence_observations);
 
 % While this finds onset periodicities, in many ways it duplicates 
 % the ACF * FFT function.
@@ -34,10 +39,6 @@ pattern = RhythmPattern(rhythm_name, syncopation_profile, metrical_profile);
 % plot(acf(length(onsets_signal) : end))
 % [max, indices] = sort(acf(length(onsets_signal) + 1 : end), 'descend');
 % indices(1:10)
-if (diag_plot('hypermeter'))
-    figure();
-    bar(hypermetrical_profile(silence_observations))
-end
     
 if (diag_plot('syncopation_profile'))
     plot_pattern(pattern);

@@ -37,7 +37,7 @@ metric = 'cityblock';
 % produces error: Some points have too many ties, making them effectively
 % constant.
 
-fprintf('variance across examples %s\n', sprintf('%f ', diag(cov(syncopations))));
+% fprintf('covariance across examples %s\n', sprintf('%f ', diag(cov(syncopations))));
 
 similarity = squareform(pdist(syncopations, metric));
 

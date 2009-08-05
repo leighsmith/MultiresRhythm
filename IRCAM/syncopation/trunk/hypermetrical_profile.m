@@ -4,7 +4,7 @@ function [ profile ] = hypermetrical_profile( silence_observations )
 
 dim = size(silence_observations);
 tatums_per_measure = dim(1);
-num_of_measures = dim(2)
+num_of_measures = dim(2);
 % Use fixed 4 bar measure hypermeter for pop/rock
 hypermetrical_period = 4;
 % reshape into a hypermetrical period so we average across the whole period.
