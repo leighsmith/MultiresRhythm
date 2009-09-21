@@ -1,16 +1,16 @@
 classdef RhythmPattern
-%RhythmPattern Holds a description of the rhythmic pattern defining a
-%complete musical piece. (We may need more than one per piece for dramatically
-%varying pieces). 
-
+%RhythmPattern Holds a description of the rhythmic pattern defining a complete musical piece.
+% (We may need more than one per piece for dramatically varying pieces). 
+%
 % $Id$       
-
+%
 % The pattern includes the metrical profile and the profile of syncopation
 % per measure, and the hypermetrical profile over several measures.
 properties
     syncopation = [];
     metrical_profile = [];
     hypermetrical_profile = [];
+    tempo = 0; % This makes the profiles tempo dependent.
     name = '';
 end
     
@@ -69,6 +69,10 @@ function write_pattern ( pattern, filename )
     write_metrical_profile(pattern.hypermetrical_profile, dom, hypermetrical_description);
     pattern_description.appendChild(hypermetrical_description);
 
+    tempo_element = dom.createElement('tempo');
+    tempo_element.setAttribute('bpm', sprintf('%f', pattern.tempo));
+    pattern_description.appendChild(tempo_element);
+    
     xmlwrite(syncopation_filepath, dom);
 end
 
@@ -96,12 +100,16 @@ function features = featureVector(pattern)
     % the tactus beats of the syncopation removed since they will never
     % return a syncopation and only increase the dimensionality of the distance measures.
     % TODO Hardwired at 4 tatums per beat.
-    features = [strip_beats(pattern.syncopation, 4) pattern.metrical_profile pattern.hypermetrical_profile];
+    features = [strip_beats(pattern.syncopation, 4) pattern.metrical_profile pattern.hypermetrical_profile pattern.tempo];
+    % features = [pattern.metrical_profile];
+    % features = [pattern.metrical_profile pattern.tempo];
 end    
     
 function length = featureVectorLength(pattern)
     % TODO hardwired to 16 tatums.
-    length = 12 + 16 + 64;
+    length = 12 + 16 + 64 + 1;
+    % length = 16;
+    % length = 17; % length(pattern.metrical_profile) + 1
 end
 
 end % methods

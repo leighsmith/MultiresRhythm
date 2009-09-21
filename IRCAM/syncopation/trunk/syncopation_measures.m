@@ -1,6 +1,5 @@
 function [ rhythm_syncopation_measures ] = syncopation_measures( onset_observations, hierarchy )
-%syncopation_measures Calculate the syncopation values for each measure of
-%onset observations.
+%syncopation_measures Calculate the syncopation values for each measure of onset observations.
 % $Id$
 
 dim = size(onset_observations);

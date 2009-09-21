@@ -28,5 +28,6 @@ odf_subset = odf(start_sample : end);
 [all_beats_per_measure, metrical_hierarchy] = read_ircam_annotation_timesignatures(annotated_beat_markers_filepath);
 beats_per_measure = all_beats_per_measure(1); % TODO take the first beats-per-measure as the standard
 
-annotated_rhythm = RhythmDescription(filename, odf_subset, beat_times, metrical_hierarchy, beats_per_measure, anacrusis, sample_rate);
+tempo = 60/median(diff(beat_times)); % calculate from beat times. Perhaps one day read it from XML file.
+annotated_rhythm = RhythmDescription(filename, odf_subset, beat_times, metrical_hierarchy, beats_per_measure, anacrusis, sample_rate, tempo);
 end

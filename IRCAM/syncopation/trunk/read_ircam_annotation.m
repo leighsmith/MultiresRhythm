@@ -3,7 +3,7 @@ function [ beat_times, beat_markers ] = read_ircam_annotation( filepath, marker_
 % $Id$
 
 if(nargin < 2)
-    marker_name = 'marker';
+    marker_name = 'segment';
 end
 
 marker_document = xmlread(filepath);
@@ -21,7 +21,7 @@ for marker_index = 0 : markers.getLength() - 1
         beat_type = beattypes.item(0); % perhaps getFirstChild()
         % getAttribute returns Java Strings, convert them to standard
         % Matlab integers and floats.
-        beat_index = str2num(beat_type.getAttribute('b').toCharArray());
+        beat_index = str2num(beat_type.getAttribute('beat').toCharArray());
         beat_time = str2double(marker_node.getAttribute('time').toCharArray());
         if(beat_index ~= 0)
             % fprintf('beat %d time %d\n', beat_index, beat_time)

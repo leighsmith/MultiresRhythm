@@ -1,19 +1,19 @@
-function [ similarity ] = pattern_similarity( syncopations )
-%syncopation_similarity Return a similarity matrix from the syncopation measures.
-%   All syncopation measures are wrt a single meter. n rhythms * t tatums.
+function [ similarity ] = pattern_similarity( rhythm_features )
+%syncopation_similarity Return a similarity matrix from the rhythm feature vector measures.
+%   All rhythm features are with respect to a single meter. n rhythms * t tatums.
 %   Returns a n * n similarity matrix.
 % $Id$
 
 % TODO should pass in an array of rhythm patterns instead of a matrix.
 % Derive the input matrix here.
 
-rhythm_count = length(syncopations);
+rhythm_count = length(rhythm_features);
 similarity = zeros(rhythm_count);
 
 % Choice of distance measures between syncopation measures:
 % * Euclidean distance, since this measures the match of relative
 % syncopation at each tatum location.
-% metric = 'euclidean';
+metric = 'euclidean';
 % * Weighted Euclidean distance, weighting the relative
 % importance of the match at each tatum by it's relative
 % measure of perceptual salience.
@@ -24,7 +24,7 @@ similarity = zeros(rhythm_count);
 % * cityblock (Manhattan) distance, measuring the distance by a set of
 % independent dimensions for each metrical location, i.e each doesn't
 % interact.
-metric = 'cityblock';
+% metric = 'cityblock';
 % * Mahalanobis
 % metric = 'mahalanobis';
 % produces: NaNs & Matrix is singular to working precision. This is because
@@ -35,11 +35,13 @@ metric = 'cityblock';
 % position.
 % metric = 'spearman';
 % produces error: Some points have too many ties, making them effectively
-% constant.
+% constant. Since we have data which exhibits normality, homoscedasticity and
+% linearity, we can just use correlation distance.
+% metric = 'correlation';
 
-% fprintf('covariance across examples %s\n', sprintf('%f ', diag(cov(syncopations))));
+% fprintf('covariance across examples %s\n', sprintf('%f ', diag(cov(rhythm_features))));
 
-similarity = squareform(pdist(syncopations, metric));
+similarity = squareform(pdist(rhythm_features, metric));
 
 if (diag_plot('similarity_matrix'))
     figure();

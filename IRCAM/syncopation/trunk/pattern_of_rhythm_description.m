@@ -30,6 +30,8 @@ pattern.metrical_profile = metrical_profile;
 
 pattern.hypermetrical_profile = hypermetrical_profile(silence_observations);
 
+pattern.tempo = rhythm_description.tempo;
+
 % While this finds onset periodicities, in many ways it duplicates 
 % the ACF * FFT function.
 % onsets_signal = onset_likelihood(silence_observations);
