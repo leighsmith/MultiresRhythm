@@ -1,20 +1,14 @@
 function [ segment_locations, segment_transition_probs ] = match_rhythm_files( query_file, target_file )
 %match_rhythm_files Returns the possible locations and probabilities of
 %matching segments of the query against the target.
-% $Id:$
+% $Id$
 
 query_rhythm_descr = read_analysed_rhythm(query_file, '~/Research/Data/IRCAM-Beat/QueryByTapping/Query/');
 target_rhythm_descr = read_analysed_rhythm(target_file, '~/Research/Data/IRCAM-Beat/QueryByTapping/');
-%% Returns the IOIs in milliseconds.
-query_iois = load(tilde_expand(['~/Research/Data/IRCAM-Beat/QueryByTapping/onset/' query_file '.onset']));
-% The first IOI is the distance between the first onset and the second, so
-% we need to align the first beat. 
-% TODO Hand coded for now. Zero if there is no leading silence.
-% We need this set correctly to determine the correct ODF segments.
-first_onset_time = 0.5315;
-%first_onset_time = 0.0; % No difference in segmentation from leading silence.
-% + 1 for the Fortran indexing of matlab.
-segments = round(query_rhythm_descr.sample_rate .* segment_iois(query_iois ./ 1000, first_onset_time)) + 1;
+
+segments = segment_odf(query_rhythm_descr.odf', query_rhythm_descr.sample_rate);
+figure();
+
 number_of_segments = size(segments,1);
 number_of_matches = 10;
 segment_transition_probs = zeros(number_of_matches, number_of_segments);
