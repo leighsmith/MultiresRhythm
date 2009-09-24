@@ -1,16 +1,22 @@
-function [ output_args ] = match_rhythm_files( query_file, target_file )
-%match_rhythm_files Summary of this function goes here
-%   Detailed explanation goes here
+function [ segment_locations, segment_transition_probs ] = match_rhythm_files( query_file, target_file )
+%match_rhythm_files Returns the possible locations and probabilities of
+%matching segments of the query against the target.
+% $Id:$
 
 query_rhythm_descr = read_analysed_rhythm(query_file, '~/Research/Data/IRCAM-Beat/QueryByTapping/Query/');
 target_rhythm_descr = read_analysed_rhythm(target_file, '~/Research/Data/IRCAM-Beat/QueryByTapping/');
 %% Returns the IOIs in milliseconds.
 query_iois = load(tilde_expand(['~/Research/Data/IRCAM-Beat/QueryByTapping/onset/' query_file '.onset']));
-% TODO hardwired
+% The first IOI is the distance between the first onset and the second, so
+% we need to align the first beat. 
+% TODO Hand coded for now. Zero if there is no leading silence.
+% We need this set correctly to determine the correct ODF segments.
 first_onset_time = 0.5315;
-segments = round(query_rhythm_descr.sample_rate .* segment_iois(query_iois ./ 1000, first_onset_time));
+%first_onset_time = 0.0; % No difference in segmentation from leading silence.
+% + 1 for the Fortran indexing of matlab.
+segments = round(query_rhythm_descr.sample_rate .* segment_iois(query_iois ./ 1000, first_onset_time)) + 1;
 number_of_segments = size(segments,1);
-number_of_matches = 5;
+number_of_matches = 10;
 segment_transition_probs = zeros(number_of_matches, number_of_segments);
 segment_locations = zeros(number_of_matches, number_of_segments);
 match_from = 0; % TODO should be 1?
@@ -22,11 +28,9 @@ for segment_index = 1 : number_of_segments
     segment_transition_probs(1:length(peak_match_values), segment_index) = peak_match_values ./ sum(peak_match_values);
     segment_locations(1:length(peak_match_values), segment_index) = peak_match_indices;
     % match_from = min(peak_match_indices) % No point looking before the earliest previous segment match.
+    plot_correlation_match(query_segment, target_rhythm_descr.odf, peak_match_indices(1));
+    % pause();
 end
-
-segment_locations
-segment_transition_probs
-% image(segment_transition_probs)
 
 % figure()
 % subplot(3,1,1)
