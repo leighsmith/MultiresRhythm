@@ -6,25 +6,7 @@ function [ segment_locations, segment_transition_probs ] = match_rhythm_files( q
 query_rhythm_descr = read_analysed_rhythm(query_file, '~/Research/Data/IRCAM-Beat/QueryByTapping/Query/');
 target_rhythm_descr = read_analysed_rhythm(target_file, '~/Research/Data/IRCAM-Beat/QueryByTapping/');
 
-segments = segment_odf(query_rhythm_descr.odf', query_rhythm_descr.sample_rate);
-figure();
-
-number_of_segments = size(segments,1);
-number_of_matches = 10;
-segment_transition_probs = zeros(number_of_matches, number_of_segments);
-segment_locations = zeros(number_of_matches, number_of_segments);
-match_from = 0; % TODO should be 1?
-
-for segment_index = 1 : number_of_segments
-    query_segment = query_rhythm_descr.odf(segments(segment_index,1) : segments(segment_index,2));
-    [peak_match_indices, peak_match_values] = cross_correlation_match(query_segment ./ max(query_segment), target_rhythm_descr.odf ./ max(target_rhythm_descr.odf), number_of_matches, match_from);
-    fprintf('segment %d:%d matches (%s)\n', segments(segment_index,1), segments(segment_index,2), sprintf('%d ', peak_match_indices));
-    segment_transition_probs(1:length(peak_match_values), segment_index) = peak_match_values ./ sum(peak_match_values);
-    segment_locations(1:length(peak_match_values), segment_index) = peak_match_indices;
-    % match_from = min(peak_match_indices) % No point looking before the earliest previous segment match.
-    plot_correlation_match(query_segment, target_rhythm_descr.odf, peak_match_indices(1));
-    % pause();
-end
+[ segment_locations, segment_location_probs, segment_transition_probs ] = match_rhythm_odf(query_rhythm_descr.odf', target_rhythm_descr.odf, query_rhythm_descr.sample_rate);
 
 % figure()
 % subplot(3,1,1)

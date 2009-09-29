@@ -4,7 +4,7 @@ function [segments, segmentation_flux] = segment_odf(odf, odf_sr)
 % grouping segments.
 % $Id$
 
-preferred_beat_period = 0.600;
+preferred_beat_period = 0.600; % Preferred beat period (see Fraisse 1982, van Noorden & Moelants 1999).
 preferred_measure = preferred_beat_period * 4 * odf_sr; % in samples.
 segmentation_flux = gaussianRhythm(odf, preferred_measure);
 
