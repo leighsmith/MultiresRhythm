@@ -17,7 +17,7 @@ while (dataset_index <= maximum_examples & song_index <= length(annotation_files
      if (annotation_pathname(1) ~= '.') % Remove all hidden files.
         annotation_name = strtok(annotation_pathname, '.');
         % ircambeat_marker_pathname = (beat_marker_filepath_anno annotation_pathname)
-        beats_per_measure = read_ircam_annotation_timesignatures([annotations_directory '/' annotation_pathname], 'marker');
+        beats_per_measure = read_ircam_annotation_timesignatures([annotations_directory '/' annotation_pathname], 'segment');
 
         %% if we want to exclude pieces with long preceding non_metrical intervals.
         %% when (< anacrusis beats_per_measure)

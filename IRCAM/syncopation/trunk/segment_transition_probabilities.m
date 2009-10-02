@@ -16,15 +16,13 @@ for segment_index = 1 : number_of_segments
     segment_distances = vector_distance(next_segment_location, segment_locations(:,segment_index));
     % Convert from distances to probabilities (summing to 1 across each row) by inverting
     % the probability so that small distances become higher probabilities.
-    reverse_segment_distances = repmat(max(segment_distances')' + min(segment_distances')', [1, number_of_matches]) - segment_distances;
-    segment_transition_probs(:,:,segment_index) = reverse_segment_distances ./ repmat(sum(reverse_segment_distances')', [1, number_of_matches]);
+    inverted_segment_distances = repmat(max(segment_distances')' + min(segment_distances')', [1, number_of_matches]) - segment_distances;
+    segment_transition_probs(:,:,segment_index) = inverted_segment_distances ./ repmat(sum(inverted_segment_distances')', [1, number_of_matches]);
     % segment_transition_probs(:,:,segment_index) = (1 - segment_distances ./ repmat(sum(segment_distances')', [1, number_of_matches])) ./ (number_of_matches - 1);
     if segment_index == 3
         next_segment_location
         segment_locations(:,segment_index)
         segment_distances
-        plot(reverse_segment_trans(2,:));
-        figure()
         plot(segment_transition_probs(2,:,segment_index));
         figure();
     end
