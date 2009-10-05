@@ -1,9 +1,9 @@
-function [ downbeat_estimates ] = observe_evidence_of( annotated_rhythm, subdivisions_of_beat, feature_estimator )
+function [ feature_estimates ] = observe_evidence_of( annotated_rhythm, subdivisions_of_beat, feature_estimator )
 %observe_evidence_of Returns an estimate of downbeat location across the entire ODF rhythm using an estimator
 % $Id$
 
 % set(title, 'Interpreter','none');
-measures_to_plot = [1]; % should be global.
+measures_to_plot = [77]; % should be global.
 
 rhythm = annotated_rhythm.odf;
 beat_times = annotated_rhythm.beat_times;
@@ -15,7 +15,7 @@ beat_durations = round(diff(beat_times) * sample_rate);
 %% Reduce by one measure to ensure the last search region is a full two bars,
 %% avoiding a bias in the feature_estimator towards starting beats.
 number_of_measures = floor(length(beat_durations) / beats_per_measure) - 1; % floor avoids partial bars
-downbeat_estimates = zeros((beats_per_measure * subdivisions_of_beat), number_of_measures);
+feature_estimates = zeros((beats_per_measure * subdivisions_of_beat), number_of_measures);
 
 fprintf('\nrhythm duration %.3f samples, number of measures %.3f\n', length(rhythm), number_of_measures); 
 % fprintf('First beat_durations %s\n', sprintf('%.3f ', beat_durations(1 : 16)))
@@ -29,10 +29,13 @@ for measure_index = 1 : number_of_measures
     fprintf('Measure %3d start sample %d seconds %f\n', measure_index, start_sample, start_sample / sample_rate);
     fprintf('beat duration in samples %s = %.3f\n', sprintf('%.3f ', beat_durations_in_measure), bar_duration);
 
-    %% collect probabilities of the downbeat occuring at each measure location.    
+    %% collect probabilities of the feature occuring at each measure
+    %% location. These can be of the form of a normalised probability
+    %% across the measure, or a probability for each tatum, depending on
+    %% the feature_estimator.
     feature_probabilities = feature_estimator(rhythm, start_sample, measure_index, beat_durations_in_measure, subdivisions_of_beat);
 
-    % fprintf('Downbeat probabilities %s sum = %f\n', sprintf('%.5f ', feature_probabilities), sum(feature_probabilities));
+    % fprintf('Feature %s probabilities %s sum = %f\n', feature_estimator, sprintf('%.5f ', feature_probabilities), sum(feature_probabilities));
    
     if (diag_plot('gap_evaluation') & ismember(measures_to_plot, measure_index))
        search_region = rhythm(start_sample : min(length(rhythm), start_sample + (bar_duration * 2) - 1));
@@ -49,8 +52,8 @@ for measure_index = 1 : number_of_measures
 
        title(sprintf('plot of measure %.3f of %s', measure_index, annotated_rhythm.name),'Interpreter','none');
     end
-    % collect likelihood in downbeat_estimates
-    downbeat_estimates(:, measure_index) = feature_probabilities;
+    % collect likelihood in feature_estimates
+    feature_estimates(:, measure_index) = feature_probabilities;
 end
 
 

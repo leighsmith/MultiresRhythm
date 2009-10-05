@@ -30,16 +30,20 @@ cov_silence_region = (stddev_silence_region / (mean_silence_region + epsilon));
 % ratios of the coefficients of variation
 % silence_score_old = (stddev_comparison / (stddev_silence_region + epsilon)) * (mean_silence_region / (mean_comparison + epsilon))
 
-% silence_score = cov_comparison / cov_silence_region;
+silence_score = 1 - cov_silence_region / (cov_comparison + epsilon);
 
-silence_score = cov_comparison / (cov_silence_region * (mean_silence_region + epsilon));
+% Since CoV are ratios, the difference between the region under question
+% and the whole comparison region indicates probbility of silence
+% silence_score = cov_comparison - cov_silence_region
+
+% silence_score = cov_comparison / (cov_silence_region * (mean_silence_region + epsilon));
 
 if(debug)
     fprintf('silence-eval-region length %d sum %f\n', length(silence_evaluation_region), sum(silence_evaluation_region));
     fprintf('comparison stddev %.3f mean %.3f cov %.3f\n', stddev_comparison, mean_comparison, cov_comparison);
     fprintf('silence stddev %.3f mean %.3f cov %.3f\n', stddev_silence_region, mean_silence_region, cov_silence_region);
     fprintf('reciprocal mean %.3f\n', 1.0 / (mean_silence_region + epsilon))
-%fprintf('silence score from intersection of stddev & mean ratios %.3f\n', silence_score)
+    fprintf('silence score from ratio of cov %.3f\n', silence_score)
 end
 
 end
