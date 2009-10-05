@@ -1,9 +1,9 @@
 function set_diag_plot(test_case)
-%UNTITLED Summary of this function goes here
-%   Detailed explanation goes here
+%set_diag_plot Assigns the test_case into the plotting list.
 
     global plotting;
      
-    plotting = [plotting test_case];
+    % TODO Should test for set membership
+    plotting = [plotting {test_case}];
 end
 
