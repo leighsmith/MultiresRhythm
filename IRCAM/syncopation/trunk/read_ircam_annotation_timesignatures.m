@@ -4,7 +4,7 @@ function [ segment_timesignatures, hierarchy ] = read_ircam_annotation_timesigna
 % $Id$
 
 if nargin < 2
-    segment_name = 'marker';
+    segment_name = 'segment';
 end
 
 segment_document = xmlread(filepath);
