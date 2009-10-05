@@ -33,5 +33,12 @@ function [ new_pattern ] = read_pattern(filename, quaero_directory)
         fprintf('Missing hypermetrical-description format');
     end
     
+    tempo_elements = pattern_document.getElementsByTagName('tempo');
+    if (tempo_elements.length() ~= 0)
+        first_tempo_element = tempo_elements.item(0);
+        new_pattern.tempo = str2num(char(first_tempo_element.getAttribute('bpm')));
+    else
+        fprintf('Missing tempo format');
+    end
 end
 

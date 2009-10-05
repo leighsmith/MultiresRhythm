@@ -5,8 +5,8 @@ function [ corpus_rhythm_pattern ] = pattern_for_corpus( corpus, quaero_director
 % $Id$
 
 corpus_rhythm_pattern = zeros(length(corpus), featureVectorLength(RhythmPattern('')));
-% annotation_type = '.beat';
-annotation_type = '.b';
+annotation_type = '.beat';
+% annotation_type = '.b';
 
 
 for piece_index = 1 : length(corpus)
