@@ -13,7 +13,7 @@ similarity = zeros(rhythm_count);
 % Choice of distance measures between syncopation measures:
 % * Euclidean distance, since this measures the match of relative
 % syncopation at each tatum location.
-metric = 'euclidean';
+% metric = 'euclidean';
 % * Weighted Euclidean distance, weighting the relative
 % importance of the match at each tatum by it's relative
 % measure of perceptual salience.
@@ -37,7 +37,7 @@ metric = 'euclidean';
 % produces error: Some points have too many ties, making them effectively
 % constant. Since we have data which exhibits normality, homoscedasticity and
 % linearity, we can just use correlation distance.
-% metric = 'correlation';
+metric = 'correlation';
 
 % fprintf('covariance across examples %s\n', sprintf('%f ', diag(cov(rhythm_features))));
 

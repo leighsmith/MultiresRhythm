@@ -21,7 +21,8 @@ closest_song_indices = closest_rhythms(similarity_matrix);
 
 % Print most similar to
 for i = 1 : length(corpus_dataset)
-    fprintf('%d: "%s" most similar to "%s"\n', i, corpus_dataset{i}, corpus_dataset{closest_song_indices(i)})
+    fprintf('%d: (%.3f) "%s" most similar to "%s"\n', ...
+            i, similarity_matrix(i, closest_song_indices(i)), corpus_dataset{i}, corpus_dataset{closest_song_indices(i)})
 end
 
 end

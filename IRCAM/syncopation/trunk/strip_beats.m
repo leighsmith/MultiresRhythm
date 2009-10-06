@@ -6,8 +6,7 @@ function [ beats_removed ] = strip_beats( rhythms, tatums_per_beat )
 % comparisons & future applications.
 % $Id$
 
-dim = size(rhythms);
-tatum_count = dim(2);
+tatum_count = size(rhythms, 2);
 tatums_to_remove = 1 : tatums_per_beat : tatum_count;
 keep = ones(1, tatum_count);
 keep(tatums_to_remove) = 0;

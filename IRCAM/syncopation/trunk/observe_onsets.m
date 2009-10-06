@@ -1,15 +1,13 @@
-function [ onset_observations, silence_observations ] = observe_onsets (analysed_rhythm)
+function [ onset_observations, silence_observations ] = observe_onsets (analysed_rhythm, subdivisions_of_beat)
 %observe_onsets Determines which tatums correspond to onsets or rests.
 % $Id$
 
-% TODO fixed subdivisions_of_beat to 16ths (dividing crotchet by 4).
-silence_observations = observe_evidence_of(analysed_rhythm, 4, @silence_evidence);
+silence_observations = observe_evidence_of(analysed_rhythm, subdivisions_of_beat, @silence_evidence);
 
 % number of rows = number of tatums in measure.
 % grid_length = size(silence_observations, 1);
-threshold = 0.5; % Arbitrary & therefore probably wrong.
+threshold = 0.5; % Arbitrary & therefore probably wrong, but should be above chance.
 onset_observations = silence_observations < threshold;
-
 
 if (diag_plot('onset_observations'))
     figure();

@@ -12,6 +12,8 @@ properties
     hypermetrical_profile = [];
     tempo = 0; % This makes the profiles tempo dependent.
     name = '';
+    metric_tatums_per_beat = 16;
+    syncopation_tatums_per_beat = 4;
 end
     
 methods
@@ -80,7 +82,13 @@ function plot_pattern (pattern)
     % Display the rhythm pattern instance.
     figure();
     subplot(2,1,1);
-    bar([pattern.metrical_profile; pattern.syncopation]');
+    % Number of subdivisions per beat for metrical profile, and syncopation.
+    profile_to_syncopation_ratio = pattern.metric_tatums_per_beat / pattern.syncopation_tatums_per_beat;
+    profile_length = length(pattern.metrical_profile);
+    syncopation_plot = zeros(1, profile_length);
+    syncopation_plot(1 : profile_to_syncopation_ratio : profile_length) = pattern.syncopation;
+    beat_labels = ((0 : profile_length - 1) / profile_to_syncopation_ratio) + 1;
+    bar(beat_labels, [pattern.metrical_profile; syncopation_plot]');
     % title(sprintf('Metric profile'),'Interpreter','none');
     title(sprintf('Metric profile of %s', pattern.name),'Interpreter','none');
     legend('Beat Occurrence', 'Syncopation Intensity');
@@ -98,16 +106,18 @@ function features = featureVector(pattern)
     % A feature vector of the rhythm pattern is a concatenation of the
     % syncopation metrical and hypermetrical profiles of each rhythm, with
     % the tactus beats of the syncopation removed since they will never
-    % return a syncopation and only increase the dimensionality of the distance measures.
-    % TODO Hardwired at 4 tatums per beat.
-    features = [strip_beats(pattern.syncopation, 4) pattern.metrical_profile pattern.hypermetrical_profile pattern.tempo];
+    % return a syncopation and only increase the dimensionality of the
+    % distance measures.
+    features = [strip_beats(pattern.syncopation, pattern.syncopation_tatums_per_beat) pattern.metrical_profile pattern.hypermetrical_profile pattern.tempo];
     % features = [pattern.metrical_profile];
     % features = [pattern.metrical_profile pattern.tempo];
 end    
     
 function length = featureVectorLength(pattern)
-    % TODO hardwired to 16 tatums.
-    length = 12 + 16 + 64 + 1;
+    % TODO hardwired to 16 tatums, 64 hemidemisemiquavers, 64 hyper meter, 1 tempo.
+    beats_per_measure = 4;
+    
+    length = ((beats_per_measure - 1) * pattern.syncopation_tatums_per_beat) + (pattern.metric_tatums_per_beat * beats_per_measure) + 64 + 1;
     % length = 16;
     % length = 17; % length(pattern.metrical_profile) + 1
 end

@@ -5,9 +5,9 @@ function [ pattern ] = pattern_of_rhythm_description ( rhythm_description )
 % $Id$
 
 rhythm_name = rhythm_description.name;
-[onset_observations, silence_observations] = observe_onsets(rhythm_description);
-dim = size(onset_observations);
-num_of_measures = dim(2);
+% TODO fixed subdivisions_of_beat to 16ths (dividing crotchet by 4).
+[onset_observations, silence_observations] = observe_onsets(rhythm_description, 4);
+num_of_measures = size(onset_observations, 2);
 
 pattern = RhythmPattern(rhythm_name);
 
@@ -17,16 +17,19 @@ rhythm_syncopation_measures = syncopation_measures(onset_observations, rhythm_de
 % of the measure, which is to measure the effect at different locations
 % across the measure.
 normalised_syncopation_measures = normalise_syncopation(rhythm_syncopation_measures, rhythm_description.meter);
-dim = size(normalised_syncopation_measures);
-num_of_tatums = dim(1); % recalc this in case the syncopation measures differ from the tatums.
+% recalc this in case the syncopation measures differ from the tatums.
+num_of_tatums = size(normalised_syncopation_measures, 1);
 syncopation_profile = sum(normalised_syncopation_measures') ./ num_of_measures;
 % setSyncopation(pattern, syncopation_profile); % TODO determine why this doesn't work?
 pattern.syncopation = syncopation_profile;
 
-metrical_profile = 1 - normalise(sum(silence_observations') ./ num_of_measures);
+% Use silence observations since they capture the amplitude, with a higher sampling rate across the measure.
+[small_onset_observations, small_silence_observations] = observe_onsets(rhythm_description, 16);
+metrical_profile = 1 - (sum(small_silence_observations') ./ num_of_measures);
 % metrical_profile = sum(onset_observations') ./ num_of_measures;
 %% fprintf('metric profile %s syncopation_profile %s~%', metric_profile, syncopation_profile)
 pattern.metrical_profile = metrical_profile;
+% bar(1:16/64:16.75, metrical_profile)
 
 pattern.hypermetrical_profile = hypermetrical_profile(silence_observations);
 
