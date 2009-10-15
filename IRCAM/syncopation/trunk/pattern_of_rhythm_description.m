@@ -1,15 +1,14 @@
 function [ pattern ] = pattern_of_rhythm_description ( rhythm_description )
 %pattern_of_rhythm Returns a pattern instance for the given rhythm.
 % The pattern includes the metrical profile and the profile of syncopation
-% per measure.
+% per measure. Should be a factory method.
 % $Id$
 
 rhythm_name = rhythm_description.name;
-% TODO fixed subdivisions_of_beat to 16ths (dividing crotchet by 4).
-[onset_observations, silence_observations] = observe_onsets(rhythm_description, 4);
-num_of_measures = size(onset_observations, 2);
-
 pattern = RhythmPattern(rhythm_name);
+
+[onset_observations, silence_observations] = observe_onsets(rhythm_description, pattern.syncopation_tatums_per_beat);
+num_of_measures = size(onset_observations, 2);
 
 rhythm_syncopation_measures = syncopation_measures(onset_observations, rhythm_description.meter);
 % TODO, we normalise the syncopation measure, to produce an equally
@@ -24,7 +23,7 @@ syncopation_profile = sum(normalised_syncopation_measures') ./ num_of_measures;
 pattern.syncopation = syncopation_profile;
 
 % Use silence observations since they capture the amplitude, with a higher sampling rate across the measure.
-[small_onset_observations, small_silence_observations] = observe_onsets(rhythm_description, 16);
+[small_onset_observations, small_silence_observations] = observe_onsets(rhythm_description, pattern.metric_tatums_per_beat);
 metrical_profile = 1 - (sum(small_silence_observations') ./ num_of_measures);
 % metrical_profile = sum(onset_observations') ./ num_of_measures;
 %% fprintf('metric profile %s syncopation_profile %s~%', metric_profile, syncopation_profile)
@@ -67,4 +66,3 @@ if (diag_plot('syncopation_variation'))
 end
   
 end
-

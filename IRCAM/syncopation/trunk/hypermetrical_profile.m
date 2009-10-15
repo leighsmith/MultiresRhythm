@@ -8,9 +8,10 @@ num_of_measures = size(silence_observations, 2);
 hypermetrical_period = 4;
 % reshape into a hypermetrical period so we average across the whole period.
 shortened_silences = silence_observations(:, 1 : num_of_measures - mod(num_of_measures, hypermetrical_period));
-phrase_of_silence_obs = reshape(shortened_silences, tatums_per_measure * hypermetrical_period, floor(num_of_measures / hypermetrical_period));
+num_of_hypermeasures = floor(num_of_measures / hypermetrical_period);
+phrase_of_silence_obs = reshape(shortened_silences, tatums_per_measure * hypermetrical_period, num_of_hypermeasures);
 
-profile = 1 - normalise(sum(phrase_of_silence_obs') ./ num_of_measures);
+profile = 1 - (sum(phrase_of_silence_obs') ./ num_of_hypermeasures);
 
 end
 

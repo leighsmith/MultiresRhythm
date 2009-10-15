@@ -17,14 +17,14 @@ similarity = zeros(rhythm_count);
 % * Weighted Euclidean distance, weighting the relative
 % importance of the match at each tatum by it's relative
 % measure of perceptual salience.
-% metric = ''; TODO
+% metric = 'seuclidean'; TODO
 % * Vector dot product, measuring the degree of divergence
 % between vectors in multidimensional space.
 % metric = ''; TODO
 % * cityblock (Manhattan) distance, measuring the distance by a set of
 % independent dimensions for each metrical location, i.e each doesn't
 % interact.
-% metric = 'cityblock';
+metric = 'cityblock';
 % * Mahalanobis
 % metric = 'mahalanobis';
 % produces: NaNs & Matrix is singular to working precision. This is because
@@ -37,7 +37,7 @@ similarity = zeros(rhythm_count);
 % produces error: Some points have too many ties, making them effectively
 % constant. Since we have data which exhibits normality, homoscedasticity and
 % linearity, we can just use correlation distance.
-metric = 'correlation';
+% metric = 'correlation';
 
 % fprintf('covariance across examples %s\n', sprintf('%f ', diag(cov(rhythm_features))));
 
@@ -47,6 +47,8 @@ if (diag_plot('similarity_matrix'))
     figure();
     imagesc(similarity)
     title(sprintf('Dissimilarity of pattern of Quaero Selection by %s distance metric', metric))
+    xlabel('Quaero Track');
+    ylabel('Quaero Track');
 end
 
 if (diag_plot('corpus_dissimilarity'))

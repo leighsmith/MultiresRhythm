@@ -5,7 +5,7 @@ function [ silence_score ] = silence_score_mean( silence_evaluation_region, comp
 % $Id$
 
 epsilon = 0.0001;
-threshold = 2.0; % Number of standard deviations above the mean to be sure it is an onset.
+threshold = 3.0; % Number of standard deviations above the mean to be sure it is an onset.
 
 mean_ratios = mean(silence_evaluation_region) / (mean(comparison_region) + threshold * std(comparison_region) + epsilon);
 

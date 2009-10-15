@@ -23,8 +23,9 @@ function new_pattern = RhythmPattern(name)
     new_pattern.name = name;
 end
 
-function setSyncopation(pattern, syncopation)
+function new_pattern = setSyncopation(pattern, syncopation)
     pattern.syncopation = syncopation;
+    new_pattern = pattern;
 end
         
 function syncopation = syncopation_of(rhythm)
@@ -92,12 +93,16 @@ function plot_pattern (pattern)
     % title(sprintf('Metric profile'),'Interpreter','none');
     title(sprintf('Metric profile of %s', pattern.name),'Interpreter','none');
     legend('Beat Occurrence', 'Syncopation Intensity');
-    xlabel('Metric Location');
-    ylabel('Relative Occurrence in Piece');
+    axis([63/64 17 0 1.0]);
+    xlabel('Metric Location (semiquavers 1/16)');
+    ylabel('Relative Amplitude');
     subplot(2,1,2);
-    bar(pattern.hypermetrical_profile);
-    ylabel('Relative Occurrence in Piece');
-    xlabel('Tatum Location');
+    % TODO hardwired.
+    bar([1: 1/16 : 5-1/16], pattern.hypermetrical_profile);
+    axis([15/16 5 0 1.0]);
+    ylabel('Relative Amplitude');
+    xlabel('Phrase Location (Bars)');
+    title(sprintf('Hyper-metric profile of %s', pattern.name),'Interpreter','none');
     % close();
 end
 
