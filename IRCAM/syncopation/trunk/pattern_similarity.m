@@ -4,9 +4,6 @@ function [ similarity ] = pattern_similarity( rhythm_features )
 %   Returns a n * n similarity matrix.
 % $Id$
 
-% TODO should pass in an array of rhythm patterns instead of a matrix.
-% Derive the input matrix here.
-
 rhythm_count = length(rhythm_features);
 similarity = zeros(rhythm_count);
 
@@ -42,14 +39,6 @@ metric = 'cityblock';
 % fprintf('covariance across examples %s\n', sprintf('%f ', diag(cov(rhythm_features))));
 
 similarity = squareform(pdist(rhythm_features, metric));
-
-if (diag_plot('similarity_matrix'))
-    figure();
-    imagesc(similarity)
-    title(sprintf('Dissimilarity of pattern of Quaero Selection by %s distance metric', metric))
-    xlabel('Quaero Track');
-    ylabel('Quaero Track');
-end
 
 if (diag_plot('corpus_dissimilarity'))
     figure();

@@ -1,6 +1,6 @@
 function plot_correlation_match( query_rhythm, target_rhythm, shift_by )
-%plot_correlation_match Plot the query and target rhythms aligned by 
-%shifting the query forward by shift_by samples.
+%plot_correlation_match Plot the query and target rhythms aligned by shifting the query forward by shift_by samples.
+% $Id$
 
 normalised_target = target_rhythm ./ max(target_rhythm) * 2;
 normalised_query = query_rhythm ./ max(query_rhythm);

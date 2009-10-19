@@ -7,10 +7,6 @@ if (nargin < 2)
     rhythm_directory_root = '~/Research/Data/IRCAM-Beat/Quaero_Selection/';
 end
 
-if (nargin < 3)
-    annotation_source = '.b';
-end
-
 abs_rhythm_directory = tilde_expand(rhythm_directory_root);
 odf_filepath = [abs_rhythm_directory 'Analysis/' filename '.odf'];
 sample_rate = 172.27; % hardwired, again.

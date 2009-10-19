@@ -8,7 +8,6 @@ rhythm_syncopation_measures = zeros(dim);
 for measure_index = 1 : dim(2)
     % fprintf('measure index %d\n',measure_index); 
     measure_onsets = onset_observations(:,measure_index);
-    % calculate_syncopations_on_grid(measure_onsets', hierarchy)'
     rhythm_syncopation_measures(:,measure_index) = calculate_syncopations_on_grid(measure_onsets', hierarchy)';
 end
 

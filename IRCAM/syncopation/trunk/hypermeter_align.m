@@ -1,7 +1,7 @@
 function [ rotated_query ] = hypermeter_align( query_hypermeter, target_hypermeter )
 %hypermeter_match Returns a match between the hypermeters.
 %   Performs a rotation to find the best alignment of the hypermetrical profiles.
-% $Id:$
+% $Id$
 
 best_rotations = cross_correlation_match(query_hypermeter, target_hypermeter);
 % plot_correlation_match(query_hypermeter, target_hypermeter, best_rotations(1));

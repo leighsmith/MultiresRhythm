@@ -30,7 +30,7 @@ metrical_profile = 1 - (sum(small_silence_observations') ./ num_of_measures);
 pattern.metrical_profile = metrical_profile;
 % bar(1:16/64:16.75, metrical_profile)
 
-pattern.hypermetrical_profile = hypermetrical_profile(silence_observations);
+pattern.hypermetrical_profile = hypermetrical_profile(silence_observations, pattern.phrase_length);
 
 pattern.tempo = rhythm_description.tempo;
 

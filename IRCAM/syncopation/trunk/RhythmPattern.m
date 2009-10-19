@@ -7,13 +7,14 @@ classdef RhythmPattern
 % The pattern includes the metrical profile and the profile of syncopation
 % per measure, and the hypermetrical profile over several measures.
 properties
-    syncopation = [];
-    metrical_profile = [];
-    hypermetrical_profile = [];
-    tempo = 0; % This makes the profiles tempo dependent.
     name = '';
-    metric_tatums_per_beat = 16;
-    syncopation_tatums_per_beat = 4;
+    syncopation = [];
+    syncopation_tatums_per_beat = 4; % to 1/16th subdivisions.
+    metrical_profile = [];
+    metric_tatums_per_beat = 16;  % to 1/64th subdivisions.
+    hypermetrical_profile = [];
+    phrase_length = 4; % hypermetrical profile length in measures (bars)
+    tempo = 0; % This makes the profiles tempo dependent.
 end
     
 methods
@@ -116,15 +117,36 @@ function features = featureVector(pattern)
     features = [strip_beats(pattern.syncopation, pattern.syncopation_tatums_per_beat) pattern.metrical_profile pattern.hypermetrical_profile pattern.tempo];
     % features = [pattern.metrical_profile];
     % features = [pattern.metrical_profile pattern.tempo];
-end    
-    
+end
+
 function length = featureVectorLength(pattern)
     % TODO hardwired to 16 tatums, 64 hemidemisemiquavers, 64 hyper meter, 1 tempo.
-    beats_per_measure = 4;
+    beats_per_measure = 4; % TODO determine from meter
     
-    length = ((beats_per_measure - 1) * pattern.syncopation_tatums_per_beat) + (pattern.metric_tatums_per_beat * beats_per_measure) + 64 + 1;
+    length = ((beats_per_measure - 1) * pattern.syncopation_tatums_per_beat) + ...
+             (beats_per_measure * pattern.metric_tatums_per_beat) + ...
+             16 * pattern.phrase_length + ...
+             1;
     % length = 16;
     % length = 17; % length(pattern.metrical_profile) + 1
+end
+
+function features = syncopationProfile(pattern)
+    % Returns the syncopation pattern, stripped of the beat locations which
+    % will also register 0 syncopation.
+    features = strip_beats(pattern.syncopation, pattern.syncopation_tatums_per_beat);
+end
+
+function features = metricalProfile(pattern)
+    features = pattern.metrical_profile;
+end
+
+function features = hypermetricalProfile(pattern)
+    features = pattern.hypermetrical_profile;
+end
+
+function features = tempoMeasure(pattern)
+    features = [pattern.tempo];
 end
 
 end % methods

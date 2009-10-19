@@ -1,13 +1,11 @@
-function [ corpus_rhythm_pattern ] = pattern_for_corpus( corpus, quaero_directory )
-%pattern_for_corpus Returns a matrix of rhythm pattern measures for the corpus.
+function [ corpus_rhythm_patterns ] = pattern_for_corpus( corpus, quaero_directory )
+%pattern_for_corpus Returns a cell array of matrices of rhythm pattern measures for the entire corpus.
 % Assumes corpus is a cell array of strings.
-% Assumes all members of the corpus are the same meter.
+% TODO Assumes all members of the corpus are the same meter.
 % $Id$
 
-corpus_rhythm_pattern = zeros(length(corpus), featureVectorLength(RhythmPattern('')));
+corpus_rhythm_patterns = cell(length(corpus),1);
 annotation_type = '.beat';
-% annotation_type = '.b';
-
 
 for piece_index = 1 : length(corpus)
     piece = corpus{1, piece_index};
@@ -23,7 +21,7 @@ for piece_index = 1 : length(corpus)
     if (diag_plot('syncopation_profile'))
         plot_pattern(pattern);
     end
-    corpus_rhythm_pattern(piece_index, :) = featureVector(pattern);
+    corpus_rhythm_patterns{piece_index, 1} = pattern;
 end
     
 end

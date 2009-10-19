@@ -1,7 +1,7 @@
 function [ euclidean_distances ] = rotated_hypermetrical_distances(hypermeters)
 %rotated_hypermeterical_distances Return Euclidean distances from best
 %rotations of the hypermetrical phrases.
-% $Id:$
+% $Id$
 
 num_tracks = size(hypermeters, 1);
 euclidean_distances = zeros(num_tracks);
