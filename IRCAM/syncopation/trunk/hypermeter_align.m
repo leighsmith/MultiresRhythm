@@ -9,7 +9,7 @@ best_rotations = cross_correlation_match(query_hypermeter, target_hypermeter);
 if(best_rotations(1) == 0)
     rotated_query = query_hypermeter;
 else
-    fprintf('Rotated hypermetrical profile by %d\n', best_rotations(1));
+    % fprintf('Rotated hypermetrical profile by %d\n', best_rotations(1));
     rotated_query = [query_hypermeter(best_rotations(1) : end) query_hypermeter(1 : best_rotations(1) - 1)];
 end
 

@@ -9,21 +9,15 @@ global plotting;
 % are not proper functions and require a base type, we have to.
 plotting = {}; 
 set_diag_plot('similarity_matrix')
-late_fusion = 0;
+set_diag_plot('similarity_comparisons')
+late_fusion = 1;
 
 corpus_dataset = make_quaero_dataset(corpus_name);
 
 corpus_patterns = pattern_for_corpus(corpus_dataset, corpus_name);
 
 if (late_fusion == 1)
-    % Uses late fusion of similarity measures.
-    metrical_similarity = pattern_similarity_of_feature(@metricalProfile, corpus_patterns);
-    syncopation_similarity = pattern_similarity_of_feature(@syncopationProfile, corpus_patterns);
-    hypermetrical_similarity = rotated_hypermetrical_distances(feature_matrix(@hypermetricalProfile, corpus_patterns));
-    % tempo_similarity = pattern_similarity_for_feature(@tempoMeasure, corpus_patterns);
-
-    % TODO Super dumb.
-    similarity_matrix = metrical_similarity + syncopation_similarity + hypermetrical_similarity;
+    similarity_matrix = fused_similarity(corpus_patterns);
 else
     similarity_matrix = pattern_similarity_of_feature(@featureVector, corpus_patterns);
 end
