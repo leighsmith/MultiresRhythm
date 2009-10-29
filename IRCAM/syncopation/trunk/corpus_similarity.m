@@ -10,13 +10,13 @@ global plotting;
 plotting = {}; 
 set_diag_plot('similarity_matrix')
 set_diag_plot('similarity_comparisons')
-late_fusion = 1;
+late_fusion = true;
 
 corpus_dataset = make_quaero_dataset(corpus_name);
 
 corpus_patterns = pattern_for_corpus(corpus_dataset, corpus_name);
 
-if (late_fusion == 1)
+if (late_fusion == true)
     similarity_matrix = fused_similarity(corpus_patterns);
 else
     similarity_matrix = pattern_similarity_of_feature(@featureVector, corpus_patterns);
