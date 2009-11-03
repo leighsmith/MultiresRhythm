@@ -121,11 +121,17 @@ end
 function features = syncopationProfile(pattern)
     % Returns the syncopation pattern, stripped of the beat locations which
     % will also register 0 syncopation.
-    features = strip_beats(pattern.syncopation, pattern.syncopation_tatums_per_beat);
+    strippedOfBeats = strip_beats(pattern.syncopation, pattern.syncopation_tatums_per_beat);
+    features = reshape(strippedOfBeats, 1, numel(strippedOfBeats));
 end
 
 function features = metricalProfile(pattern)
     features = reshape(pattern.metrical_profile', 1, numel(pattern.metrical_profile));
+end
+
+% Just returns the first profile.
+function features = singleMetricalProfile(pattern)
+    features = pattern.metrical_profile(2,:);
 end
 
 function features = hypermetricalProfile(pattern)
