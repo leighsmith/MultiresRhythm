@@ -12,6 +12,5 @@ function [ should_plot ] = diag_plot(test_case)
     %diag_plot Checks if the plotting array holds the test_case, returning true or false.
     global plotting;
     
-    should_plot = strmatch(test_case, plotting);
-
+    should_plot = ~isempty(strmatch(test_case, plotting));
 end

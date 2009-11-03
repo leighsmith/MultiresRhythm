@@ -1,11 +1,11 @@
-function [ feature_estimates ] = observe_evidence_of( annotated_rhythm, subdivisions_of_beat, feature_estimator )
-%observe_evidence_of Returns an estimate of downbeat location across the entire ODF rhythm using an estimator
+function [ feature_estimates ] = observe_evidence_of(rhythm_odf, annotated_rhythm, subdivisions_of_beat, feature_estimator)
+%observe_evidence_of Returns an estimate of a feature across the entire ODF rhythm using an estimator function.
 % $Id$
 
 % set(title, 'Interpreter','none');
 measures_to_plot = [77]; % should be global.
 
-rhythm = annotated_rhythm.odf;
+% rhythm_odf = annotated_rhythm.odf; % Used to be the default odf.
 beat_times = annotated_rhythm.beat_times;
 beats_per_measure = annotated_rhythm.beats_per_measure;
 sample_rate = annotated_rhythm.sample_rate;
@@ -17,7 +17,7 @@ beat_durations = round(diff(beat_times) * sample_rate);
 number_of_measures = floor(length(beat_durations) / beats_per_measure) - 1; % floor avoids partial bars
 feature_estimates = zeros((beats_per_measure * subdivisions_of_beat), number_of_measures);
 
-fprintf('\nrhythm duration %.3f samples, number of measures %.3f\n', length(rhythm), number_of_measures); 
+fprintf('\nrhythm duration %.3f samples, number of measures %.3f\n', length(rhythm_odf), number_of_measures); 
 % fprintf('First beat_durations %s\n', sprintf('%.3f ', beat_durations(1 : 16)))
 
 for measure_index = 1 : number_of_measures
@@ -33,12 +33,12 @@ for measure_index = 1 : number_of_measures
     %% location. These can be of the form of a normalised probability
     %% across the measure, or a probability for each tatum, depending on
     %% the feature_estimator.
-    feature_probabilities = feature_estimator(rhythm, start_sample, measure_index, beat_durations_in_measure, subdivisions_of_beat);
+    feature_probabilities = feature_estimator(rhythm_odf, start_sample, measure_index, beat_durations_in_measure, subdivisions_of_beat);
 
     % fprintf('Feature %s probabilities %s sum = %f\n', feature_estimator, sprintf('%.5f ', feature_probabilities), sum(feature_probabilities));
    
-    if (diag_plot('gap_evaluation') & ismember(measures_to_plot, measure_index))
-       search_region = rhythm(start_sample : min(length(rhythm), start_sample + (bar_duration * 2) - 1));
+    if (diag_plot('gap_evaluation') && ismember(measures_to_plot, measure_index))
+       search_region = rhythm_odf(start_sample : min(length(rhythm_odf), start_sample + (bar_duration * 2) - 1));
 
        % set(hlines(1), 'Displayname', 'ODF');
        % set(hlines(2), 'Displayname', 'beat gap likelihood');

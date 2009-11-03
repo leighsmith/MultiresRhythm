@@ -1,8 +1,8 @@
-function [ onset_observations, silence_observations ] = observe_onsets (analysed_rhythm, subdivisions_of_beat)
+function [ onset_observations, silence_observations ] = observe_onsets (odf, analysed_rhythm, subdivisions_of_beat)
 %observe_onsets Determines which tatums correspond to onsets or rests.
 % $Id$
 
-silence_observations = observe_evidence_of(analysed_rhythm, subdivisions_of_beat, @silence_evidence);
+silence_observations = observe_evidence_of(odf, analysed_rhythm, subdivisions_of_beat, @silence_evidence);
 
 % number of rows = number of tatums in measure.
 % grid_length = size(silence_observations, 1);

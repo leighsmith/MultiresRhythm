@@ -1,6 +1,6 @@
 function [ syncopation ] = read_syncopation (dom_element)
-    tatum_count = str2num(char(dom_element.getAttribute('tatum-count')));
-    syncopation = zeros(1, tatum_count);
+    tatumCount = str2num(char(dom_element.getAttribute('tatum-count')));
+    syncopation = zeros(1, tatumCount);
 
     tatums = dom_element.getElementsByTagName('tatum');
     for tatum_index = 1 : tatums.getLength()

@@ -7,29 +7,34 @@ function [ pattern ] = pattern_of_rhythm_description ( rhythm_description )
 rhythm_name = rhythm_description.name;
 pattern = RhythmPattern(rhythm_name);
 
-[onset_observations, silence_observations] = observe_onsets(rhythm_description, pattern.syncopation_tatums_per_beat);
-num_of_measures = size(onset_observations, 2);
+for subBandIndex = 1 : size(rhythm_description.odfs, 1)
+    [onset_observations, silence_observations] = observe_onsets(rhythm_description.odfs(subBandIndex,:), rhythm_description, pattern.syncopation_tatums_per_beat);
+    num_of_measures = size(onset_observations, 2);
 
-rhythm_syncopation_measures = syncopation_measures(onset_observations, rhythm_description.meter);
-% TODO, we normalise the syncopation measure, to produce an equally
-% comparable measure for each tatum, however this seems counter to the goal
-% of the measure, which is to measure the effect at different locations
-% across the measure.
-normalised_syncopation_measures = normalise_syncopation(rhythm_syncopation_measures, rhythm_description.meter);
-% recalc this in case the syncopation measures differ from the tatums.
-num_of_tatums = size(normalised_syncopation_measures, 1);
-syncopation_profile = sum(normalised_syncopation_measures') ./ num_of_measures;
-% setSyncopation(pattern, syncopation_profile); % TODO determine why this doesn't work?
-pattern.syncopation = syncopation_profile;
-
-% Use silence observations since they capture the amplitude, with a higher sampling rate across the measure.
-[small_onset_observations, small_silence_observations] = observe_onsets(rhythm_description, pattern.metric_tatums_per_beat);
-metrical_profile = 1 - (sum(small_silence_observations') ./ num_of_measures);
-% metrical_profile = sum(onset_observations') ./ num_of_measures;
-%% fprintf('metric profile %s syncopation_profile %s~%', metric_profile, syncopation_profile)
-pattern.metrical_profile = metrical_profile;
-% bar(1:16/64:16.75, metrical_profile)
-
+    rhythm_syncopation_measures = syncopation_measures(onset_observations, rhythm_description.meter);
+    % TODO, we normalise the syncopation measure, to produce an equally
+    % comparable measure for each tatum, however this seems counter to the goal
+    % of the measure, which is to measure the effect at different locations
+    % across the measure.
+    normalised_syncopation_measures = normalise_syncopation(rhythm_syncopation_measures, rhythm_description.meter);
+    % recalc this in case the syncopation measures differ from the tatums.
+    num_of_tatums = size(normalised_syncopation_measures, 1);
+    syncopation_profile = sum(normalised_syncopation_measures') ./ num_of_measures;
+    % this doesn't work according to Matlab because RhythmPattern is a value class, not a
+    % handle class.
+    % setSyncopation(pattern, syncopation_profile); 
+    pattern.syncopation(subBandIndex,:) = syncopation_profile;
+end 
+    
+for subBandIndex = 1 : size(rhythm_description.odfs, 1)
+    % Use silence observations since they capture the amplitude, with a higher sampling rate across the measure.
+    [small_onset_observations, small_silence_observations] = observe_onsets(rhythm_description.odfs(subBandIndex,:), rhythm_description, pattern.metric_tatums_per_beat);
+    metrical_profile = 1 - (sum(small_silence_observations') ./ num_of_measures);
+    %% fprintf('metric profile %s syncopation_profile %s~%', metric_profile, syncopation_profile)
+    % bar(1:16/64:16.75, metrical_profile)
+    pattern.metrical_profile(subBandIndex,:) = metrical_profile;
+end
+    
 pattern.hypermetrical_profile = hypermetrical_profile(silence_observations, pattern.phrase_length);
 
 pattern.tempo = rhythm_description.tempo;

@@ -10,7 +10,7 @@ seconds_lost = 0.030;
 [signal, sample_rate, resolution] = wavread(tilde_expand(wav_filepath));
 
 % low frequencies & high frequencies
-subband_range = [[40, 150]; [2000, 4000]];
+subband_range = [[40, 150]; [3000, 4000]];
 % alternatively peep into the frequency spectrum at representative frequencies.
 % subband_range = [[60, 70]; [2000, 2100]]; 
 

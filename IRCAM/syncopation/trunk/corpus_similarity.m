@@ -1,6 +1,6 @@
 function [ similarity_matrix ] = corpus_similarity(corpus_name)
 %corpus_similarity Returns the similarity matrix of the corpus named by corpus_name.
-% for example: corpus_similarity('Quaero_Selection')
+% for example: corpus_similarity('Quaero_Selection');
 % $Id$
 
 global plotting;

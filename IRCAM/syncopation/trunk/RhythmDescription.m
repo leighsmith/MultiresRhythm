@@ -4,8 +4,8 @@ classdef RhythmDescription
     
     properties
         name = '';
-        odf = 0;
-        odf_subbands = 0;
+        % onset detection functions, in grouped subbands per row.
+        odfs = [];
         beat_times = 0;
         meter = [];
         beats_per_measure = 4;
@@ -14,10 +14,9 @@ classdef RhythmDescription
         tempo = 0; % in median bpm
     end
     methods
-        function new_rhythm = RhythmDescription(name, odf, odf_subbands, beat_times, meter, beats_per_measure, anacrusis, sample_rate, tempo)
+        function new_rhythm = RhythmDescription(name, odfs, beat_times, meter, beats_per_measure, anacrusis, sample_rate, tempo)
             new_rhythm.name = name;
-            new_rhythm.odf = odf;
-            new_rhythm.odf_subbands = odf_subbands;
+            new_rhythm.odfs = odfs;
             new_rhythm.beat_times = beat_times;
             new_rhythm.meter = meter;
             new_rhythm.beats_per_measure = beats_per_measure;

@@ -13,7 +13,7 @@ dataset = cell(1, maximum_examples);
 
 song_index = start_at;
 dataset_index = 1;
-while (dataset_index <= maximum_examples & song_index <= maximum_examples)
+while (dataset_index <= maximum_examples && song_index <= maximum_examples)
      annotation_pathname = annotation_files(song_index).name;
      if (annotation_pathname(1) ~= '.') % Remove all hidden files.
         annotation_name = strtok(annotation_pathname, '.');
