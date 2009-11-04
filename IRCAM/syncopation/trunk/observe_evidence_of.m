@@ -1,14 +1,14 @@
-function [ feature_estimates ] = observe_evidence_of(rhythm_odf, annotated_rhythm, subdivisions_of_beat, feature_estimator)
+function [ feature_estimates ] = observe_evidence_of(rhythm_odf, rhythm_description, subdivisions_of_beat, feature_estimator)
 %observe_evidence_of Returns an estimate of a feature across the entire ODF rhythm using an estimator function.
 % $Id$
 
 % set(title, 'Interpreter','none');
 measures_to_plot = [77]; % should be global.
 
-% rhythm_odf = annotated_rhythm.odf; % Used to be the default odf.
-beat_times = annotated_rhythm.beat_times;
-beats_per_measure = annotated_rhythm.beats_per_measure;
-sample_rate = annotated_rhythm.sample_rate;
+% rhythm_odf = rhythm_description.odf; % Used to be the default odf.
+beat_times = rhythm_description.beat_times;
+beats_per_measure = rhythm_description.beats_per_measure;
+sample_rate = rhythm_description.sample_rate;
 
 %% Convert beat_times in seconds to durations of each beat in samples.
 beat_durations = round(diff(beat_times) * sample_rate);
@@ -50,7 +50,7 @@ for measure_index = 1 : number_of_measures
             %onsets_at_subdivisions(beat_durations_in_measure, 1) + 1, ...
             %feature_probabilities(1 : subdivisions_of_beat : beats_per_measure * subdivisions_of_beat))
 
-       title(sprintf('plot of measure %.3f of %s', measure_index, annotated_rhythm.name),'Interpreter','none');
+       title(sprintf('plot of measure %.3f of %s', measure_index, rhythm_description.name),'Interpreter','none');
     end
     % collect likelihood in feature_estimates
     feature_estimates(:, measure_index) = feature_probabilities;

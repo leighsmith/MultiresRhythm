@@ -10,7 +10,7 @@ similarity = zeros(rhythm_count);
 % Choice of distance measures between syncopation measures:
 % * Euclidean distance, since this measures the match of relative
 % syncopation at each tatum location.
-% metric = 'euclidean';
+metric = 'euclidean';
 % * Weighted Euclidean distance, weighting the relative
 % importance of the match at each tatum by it's relative
 % measure of perceptual salience.
@@ -21,7 +21,7 @@ similarity = zeros(rhythm_count);
 % * cityblock (Manhattan) distance, measuring the distance by a set of
 % independent dimensions for each metrical location, i.e each doesn't
 % interact.
-metric = 'cityblock';
+% metric = 'cityblock';
 % * Mahalanobis
 % metric = 'mahalanobis';
 % produces: NaNs & Matrix is singular to working precision. This is because

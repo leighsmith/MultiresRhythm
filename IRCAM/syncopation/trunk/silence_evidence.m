@@ -9,6 +9,8 @@ tatums_per_measure = length(tatum_locations);
 tatum_score = zeros(1, tatums_per_measure);
 tatum_durations = beat_durations_in_measure ./ subdivisions_of_beat;
 rhythm_length = length(rhythm_to_analyse);
+mean_odf = mean(rhythm_to_analyse);
+std_odf = std(rhythm_to_analyse);
 
 for tatum_index = 1 : tatums_per_measure
     tatum_location = tatum_locations(tatum_index);
@@ -17,7 +19,7 @@ for tatum_index = 1 : tatums_per_measure
 	gap_end = min(round(gap_start + tatum_duration), rhythm_length);
 	% tatum_score(tatum_index) = silence_score_max(rhythm_to_analyse(max(1, gap_start) : gap_end), rhythm_to_analyse);
     % tatum_score(tatum_index) = silence_score_stddev(rhythm_to_analyse(max(1, gap_start) : gap_end - 1), rhythm_to_analyse, 1);
-    tatum_score(tatum_index) = silence_score_mean(rhythm_to_analyse(max(1, gap_start) : gap_end - 1), rhythm_to_analyse, 0);
+    tatum_score(tatum_index) = silence_score_mean(rhythm_to_analyse(max(1, gap_start) : gap_end - 1), mean_odf, std_odf, 0);
 
     %fprintf('Measure %d tatum location %.2f samples, silence region (%d %d) score = %.3f\n', ...
 	%      measure_index, tatum_location, gap_start, gap_end, tatum_score(tatum_index));

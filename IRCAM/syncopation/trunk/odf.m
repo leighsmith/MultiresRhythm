@@ -10,9 +10,9 @@ seconds_lost = 0.030;
 [signal, sample_rate, resolution] = wavread(tilde_expand(wav_filepath));
 
 % low frequencies & high frequencies
-subband_range = [[40, 150]; [3000, 4000]];
+% subband_range = [[40, 150]; [3000, 4000]];
 % alternatively peep into the frequency spectrum at representative frequencies.
-% subband_range = [[60, 70]; [2000, 2100]]; 
+subband_range = [[60, 100]; [3500, 4000]]; 
 
 [odf_fullfreq, marker_times_seconds, odf_subbands_clipped] = MFenergyfft(signal, sample_rate, 0.08, 0.01, 2, subband_range);
 odf_sr = 1 / mean(diff(marker_times_seconds));

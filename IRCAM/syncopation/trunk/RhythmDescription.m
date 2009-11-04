@@ -6,6 +6,7 @@ classdef RhythmDescription
         name = '';
         % onset detection functions, in grouped subbands per row.
         odfs = [];
+        % TODO should have a mean and std for each odf subband computed for reuse.
         beat_times = 0;
         meter = [];
         beats_per_measure = 4;
