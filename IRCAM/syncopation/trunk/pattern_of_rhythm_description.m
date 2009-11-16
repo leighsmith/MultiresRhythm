@@ -34,7 +34,8 @@ for subBandIndex = 1 : size(rhythm_description.odfs, 1)
     % bar(1:16/64:16.75, metrical_profile)
     pattern.metrical_profile(subBandIndex,:) = metrical_profile;
 end
-    
+
+[onset_observations, silence_observations] = observe_onsets(rhythm_description.wideband_odf, rhythm_description, pattern.syncopation_tatums_per_beat);
 pattern.hypermetrical_profile = hypermetrical_profile(silence_observations, pattern.phrase_length);
 
 pattern.tempo = rhythm_description.tempo;

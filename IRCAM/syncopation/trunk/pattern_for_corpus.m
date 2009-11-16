@@ -14,7 +14,7 @@ for piece_index = 1 : length(corpus)
     
     try
         pattern = read_pattern(piece, pattern_filepath);
-    catch
+    catch no_pattern
         % We use the annotated rhythms to ensure the downbeats are correct.
         rhythm_description = read_quaero_rhythm(piece, rhythm_directory_root, annotation_type);
         pattern = pattern_of_rhythm_description(rhythm_description);

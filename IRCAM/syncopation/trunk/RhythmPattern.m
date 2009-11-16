@@ -97,25 +97,15 @@ end
 function features = featureVector(pattern)
     % featureVector - Returns a single feature vector from the pattern.
     % A feature vector of the rhythm pattern is a concatenation of the
-    % syncopation metrical and hypermetrical profiles of each rhythm, with
+    % syncopation, metrical and hypermetrical profiles of each rhythm, with
     % the tactus beats of the syncopation removed since they will never
     % return a syncopation and only increase the dimensionality of the
     % distance measures.
-    features = [strip_beats(pattern.syncopation, pattern.syncopation_tatums_per_beat) pattern.metrical_profile pattern.hypermetrical_profile pattern.tempo];
-    % features = [pattern.metrical_profile];
-    % features = [pattern.metrical_profile pattern.tempo];
+    features = [syncopationProfile(pattern) metricalProfile(pattern) pattern.hypermetrical_profile pattern.tempo];
 end
 
 function length = featureVectorLength(pattern)
-    % TODO hardwired to 16 tatums, 64 hemidemisemiquavers, 64 hyper meter, 1 tempo.
-    beats_per_measure = 4; % TODO determine from meter
-    
-    length = ((beats_per_measure - 1) * pattern.syncopation_tatums_per_beat) + ...
-             (beats_per_measure * pattern.metric_tatums_per_beat) + ...
-             16 * pattern.phrase_length + ...
-             1;
-    % length = 16;
-    % length = 17; % length(pattern.metrical_profile) + 1
+    length = length(featureVector(pattern));
 end
 
 function features = syncopationProfile(pattern)
@@ -131,7 +121,7 @@ end
 
 % Just returns the first profile.
 function features = singleMetricalProfile(pattern)
-    features = pattern.metrical_profile(2,:);
+    features = pattern.metrical_profile(1,:);
 end
 
 function features = hypermetricalProfile(pattern)
