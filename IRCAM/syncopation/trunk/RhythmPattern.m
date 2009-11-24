@@ -8,6 +8,9 @@ classdef RhythmPattern
 % per measure, and the hypermetrical profile over several measures.
 properties
     name = '';
+    % We use beats per measure as a pattern feature, rather than full meter
+    % so that matching can still occur with some some compatible meters.
+    beats_per_measure = 4; 
     syncopation = [];
     syncopation_tatums_per_beat = 4; % to 1/16th subdivisions.
     metrical_profile = [];
@@ -59,7 +62,11 @@ function write_pattern ( pattern, filename, pattern_filepath )
     tempo_element = dom.createElement('tempo');
     tempo_element.setAttribute('bpm', sprintf('%f', pattern.tempo));
     pattern_description.appendChild(tempo_element);
-    
+
+    beats_element = dom.createElement('measure-duration');
+    beats_element.setAttribute('beats', sprintf('%f', pattern.beats_per_measure));
+    pattern_description.appendChild(beats_element);
+
     xmlwrite(pattern_filepath, dom);
 end
 

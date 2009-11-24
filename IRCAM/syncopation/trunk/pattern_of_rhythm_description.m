@@ -7,8 +7,9 @@ function [ pattern ] = pattern_of_rhythm_description ( rhythm_description )
 rhythm_name = rhythm_description.name;
 pattern = RhythmPattern(rhythm_name);
 
+% Calculate the syncopation measures for each spectral subband.
 for subBandIndex = 1 : size(rhythm_description.odfs, 1)
-    [onset_observations, silence_observations] = observe_onsets(rhythm_description.odfs(subBandIndex,:), rhythm_description, pattern.syncopation_tatums_per_beat);
+    onset_observations = observe_onsets(rhythm_description.odfs(subBandIndex,:), rhythm_description, pattern.syncopation_tatums_per_beat);
     num_of_measures = size(onset_observations, 2);
 
     rhythm_syncopation_measures = syncopation_measures(onset_observations, rhythm_description.meter);
@@ -24,13 +25,17 @@ for subBandIndex = 1 : size(rhythm_description.odfs, 1)
     % handle class.
     % setSyncopation(pattern, syncopation_profile); 
     pattern.syncopation(subBandIndex,:) = syncopation_profile;
+    %% fprintf('syncopation_profile %s~%', syncopation_profile)
 end 
-    
+
+% Calculate the metrical profile for each spectral subband.
 for subBandIndex = 1 : size(rhythm_description.odfs, 1)
     % Use silence observations since they capture the amplitude, with a higher sampling rate across the measure.
     [small_onset_observations, small_silence_observations] = observe_onsets(rhythm_description.odfs(subBandIndex,:), rhythm_description, pattern.metric_tatums_per_beat);
+    num_of_measures = size(small_silence_observations, 2);
+    % Calculate the metrical profile from the silence observations, not the onset observations, so we account for dynamics accentuation.
     metrical_profile = 1 - (sum(small_silence_observations') ./ num_of_measures);
-    %% fprintf('metric profile %s syncopation_profile %s~%', metric_profile, syncopation_profile)
+    %% fprintf('metric profile %s~%', metric_profile)
     % bar(1:16/64:16.75, metrical_profile)
     pattern.metrical_profile(subBandIndex,:) = metrical_profile;
 end
@@ -39,6 +44,7 @@ end
 pattern.hypermetrical_profile = hypermetrical_profile(silence_observations, pattern.phrase_length);
 
 pattern.tempo = rhythm_description.tempo;
+pattern.beats_per_measure = rhythm_description.beats_per_measure;
 
 % While this finds onset periodicities, in many ways it duplicates 
 % the ACF * FFT function.

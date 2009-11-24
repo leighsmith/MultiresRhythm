@@ -15,18 +15,24 @@ classdef RhythmDescription
         anacrusis = 0; % number of beats before the first downbeat.
         tempo = 0; % in median bpm
     end
+    
     methods
-        function new_rhythm = RhythmDescription(name, wideband_odf, odfs, beat_times, meter, beats_per_measure, anacrusis, sample_rate, tempo)
-            new_rhythm.name = name;
-            new_rhythm.odfs = odfs;
-            new_rhythm.wideband_odf = wideband_odf;
-            new_rhythm.beat_times = beat_times;
-            new_rhythm.meter = meter;
-            new_rhythm.beats_per_measure = beats_per_measure;
-            new_rhythm.sample_rate = sample_rate;
-            new_rhythm.anacrusis = anacrusis;
-            new_rhythm.tempo = tempo;
-        end
         
+    function new_rhythm = RhythmDescription(name, wideband_odf, odfs, beat_times, meter, beats_per_measure, anacrusis, sample_rate, tempo)
+        new_rhythm.name = name;
+        new_rhythm.odfs = odfs;
+        new_rhythm.wideband_odf = wideband_odf;
+        new_rhythm.beat_times = beat_times;
+        new_rhythm.meter = meter;
+        new_rhythm.beats_per_measure = beats_per_measure;
+        new_rhythm.sample_rate = sample_rate;
+        new_rhythm.anacrusis = anacrusis;
+        new_rhythm.tempo = tempo;
+    end
+
+    function plot_rhythm(rhythm_description)
+        plot(rhythm_description.wideband_odf);
+    end
+    
     end
 end

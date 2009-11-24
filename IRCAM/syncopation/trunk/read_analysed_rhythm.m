@@ -32,5 +32,7 @@ tempo = 60/median(diff(beat_times));
 
 fprintf('Starting downbeat finding from %.3f seconds, %.3f samples\n', start_from, start_sample);
 
-analysed_rhythm = RhythmDescription(filename, odf_subset, beat_times, meter, beats_per_measure, anacrusis, sample_rate, tempo);
+% Supply wideband_odfs and frequency specific bands as the same for now.
+% Should eventually handle when there are no subband odfs.
+analysed_rhythm = RhythmDescription(filename, odf_subset, odf_subset, beat_times, meter, beats_per_measure, anacrusis, sample_rate, tempo);
 end

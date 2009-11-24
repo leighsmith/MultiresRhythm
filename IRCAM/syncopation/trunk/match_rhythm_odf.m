@@ -6,35 +6,19 @@ function [ sorted_locations, sorted_location_probs, segment_transition_probs ] =
 segments = segment_odf(query_odf, sample_rate);
 
 number_of_segments = size(segments,1);
-number_of_matches = 20;
-segment_location_probs = zeros(number_of_matches, number_of_segments);
-segment_locations = zeros(number_of_matches, number_of_segments);
-match_from = 0; % TODO should be 1?
 
-% Match each query segment against the target, accumulate the locations and probabilities.
-for segment_index = 1 : number_of_segments
-    query_segment = query_odf(segments(segment_index,1) : segments(segment_index,2));
-    % Convolve against a narrow Gaussian to broaden the matching
-    query_segment = gaussianRhythm(query_segment, 100);
-    % plot(query_segment);
-    % figure();
-    [peak_match_indices, peak_match_values] = cross_correlation_match(query_segment ./ max(query_segment), target_odf ./ max(target_odf), number_of_matches, match_from);
-    fprintf('segment %d:%d matches (%s)\n', segments(segment_index,1), segments(segment_index,2), sprintf('%d ', peak_match_indices));
-    segment_location_probs(1:length(peak_match_values), segment_index) = peak_match_values ./ sum(peak_match_values);
-    segment_locations(1:length(peak_match_values), segment_index) = peak_match_indices;
-    % match_from = min(peak_match_indices) % No point looking before the earliest previous segment match.
-    % plot_correlation_match(query_segment, target_odf, peak_match_indices(1));
-    % pause();
-end
+[sorted_locations, sorted_location_probs] = match_segments(query_odf, target_odf, segments);
 
-% Order by the locations of the query segments in the target.
-[sorted_locations, sorted_indices] = sort(segment_locations);
-sorted_location_probs = segment_location_probs(sorted_indices);
+number_of_matches = size(sorted_locations, 1);
 
 segment_transition_probs = segment_transition_probabilities(segments, sorted_locations);
 
 imagesc(segment_transition_probs(:,:,2));
+segment_transition_probs(:,:,2)
+
 % imagesc(segment_location_probs(sorted_indices));
+figure();
+imagesc(sorted_location_probs);
 
 % Could weight the initial probabilities toward earlier rhythmic structures.
 % Set the initial probabilities to the first segment since that is

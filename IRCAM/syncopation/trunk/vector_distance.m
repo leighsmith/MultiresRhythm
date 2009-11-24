@@ -12,7 +12,7 @@ distances = zeros(length(vec1), length(vec2));
   
 for i = 1 : length(vec1)
     for j = 1 : length(vec2)
-      distances(i, j) = abs(vec1(i) - vec2(j));
+      distances(i, j) = vec1(i) - vec2(j);
     end
 end
 

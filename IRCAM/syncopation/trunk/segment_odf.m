@@ -16,6 +16,9 @@ if(length(odf) - segment_boundaries(end) > 0)
     segment_boundaries = [segment_boundaries; length(odf)];
 end
 
+% TODO should merge consecutive segments which are too short.
+% Find the shortest ones and merge them to the smallest adjacent segment.
+
 % Pack into start and end columns.
 segments = zeros(length(segment_boundaries) - 1, 2);
 segments(:,1) = segment_boundaries(1:end-1);
