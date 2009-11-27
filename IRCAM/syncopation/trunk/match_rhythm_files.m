@@ -3,18 +3,13 @@ function [ segment_locations, segment_transition_probs ] = match_rhythm_files( q
 %matching segments of the query against the target.
 % $Id$
 
-query_rhythm_descr = read_analysed_rhythm(query_file, '~/Research/Data/IRCAM-Beat/QueryByTapping/Query/');
-target_rhythm_descr = read_analysed_rhythm(target_file, '~/Research/Data/IRCAM-Beat/QueryByTapping/');
+query_rhythm_descr = read_qbt_file(query_file);
+target_rhythm_descr = read_qbt_file(target_file);
 
-[ segment_locations, segment_location_probs, segment_transition_probs ] = match_rhythm_odf(query_rhythm_descr.wideband_odf', target_rhythm_descr.wideband_odf, query_rhythm_descr.sample_rate);
+[ match_locations, segments, segment_locations, segment_location_probs, segment_transition_probs ] = match_rhythm_odf(query_rhythm_descr.wideband_odf', target_rhythm_descr.wideband_odf, query_rhythm_descr.sample_rate);
 
-% figure()
-% subplot(3,1,1)
-% plot_correlation_match(query_rhythm_descr.odf, target_rhythm_descr.odf, peak_match_indices(1));
-% subplot(3,1,2)
-% plot_correlation_match(query_rhythm_descr.odf, target_rhythm_descr.odf, peak_match_indices(2));
-% subplot(3,1,3)
-% plot_correlation_match(query_rhythm_descr.odf, target_rhythm_descr.odf, peak_match_indices(3));
+figure()
+plot_correlation_match(query_rhythm_descr.wideband_odf', target_rhythm_descr.wideband_odf', match_locations, segments)
 
 end
 
