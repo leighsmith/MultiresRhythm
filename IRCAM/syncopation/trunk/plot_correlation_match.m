@@ -2,7 +2,7 @@ function plot_correlation_match( query_rhythm, target_rhythm, all_shifts, query_
 %plot_correlation_match Plot the query and target rhythms aligned by shifting the query forward by shift_by samples.
 % $Id$
 
-normalised_target = target_rhythm ./ max(target_rhythm) * 2;
+normalised_target = target_rhythm ./ max(target_rhythm);
 normalised_query = query_rhythm ./ max(query_rhythm);
 
 if(isscalar(all_shifts) || nargin < 4)
@@ -12,7 +12,7 @@ if(isscalar(all_shifts) || nargin < 4)
 end
 
 segment_shifts = zeros(length(all_shifts), length(normalised_target));
-plot_min_bound = min(all_shifts)
+plot_min_bound = min(all_shifts);
 plot_max_bound = max(all_shifts) + query_segments(end,2) - query_segments(end,1); 
 
 for shift_index = 1 : length(all_shifts)

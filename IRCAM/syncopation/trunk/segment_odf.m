@@ -5,12 +5,14 @@ function [segments, segmentation_flux] = segment_odf(odf, odf_sr)
 % $Id$
 
 preferred_beat_period = 0.600; % Preferred beat period (see Fraisse 1982, van Noorden & Moelants 1999).
-preferred_measure = preferred_beat_period * 4 * odf_sr; % in samples.
+preferred_measure = preferred_beat_period * 16 * odf_sr % in samples.
 segmentation_flux = gaussianRhythm(odf, preferred_measure);
 
 segflux_minima = find_local_extrema(segmentation_flux, 'min');
 flux_threshold = mean(segmentation_flux) - std(segmentation_flux);
 segment_boundaries = segflux_minima(segmentation_flux(segflux_minima) < flux_threshold);
+% First segment starts at the start of the onset detection function.
+segment_boundaries = [1; segment_boundaries];
 
 if(length(odf) - segment_boundaries(end) > 0)
     segment_boundaries = [segment_boundaries; length(odf)];
@@ -18,9 +20,9 @@ end
 
 % merge consecutive segments which are too short.
 % TODO Find the shortest ones and merge them to the smallest adjacent segment.
-%temporal_threshold = preferred_beat_period * 2.0 * odf_sr;
-%above_minimum = [diff(segment_boundaries) > temporal_threshold; true];
-%segment_boundaries = segment_boundaries(above_minimum);
+% temporal_threshold = preferred_beat_period * 2.0 * odf_sr
+% above_minimum = [diff(segment_boundaries) > temporal_threshold; true]
+% segment_boundaries = segment_boundaries(above_minimum)
 
 % Pack into start and end columns.
 segments = zeros(length(segment_boundaries) - 1, 2);

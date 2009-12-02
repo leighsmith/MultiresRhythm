@@ -6,7 +6,6 @@ function [ segment_transition_probs ] = segment_transition_probabilities ( segme
 [number_of_matches, number_of_segments] = size(segment_locations);
 segment_transition_probs = zeros(number_of_matches, number_of_matches, number_of_segments);
 prev_segment_end = zeros(1, number_of_matches);
-epsilon = 0.0001;
 
 % Determine the distances between ends of segments and the start of the matches to the next segments.
 segment_lengths = segments(:,2) - segments(:,1); % Use the length of the query segment in case the segments are not contiguous.
@@ -24,7 +23,7 @@ for segment_index = 1 : number_of_segments
     max_distance = repmat(max(abs_segment_distances) + min(abs_segment_distances), [number_of_matches, 1]);
     inverted_segment_distances = max_distance - abs_segment_distances;
     % Any negative distances (i.e the segments are reversed in time) should become (near to) zero probabilities.
-    inverted_segment_distances(segment_distances < 0) = epsilon;
+    inverted_segment_distances(segment_distances < 0) = eps;
     segment_pair_probs = inverted_segment_distances ./ repmat(sum(inverted_segment_distances), [number_of_matches, 1]);
     % segment_transition_probs(:,:,segment_index) = (1 - segment_distances ./ repmat(sum(segment_distances')', [1, number_of_matches])) ./ (number_of_matches - 1);
 

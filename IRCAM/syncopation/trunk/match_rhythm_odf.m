@@ -9,9 +9,9 @@ number_of_segments = size(segments, 1);
 
 [sorted_locations, sorted_location_probs] = match_segments(query_odf, target_odf, segments);
 
-figure();
-imagesc(sorted_location_probs);
-sorted_locations
+%figure();
+%imagesc(sorted_location_probs);
+%sorted_locations
 
 number_of_matches = size(sorted_locations, 1);
 
@@ -21,9 +21,9 @@ segment_transition_probs = segment_transition_probabilities(segments, sorted_loc
 % go_up = repmat(circshift(eye(number_of_matches), [0, 1]), [1, 1, number_of_segments-1]);
 % go_down = repmat(circshift(eye(number_of_matches), [0, -1]), [1, 1, number_of_segments-1]);
 
-figure();
-imagesc(segment_transition_probs(:,:,2));
-segment_transition_probs(:,:,2)
+%figure();
+%imagesc(segment_transition_probs(:,:,2));
+%segment_transition_probs(:,:,2)
 
 % Weight the initial probabilities toward earlier rhythmic structures.
 % First set of transitions are distances from zero, which favours matches
@@ -41,7 +41,6 @@ initial_probabilities = ones(number_of_matches, number_of_matches) ./ number_of_
 [match_path, loglikelihood] = Fviterbi(initial_probabilities, sorted_location_probs, segment_transition_probs(:,:,2:end));
 % [match_path, loglikelihood] = Fviterbi(initial_probabilities, sorted_location_probs, go_up);
 
-match_path
 linear_index = (0 : number_of_segments - 1) * number_of_matches + match_path;
 match_locations = sorted_locations(linear_index);
 
