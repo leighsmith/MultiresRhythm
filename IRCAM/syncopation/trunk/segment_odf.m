@@ -4,12 +4,21 @@ function [segments, segmentation_flux] = segment_odf(odf, odf_sr)
 % grouping segments.
 % $Id$
 
-preferred_beat_period = 0.600; % Preferred beat period (see Fraisse 1982, van Noorden & Moelants 1999).
-preferred_measure = preferred_beat_period * 16 * odf_sr % in samples.
+% The most preferred (i.e typical) beat interval (see Fraisse 1982, van Noorden & Moelants 1999).
+preferred_beat_period = 0.600;
+
+% The number of standard deviations below the mean Gaussian convolved flux
+% level to be considered a segment boundary.
+segmentation_likelihood = 1;
+
+% The maximum number of beats a single phrase will last.
+segmentation_duration = 8; % Two measures.
+
+preferred_measure = preferred_beat_period * segmentation_duration * odf_sr; % in samples.
 segmentation_flux = gaussianRhythm(odf, preferred_measure);
 
 segflux_minima = find_local_extrema(segmentation_flux, 'min');
-flux_threshold = mean(segmentation_flux) - std(segmentation_flux);
+flux_threshold = mean(segmentation_flux) - segmentation_likelihood * std(segmentation_flux);
 segment_boundaries = segflux_minima(segmentation_flux(segflux_minima) < flux_threshold);
 % First segment starts at the start of the onset detection function.
 segment_boundaries = [1; segment_boundaries];
@@ -32,9 +41,8 @@ segments(:,2) = segment_boundaries(2:end);
 % For debugging
 minima = zeros(size(segmentation_flux));
 minima(segment_boundaries) = 1;
-plot(1:length(odf), odf ./ max(odf), ...
-     1:length(segmentation_flux), segmentation_flux ./ max(segmentation_flux), ...
-     1:length(segmentation_flux), minima)
+threshold = (zeros(length(segmentation_flux), 1) + flux_threshold) ./ max(segmentation_flux); 
+plot([odf ./ max(odf), segmentation_flux ./ max(segmentation_flux), minima, threshold])
 
 end
  

@@ -9,7 +9,6 @@ target_rhythm_descr = read_qbt_target(target_file);
 [ match_locations, segments, single_match_measure ] = match_rhythm_odf(query_rhythm_descr.wideband_odf, target_rhythm_descr.wideband_odf, query_rhythm_descr.sample_rate);
 
 figure()
-plot_correlation_match(query_rhythm_descr.wideband_odf', target_rhythm_descr.wideband_odf', match_locations, segments)
+plot_correlation_match(query_rhythm_descr.wideband_odf', target_rhythm_descr.wideband_odf', match_locations, segments);
 
 end
-
