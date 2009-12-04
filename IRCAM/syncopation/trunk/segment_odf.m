@@ -29,9 +29,9 @@ end
 
 % merge consecutive segments which are too short.
 % TODO Find the shortest ones and merge them to the smallest adjacent segment.
-% temporal_threshold = preferred_beat_period * 2.0 * odf_sr
-% above_minimum = [diff(segment_boundaries) > temporal_threshold; true]
-% segment_boundaries = segment_boundaries(above_minimum)
+temporal_threshold = preferred_beat_period * 2.0 * odf_sr;
+above_minimum = [diff(segment_boundaries) > temporal_threshold; true];
+segment_boundaries = segment_boundaries(above_minimum);
 
 % Pack into start and end columns.
 segments = zeros(length(segment_boundaries) - 1, 2);
@@ -39,10 +39,10 @@ segments(:,1) = segment_boundaries(1:end-1);
 segments(:,2) = segment_boundaries(2:end);
 
 % For debugging
-minima = zeros(size(segmentation_flux));
-minima(segment_boundaries) = 1;
-threshold = (zeros(length(segmentation_flux), 1) + flux_threshold) ./ max(segmentation_flux); 
-plot([odf ./ max(odf), segmentation_flux ./ max(segmentation_flux), minima, threshold])
+% minima = zeros(size(segmentation_flux));
+% minima(segment_boundaries) = 1;
+% threshold = (zeros(length(segmentation_flux), 1) + flux_threshold) ./ max(segmentation_flux); 
+% plot([odf ./ max(odf), segmentation_flux ./ max(segmentation_flux), minima, threshold])
 
 end
  

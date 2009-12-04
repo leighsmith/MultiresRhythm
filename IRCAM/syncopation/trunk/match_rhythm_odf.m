@@ -41,12 +41,14 @@ initial_probabilities = ones(number_of_matches, number_of_matches) ./ number_of_
 [match_path, loglikelihood] = Fviterbi(initial_probabilities, sorted_location_probs, segment_transition_probs(:,:,2:end));
 % [match_path, loglikelihood] = Fviterbi(initial_probabilities, sorted_location_probs, go_up);
 
+exp(loglikelihood)
+
 linear_index = (0 : number_of_segments - 1) * number_of_matches + match_path;
 match_locations = sorted_locations(linear_index);
 
-% fprintf('suggested segment sequence %s\n', sprintf('%d ', match_locations));
-
-% A conjuction of all segment matches.
-single_match_measure = prod(sorted_location_probs(linear_index));
+% An average of all segment matches. This ignores the distances the
+% segments are apart.
+fprintf('location probabilities of most likely segment sequence %s\n', sprintf('%.3f ', sorted_location_probs(linear_index)));
+single_match_measure = sum(sorted_location_probs(linear_index)) / number_of_segments;
 
 end
