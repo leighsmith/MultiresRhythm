@@ -1,6 +1,7 @@
 function [ all_target_descriptions ] = all_target_descriptions( corpus_directory )
 %all_target_descriptions Return a cell array of RhythmDescriptions read
 %from the QBT targets.
+% $Id$
 
 target_directory = tilde_expand([corpus_directory '/Audio']);
 target_files = dir(target_directory);

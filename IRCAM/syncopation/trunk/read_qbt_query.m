@@ -1,6 +1,6 @@
 function [ rhythm_description ] = read_qbt_query( filename )
 %read_qbt_query Reads from locations in the file system for the Query By Tapping data.
-
+% $Id$
 
 rhythm_directory_root = tilde_expand('~/Research/Data/IRCAM-Beat/QueryByTapping/Query/');
 sound_directory_root = rhythm_directory_root;

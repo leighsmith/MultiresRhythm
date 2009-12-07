@@ -3,15 +3,20 @@ function [ match_locations, segments, single_match_measure ] = match_rhythm_odf(
 % matching segments of the query against the target.
 % $Id$
 
+% Set to 0 samples to force no Gaussian convolution of the onsets.
+matching_tolerance = 0;
+% matching_tolerance = 0.1451 * sample_rate; % 145 milliseconds, computed to samples.
+
 segments = segment_odf(query_odf, sample_rate);
 
 number_of_segments = size(segments, 1);
 
-[sorted_locations, sorted_location_probs] = match_segments(query_odf, target_odf, segments);
+[sorted_locations, sorted_location_probs] = match_segments(query_odf, target_odf, segments, matching_tolerance);
 
 %figure();
 %imagesc(sorted_location_probs);
-%sorted_locations
+% sorted_locations
+% sorted_location_probs
 
 number_of_matches = size(sorted_locations, 1);
 
@@ -41,14 +46,15 @@ initial_probabilities = ones(number_of_matches, number_of_matches) ./ number_of_
 [match_path, loglikelihood] = Fviterbi(initial_probabilities, sorted_location_probs, segment_transition_probs(:,:,2:end));
 % [match_path, loglikelihood] = Fviterbi(initial_probabilities, sorted_location_probs, go_up);
 
-exp(loglikelihood)
+% exp(loglikelihood)
 
 linear_index = (0 : number_of_segments - 1) * number_of_matches + match_path;
 match_locations = sorted_locations(linear_index);
 
-% An average of all segment matches. This ignores the distances the
-% segments are apart.
-fprintf('location probabilities of most likely segment sequence %s\n', sprintf('%.3f ', sorted_location_probs(linear_index)));
+% An average of all segment matches. TODO This ignores the distances the selected segments are apart.
+fprintf('locations of matched path %s\n', sprintf('%d ', match_locations));
+fprintf('location probabilities of most likely segment sequence %s\n', sprintf('%.4f ', sorted_location_probs(linear_index)));
+
 single_match_measure = sum(sorted_location_probs(linear_index)) / number_of_segments;
 
 end

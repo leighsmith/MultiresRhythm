@@ -1,13 +1,17 @@
-function [ match ] = match_score( query_segment, target_segment )
+function [ match ] = match_score( query_segment, target_segment, matching_tolerance )
 %match_score Count the number of onsets which match.
+% query_segment and target_segment are regions of the respective ODF
+% vectors, matching_tolerance is specified in samples.
+% $Id$
 
-% Normalise and convolve with a Gaussian envelope to match the width of the
-% target ODF pulses.
-onset_equivalence = 60; % In samples, in seconds = 60 / 172.27 = 0.349 seconds.
-norm_query_seg = normalise(gaussianRhythm(query_segment, onset_equivalence));
-norm_target_seg = normalise(gaussianRhythm(target_segment, onset_equivalence));
-% norm_query_seg = normalise(query_segment);
-% norm_target_seg = normalise(target_segment);
+if(matching_tolerance > 0)
+    % Normalise and convolve with a Gaussian envelope to match the width of the target ODF pulses.
+    norm_query_seg = normalise(gaussianRhythm(query_segment, matching_tolerance));
+    norm_target_seg = normalise(gaussianRhythm(target_segment, matching_tolerance));
+else
+    norm_query_seg = normalise(query_segment);
+    norm_target_seg = normalise(target_segment);
+end
 
 % Count the number of peaks which differ between the two segments
 % difference = norm_query_seg - norm_target_seg;

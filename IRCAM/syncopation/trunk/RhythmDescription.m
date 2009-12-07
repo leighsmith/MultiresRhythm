@@ -34,5 +34,9 @@ classdef RhythmDescription
         plot(rhythm_description.wideband_odf);
     end
     
+    function [rhythm_name] = rhythm_name(rhythm_description)
+        rhythm_name = rhythm_description.name;
+    end
+    
     end
 end
