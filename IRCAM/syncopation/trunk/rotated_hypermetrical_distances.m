@@ -10,7 +10,7 @@ for queryTrackIndex = 1 : num_tracks
     query_hypermeter = hypermeters(queryTrackIndex,:);
     for trackIndex = 1 : num_tracks
         best_alignment = hypermeter_align(query_hypermeter, hypermeters(trackIndex, :));
-        euclidean_distances(queryTrackIndex, trackIndex) = sum((hypermeters(trackIndex,:) - best_alignment) .^ 2);
+        euclidean_distances(queryTrackIndex, trackIndex) = sqrt(sum((hypermeters(trackIndex,:) - best_alignment) .^ 2));
     end
 end
 

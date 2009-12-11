@@ -22,6 +22,7 @@ if(nargin < 2)
     % independent dimensions for each metrical location, i.e each doesn't
     % interact.
     % metric = 'cityblock';
+    % * 'cosine' the normalised inner angle between vectors.
     % * Mahalanobis
     % metric = 'mahalanobis';
     % produces: NaNs & Matrix is singular to working precision. This is because

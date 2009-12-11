@@ -31,7 +31,9 @@ classdef RhythmDescription
     end
 
     function plot_rhythm(rhythm_description)
-        plot(rhythm_description.wideband_odf);
+        beat_samples = round(rhythm_description.beat_times * rhythm_description.sample_rate);
+        plot(1:length(rhythm_description.wideband_odf), rhythm_description.wideband_odf, '-', beat_samples, 1, '-+k');
+        title(rhythm_description.name);
     end
     
     function [rhythm_name] = rhythm_name(rhythm_description)

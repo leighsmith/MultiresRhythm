@@ -16,7 +16,9 @@ for target_index = 1 : length(target_descriptions)
         query_rhythm_descr = query_descriptions{query_index};
         fprintf('Comparing query %s to target %s\n', query_rhythm_descr.name, target_rhythm_descr.name);
         % Returns the possible locations and probabilities of matching segments of the query against the target.
-        [ match_locations, segments, single_match_measure ] = match_rhythm_odf(query_rhythm_descr.wideband_odf, target_rhythm_descr.wideband_odf, query_rhythm_descr.sample_rate);
+        % [ match_locations, segments, single_match_measure ] = match_rhythm_odf(query_rhythm_descr.wideband_odf, target_rhythm_descr.wideband_odf, query_rhythm_descr.sample_rate);
+        [ match_locations, segments, single_match_measure ] = match_no_segmentation(query_rhythm_descr.wideband_odf, target_rhythm_descr.wideband_odf, query_rhythm_descr.sample_rate);
+        
         dissimilarity(target_index, query_index) = single_match_measure;
     end
 end

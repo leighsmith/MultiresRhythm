@@ -1,13 +1,13 @@
-function [ similarity_matrix ] = fused_similarity( corpus_patterns )
+function [ similarity_matrix ] = fused_similarity( corpus_patterns, distance )
 %fuse_similarity Returns a fusion of similarity measures on each feature.
 %   Detailed explanation goes here
-    distance = 'euclidean';
+%    distance = 'euclidean';
 
     % Uses late fusion of similarity measures.
-    metrical_similarity = pattern_similarity_of_feature(@metricalProfile, corpus_patterns);
-    syncopation_similarity = pattern_similarity_of_feature(@syncopationProfile, corpus_patterns);
+    metrical_similarity = pattern_similarity_of_feature(@metricalProfile, corpus_patterns, distance);
+    syncopation_similarity = pattern_similarity_of_feature(@syncopationProfile, corpus_patterns, distance);
     hypermetrical_similarity = rotated_hypermetrical_distances(feature_matrix(@hypermetricalProfile, corpus_patterns));
-    tempo_similarity = pattern_similarity_of_feature(@tempoMeasure, corpus_patterns);
+    tempo_similarity = pattern_similarity_of_feature(@tempoMeasure, corpus_patterns, distance);
 
     % TODO Super dumb.
     similarity_matrix = (normalise(metrical_similarity) + normalise(syncopation_similarity) + normalise(hypermetrical_similarity) + normalise(tempo_similarity)) ./ 4;

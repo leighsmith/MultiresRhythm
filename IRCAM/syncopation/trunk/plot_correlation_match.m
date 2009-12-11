@@ -30,6 +30,8 @@ end
 full_shifting = [normalised_target; segment_shifts]';
 
 plot(plot_min_bound : plot_max_bound, full_shifting(plot_min_bound : plot_max_bound, :));
+% plot(full_shifting);
+
 
 end
 

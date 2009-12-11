@@ -13,6 +13,8 @@ properties
     beats_per_measure = 4; 
     syncopation = [];
     syncopation_tatums_per_beat = 4; % to 1/16th subdivisions.
+    % Those tatums which are non-zero on at least one pattern in the corpus.
+    principle_syncopation_tatums = []; 
     metrical_profile = [];
     metric_tatums_per_beat = 16;  % to 1/64th subdivisions.
     hypermetrical_profile = [];
@@ -82,7 +84,9 @@ function plot_pattern (pattern)
         syncopation_plot = zeros(1, profile_length);
         syncopation_plot(1 : profile_to_syncopation_ratio : profile_length) = pattern.syncopation(subbandIndex, :);
         beat_labels = ((0 : profile_length - 1) / profile_to_syncopation_ratio) + 1;
-        bar(beat_labels, [pattern.metrical_profile(subbandIndex, :); syncopation_plot]');
+        h = bar(beat_labels, [pattern.metrical_profile(subbandIndex, :); syncopation_plot]');
+        set(h(1), 'FaceColor','b');
+        set(h(2), 'FaceColor','g');
         % title(sprintf('Metric profile'),'Interpreter','none');
         title(sprintf('Metric profile of %s', pattern.name), 'Interpreter', 'none');
         legend('Beat Occurrence', 'Syncopation Intensity');
@@ -111,14 +115,18 @@ function features = featureVector(pattern)
     features = [syncopationProfile(pattern) metricalProfile(pattern) pattern.hypermetrical_profile pattern.tempo];
 end
 
-function length = featureVectorLength(pattern)
-    length = length(featureVector(pattern));
+function vector_length = featureVectorLength(pattern)
+    vector_length = length(featureVector(pattern));
 end
 
 function features = syncopationProfile(pattern)
     % Returns the syncopation pattern, stripped of the beat locations which
     % will also register 0 syncopation.
-    strippedOfBeats = strip_beats(pattern.syncopation, pattern.syncopation_tatums_per_beat);
+
+    % TODO we should have the principle tatums assigned after finding only
+    % those tatums which are non-zero.
+    principle_syncopation_tatums = strip_beats(pattern.syncopation, pattern.syncopation_tatums_per_beat);
+    strippedOfBeats = pattern.syncopation(:, principle_syncopation_tatums);
     features = reshape(strippedOfBeats, 1, numel(strippedOfBeats));
 end
 

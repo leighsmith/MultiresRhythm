@@ -1,5 +1,5 @@
 function [ featureMatrix ] = feature_matrix( featureMethod, corpus_patterns )
-%feature_matrix Returns the request feature accessed by a pattern method as
+%feature_matrix Returns the requested feature accessed by a pattern method (featureMethod) as
 % a matrix of values.
 
 featureMatrix = cell2mat(cellfun(featureMethod, corpus_patterns, 'UniformOutput', 0));

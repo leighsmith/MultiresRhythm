@@ -10,23 +10,31 @@ global plotting;
 plotting = {}; 
 set_diag_plot('similarity_matrix')
 set_diag_plot('similarity_comparisons')
-late_fusion = true;
+similarity = 'syncopation_alone';
 
 corpus_dataset = make_quaero_dataset(corpus_name);
 
 corpus_patterns = pattern_for_corpus(corpus_dataset, corpus_name);
 best_similarity = zeros(1, length(corpus_patterns));
 
-if (late_fusion == true)
-    similarity_matrix = fused_similarity(corpus_patterns);
-else
-    similarity_matrix = pattern_similarity_of_feature(@featureVector, corpus_patterns);
+switch (similarity)
+    case 'late_fusion'
+        distance = 'euclidean';
+        similarity_matrix = fused_similarity(corpus_patterns, distance);
+    case 'syncopation_alone'
+        distance = 'euclidean';
+        similarity_matrix = pattern_similarity_of_feature(@syncopationProfile, corpus_patterns, distance);
+    case 'early_fusion'
+        distance = 'cosine';
+        similarity_matrix = pattern_similarity_of_feature(@featureVector, corpus_patterns, distance);
+    otherwise
+        fprintf('Unknown similarity method\n');
 end
 
 if (diag_plot('similarity_matrix'))
     figure();
     imagesc(similarity_matrix)
-    title(sprintf('Dissimilarity of pattern of Quaero Selection by %s distance metric', 'euclidean'))
+    title(sprintf('Dissimilarity of pattern of Quaero Selection by %s distance metric', distance))
     xlabel('Quaero Track');
     ylabel('Quaero Track');
 end
@@ -35,7 +43,7 @@ closest_song_indices = closest_rhythms(similarity_matrix);
 
 % Print most similar to
 for i = 1 : length(corpus_dataset)
-    fprintf('%3d: (%.3f) "%s" most similar to "%s"\n', ...
+    fprintf('%3d: (%.4f) "%s" most similar to "%s"\n', ...
             i, similarity_matrix(i, closest_song_indices(i)), corpus_dataset{i}, corpus_dataset{closest_song_indices(i)});
     best_similarity(i) = similarity_matrix(i, closest_song_indices(i));
 end
@@ -47,7 +55,7 @@ end
 fprintf('Top 10 matches\n');
 for j = 1 : 10
     i = matching_indices(j);
-    fprintf('%3d: (%.3f) "%s" most similar to "%s"\n', ...
+    fprintf('%3d: (%.4f) "%s" most similar to "%s"\n', ...
             i, similarity_matrix(i, closest_song_indices(i)), corpus_dataset{i}, corpus_dataset{closest_song_indices(i)});
 end
 
