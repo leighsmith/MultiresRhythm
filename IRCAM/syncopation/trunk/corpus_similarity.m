@@ -10,7 +10,7 @@ global plotting;
 plotting = {}; 
 set_diag_plot('similarity_matrix')
 set_diag_plot('similarity_comparisons')
-similarity = 'syncopation_alone';
+similarity = 'early_fusion';
 
 corpus_dataset = make_quaero_dataset(corpus_name);
 

@@ -34,11 +34,11 @@ function new_pattern = setSyncopation(pattern, syncopation)
     new_pattern = pattern;
 end
         
-function syncopation = syncopation_of(rhythm)
-    syncopation = rhythm.syncopation;
+function syncopation = syncopation_of(pattern)
+    syncopation = pattern.syncopation;
 end
 
-function write_pattern ( pattern, filename, pattern_filepath )
+function write_pattern( pattern, filename, pattern_filepath )
     %write_pattern Writes the syncopation and metrical profiles to XML file.
 
     dom = com.mathworks.xml.XMLUtils.createDocument('pattern-description');
@@ -72,7 +72,7 @@ function write_pattern ( pattern, filename, pattern_filepath )
     xmlwrite(pattern_filepath, dom);
 end
 
-function plot_pattern (pattern)
+function plot_pattern(pattern)
     % Display the rhythm pattern instance.
     figure();
     numOfProfiles = size(pattern.metrical_profile, 1);

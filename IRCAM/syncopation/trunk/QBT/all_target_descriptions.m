@@ -1,3 +1,4 @@
+% -*- Octave -*-
 function [ all_target_descriptions ] = all_target_descriptions( corpus_directory )
 %all_target_descriptions Return a cell array of RhythmDescriptions read
 %from the QBT targets.

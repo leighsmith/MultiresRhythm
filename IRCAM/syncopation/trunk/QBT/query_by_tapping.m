@@ -1,3 +1,4 @@
+% -*- Octave -*-
 function [ dissimilarity ] = query_by_tapping( corpus_directory )
 %query_by_tapping Summary of this function goes here
 % $Id$

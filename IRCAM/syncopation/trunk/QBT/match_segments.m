@@ -1,8 +1,8 @@
-function [ sorted_locations, sorted_location_probs ] = match_segments ( query_odf, target_odf, segments, matching_tolerance )
+function [ sorted_locations, sorted_location_probs ] = match_segments( query_odf, target_odf, segments, matching_tolerance )
 %match_segments Match segments of the query ODF against the target ODF
 % $Id$
 
-use_correlation_matches = true;
+use_correlation_matches = false;
 
 number_of_segments = size(segments, 1);
 number_of_matches = 20;

@@ -1,6 +1,6 @@
 function [ similarity_matrix ] = fused_similarity( corpus_patterns, distance )
 %fuse_similarity Returns a fusion of similarity measures on each feature.
-%   Detailed explanation goes here
+%   Currently the fusion is just averaging the similarity measure of each feature.
 %    distance = 'euclidean';
 
     % Uses late fusion of similarity measures.

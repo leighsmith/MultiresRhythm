@@ -1,3 +1,4 @@
+% -*- Octave -*-
 function [ normalised_times ] = query_intervals( filename )
 %query_intervals Return the relative intervals of the query file.
 %   Detailed explanation goes here

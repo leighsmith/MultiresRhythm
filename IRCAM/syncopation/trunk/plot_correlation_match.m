@@ -2,11 +2,11 @@ function plot_correlation_match( query_rhythm, target_rhythm, all_shifts, query_
 %plot_correlation_match Plot the query and target rhythms aligned by shifting the query forward by shift_by samples.
 % $Id$
 
-normalised_target = target_rhythm ./ max(target_rhythm);
-normalised_query = query_rhythm ./ max(query_rhythm);
+normalised_target = reshape(target_rhythm, 1, length(target_rhythm)) ./ max(target_rhythm);
+normalised_query = reshape(query_rhythm, 1, length(query_rhythm)) ./ max(query_rhythm);
 
 if(isscalar(all_shifts) || nargin < 4)
-    fprintf('all_shifts is scalar, need to promote to array');
+    fprintf('all_shifts is scalar, need to promote to array\n');
     all_shifts = [all_shifts];
     query_segments = [1, length(query_rhythm)];
 end

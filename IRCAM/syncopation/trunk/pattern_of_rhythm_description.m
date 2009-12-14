@@ -4,8 +4,7 @@ function [ pattern ] = pattern_of_rhythm_description ( rhythm_description )
 % per measure. Should be a factory method.
 % $Id$
 
-rhythm_name = rhythm_description.name;
-pattern = RhythmPattern(rhythm_name);
+pattern = RhythmPattern(rhythm_description.name);
 
 % Calculate the syncopation measures for each spectral subband.
 for subBandIndex = 1 : size(rhythm_description.odfs, 1)
@@ -26,6 +25,28 @@ for subBandIndex = 1 : size(rhythm_description.odfs, 1)
     % setSyncopation(pattern, syncopation_profile); 
     pattern.syncopation(subBandIndex,:) = syncopation_profile;
     %% fprintf('syncopation_profile %s~%', syncopation_profile)
+    
+    if (diag_plot('syncopation_profile'))
+        plot_pattern(pattern);
+    end
+
+    if (diag_plot('syncopation_measures'))
+        figure();
+        imagesc(rhythm_syncopation_measures)
+        % 	   :aspect_ratio 0.66
+        title(sprintf('Syncopation intensity for %s', rhythm_description.name),'Interpreter','none');
+        %close();
+    end
+
+    if (diag_plot('syncopation_variation'))
+        syncopation_variation = sum(normalised_syncopation_measures) ./ num_of_tatums;
+        figure();
+        plot(syncopation_variation);
+        % 	  :aspect_ratio 0.66
+        title(sprintf('Evolution of syncopation of %s', rhythm_description.name),'Interpreter','none')
+        % close();
+    end
+  
 end 
 
 % Calculate the metrical profile for each spectral subband.
@@ -56,25 +77,4 @@ pattern.beats_per_measure = rhythm_description.beats_per_measure;
 % [max, indices] = sort(acf(length(onsets_signal) + 1 : end), 'descend');
 % indices(1:10)
     
-if (diag_plot('syncopation_profile'))
-    plot_pattern(pattern);
-end
-
-if (diag_plot('syncopation_measures'))
-    figure();
-    imagesc(rhythm_syncopation_measures)
-    % 	   :aspect_ratio 0.66
-    title(sprintf('Syncopation intensity for %s', rhythm_name),'Interpreter','none');
-    %close();
-end
-
-if (diag_plot('syncopation_variation'))
-    syncopation_variation = sum(normalised_syncopation_measures) ./ num_of_tatums;
-    figure();
-    plot(syncopation_variation);
-    % 	  :aspect_ratio 0.66
-    title(sprintf('Evolution of syncopation of %s', rhythm_name),'Interpreter','none')
-    % close();
-end
-  
 end
