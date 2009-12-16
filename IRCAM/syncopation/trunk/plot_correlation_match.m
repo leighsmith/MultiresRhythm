@@ -1,6 +1,9 @@
+% -*- Octave -*-
 function plot_correlation_match( query_rhythm, target_rhythm, all_shifts, query_segments )
 %plot_correlation_match Plot the query and target rhythms aligned by shifting the query forward by shift_by samples.
 % $Id$
+
+limit_plot = true;
 
 normalised_target = reshape(target_rhythm, 1, length(target_rhythm)) ./ max(target_rhythm);
 normalised_query = reshape(query_rhythm, 1, length(query_rhythm)) ./ max(query_rhythm);
@@ -36,8 +39,11 @@ end
 % Prepend the row for the original rhythm.
 full_shifting = [normalised_target; segment_shifts]';
 
-plot(plot_min_bound : plot_max_bound, full_shifting(plot_min_bound : plot_max_bound, :));
-% plot(full_shifting);
+if(limit_plot)
+    plot(plot_min_bound : plot_max_bound, full_shifting(plot_min_bound : plot_max_bound, :));
+else
+    plot(full_shifting);
+end
 
 segment_legends = cell(size(query_segments, 1) + 1, 1);
 segment_legends{1} = 'Target';

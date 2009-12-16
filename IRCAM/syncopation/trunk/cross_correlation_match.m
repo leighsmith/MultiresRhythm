@@ -11,7 +11,7 @@ end
 [ shifts, sorted_peak_lag_values ] = correlation_alignments(query_vector, target_vector);
 
 % Make all -ve shifts index from the start of the target_vector, leave the +ve shifts untouched.
-folded_shifts = mod(length(target_vector) + shifts, length(target_vector));
+folded_shifts = mod(length(target_vector) - shifts, length(target_vector));
 % TODO Remove the non-unique folded peak indices.
 highest_unique_indices = 1 : min(length(folded_shifts), highest_correlations);
 selected_peak_indices = folded_shifts(highest_unique_indices);

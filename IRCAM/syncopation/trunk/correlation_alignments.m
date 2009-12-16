@@ -1,5 +1,5 @@
 % -*- Octave -*-
-function [ shifts, sorted_peak_lag_values ] = correlation_alignments(query_vector, target_vector)
+function [ shifts, correlation_values ] = correlation_alignments(query_vector, target_vector)
 %correlation_alignments Returns the best bivalent lags to align the query
 %vector against the target.
 %   0 indicates no shift of the query, +1 shifts the query 1 sample
@@ -19,7 +19,11 @@ peak_indices = find_local_extrema(query_target_correlation, 'max');
 peak_lag_values = query_target_correlation(peak_indices);
 [sorted_peak_lag_values, sorted_peak_lag_indices] = sort(peak_lag_values, 'descend');
 
-shifts = peak_indices(sorted_peak_lag_indices) - zeroth_lag;
+highest_value = sorted_peak_lag_values(1);
+% Anything less than 1/100th of the highest value isn't worth returning.
+above_minimum = sorted_peak_lag_values > highest_value / 100;
+shifts = peak_indices(sorted_peak_lag_indices(above_minimum)) - zeroth_lag;
+correlation_values = sorted_peak_lag_values(above_minimum);
 
 end
 
