@@ -1,6 +1,7 @@
+% -*- Octave -*-
 function [ normalised_times ] = target_intervals ( filename )
 %target_intervals Return the relative intervals of the target file.
-%   Detailed explanation goes here
+%   $Id$
 
 root_dir = '~/Research/Data/IRCAM-Beat/QueryByTapping/REFMIDI/';
 onsets_pathname = tilde_expand([root_dir filename '.onsets']);
