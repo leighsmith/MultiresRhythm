@@ -1,14 +1,10 @@
-function [ beat_times, beat_markers ] = read_ircam_annotation( filepath, marker_name )
+function [ beat_times, beat_markers ] = read_qima_file( filepath )
 % Read the given XML file to return an array of beat markers
 % $Id$
 
-if(nargin < 2)
-    marker_name = 'segment';
-end
-
 marker_document = xmlread(filepath);
 marker_root = marker_document.getDocumentElement();
-markers = marker_root.getElementsByTagName(marker_name);
+markers = marker_root.getElementsByTagName('segment');
 
 % These are overestimates, as not all elements will be true markers
 beat_markers = zeros(markers.getLength(), 1);

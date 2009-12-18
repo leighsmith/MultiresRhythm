@@ -2,7 +2,7 @@ function [ selected_peak_indices, selected_peak_values ] = forward_correlation_m
 %forward_correlation_match Return the samples that are the highest aligning matches between the two vectors.
 % highest_correlations indicates how many matches to return. Only forward
 % shifts of queries are considered.
-% $Id: cross_correlation_match.m 5543 2009-10-19 17:08:16Z leighsmi $
+% $Id$
 
 if (nargin < 3)
     highest_correlations = 5;

@@ -1,5 +1,5 @@
-function [ similarity_matrix, corpus_patterns ] = corpus_similarity(corpus_name)
-%corpus_similarity Returns the similarity matrix of the corpus named by corpus_name.
+function [ similarity_matrix, corpus_patterns ] = rhythm_similarity_of_corpus(corpus_name)
+%rhythm_similarity_of_corpus Returns the similarity matrix of the corpus named by corpus_name.
 % for example: corpus_similarity('Quaero_Selection');
 % $Id$
 
@@ -12,9 +12,11 @@ set_diag_plot('similarity_matrix')
 set_diag_plot('similarity_comparisons')
 similarity = 'early_fusion';
 
-corpus_dataset = make_quaero_dataset(corpus_name);
+rhythm_directory_root = tilde_expand(['~/Research/Data/IRCAM-Beat/' corpus_name '/']);
+annotations_directory = [rhythm_directory_root 'Annotation/'];
 
-corpus_patterns = pattern_for_corpus(corpus_dataset, corpus_name);
+corpus_dataset = make_quaero_dataset(annotations_directory);
+corpus_patterns = pattern_for_corpus(corpus_dataset, rhythm_directory_root);
 best_similarity = zeros(1, length(corpus_patterns));
 
 switch (similarity)

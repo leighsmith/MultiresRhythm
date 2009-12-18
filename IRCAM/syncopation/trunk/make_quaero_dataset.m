@@ -1,4 +1,4 @@
-function [ dataset_for_meter ] = make_quaero_dataset( quaero_directory )
+function [ dataset_for_meter ] = make_quaero_dataset( annotations_directory )
 %make_quaero_dataset Returns a cell vector of names of files in the corpus,
 %stripped of extensions.
 % $Id$
@@ -6,7 +6,6 @@ function [ dataset_for_meter ] = make_quaero_dataset( quaero_directory )
 start_at = 1;
 only_measures_of_beats = 4;       % TODO exclude non_strict 4/4 for now.
 
-annotations_directory = tilde_expand(['~/Research/Data/IRCAM-Beat/' quaero_directory '/Annotation']);
 annotation_files = dir(annotations_directory);
 maximum_examples = length(annotation_files);
 dataset = cell(1, maximum_examples);
@@ -25,10 +24,8 @@ while (dataset_index <= maximum_examples && song_index <= maximum_examples)
         % We exclude all non-strictly single meters
         if(mean(beats_per_measure(:, 1)) == only_measures_of_beats)
             %% Get the initial upbeat
-            % (destructuring_bind (anacrusis downbeat_time)
-            % (annotated_anacrusis annotation_pathname ircambeat_marker_pathname (first beats_per_measure))
-            % fprintf('~a anacrusis ~d, downbeat time ~,3f beats_per_measure ~a~%'
-            % annotation_name, anacrusis, downbeat_time, beats_per_measure)
+            % [anacrusis downbeat_time] = annotated_anacrusis(annotation_pathname ircambeat_marker_pathname (first beats_per_measure))
+            % fprintf('%a anacrusis %d, downbeat time %,3f beats_per_measure %a\n', annotation_name, anacrusis, downbeat_time, beats_per_measure)
             dataset{dataset_index} = annotation_name;
             % (list annotation_name :anacrusis anacrusis :annotation_filepath
             % annotation_pathname :first_downbeat_time downbeat_time))))

@@ -1,4 +1,4 @@
-function [ corpus_rhythm_patterns ] = pattern_for_corpus( corpus, quaero_directory )
+function [ corpus_rhythm_patterns ] = pattern_for_corpus( corpus, rhythm_directory_root )
 %pattern_for_corpus Returns a cell array of matrices of rhythm pattern measures for the entire corpus.
 % Assumes corpus is a cell array of strings.
 % TODO Assumes all members of the corpus are the same meter.
@@ -6,7 +6,6 @@ function [ corpus_rhythm_patterns ] = pattern_for_corpus( corpus, quaero_directo
 
 corpus_rhythm_patterns = cell(length(corpus),1);
 annotation_type = '.beat';
-rhythm_directory_root = tilde_expand(['~/Research/Data/IRCAM-Beat/' quaero_directory '/']);
         
 for piece_index = 1 : length(corpus)
     piece = corpus{1, piece_index};
@@ -16,7 +15,14 @@ for piece_index = 1 : length(corpus)
         pattern = read_pattern(piece, pattern_filepath);
     catch no_pattern
         % We use the annotated rhythms to ensure the downbeats are correct.
-        rhythm_description = read_quaero_rhythm(piece, rhythm_directory_root, annotation_type);
+        abs_rhythm_directory = tilde_expand(rhythm_directory_root);
+        sound_directory_root = '/Volumes/Quaerodb/music/Annotation Corpus - 1000 C/WAV stereo 44k/';
+        % sound_directory_root =  [abs_rhythm_directory 'Audio/']
+
+        beat_markers_filepath = [abs_rhythm_directory 'Annotation/' piece annotation_type '.xml'];
+        audio_filepath = [sound_directory_root piece '.wav'];
+
+        rhythm_description = read_rhythm_description(beat_markers_filepath, audio_filepath);
         pattern = pattern_of_rhythm_description(rhythm_description);
         write_pattern(pattern, piece, tilde_expand(pattern_filepath));
     end

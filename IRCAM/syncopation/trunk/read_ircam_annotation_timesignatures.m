@@ -1,38 +1,36 @@
-function [ segment_timesignatures, hierarchy ] = read_ircam_annotation_timesignatures( filepath, segment_name )
+% -*- Octave -*-
+function [ segment_timesignatures, hierarchy ] = read_ircam_annotation_timesignatures( filepath)
 %read_ircam_annotation_timesignatures Read the time signatures in the annotation file and return an
 %array of the beats per measure and the hierarchy of subdivisions of the measure.
 % $Id$
 
-if nargin < 2
-    segment_name = 'segment';
-end
-
 segment_document = xmlread(filepath);
 segment_root = segment_document.getDocumentElement();
-segments = segment_root.getElementsByTagName(segment_name);
+timesignatures = segment_root.getElementsByTagName('timesignature');
 
-timesignatures_and_times = zeros(segments.getLength(), 2);
+timesignatures_and_times = zeros(timesignatures.getLength(), 2);
 write_index = 1;
 
-for segment_index = 0 : segments.getLength() - 1
-    segment_node = segments.item(segment_index);
+for timesignature_index = 0 : timesignatures.getLength() - 1
+    timesignature_node = timesignatures.item(timesignature_index);
+    segment_node = timesignature_node.getParentNode();
     comment = char(segment_node.getAttribute('comment'));
     time = str2double(char(segment_node.getAttribute('time')));
 
-    beats_per_measure = 0;
-    switch comment
-    case 'timesignature-4/4'
-        beats_per_measure = 4;
+    beats_per_measure = str2double(char(timesignature_node.getAttribute('beatspermeasure')));
+    beatduration = str2double(char(timesignature_node.getAttribute('beatduration')));
+
+    switch beats_per_measure
+    case 4
         hierarchy = [2 2 2 2];
-    case 'timesignature-6/8'
-        beats_per_measure = 6;
+    case 6
         hierarchy = [2 3 2];
-    case 'timesignature-12/8'
-        beats_per_measure = 12;
+    case 12
         hierarchy = [2 2 3 2];
-    case 'timesignature-3/4'
-        beats_per_measure = 3;
+    case 3
         hierarchy = [3 2 2];
+    otherwise
+        hierarchy = [];
     end
     if beats_per_measure ~= 0
        % fprintf('beat %d time %d\n', beats_per_measure, time)

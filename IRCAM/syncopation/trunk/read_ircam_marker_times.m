@@ -11,7 +11,7 @@ if (strcmp(first_tagname, 'beatdescription'))
 elseif (strcmp(first_tagname, 'musicdescription'))
     % New version 20090226A just uses the same beattype markers, as
     % annotations, named segments.
-	[marker_times, marker_indices] = read_ircam_annotation(beat_marker_filepath, 'segment');
+	[marker_times, marker_indices] = read_qima_file(beat_marker_filepath);
 else
 	fprintf('Unusual ircambeat format %s discovered', first_tagname);
 end
