@@ -16,8 +16,5 @@ else
 	fprintf('Unusual ircambeat format %s discovered', first_tagname);
 end
 
-%% Remove the clap times that are negative (!)
-% marker_times = clap_times_in_seconds(find(clap_times_in_seconds > 0.0))
-
 end
 
