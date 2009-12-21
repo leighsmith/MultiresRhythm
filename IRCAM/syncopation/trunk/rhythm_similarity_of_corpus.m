@@ -12,11 +12,14 @@ set_diag_plot('similarity_matrix')
 set_diag_plot('similarity_comparisons')
 similarity = 'early_fusion';
 
+% The directories we work on.
 rhythm_directory_root = tilde_expand(['~/Research/Data/IRCAM-Beat/' corpus_name '/']);
 annotations_directory = [rhythm_directory_root 'Annotation/'];
+sound_directory_root = '/Volumes/Quaerodb/music/Annotation Corpus - 1000 C/WAV stereo 44k/';
+beat_file_extension = '.beat.xml';
 
-corpus_dataset = make_quaero_dataset(annotations_directory);
-corpus_patterns = pattern_for_corpus(corpus_dataset, rhythm_directory_root);
+corpus_dataset = make_quaero_dataset(annotations_directory, beat_file_extension);
+corpus_patterns = pattern_for_corpus(corpus_dataset, sound_directory_root);
 best_similarity = zeros(1, length(corpus_patterns));
 
 switch (similarity)
@@ -46,7 +49,7 @@ closest_song_indices = closest_rhythms(similarity_matrix);
 % Print most similar to
 for i = 1 : length(corpus_dataset)
     fprintf('%3d: (%.4f) "%s" most similar to "%s"\n', ...
-            i, similarity_matrix(i, closest_song_indices(i)), corpus_dataset{i}, corpus_dataset{closest_song_indices(i)});
+            i, similarity_matrix(i, closest_song_indices(i)), filename(corpus_dataset{i}), filename(corpus_dataset{closest_song_indices(i)}));
     best_similarity(i) = similarity_matrix(i, closest_song_indices(i));
 end
 
@@ -58,8 +61,14 @@ fprintf('Top 10 matches\n');
 for j = 1 : 10
     i = matching_indices(j);
     fprintf('%3d: (%.4f) "%s" most similar to "%s"\n', ...
-            i, similarity_matrix(i, closest_song_indices(i)), corpus_dataset{i}, corpus_dataset{closest_song_indices(i)});
+            i, similarity_matrix(i, closest_song_indices(i)), filename(corpus_dataset{i}), filename(corpus_dataset{closest_song_indices(i)}));
 end
 
 end
 
+% fileparts differs from ircambeat's notion of extension, taking the last period as the
+% start of the extension, not the first.
+function [filename] = filename(filepath)
+    [directory, filename_and_extension] = fileparts(filepath);
+    filename = strtok(filename_and_extension, '.');
+end
