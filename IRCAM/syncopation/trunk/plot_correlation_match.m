@@ -1,4 +1,3 @@
-% -*- Octave -*-
 function plot_correlation_match( query_rhythm, target_rhythm, all_shifts, query_segments )
 %plot_correlation_match Plot the query and target rhythms aligned by shifting the query forward by shift_by samples.
 % $Id$

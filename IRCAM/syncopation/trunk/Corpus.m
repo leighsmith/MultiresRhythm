@@ -1,4 +1,3 @@
-% -*- Octave -*-
 classdef Corpus
     
 %Corpus Holds the corpus to be analysed.

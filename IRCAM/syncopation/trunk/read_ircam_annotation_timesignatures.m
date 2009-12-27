@@ -1,4 +1,3 @@
-% -*- Octave -*-
 function [ segment_timesignatures, hierarchy ] = read_ircam_annotation_timesignatures( filepath)
 %read_ircam_annotation_timesignatures Read the time signatures in the annotation file and return an
 %array of the beats per measure and the hierarchy of subdivisions of the measure.

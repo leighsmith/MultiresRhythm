@@ -1,0 +1,1 @@
+sim = rhythm_similarity_of_corpus(tilde_expand('~/Research/Data/IRCAM-Beat/ISMIR2004_tempo_ballroom/Analysis/'), '.wav.markers.xml', tilde_expand('~/Research/Data/IRCAM-Beat/ISMIR2004_tempo_ballroom/Audio/'));

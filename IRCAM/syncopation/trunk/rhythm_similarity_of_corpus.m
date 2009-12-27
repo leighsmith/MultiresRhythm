@@ -1,6 +1,6 @@
-function [ similarity_matrix, corpus_patterns ] = rhythm_similarity_of_corpus(corpus_name)
-%rhythm_similarity_of_corpus Returns the similarity matrix of the corpus named by corpus_name.
-% for example: corpus_similarity('Quaero_Selection');
+function [ similarity_matrix, corpus_patterns ] = rhythm_similarity_of_corpus(corpus_directory, beat_file_extension, sound_directory_root)
+%rhythm_similarity_of_corpus Returns the similarity matrix of the corpus named by corpus_directory.
+% for example: rhythm_similarity_of_corpus('~/Quaero_Selection', '.beat.xml', '~/Quaero_Sounds');
 % $Id$
 
 global plotting;
@@ -12,13 +12,7 @@ set_diag_plot('similarity_matrix')
 set_diag_plot('similarity_comparisons')
 similarity = 'early_fusion';
 
-% The directories we work on.
-rhythm_directory_root = tilde_expand(['~/Research/Data/IRCAM-Beat/' corpus_name '/']);
-annotations_directory = [rhythm_directory_root 'Annotation/'];
-sound_directory_root = '/Volumes/Quaerodb/music/Annotation Corpus - 1000 C/WAV stereo 44k/';
-beat_file_extension = '.beat.xml';
-
-corpus_dataset = make_quaero_dataset(annotations_directory, beat_file_extension);
+corpus_dataset = make_quaero_dataset(corpus_directory, beat_file_extension);
 corpus_patterns = pattern_for_corpus(corpus_dataset, sound_directory_root);
 best_similarity = zeros(1, length(corpus_patterns));
 

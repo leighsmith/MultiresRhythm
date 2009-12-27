@@ -1,4 +1,3 @@
-% -*- Octave *-*
 function [ distances ] = vector_distance( vec1, vec2 )
 %vector_distance Compute a distance matrix between two vectors, 
 %   Returns a matrix with rows of vec1, columns vec2

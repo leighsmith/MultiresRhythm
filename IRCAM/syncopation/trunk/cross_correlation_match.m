@@ -1,4 +1,3 @@
-% -*- Octave -*-
 function [ selected_peak_indices, selected_peak_values ] = cross_correlation_match(query_vector, target_vector, highest_correlations)
 %cross_correlation_match Return the samples that are the highest aligning matches between the two vectors.
 % highest_correlations indicates how many matches to return, 

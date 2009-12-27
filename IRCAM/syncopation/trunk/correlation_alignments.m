@@ -1,4 +1,3 @@
-% -*- Octave -*-
 function [ shifts, correlation_values ] = correlation_alignments(query_vector, target_vector)
 %correlation_alignments Returns the best bivalent lags to align the query
 %vector against the target.
