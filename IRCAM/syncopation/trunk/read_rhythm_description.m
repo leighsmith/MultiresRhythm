@@ -3,9 +3,8 @@ function [ new_rhythm_description ] = read_rhythm_description( beat_markers_file
 %each beat, beats per measure, downbeat times, meter assigned from the ircambeat computed values.
 % $Id$
 
-trim_odf_to_downbeat = true;
-
-[computed_odf, sample_rate, odf_subbands] = odf(audio_filepath);
+% Assign the wideband_odf as the entire spectral energy.
+[wideband_odf, sample_rate, odf_subbands] = odf(audio_filepath);
 
 % bpm_filepath = [beat_markers_filepath '.wav.bpm.xml'];
 % [beat_times, beat_markers] = read_ircam_marker_times(beat_markers_filepath);
@@ -14,19 +13,6 @@ trim_odf_to_downbeat = true;
 
 downbeats = find(beat_markers == 1); % downbeats are marked as "1".
 anacrusis = downbeats(1) - 1; % number of beats before the first downbeat
-
-% Assign the wideband_odf as the entire spectral energy.
-if (trim_odf_to_downbeat)
-    % Trim the ODF according to downbeat locations.
-    start_from = beat_times(downbeats(1));
-    start_sample = round(sample_rate * start_from) + 1;
-    wideband_odf = computed_odf(start_sample : end);
-    % Create an matrix of different subbands.
-    odf_subbands = odf_subbands(:, start_sample : end);
-    fprintf('Starting downbeat finding from %.3f seconds, %.3f samples\n', start_from, start_sample);
-else
-    wideband_odf = computed_odf;
-end
 
 [all_beats_per_measure, metrical_hierarchy] = read_ircam_annotation_timesignatures(beat_markers_filepath);
 beats_per_measure = all_beats_per_measure(1); % TODO take the first beats-per-measure as the standard

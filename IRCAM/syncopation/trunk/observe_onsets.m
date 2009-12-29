@@ -6,8 +6,8 @@ silence_observations = observe_evidence_of(odf, rhythm_description, subdivisions
 
 % number of rows = number of tatums in measure.
 % grid_length = size(silence_observations, 1);
-threshold = 0.5; % Arbitrary & therefore probably wrong, but should be above chance.
-onset_observations = silence_observations < threshold;
+amplitude_threshold = 0.5; % Arbitrary & therefore probably wrong, but should be above chance.
+onset_observations = silence_observations < amplitude_threshold;
 
 if (diag_plot('onset_observations'))
     figure();

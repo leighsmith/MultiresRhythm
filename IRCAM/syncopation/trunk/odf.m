@@ -6,6 +6,7 @@ function [ odf, odf_sr, odf_subbands ] = odf( wav_filepath )
 
 % MFenergyfft loses the first 30mS of the signal in computing the ODF
 seconds_lost = 0.030;
+% seconds_lost = 0.0;
 
 [signal, sample_rate, resolution] = wavread(tilde_expand(wav_filepath));
 
@@ -18,8 +19,13 @@ subband_range = [[60, 100]; [3500, 4000]];
 odf_sr = 1 / mean(diff(marker_times_seconds));
 
 % Prepend silence to realign the computed ODF to the audio file.
-odf = [zeros(round(seconds_lost * odf_sr), 1); odf_fullfreq];
-odf_subbands = [zeros(size(odf_subbands_clipped, 1), round(seconds_lost * odf_sr)), odf_subbands_clipped];
+if (seconds_lost == 0.0)
+    odf = odf_fullfreq;
+    odf_subbands = odf_subbands_clipped;
+else
+    odf = [zeros(round(seconds_lost * odf_sr), 1); odf_fullfreq];
+    odf_subbands = [zeros(size(odf_subbands_clipped, 1), round(seconds_lost * odf_sr)), odf_subbands_clipped];
+end
 
 end
 

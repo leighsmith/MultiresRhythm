@@ -5,7 +5,6 @@ function [ feature_estimates ] = observe_evidence_of(rhythm_odf, rhythm_descript
 % set(title, 'Interpreter','none');
 measures_to_plot = [77]; % should be global.
 
-% rhythm_odf = rhythm_description.odf; % Used to be the default odf.
 beat_times = rhythm_description.beat_times;
 beats_per_measure = rhythm_description.beats_per_measure;
 sample_rate = rhythm_description.sample_rate;
@@ -25,7 +24,7 @@ for measure_index = 1 : number_of_measures
     beat_duration_index = (beats_per_measure * (measure_index - 1));
     beat_durations_in_measure = beat_durations(beat_duration_index  + 1 : beat_duration_index + beats_per_measure);
     bar_duration = sum(beat_durations_in_measure); % in samples
-    start_sample = round((beat_times(((measure_index - 1) * beats_per_measure) + 1) - beat_times(1)) * sample_rate) + 1;
+    start_sample = round(beat_times(((measure_index - 1) * beats_per_measure) + 1) * sample_rate) + 1;
     fprintf('Measure %3d start sample %d seconds %f\n', measure_index, start_sample, start_sample / sample_rate);
     fprintf('beat duration in samples %s = %.3f\n', sprintf('%.3f ', beat_durations_in_measure), bar_duration);
 

@@ -40,5 +40,19 @@ classdef RhythmDescription
         rhythm_name = rhythm_description.name;
     end
     
+    function [trimmed_odf, trimmed_odf_subbands] = beat_synchronised_odf(rhythm_description)
+    % Returns the ODF trimmed of any anacrusis or leading silence, so that
+    % sample 1 of the returned ODF is at the first downbeat. Returns this
+    % but doesn't modify the original ODF so the beat times and ODF stay in
+    % sync.
+        % Trim the ODF according to downbeat locations.
+        start_from = rhythm_description.beat_times(rhythm_description.anacrusis + 1);
+        start_sample = round(rhythm_description.sample_rate * start_from) + 1;
+        trimmed_odf = rhythm_description.wideband_odf(start_sample : end);
+        % Create an matrix of different subbands.
+        trimmed_odf_subbands = rhythm_description.odfs(:, start_sample : end);
+        fprintf('Starting downbeat finding from %.3f seconds, %.3f samples\n', start_from, start_sample);
+    end
+    
     end
 end

@@ -5,6 +5,8 @@ function [ pattern ] = pattern_of_rhythm_description ( rhythm_description )
 % $Id$
 
 pattern = RhythmPattern(rhythm_description.name);
+% Retrieve the ODF as trimmed to the first downbeat.
+% [trimmed_odf, trimmed_odf_subbands] = beat_synchronised_odf(rhythm_description);
 
 % Calculate the syncopation measures for each spectral subband.
 for subBandIndex = 1 : size(rhythm_description.odfs, 1)
