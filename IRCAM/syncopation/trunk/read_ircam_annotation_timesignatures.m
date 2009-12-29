@@ -10,6 +10,8 @@ timesignatures = segment_root.getElementsByTagName('timesignature');
 timesignatures_and_times = zeros(timesignatures.getLength(), 2);
 write_index = 1;
 
+hierarchy = [];
+        
 for timesignature_index = 0 : timesignatures.getLength() - 1
     timesignature_node = timesignatures.item(timesignature_index);
     segment_node = timesignature_node.getParentNode();
@@ -28,8 +30,6 @@ for timesignature_index = 0 : timesignatures.getLength() - 1
         hierarchy = [2 2 3 2];
     case 3
         hierarchy = [3 2 2];
-    otherwise
-        hierarchy = [];
     end
     if beats_per_measure ~= 0
        % fprintf('beat %d time %d\n', beats_per_measure, time)
