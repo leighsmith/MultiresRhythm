@@ -1,6 +1,6 @@
-function [ similarity_matrix, corpus_patterns ] = rhythm_similarity_of_corpus(corpus_directory, beat_file_extension, sound_directory_root)
+function [ similarity_matrix, corpus_patterns ] = rhythm_similarity_of_corpus(corpus_name, corpus_directory, beat_file_extension, sound_directory_root)
 %rhythm_similarity_of_corpus Returns the similarity matrix of the corpus named by corpus_directory.
-% for example: rhythm_similarity_of_corpus('~/Quaero_Selection', '.beat.xml', '~/Quaero_Sounds');
+% for example: rhythm_similarity_of_corpus('Quaero Selection', '~/Quaero_Selection', '.beat.xml', '~/Quaero_Sounds');
 % $Id$
 
 global plotting;
@@ -33,9 +33,10 @@ end
 if (diag_plot('similarity_matrix'))
     figure();
     imagesc(similarity_matrix)
-    title(sprintf('Dissimilarity of pattern of Quaero Selection by %s distance metric', distance))
-    xlabel('Quaero Track');
-    ylabel('Quaero Track');
+    title(sprintf('Dissimilarity of pattern of %s by %s distance metric', corpus_name, distance))
+    label = sprintf('%s Track number', corpus_name);
+    xlabel(label);
+    ylabel(label);
 end
 
 closest_song_indices = closest_rhythms(similarity_matrix);

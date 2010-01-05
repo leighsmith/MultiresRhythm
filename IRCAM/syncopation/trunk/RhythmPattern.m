@@ -115,27 +115,55 @@ function features = featureVector(pattern)
     features = [syncopationProfile(pattern) metricalProfile(pattern) pattern.hypermetrical_profile pattern.tempo];
 end
 
+function features = reducedFeatureVector(pattern)
+% reducedFeatureVector - Returns a single feature vector from the pattern, reduced to
+% semiquaver resolution.
+    features = [syncopationProfile(pattern) reducedMetricalProfile(pattern) pattern.hypermetrical_profile pattern.tempo];
+end
+
+% TODO the decimation blurs the profile too much, need to use a lower order
+% filter.
+% function features = reducedMetricalProfile(pattern)
+% % reducedMetricalProfile - Returns a single metrical profile vector, reduced to
+% % semiquaver resolution.
+%     subbandCount = size(pattern.metrical_profile, 1);
+%     decimationFactor = pattern.metric_tatums_per_beat / pattern.syncopation_tatums_per_beat;
+%     decimatedMetricalProfile = zeros(subbandCount, size(pattern.metrical_profile, 2) / decimationFactor);
+%     for subbandIndex = 1 : subbandCount
+%         decimatedMetricalProfile(subbandIndex, :) = decimate(pattern.metrical_profile(subbandIndex, :), decimationFactor);
+%     end
+%     features = reshape(decimatedMetricalProfile', 1, numel(decimatedMetricalProfile));
+% end
+
+function features = reducedMetricalProfile(pattern)
+% reducedMetricalProfile - Returns a single metrical profile vector, reduced to
+% semiquaver resolution.
+    downsampleFactor = pattern.metric_tatums_per_beat / pattern.syncopation_tatums_per_beat;
+    downsampledMetricalProfile = downsample(pattern.metrical_profile', downsampleFactor);
+    features = reshape(downsampledMetricalProfile, 1, numel(downsampledMetricalProfile));
+end
+
 function vector_length = featureVectorLength(pattern)
     vector_length = length(featureVector(pattern));
 end
 
 function features = syncopationProfile(pattern)
-    % Returns the syncopation pattern, stripped of the beat locations which
-    % will also register 0 syncopation.
+% syncopationProfile Returns the syncopation pattern, stripped of the beat locations which
+% will also register 0 syncopation.
 
     % TODO we should have the principle tatums assigned after finding only
     % those tatums which are non-zero.
     principle_syncopation_tatums = strip_beats(pattern.syncopation, pattern.syncopation_tatums_per_beat);
     strippedOfBeats = pattern.syncopation(:, principle_syncopation_tatums);
-    features = reshape(strippedOfBeats, 1, numel(strippedOfBeats));
+    features = reshape(strippedOfBeats', 1, numel(strippedOfBeats));
 end
 
 function features = metricalProfile(pattern)
     features = reshape(pattern.metrical_profile', 1, numel(pattern.metrical_profile));
 end
 
-% Just returns the first profile.
 function features = singleMetricalProfile(pattern)
+% singleMetricalProfile Just returns the first profile.
     features = pattern.metrical_profile(1,:);
 end
 

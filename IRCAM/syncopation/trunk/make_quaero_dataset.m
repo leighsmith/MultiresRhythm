@@ -29,6 +29,8 @@ while (dataset_index <= maximum_examples && song_index <= maximum_examples)
             % (list annotation_name :anacrusis anacrusis :annotation_filepath
             % annotation_pathname :first_downbeat_time downbeat_time))))
             dataset_index = dataset_index + 1;
+        else
+            fprintf('excluded %s\n', annotation_pathname);
         end
      end
 
