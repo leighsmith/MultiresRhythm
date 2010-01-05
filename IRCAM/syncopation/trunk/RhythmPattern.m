@@ -147,14 +147,19 @@ function vector_length = featureVectorLength(pattern)
     vector_length = length(featureVector(pattern));
 end
 
+% TODO we should have the principle tatums assigned after finding only
+% those tatums which are non-zero.
+function principle_syncopation_tatums = syncopatedTatums(pattern)
+% syncopatedTatums Returns the tatums that will be returned by syncopation
+% profile. Not all tatums are returned since they will be zero at beats on
+% the highest metrical levels.
+   principle_syncopation_tatums = strip_beats(pattern.syncopation, pattern.syncopation_tatums_per_beat);
+end
+
 function features = syncopationProfile(pattern)
 % syncopationProfile Returns the syncopation pattern, stripped of the beat locations which
-% will also register 0 syncopation.
-
-    % TODO we should have the principle tatums assigned after finding only
-    % those tatums which are non-zero.
-    principle_syncopation_tatums = strip_beats(pattern.syncopation, pattern.syncopation_tatums_per_beat);
-    strippedOfBeats = pattern.syncopation(:, principle_syncopation_tatums);
+% will always register 0 syncopation.
+    strippedOfBeats = pattern.syncopation(:, syncopatedTatums(pattern));
     features = reshape(strippedOfBeats', 1, numel(strippedOfBeats));
 end
 

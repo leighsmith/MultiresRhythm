@@ -20,7 +20,14 @@ for timesignature_index = 0 : timesignatures.getLength() - 1
 
     beats_per_measure = str2double(char(timesignature_node.getAttribute('beatspermeasure')));
     beatduration = str2double(char(timesignature_node.getAttribute('beatduration')));
-
+    comment = char(timesignature_node.getAttribute('comment'));
+    
+    % Kludge to get around ircambeat
+    if(strcmp(comment, 'with triplets') && beats_per_measure == 4 && beatduration == 4)
+        beats_per_measure = 6;
+        beatduration = 8;
+    end
+    
     switch beats_per_measure
     case 4
         hierarchy = [2 2 2 2];
