@@ -12,7 +12,7 @@ set_diag_plot('similarity_matrix')
 set_diag_plot('similarity_comparisons')
 similarity = 'early_fusion';
 
-corpus_dataset = make_quaero_dataset(corpus_directory, beat_file_extension);
+corpus_dataset = make_dataset(corpus_directory, beat_file_extension);
 corpus_patterns = pattern_for_corpus(corpus_dataset, sound_directory_root);
 best_similarity = zeros(1, length(corpus_patterns));
 

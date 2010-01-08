@@ -1,7 +1,7 @@
-function [ segment_timesignatures, hierarchy ] = read_ircam_annotation_timesignatures( filepath)
-%read_ircam_annotation_timesignatures Read the time signatures in the annotation file and return an
+function [ segment_timesignatures, hierarchy ] = read_ircam_timesignatures( filepath)
+%read_ircam_timesignatures Read the time signatures in the beat marker file and return an
 %array of the beats per measure and the hierarchy of subdivisions of the measure.
-% $Id$
+% $Id: read_ircam_annotation_timesignatures.m 5574 2010-01-05 18:20:21Z leighsmi $
 
 segment_document = xmlread(filepath);
 segment_root = segment_document.getDocumentElement();
@@ -23,10 +23,10 @@ for timesignature_index = 0 : timesignatures.getLength() - 1
     comment = char(timesignature_node.getAttribute('comment'));
     
     % Kludge to get around ircambeat
-    if(strcmp(comment, 'with triplets') && beats_per_measure == 4 && beatduration == 4)
-        beats_per_measure = 6;
-        beatduration = 8;
-    end
+    % if(strcmp(comment, 'with triplets') && beats_per_measure == 4 && beatduration == 4)
+    %     beats_per_measure = 6;
+    %    beatduration = 8;
+    % end
     
     switch beats_per_measure
     case 4

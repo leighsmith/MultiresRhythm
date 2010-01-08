@@ -1,12 +1,11 @@
 function [ pattern ] = pattern_of_rhythm_description ( rhythm_description )
-%pattern_of_rhythm Returns a pattern instance for the given rhythm.
+%pattern_of_rhythm Returns a pattern instance for the given rhythm description.
 % The pattern includes the metrical profile and the profile of syncopation
-% per measure. Should be a factory method.
+% per measure. To not access the ODF according to the downbeat, set the anacrusis to 0.
+% TODO This should be a factory method.
 % $Id$
 
 pattern = RhythmPattern(rhythm_description.name);
-% Retrieve the ODF as trimmed to the first downbeat.
-% [trimmed_odf, trimmed_odf_subbands] = beat_synchronised_odf(rhythm_description);
 
 % Calculate the syncopation measures for each spectral subband.
 for subBandIndex = 1 : size(rhythm_description.odfs, 1)

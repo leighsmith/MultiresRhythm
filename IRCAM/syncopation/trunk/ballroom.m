@@ -1,11 +1,8 @@
-function ballroom () 
-    corpus_dataset = make_quaero_dataset(tilde_expand('~/Research/Data/IRCAM-Beat/ISMIR2004_tempo_ballroom/Analysis/'), '.wav.markers.xml');
-    corpus_patterns = pattern_for_corpus(corpus_dataset, tilde_expand('~/Research/Data/IRCAM-Beat/ISMIR2004_tempo_ballroom/Audio'));
-    write_corpus_as_arff(corpus_patterns, tilde_expand('~/Research/Data/IRCAM-Beat/ISMIR2004_tempo_ballroom/test.arff'));
-end
+function [ absolute_filepath ] = ballroom( relative_filepath )
+%UNTITLED Summary of this function goes here
+%   Detailed explanation goes here
 
-%    sim = rhythm_similarity_of_corpus('Ballroom Dancers', ...
-%        tilde_expand('~/Research/Data/IRCAM-Beat/ISMIR2004_tempo_ballroom/Analysis/'), ...
-%        '.wav.markers.xml', ...
-%        tilde_expand('~/Research/Data/IRCAM-Beat/ISMIR2004_tempo_ballroom/Audio/'));
+absolute_filepath = [tilde_expand('~/Research/Data/IRCAM-Beat/ISMIR2004_tempo_ballroom/') relative_filepath];
+
+end
 

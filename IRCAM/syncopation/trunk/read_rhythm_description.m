@@ -14,7 +14,7 @@ function [ new_rhythm_description ] = read_rhythm_description( beat_markers_file
 downbeats = find(beat_markers == 1); % downbeats are marked as "1".
 anacrusis = downbeats(1) - 1; % number of beats before the first downbeat
 
-[all_beats_per_measure, metrical_hierarchy] = read_ircam_annotation_timesignatures(beat_markers_filepath);
+[all_beats_per_measure, metrical_hierarchy] = read_ircam_timesignatures(beat_markers_filepath);
 beats_per_measure = all_beats_per_measure(1); % TODO take the first beats-per-measure as the standard
 
 % calculate from beat times. Perhaps one day read it from bpm_filepath XML file.

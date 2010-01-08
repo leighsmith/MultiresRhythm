@@ -21,10 +21,10 @@ fprintf('\nrhythm duration %.3f samples, number of measures %.3f\n', length(rhyt
 
 for measure_index = 1 : number_of_measures
     % in samples
-    beat_duration_index = (beats_per_measure * (measure_index - 1));
+    beat_duration_index = (beats_per_measure * (measure_index - 1)) + rhythm_description.anacrusis;
     beat_durations_in_measure = beat_durations(beat_duration_index  + 1 : beat_duration_index + beats_per_measure);
     bar_duration = sum(beat_durations_in_measure); % in samples
-    start_sample = round(beat_times(((measure_index - 1) * beats_per_measure) + 1) * sample_rate) + 1;
+    start_sample = round(beat_times(beat_duration_index + 1) * sample_rate) + 1;
     fprintf('Measure %3d start sample %d seconds %f\n', measure_index, start_sample, start_sample / sample_rate);
     fprintf('beat duration in samples %s = %.3f\n', sprintf('%.3f ', beat_durations_in_measure), bar_duration);
 
