@@ -1,6 +1,8 @@
 function [ downbeat_times ] = downbeat_times( beat_markers_filepath )
 %downbeats Return the downbeat times of the marker file.
 %   If there are no downbeats marked, return as if the first beat is the downbeat.
+% $Id$
+%
 
 % (TODO hardwired for now). 
 beats_per_measure = 4;

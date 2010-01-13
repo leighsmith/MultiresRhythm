@@ -1,6 +1,9 @@
 function [ f_score ] = downbeat_accuracy( computed_dir )
 %downbeat_accuracy Returns the percentage of analyses that match downbeats of the annotations.
 %   Precision determines how close the beats must be to qualify as accurate.
+% $Id$
+%
+
 precision = 0.100; % In milliseconds
 
 annotated_downbeat_files = make_dataset(tilde_expand('~/Research/Data/IRCAM-Beat/Quaero_Selection/Annotation/'), '.beat.xml');
