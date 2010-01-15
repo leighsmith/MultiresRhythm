@@ -20,6 +20,8 @@ properties
     hypermetrical_profile = [];
     phrase_length = 4; % hypermetrical profile length in measures (bars)
     tempo = 0; % This makes the profiles tempo dependent.
+    periodicities = [];
+    style = ''; % a rhythmic style classification.
 end
     
 methods
@@ -115,10 +117,15 @@ function features = featureVector(pattern)
     features = [syncopationProfile(pattern) metricalProfile(pattern) pattern.hypermetrical_profile pattern.tempo];
 end
 
+function features = syncPeriodicityFeatureVector(pattern)
+% syncPeriodicityFeatureVector - Returns a feature vector from the pattern of syncopation and periodicities.
+    features = [syncopationProfile(pattern) pattern.periodicities pattern.tempo];
+end
+
 function features = reducedFeatureVector(pattern)
 % reducedFeatureVector - Returns a single feature vector from the pattern, reduced to
 % semiquaver resolution.
-    features = [syncopationProfile(pattern) reducedMetricalProfile(pattern) pattern.hypermetrical_profile pattern.tempo];
+    features = [syncopationProfile(pattern) pattern.periodicities reducedMetricalProfile(pattern) pattern.hypermetrical_profile pattern.tempo];
 end
 
 % TODO the decimation blurs the profile too much, need to use a lower order
