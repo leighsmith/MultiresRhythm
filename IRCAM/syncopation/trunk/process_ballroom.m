@@ -1,4 +1,7 @@
-function process_ballroom () 
+function process_ballroom ()
+%process_ballroom Computes the rhythmic patterns of the Ballroom dancers
+%dataset and writes an ARFF file.
+% $Id:$
     corpus_dataset = make_dataset(ballroom('Analysis'), '.wav.markers.xml');
     corpus_patterns = pattern_for_corpus(corpus_dataset, ballroom('Audio'));
     style_map = read_rhythm_styles(ballroom('dance_classification.txt'));

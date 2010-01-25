@@ -20,7 +20,7 @@ for subBandIndex = 1 : size(rhythm_description.odfs, 1)
     normalised_syncopation_measures = normalise_syncopation(rhythm_syncopation_measures, rhythm_description.meter);
     % recalc this in case the syncopation measures differ from the tatums.
     num_of_tatums = size(normalised_syncopation_measures, 1);
-    syncopation_profile = sum(normalised_syncopation_measures') ./ num_of_measures;
+    syncopation_profile = sum(normalised_syncopation_measures, 2)' ./ num_of_measures;
     % this doesn't work according to Matlab because RhythmPattern is a value class, not a
     % handle class.
     % setSyncopation(pattern, syncopation_profile); 
@@ -56,7 +56,8 @@ for subBandIndex = 1 : size(rhythm_description.odfs, 1)
     [small_onset_observations, small_silence_observations] = observe_onsets(rhythm_description.odfs(subBandIndex,:), rhythm_description, pattern.metric_tatums_per_beat);
     num_of_measures = size(small_silence_observations, 2);
     % Calculate the metrical profile from the silence observations, not the onset observations, so we account for dynamics accentuation.
-    metrical_profile = 1 - (sum(small_silence_observations') ./ num_of_measures);
+    % This produces a normalised value for each tatum.
+    metrical_profile = 1 - (sum(small_silence_observations, 2)' ./ num_of_measures);
     %% fprintf('metric profile %s~%', metric_profile)
     % bar(1:16/64:16.75, metrical_profile)
     pattern.metrical_profile(subBandIndex,:) = metrical_profile;

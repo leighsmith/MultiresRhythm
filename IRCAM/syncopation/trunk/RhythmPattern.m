@@ -20,6 +20,7 @@ properties
     hypermetrical_profile = [];
     phrase_length = 4; % hypermetrical profile length in measures (bars)
     tempo = 0; % This makes the profiles tempo dependent.
+    anacrusis = 0; % Phase of the beat the first downbeat starts on.
     periodicities = [];
     style = ''; % a rhythmic style classification.
 end
@@ -117,6 +118,17 @@ function features = featureVector(pattern)
     features = [syncopationProfile(pattern) metricalProfile(pattern) pattern.hypermetrical_profile pattern.tempo];
 end
 
+function beatLevelSync = beatLevelSyncopation(pattern)
+%beatLevelSyncopation - Return the total amount of syncopation for each beat level.
+    beatLevelSync = sum(reshape(pattern.syncopation', pattern.syncopation_tatums_per_beat, numel(pattern.syncopation) / pattern.syncopation_tatums_per_beat));
+end
+
+function tatums = mostSyncopatedTatum(pattern)
+%mostSyncopatedTatum - Returns the tatum that has the highest syncopation for the pattern, for each subband range.
+    [maxima, max_indices] = max(pattern.syncopation, [], 2);
+    tatums = max_indices';
+end
+
 function features = syncPeriodicityFeatureVector(pattern)
 % syncPeriodicityFeatureVector - Returns a feature vector from the pattern of syncopation and periodicities.
     features = [syncopationProfile(pattern) pattern.periodicities pattern.tempo];
@@ -124,7 +136,10 @@ end
 
 function features = reducedFeatureVector(pattern)
 % reducedFeatureVector - Returns a single feature vector from the pattern, reduced to
-% semiquaver resolution.
+% semiquaver resolution. All feature values are guaranteed to be
+% normalised if we don't return the raw tempo value.
+    % features = [mostSyncopatedTatum(pattern) pattern.periodicities reducedMetricalProfile(pattern) pattern.hypermetrical_profile pattern.tempo];
+    % features = [mostSyncopatedTatum(pattern) pattern.periodicities reducedMetricalProfile(pattern) pattern.hypermetrical_profile];
     features = [syncopationProfile(pattern) pattern.periodicities reducedMetricalProfile(pattern) pattern.hypermetrical_profile pattern.tempo];
 end
 
@@ -142,12 +157,11 @@ end
 %     features = reshape(decimatedMetricalProfile', 1, numel(decimatedMetricalProfile));
 % end
 
-function features = reducedMetricalProfile(pattern)
+function downsampledMetricalProfile = reducedMetricalProfile(pattern)
 % reducedMetricalProfile - Returns a single metrical profile vector, reduced to
 % semiquaver resolution.
-    downsampleFactor = pattern.metric_tatums_per_beat / pattern.syncopation_tatums_per_beat;
-    downsampledMetricalProfile = downsample(pattern.metrical_profile', downsampleFactor);
-    features = reshape(downsampledMetricalProfile, 1, numel(downsampledMetricalProfile));
+    downsampleFactor = pattern.metric_tatums_per_beat / pattern.syncopation_tatums_per_beat;    
+    downsampledMetricalProfile = sum(reshape(pattern.metrical_profile', downsampleFactor, numel(pattern.metrical_profile) / downsampleFactor)) ./ downsampleFactor;
 end
 
 function vector_length = featureVectorLength(pattern)
