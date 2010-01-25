@@ -1,7 +1,7 @@
 function [wideband_odf, subband_odfs] = odf_of_signal(audio_signal, original_sample_rate, subband_ranges)
 %odf_of_signal - Returns the onset detection function, given an audio signal sampled at original_sample_rate
 %
-% $Id:$
+% $Id$
     
     % The sample rate of the downsampled signal.
     analysis_sample_rate = 11025.0; % In Hertz.
@@ -34,7 +34,6 @@ function [wideband_odf, subband_odfs] = odf_of_signal(audio_signal, original_sam
     % windowed_signal = downsampled_signal(window_start_sample : window_start_sample + window_size);
     % windowed_spectrum = spectrum_of_window(windowed_signal);
     spectrum = spectrum_of_signal(downsampled_signal, window_size, hop_size);
-    imagesc(spectrum);
     
     % TODO downsample spectrum to the ODF_sample_rate
     % TODO Remove the DC component (0th coefficient) when computing the spectral energy flux.
@@ -48,9 +47,9 @@ function [wideband_odf, subband_odfs] = odf_of_signal(audio_signal, original_sam
     % data and requires more to be processed, but does not require two filtering
     % processes. We should quantify the factor we save using a downsampled time axis.
     % Particularly if instead we are processing a 10 second window rather than the entire signal.
+    downsampled_spectrum = spectrum; % postpone the downsampling for now.
     
-    
-    % Determine maximum spectral energy and short circuit if it is below the minimum.
+    % TODO Determine maximum spectral energy and short circuit if it is below the minimum.
     
     % Peeters sets a further threshold -50dB below maximum energy level.
     
@@ -64,11 +63,31 @@ function [wideband_odf, subband_odfs] = odf_of_signal(audio_signal, original_sam
     % Half wave rectification
     % rectified_spectrum = (spectrum_derivative > 0) .* spectrum_derivative;
     rectified_spectrum = max(spectrum_derivative, 0.0);
+
+    % TODO Perhaps use spectral centroid as a weighting. 
+    % Generate a centroid measure
+    centroid = spectral_centroid(spectrum);
+    % In principle the ODF is the magnitude of the total spectral energy at each time
+    % window and could be used in calculating a form of spectral centroid.
     
+    % TODO Use a weighting on the summation across bands
     wideband_odf = sum(rectified_spectrum);
 
-    % Normalize by removing mean energy levels since energy is +ve only.
-    % wideband_odf = abs(wideband_odf - mean(wideband_odf))
-    % TODO Could divide by the stddev.
+    % TODO create subband_odf;
+    
+    wideband_odf = normalise_odf(wideband_odf);
+    
+    % Plotting
+    subplot(3,1,1);
+    imagesc(spectrum);
+    title(sprintf('Spectrogram of %s', 'signal'));
+    subplot(3,1,2);
+    plot(wideband_odf);
+    title(sprintf('Normalised ODF of %s', 'signal'));
+    axis([0 length(wideband_odf) 0 7]);
+    subplot(3,1,3);
+    plot(centroid);
+    title(sprintf('Spectral Centroid of %s', 'signal'));
+    axis([0 size(spectrum, 2) min(centroid)-1 max(centroid)+1]);
 end
 
