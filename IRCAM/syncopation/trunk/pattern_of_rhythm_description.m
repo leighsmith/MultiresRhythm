@@ -63,8 +63,8 @@ for subBandIndex = 1 : size(rhythm_description.odfs, 1)
     pattern.metrical_profile(subBandIndex,:) = metrical_profile;
 end
 
-[onset_observations, silence_observations] = observe_onsets(rhythm_description.wideband_odf, rhythm_description, pattern.syncopation_tatums_per_beat);
-pattern.hypermetrical_profile = hypermetrical_profile(silence_observations, pattern.phrase_length);
+[onset_observations, silence_observations] = observe_onsets(rhythm_description.wideband_odf, rhythm_description, pattern.metric_tatums_per_beat);
+pattern.hypermetrical_profile = average_tatums(hypermetrical_profile(silence_observations, pattern.phrase_length)', pattern.metric_tatums_per_beat / pattern.syncopation_tatums_per_beat);
 
 pattern.tempo = rhythm_description.tempo;
 pattern.beats_per_measure = rhythm_description.beats_per_measure;
