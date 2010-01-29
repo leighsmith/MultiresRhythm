@@ -8,7 +8,8 @@ classdef RhythmDescription
         odfs = [];
         % TODO should have a mean and std for each odf subband computed for reuse.
         wideband_odf = [];
-        beat_times = 0;
+        beat_times = [];
+        beat_markers = [];
         meter = [];
         beats_per_measure = 4;
         sample_rate = 172.27;
@@ -18,11 +19,12 @@ classdef RhythmDescription
     
     methods
         
-    function new_rhythm = RhythmDescription(name, wideband_odf, odfs, beat_times, meter, beats_per_measure, anacrusis, sample_rate, tempo)
+    function new_rhythm = RhythmDescription(name, wideband_odf, odfs, beat_times, beat_markers, meter, beats_per_measure, anacrusis, sample_rate, tempo)
         new_rhythm.name = name;
         new_rhythm.odfs = odfs;
         new_rhythm.wideband_odf = wideband_odf;
         new_rhythm.beat_times = beat_times;
+        new_rhythm.beat_markers = beat_markers;
         new_rhythm.meter = meter;
         new_rhythm.beats_per_measure = beats_per_measure;
         new_rhythm.sample_rate = sample_rate;
@@ -30,9 +32,15 @@ classdef RhythmDescription
         new_rhythm.tempo = tempo;
     end
 
-    function plot_rhythm(rhythm_description)
+    function plot_rhythm(rhythm_description, region)
+        if(nargin < 2)
+            region = 1 : length(rhythm_description.wideband_odf);
+        end
         beat_samples = round(rhythm_description.beat_times * rhythm_description.sample_rate);
-        plot(1:length(rhythm_description.wideband_odf), rhythm_description.wideband_odf, '-', beat_samples, 1, '-+k');
+        beat_samples_to_plot = (beat_samples >= min(region)) & (beat_samples <= max(region));
+        metrical_strength = (rhythm_description.beat_markers(beat_samples_to_plot) == 1) + 1;
+        % metrical_strength = 1;
+        plot(region, rhythm_description.wideband_odf(region), '-', beat_samples(beat_samples_to_plot), metrical_strength, '-+k');
         title(rhythm_description.name);
     end
     

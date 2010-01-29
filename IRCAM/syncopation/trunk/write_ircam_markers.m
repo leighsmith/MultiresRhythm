@@ -25,9 +25,9 @@ function write_ircam_markers( marker_filepath, times, beat_markers, time_signatu
     type_description.appendChild(dom.createTextNode('beat'));
     generator_description.appendChild(type_description);
     generator_element = dom.createElement('generator');
-    generator_element.setAttribute('name', 'cvtQIMA_1.5 converter');
+    generator_element.setAttribute('name', 'LMS write_ircam_markers');
     generator_element.setAttribute('version', '1.0.0');
-    generator_element.setAttribute('date', '2009-06-29');
+    generator_element.setAttribute('date', '2010-01-28');
     generator_description.appendChild(generator_element);
     
     music_description.appendChild(generator_description);

@@ -66,7 +66,9 @@ end
 [onset_observations, silence_observations] = observe_onsets(rhythm_description.wideband_odf, rhythm_description, pattern.metric_tatums_per_beat);
 pattern.hypermetrical_profile = average_tatums(hypermetrical_profile(silence_observations, pattern.phrase_length)', pattern.metric_tatums_per_beat / pattern.syncopation_tatums_per_beat);
 
+% Duplicate certain info so the RhythmPattern stands alone.
 pattern.tempo = rhythm_description.tempo;
+pattern.anacrusis = rhythm_description.anacrusis;
 pattern.beats_per_measure = rhythm_description.beats_per_measure;
 
 % While this finds onset periodicities, in many ways it duplicates 

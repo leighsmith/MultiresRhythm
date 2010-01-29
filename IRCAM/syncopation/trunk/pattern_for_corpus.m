@@ -23,7 +23,11 @@ for piece_index = 1 : length(corpus)
         pattern = pattern_of_rhythm_description(rhythm_description);
         write_pattern(pattern, piece_name, pattern_filepath);
     end
-    pattern.periodicities = read_qima_periodicities_file([filepath '/' piece_name '.wav.bpm.xml']);
+    periodicities_file = [filepath '/' piece_name '.wav.bpm.xml'];
+    % skip if unavailable to avoid having to do beat tracking when testing annotations alone.
+    if(exist(periodicities_file, 'file'))
+        pattern.periodicities = read_qima_periodicities_file(periodicities_file);
+    end
     if (diag_plot('syncopation_profile'))
         plot_pattern(pattern);
     end
@@ -31,4 +35,3 @@ for piece_index = 1 : length(corpus)
 end
     
 end
-

@@ -48,6 +48,18 @@ function write_pattern( pattern, filename, pattern_filepath )
     dom.createComment(sprintf('Pattern profile for %s', filename));
     pattern_description = dom.getDocumentElement();
     
+    tempo_element = dom.createElement('tempo');
+    tempo_element.setAttribute('bpm', sprintf('%f', pattern.tempo));
+    pattern_description.appendChild(tempo_element);
+
+    beats_element = dom.createElement('measure-duration');
+    beats_element.setAttribute('beats', int2str(pattern.beats_per_measure));
+    pattern_description.appendChild(beats_element);
+
+    anacrusis_element = dom.createElement('anacrusis');
+    anacrusis_element.setAttribute('beats', int2str(pattern.anacrusis));
+    pattern_description.appendChild(anacrusis_element);
+    
     for subbandIndex = 1 : size(pattern.syncopation, 1)
         syncopation_description = dom.createElement('syncopation-description');
         write_metrical_profile('syncopation', pattern.syncopation(subbandIndex,:), dom, syncopation_description, subbandIndex);
@@ -63,14 +75,6 @@ function write_pattern( pattern, filename, pattern_filepath )
     hypermetrical_description = dom.createElement('hypermetrical-description');
     write_metrical_profile('meter', pattern.hypermetrical_profile, dom, hypermetrical_description, 1);
     pattern_description.appendChild(hypermetrical_description);
-
-    tempo_element = dom.createElement('tempo');
-    tempo_element.setAttribute('bpm', sprintf('%f', pattern.tempo));
-    pattern_description.appendChild(tempo_element);
-
-    beats_element = dom.createElement('measure-duration');
-    beats_element.setAttribute('beats', sprintf('%f', pattern.beats_per_measure));
-    pattern_description.appendChild(beats_element);
 
     xmlwrite(pattern_filepath, dom);
 end

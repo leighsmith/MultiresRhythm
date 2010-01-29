@@ -46,5 +46,23 @@ function [ new_pattern ] = read_pattern(filename, pattern_filepath)
     else
         fprintf('Missing tempo format');
     end
+    
+    anacrusis_elements = pattern_document.getElementsByTagName('anacrusis');
+    if (anacrusis_elements.length() ~= 0)
+        first_anacrusis_element = anacrusis_elements.item(0);
+        new_pattern.anacrusis = str2double(char(first_anacrusis_element.getAttribute('beats')));
+    else
+        fprintf('Missing anacrusis format');
+    end
+
+    measure_elements = pattern_document.getElementsByTagName('measure-duration');
+    if (measure_elements.length() ~= 0)
+        first_measure_element = measure_elements.item(0);
+        new_pattern.beats_per_measure = str2double(char(first_measure_element.getAttribute('beats')));
+    else
+        fprintf('Missing measure format');
+    end
+
+
 end
 

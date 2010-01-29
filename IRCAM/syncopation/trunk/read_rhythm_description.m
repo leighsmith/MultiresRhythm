@@ -23,6 +23,6 @@ tempo = 60 / median(diff(beat_times));
 % Supply wideband_odfs and frequency specific bands as the same for now.
 % Should eventually handle when there are no subband odfs.
 [filepath, filename] = fileparts(audio_filepath);
-new_rhythm_description = RhythmDescription(filename, wideband_odf, odf_subbands, beat_times, metrical_hierarchy, beats_per_measure, anacrusis, sample_rate, tempo);
+new_rhythm_description = RhythmDescription(filename, wideband_odf, odf_subbands, beat_times, beat_markers, metrical_hierarchy, beats_per_measure, anacrusis, sample_rate, tempo);
 
 end
