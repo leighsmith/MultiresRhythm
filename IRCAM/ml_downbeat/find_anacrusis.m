@@ -1,5 +1,5 @@
 function [ anacrusis, minimum_distance ] = find_anacrusis( annotated_beat_filepath, computed_beat_filepath )
-%find_anacrusis Returns the anacrusis (in beats) according to the annotation.
+%find_anacrusis Returns the anacrusis (in beats) of the computed beats, according to the annotated downbeats.
 % $Id$
 %
 

@@ -38,6 +38,8 @@ function write_vector_description(filehandle, name, vectorElements)
 end
 
 function write_vector(filehandle, vector)
-    fprintf(filehandle, '%5.3f,', vector);
+    if(~isempty(vector))
+        fprintf(filehandle, '%5.3f,', vector);
+    end
 end
     
