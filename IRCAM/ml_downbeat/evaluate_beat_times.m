@@ -15,10 +15,7 @@ function [ precision, recall, f_score ] = evaluate_beat_times (computedBeatTimes
 if (isscalar(precisionWindow))
     precisionWindows = precisionWindow;
 else
-    precisionWindows = zeros(length(computedBeatTimes), length(precisionWindow));
-    for row = 1 : length(computedBeatTimes)
-        precisionWindows(row, :) = precisionWindow;
-    end
+    precisionWindows = repmat(precisionWindow', length(computedBeatTimes), 1);
 end
 
 % Calculate those vector distances within the precision window.
@@ -40,6 +37,7 @@ fprintf('number of annotations matching more than one marker %d\n', floor(duplic
 
 %% fprintf('first 10 annotations ~a\n' (.subseq annotationTimes 0 9))
 %% fprintf('last 10 annotations ~a\n' (.subseq annotationTimes (- (.length annotationTimes) 10)))
+%imagesc(within_precision)
 
 end
 
