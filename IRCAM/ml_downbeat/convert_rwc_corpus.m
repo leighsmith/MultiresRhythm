@@ -2,9 +2,11 @@ function convert_rwc_corpus( directory )
 %convert_rwc_corpus Convert all files in directory
 %   Detailed explanation goes here
 
-% rwc_dir = tilde_expand('~/Research/Data/IRCAM-Beat/RWC/Annotation/' directory '.TXT/');
-rwc_dir = tilde_expand('~/Research/Data/IRCAM-Beat/RWC/Annotation/AIST.RWC-MDB-P-2001.BEAT.TXT/');
-ircam_dir = tilde_expand('~/Research/Data/IRCAM-Beat/RWC/Annotation/AIST.RWC-MDB-P-2001.BEAT/');
+% rwc_dir = tilde_expand('~/Research/Data/IRCAM-Beat/RWC/Annotation/AIST.RWC-MDB-P-2001.BEAT.TXT/');
+% ircam_dir = tilde_expand('~/Research/Data/IRCAM-Beat/RWC/Annotation/AIST.RWC-MDB-P-2001.BEAT/');
+
+rwc_dir = tilde_expand(['~/Research/Data/IRCAM-Beat/RWC/Annotation/' directory '.TXT/']);
+ircam_dir = tilde_expand(['~/Research/Data/IRCAM-Beat/RWC/Annotation/' directory '/']);
 
 beat_file_extension = '.TXT';
 

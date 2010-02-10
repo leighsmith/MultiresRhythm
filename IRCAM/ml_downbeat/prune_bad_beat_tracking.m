@@ -24,6 +24,7 @@ for i = 1 : dataset_size
         evaluation = Evaluation();
         % evaluation.annotationFilter = @downbeats_filter;
         evaluation.annotationFilter = ''; % Check accuracy of all beats.
+        % evaluation.annotationFilter = @halfbeats_filter; % Check accuracy of all beats.
         evaluation.relativePrecision = true;
         evaluation.precisionWindow = 0.15; % Within 15% of the annotated beat position.
         [precision, recall, f_score] = evaluate_beat_file(computed_downbeat_file, annotated_downbeat_files{i}, evaluation);
