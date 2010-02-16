@@ -1,0 +1,13 @@
+function [ double_time_probs ] = outliers( input_args )
+%UNTITLED Summary of this function goes here
+%   Detailed explanation goes here
+outliers = { '/Users/lsmith/Research/Data/IRCAM-Beat/RWC/GoodBeatAnalysis/RM-P014.wav.markers.xml',...
+    '/Users/lsmith/Research/Data/IRCAM-Beat/RWC/GoodBeatAnalysis/RM-P039.wav.markers.xml',...    
+    '/Users/lsmith/Research/Data/IRCAM-Beat/RWC/GoodBeatAnalysis/RM-P045.wav.markers.xml',...
+    '/Users/lsmith/Research/Data/IRCAM-Beat/RWC/GoodBeatAnalysis/RM-P056.wav.markers.xml',...
+    '/Users/lsmith/Research/Data/IRCAM-Beat/RWC/GoodBeatAnalysis/RM-P071.wav.markers.xml' }
+
+double_time_probs = double_time_of_corpus ( outliers, '/Users/lsmith/Research/Data/IRCAM-Beat/RWC/Audio/Popular_Music/WAV/')
+
+end
+
