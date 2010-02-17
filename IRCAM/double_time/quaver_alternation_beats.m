@@ -1,8 +1,8 @@
 function [ mean_quaver_alternation ] = quaver_alternation_beats( pattern )
-%quaver_alternation Calculate a metric indicating how much the quaver
+%quaver_alternation_beats Calculate a metric indicating how much the quaver
 %patterns alternate across the measure.
 %   Calculates the variation between the metrical profile occurring on the
-%   subbeats (not considering the beats).
+%   beats.
 
 metricalProfile = reducedMetricalProfile(pattern);
 

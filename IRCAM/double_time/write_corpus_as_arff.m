@@ -11,10 +11,13 @@ function write_corpus_as_arff( title, corpus_patterns, filename, double_time_pro
         % TODO These shouldn't be hardwired lengths.
         write_vector_description(arff, 'PeriodicityPatterns', 1:18);
         write_vector_description(arff, 'MetricalProfileBass', 1:16);
+        write_vector_description(arff, 'MetricalProfileLowMid', 1:16);
+        write_vector_description(arff, 'MetricalProfileHighMid', 1:16);
         write_vector_description(arff, 'MetricalProfileTreble', 1:16);
         fprintf(arff, '@ATTRIBUTE DoubledTimeQuaverAlternation numeric\n');
         fprintf(arff, '@ATTRIBUTE HalfTimeQuaverAlternation numeric\n');
         fprintf(arff, '@ATTRIBUTE CounterPhaseQuaverAlternation numeric\n');
+        fprintf(arff, '@ATTRIBUTE CombinedQuaverAlternation numeric\n');
         fprintf(arff, '@ATTRIBUTE DoubleTime {0,1}\n\n');
 
         fprintf(arff, '@DATA\n');

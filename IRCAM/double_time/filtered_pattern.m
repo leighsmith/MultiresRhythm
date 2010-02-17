@@ -16,7 +16,8 @@ function [ original_pattern, rhythm_description ] = filtered_pattern( beat_marke
         original_pattern = read_pattern(piece_name, pattern_filepath);
     catch no_pattern % no pattern found
         if(nargin < 5)
-            rhythm_description = read_rhythm_description(beat_markers_filepath, audio_filepath);
+            fprintf('Reading rhythm description\n');
+            rhythm_description = read_rhythm_description(beat_markers_filepath, audio_filepath, odfSpectralBands(4));
         end
         if(nargin < 4)
             filtered_rhythm_description = rhythm_description;

@@ -3,7 +3,7 @@ function [ double_time_probs ] = double_time_of_corpus ( corpus, sound_directory
 %files in the corpus. 
 %   Computes and caches the original time and double time patterns.
 %   Column order for quaver alternation: doubled time, half time, counter phase.
-diag = true;
+diag = false;
 
 double_time_probs = zeros(length(corpus), 4);
 for piece_index = 1 : length(corpus)

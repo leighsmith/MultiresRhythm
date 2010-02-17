@@ -55,7 +55,7 @@ double_time_prob = double_time_probs(:,2) ./ double_time_probs(:,1);
 % double_time_prob = cellfun(@double_time, corpus_patterns);
 mean(double_time_prob)
 std(double_time_prob)
-above_mean = 0.5; % number of standard deviations above the mean.
+above_mean = 0.0; % number of standard deviations above the mean.
 threshold = mean(double_time_prob) + above_mean * std(double_time_prob);
 % Since the double_time_prob is a ratio of half time quaver alternation
 % against original time quaver alternation, it must be above 1.0 at a
