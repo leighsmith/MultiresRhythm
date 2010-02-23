@@ -4,20 +4,20 @@ function [ original_pattern, rhythm_description ] = filtered_pattern( beat_marke
 %   pre-generated rhythm_description if supplied as a parameter. Returns
 %   the rhythm description if it is generated.
 
-    [filepath, filename] = fileparts(beat_markers_filepath);
-    % fileparts differs from ircambeat's notion of extension, taking the last period as the
-    % start of the extension, not the first.
-    piece_name = strtok(filename, '.');
+    % numOfSpectralBands = 4;
+    numOfSpectralBands = 8;
+    [piece_name, filepath] = basename(beat_markers_filepath);
     pattern_filepath = [filepath '/' pattern_directory '/' piece_name '.pattern.xml'];
-    fprintf('%s\n', pattern_filepath);
+    disp(pattern_filepath);
     audio_filepath = [sound_directory_root '/' piece_name '.wav'];
 
     try
         original_pattern = read_pattern(piece_name, pattern_filepath);
+        rhythm_description = [];
     catch no_pattern % no pattern found
         if(nargin < 5)
             fprintf('Reading rhythm description\n');
-            rhythm_description = read_rhythm_description(beat_markers_filepath, audio_filepath, odfSpectralBands(4));
+            rhythm_description = read_rhythm_description(beat_markers_filepath, audio_filepath, odfSpectralBands(numOfSpectralBands));
         end
         if(nargin < 4)
             filtered_rhythm_description = rhythm_description;

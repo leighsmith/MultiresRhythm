@@ -1,22 +1,30 @@
-function [ double_time_probs ] = double_time_of_corpus ( corpus, sound_directory_root )
+function [ double_time_probs, corpus_rhythm_patterns ] = double_time_of_corpus ( corpus, sound_directory_root )
 %double_time_of_corpus Returns the double time probability scores for all
 %files in the corpus. 
 %   Computes and caches the original time and double time patterns.
 %   Column order for quaver alternation: doubled time, half time, counter phase.
-diag = false;
 
 double_time_probs = zeros(length(corpus), 4);
+corpus_rhythm_patterns = cell(length(corpus),1);
 for piece_index = 1 : length(corpus)
     beat_markers_filepath = corpus{1, piece_index};
     % rhythm_description = 0;
             
-    original_pattern = filtered_pattern(beat_markers_filepath, sound_directory_root, 'Pattern');
-    half_time_pattern = filtered_pattern(beat_markers_filepath, sound_directory_root, 'HalfPattern', @half_time_rhythm_description);
-    counter_phase_pattern = filtered_pattern(beat_markers_filepath, sound_directory_root, 'CounterPhasePattern', @counter_phase_rhythm_description);
-    double_time_pattern = filtered_pattern(beat_markers_filepath, sound_directory_root, 'DoubleTimePattern', @double_time_rhythm_description);
+    [original_pattern, rhythm_description] = filtered_pattern(beat_markers_filepath, sound_directory_root, 'Pattern');
+    [piece_name, filepath] = basename(beat_markers_filepath);
+    periodicities_file = [filepath '/' piece_name '.wav.bpm.xml'];
+    % skip if unavailable to avoid having to do beat tracking when testing annotations alone.
+    if(exist(periodicities_file, 'file'))
+        original_pattern.periodicities = read_qima_periodicities_file(periodicities_file);
+    end
+    corpus_rhythm_patterns{piece_index, 1} = original_pattern;
+    
+    [half_time_pattern, rhythm_description] = filtered_pattern(beat_markers_filepath, sound_directory_root, 'HalfPattern', @half_time_rhythm_description, rhythm_description);
+    [counter_phase_pattern, rhythm_description] = filtered_pattern(beat_markers_filepath, sound_directory_root, 'CounterPhasePattern', @counter_phase_rhythm_description, rhythm_description);
+    double_time_pattern = filtered_pattern(beat_markers_filepath, sound_directory_root, 'DoubleTimePattern', @double_time_rhythm_description, rhythm_description);
  
     % Display the reduced metrical pattern as a single bar graph.
-    if(diag)
+    if(diag_plot('metrical_profiles'))
         figure();
         subplot(4, 1, 1);
         bar(reducedMetricalProfile(original_pattern));
