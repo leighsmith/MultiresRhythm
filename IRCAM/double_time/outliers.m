@@ -7,7 +7,7 @@ outliers = { '/Users/lsmith/Research/Data/IRCAM-Beat/RWC/GoodBeatAnalysis/RM-P01
     '/Users/lsmith/Research/Data/IRCAM-Beat/RWC/GoodBeatAnalysis/RM-P056.wav.markers.xml',...
     '/Users/lsmith/Research/Data/IRCAM-Beat/RWC/GoodBeatAnalysis/RM-P071.wav.markers.xml' }
 
-double_time_probs = double_time_of_corpus ( outliers, '/Users/lsmith/Research/Data/IRCAM-Beat/RWC/Audio/Popular_Music/WAV/')
+double_time_probs = double_time_of_corpus ( outliers, '/Users/lsmith/Local_Data/RWC_WAV/')
 
 end
 

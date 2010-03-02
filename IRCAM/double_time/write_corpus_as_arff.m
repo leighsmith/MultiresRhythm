@@ -10,10 +10,10 @@ function write_corpus_as_arff( title, corpus_patterns, filename, double_time_pro
                 
         % TODO These shouldn't be hardwired lengths.
         write_vector_description(arff, 'PeriodicityPatterns', 1:18);
-        metricalProfileLength = size(corpus_patterns{1}.metrical_profile, 1);
-        for metricalProfileIndex = 1 : metricalProfileLength
-            write_vector_description(arff, sprintf('MetricalProfileBand%d', metricalProfileIndex), 1:16);
-        end
+        %metricalProfileLength = size(corpus_patterns{1}.metrical_profile, 1);
+        %for metricalProfileIndex = 1 : metricalProfileLength
+        %    write_vector_description(arff, sprintf('MetricalProfileBand%d', metricalProfileIndex), 1:16);
+        %end
         fprintf(arff, '@ATTRIBUTE DoubledTimeQuaverAlternation numeric\n');
         fprintf(arff, '@ATTRIBUTE HalfTimeQuaverAlternation numeric\n');
         fprintf(arff, '@ATTRIBUTE CounterPhaseQuaverAlternation numeric\n');
@@ -24,7 +24,7 @@ function write_corpus_as_arff( title, corpus_patterns, filename, double_time_pro
         for patternIndex = 1 : length(corpus_patterns)
             fprintf(arff, '"%s",', corpus_patterns{patternIndex}.name);
             write_vector(arff, corpus_patterns{patternIndex}.periodicities);
-            write_vector(arff, reducedMetricalProfile(corpus_patterns{patternIndex}));
+            % write_vector(arff, reducedMetricalProfile(corpus_patterns{patternIndex}));
             write_vector(arff, double_time_probs(patternIndex,:));
             fprintf(arff, '%d\n', ground_truth(patternIndex));
         end

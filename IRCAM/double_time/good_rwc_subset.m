@@ -18,7 +18,7 @@ end
 octave_error_filenames = cellfun(@basename, all_octave_errors, 'UniformOutput', false);
 
 % Create a text file with the octave error names ("the ugly").
-fod = fopen(tilde_expand('~/Research/Data/IRCAM-Beat/RWC/octave_errors.txt'), 'w');
+fod = fopen(tilde_expand('~/Research/Data/IRCAM-Beat/RWC/generated_octave_errors.txt'), 'w');
 for i = 1 : length(octave_error_filenames)
     fprintf(fod, '%s\n', octave_error_filenames{i});
 end
