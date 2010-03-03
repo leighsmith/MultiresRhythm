@@ -34,6 +34,7 @@ function save_rhythm_mix (filename_to_write, original_rhythm_file, clap_times_se
         fprintf('Need to reduce the clapping_sound channels to match the original_rhythm_sound\n');
     end
     clapping_mix = original_rhythm_sound + clapping_sound;
+    clear('original_rhythm_sound', 'clapping_sound', 'multiple_channels');
     wavwrite(bipolar_normalise(clapping_mix), original_sr, dynamic_resolution, tilde_expand(filename_to_write));
 end
 
@@ -52,7 +53,7 @@ function [full_duration] = sample_at_times(length_of_sound, sample_sound, sample
         amplitude_scaler = amplitudes(attackIndex);
         region_to_copy = attack_time : min(length_of_sound - 1, attack_time + sample_length - 1);
 
-        %% fprintf('region to copy %d\n' region_to_copy)
+        % fprintf('region to copy %d\n' region_to_copy)
 	full_duration(region_to_copy) = sample_sound .* amplitude_scaler;
     end
 end

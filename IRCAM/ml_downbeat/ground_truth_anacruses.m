@@ -7,7 +7,7 @@ annotated_downbeat_files = make_dataset(tilde_expand(annotated_dir), '.beat.xml'
 
 % We return the computed files if they match the annotations and the
 % matching indices from annotated_downbeat_files.
-[computed_downbeat_files, annotation_indices] = prune_bad_beat_tracking(computed_dir, annotated_downbeat_files);
+[computed_downbeat_files, octave_errors, annotation_indices] = prune_bad_beat_tracking(computed_dir, annotated_downbeat_files);
 
 dataset_size = length(computed_downbeat_files);
 anacruses = zeros(1, dataset_size);

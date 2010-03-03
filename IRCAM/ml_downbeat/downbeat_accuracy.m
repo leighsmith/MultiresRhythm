@@ -12,8 +12,7 @@ dataset_size = length(annotated_downbeat_files);
 distance = zeros(1, dataset_size);
 
 for i = 1 : dataset_size
-    [directory, filename] = fileparts(annotated_downbeat_files{i});
-    piece_name = strtok(filename, '.');
+    piece_name = basename(annotated_downbeat_files{i});
     computed_downbeat_file = tilde_expand(['~/Research/Data/IRCAM-Beat/Quaero_Selection/' computed_dir '/' piece_name '.wav.markers.xml']);
     fprintf('%d: %s\n', i, piece_name);
     distance(i) = downbeat_distances(annotated_downbeat_files{i}, computed_downbeat_file);
