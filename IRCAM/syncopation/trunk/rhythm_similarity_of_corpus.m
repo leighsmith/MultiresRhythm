@@ -44,7 +44,7 @@ closest_song_indices = closest_rhythms(similarity_matrix);
 % Print most similar to
 for i = 1 : length(corpus_dataset)
     fprintf('%3d: (%.4f) "%s" most similar to "%s"\n', ...
-            i, similarity_matrix(i, closest_song_indices(i)), filename(corpus_dataset{i}), filename(corpus_dataset{closest_song_indices(i)}));
+            i, similarity_matrix(i, closest_song_indices(i)), basename(corpus_dataset{i}), basename(corpus_dataset{closest_song_indices(i)}));
     best_similarity(i) = similarity_matrix(i, closest_song_indices(i));
 end
 
@@ -56,14 +56,7 @@ fprintf('Top 10 matches\n');
 for j = 1 : 10
     i = matching_indices(j);
     fprintf('%3d: (%.4f) "%s" most similar to "%s"\n', ...
-            i, similarity_matrix(i, closest_song_indices(i)), filename(corpus_dataset{i}), filename(corpus_dataset{closest_song_indices(i)}));
+            i, similarity_matrix(i, closest_song_indices(i)), basename(corpus_dataset{i}), basename(corpus_dataset{closest_song_indices(i)}));
 end
 
-end
-
-% fileparts differs from ircambeat's notion of extension, taking the last period as the
-% start of the extension, not the first.
-function [filename] = filename(filepath)
-    [directory, filename_and_extension] = fileparts(filepath);
-    filename = strtok(filename_and_extension, '.');
 end

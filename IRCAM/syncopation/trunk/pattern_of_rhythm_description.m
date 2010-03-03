@@ -1,5 +1,5 @@
 function [ pattern ] = pattern_of_rhythm_description ( rhythm_description )
-%pattern_of_rhythm Returns a pattern instance for the given rhythm description.
+%pattern_of_rhythm_description Returns a pattern instance for the given rhythm description.
 % The pattern includes the metrical profile and the profile of syncopation
 % per measure. To not access the ODF according to the downbeat, set the anacrusis to 0.
 % TODO This should be a factory method.

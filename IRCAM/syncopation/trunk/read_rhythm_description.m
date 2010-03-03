@@ -1,10 +1,14 @@
-function [ new_rhythm_description ] = read_rhythm_description( beat_markers_filepath, audio_filepath )
+function [ new_rhythm_description ] = read_rhythm_description( beat_markers_filepath, audio_filepath, subband_ranges )
 %read_rhythm_description Returns an instance of RhythmDescription with the onset detection function, times of
 %each beat, beats per measure, downbeat times, meter assigned from the ircambeat computed values.
 % $Id$
 
 % Assign the wideband_odf as the entire spectral energy.
-[wideband_odf, sample_rate, odf_subbands] = odf(audio_filepath);
+if(nargin < 3)
+    [wideband_odf, sample_rate, odf_subbands] = odf(audio_filepath);
+else
+    [wideband_odf, sample_rate, odf_subbands] = odf(audio_filepath, subband_ranges);
+end
 
 % bpm_filepath = [beat_markers_filepath '.wav.bpm.xml'];
 % [beat_times, beat_markers] = read_ircam_marker_times(beat_markers_filepath);
@@ -23,6 +27,8 @@ tempo = 60 / median(diff(beat_times));
 % Supply wideband_odfs and frequency specific bands as the same for now.
 % Should eventually handle when there are no subband odfs.
 [filepath, filename] = fileparts(audio_filepath);
-new_rhythm_description = RhythmDescription(filename, wideband_odf, odf_subbands, beat_times, beat_markers, metrical_hierarchy, beats_per_measure, anacrusis, sample_rate, tempo);
+new_rhythm_description = RhythmDescription(filename, wideband_odf, odf_subbands, ...
+    beat_times, beat_markers, metrical_hierarchy, beats_per_measure, anacrusis, ...
+    sample_rate, tempo);
 
 end

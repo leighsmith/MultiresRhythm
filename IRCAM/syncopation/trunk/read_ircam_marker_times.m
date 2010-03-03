@@ -2,7 +2,7 @@ function [ marker_times, marker_indices ] = read_ircam_marker_times( beat_marker
 %read_ircam_marker_times Reads the marker times from the named XML file.
 % $Id$
 
-marker_document = xmlread(beat_marker_filepath);
+marker_document = xmlread(tilde_expand(beat_marker_filepath));
 marker_root = marker_document.getDocumentElement();
 first_tagname = marker_root.getTagName();
      

@@ -17,22 +17,22 @@ while (dataset_index <= maximum_examples && song_index <= maximum_examples)
      annotation_pathname = annotation_files(song_index).name;
      if (annotation_pathname(1) ~= '.' && ~annotation_files(song_index).isdir) % Remove all hidden files.
         beat_marker_filepath = [annotations_directory '/' annotation_pathname];
-        % ircambeat_marker_pathname = (beat_marker_filepath_anno annotation_pathname)
         beats_per_measure = read_ircam_timesignatures(beat_marker_filepath);
 
-        %% if we want to exclude pieces with long preceding non_metrical intervals.
-        %% when (< anacrusis beats_per_measure)
-        % We exclude all non-strictly single meters
-        if(only_measures_of_beats ~= 0 && mean(beats_per_measure(:, 1)) == only_measures_of_beats)
-            %% Get the initial upbeat
+        % if we want to exclude pieces with long preceding non_metrical intervals.
+        % when (< anacrusis beats_per_measure)
+        % If we specified to exclude all non-strictly single meters
+        if(only_measures_of_beats == 0 || mean(beats_per_measure(:, 1)) == only_measures_of_beats)
+            % Get the initial upbeat
             % [anacrusis downbeat_time] = annotated_anacrusis(annotation_pathname ircambeat_marker_pathname (first beats_per_measure))
-            % fprintf('%a anacrusis %d, downbeat time %,3f beats_per_measure %a\n', annotation_name, anacrusis, downbeat_time, beats_per_measure)
+            anacrusis = 0;
+            downbeat_time = 0;
+            % fprintf('%s anacrusis %d, downbeat time %,3f beats_per_measure %d\n', annotation_name, anacrusis, downbeat_time, beats_per_measure)
+            fprintf('%s anacrusis %d, downbeat time %.3f beats_per_measure %d\n', beat_marker_filepath, anacrusis, downbeat_time, mean(beats_per_measure(:, 1)))
             dataset{dataset_index} = beat_marker_filepath;
-            % (list annotation_name :anacrusis anacrusis :annotation_filepath
-            % annotation_pathname :first_downbeat_time downbeat_time))))
             dataset_index = dataset_index + 1;
         else
-            fprintf('excluded %s\n', annotation_pathname);
+            fprintf('excluded %s since meter was (%s)\n', annotation_pathname, sprintf('%d ', beats_per_measure(:, 1)));
         end
      end
 

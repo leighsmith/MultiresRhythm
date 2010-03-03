@@ -1,4 +1,4 @@
-function [ odf, odf_sr, odf_subbands ] = odf( wav_filepath )
+function [ odf, odf_sr, odf_subbands ] = odf( wav_filepath, subband_range )
 %odf Compute the onset detection function of the file.
 %   Returns both a single dimension onset detection function and a matrix
 %   of summed frequency sub-bands.
@@ -10,11 +10,13 @@ seconds_lost = 0.030;
 
 [signal, sample_rate, resolution] = wavread(tilde_expand(wav_filepath));
 
-% low frequencies & high frequencies
-% subband_range = [[40, 150]; [3000, 4000]];
-% alternatively peep into the frequency spectrum at representative frequencies.
-subband_range = [[60, 100]; [3500, 4000]]; 
-
+if(nargin < 2)
+    % low frequencies & high frequencies
+    % subband_range = [[40, 150]; [3000, 4000]];
+    % alternatively peep into the frequency spectrum at representative frequencies.
+    subband_range = [[60, 100]; [3500, 4000]]; 
+end
+   
 [odf_fullfreq, marker_times_seconds, odf_subbands_clipped] = MFenergyfft(signal, sample_rate, 0.08, 0.01, 2, subband_range);
 odf_sr = 1 / mean(diff(marker_times_seconds));
 

@@ -112,6 +112,12 @@ function plot_pattern(pattern)
     % close();
 end
 
+function plot_metrical_profile(pattern)
+    % Display the reduced metrical pattern as a single bar graph.
+    bar(reducedMetricalProfile(pattern));
+    title(sprintf('Reduced metrical profile of %s', pattern.name));
+end
+    
 function features = featureVector(pattern)
     % featureVector - Returns a single feature vector from the pattern.
     % A feature vector of the rhythm pattern is a concatenation of the

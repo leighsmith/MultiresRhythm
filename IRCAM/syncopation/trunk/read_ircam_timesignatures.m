@@ -3,7 +3,7 @@ function [ segment_timesignatures, hierarchy ] = read_ircam_timesignatures( file
 %array of the beats per measure and the hierarchy of subdivisions of the measure.
 % $Id: read_ircam_annotation_timesignatures.m 5574 2010-01-05 18:20:21Z leighsmi $
 
-segment_document = xmlread(filepath);
+segment_document = xmlread(tilde_expand(filepath));
 segment_root = segment_document.getDocumentElement();
 timesignatures = segment_root.getElementsByTagName('timesignature');
 

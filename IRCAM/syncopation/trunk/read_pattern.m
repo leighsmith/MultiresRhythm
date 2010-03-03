@@ -2,7 +2,7 @@ function [ new_pattern ] = read_pattern(filename, pattern_filepath)
 %read_pattern Returns the rhythm pattern instance of the named file.
 % $Id$
 
-    pattern_document = xmlread(pattern_filepath);
+    pattern_document = xmlread(tilde_expand(pattern_filepath));
     % document_root = pattern_document.getDocumentElement();
     
     new_pattern = RhythmPattern(filename);

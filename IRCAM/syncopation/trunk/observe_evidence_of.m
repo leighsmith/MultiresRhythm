@@ -25,8 +25,8 @@ for measure_index = 1 : number_of_measures
     beat_durations_in_measure = beat_durations(beat_duration_index  + 1 : beat_duration_index + beats_per_measure);
     bar_duration = sum(beat_durations_in_measure); % in samples
     start_sample = round(beat_times(beat_duration_index + 1) * sample_rate) + 1;
-    fprintf('Measure %3d start sample %d seconds %f\n', measure_index, start_sample, start_sample / sample_rate);
-    fprintf('beat duration in samples %s = %.3f\n', sprintf('%.3f ', beat_durations_in_measure), bar_duration);
+    % fprintf('Measure %3d start sample %d seconds %f\n', measure_index, start_sample, start_sample / sample_rate);
+    % fprintf('beat duration in samples %s = %.3f\n', sprintf('%.3f ', beat_durations_in_measure), bar_duration);
 
     %% collect probabilities of the feature occuring at each measure
     %% location. These can be of the form of a normalised probability

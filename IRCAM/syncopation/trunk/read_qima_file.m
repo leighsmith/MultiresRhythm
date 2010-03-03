@@ -2,7 +2,7 @@ function [ beat_times, beat_markers ] = read_qima_file( filepath )
 % Read the given XML file to return an array of beat markers
 % $Id$
 
-marker_document = xmlread(filepath);
+marker_document = xmlread(tilde_expand(filepath));
 marker_root = marker_document.getDocumentElement();
 markers = marker_root.getElementsByTagName('segment');
 

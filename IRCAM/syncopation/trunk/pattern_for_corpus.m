@@ -8,10 +8,7 @@ corpus_rhythm_patterns = cell(length(corpus),1);
         
 for piece_index = 1 : length(corpus)
     beat_markers_filepath = corpus{1, piece_index};
-    [filepath, filename] = fileparts(beat_markers_filepath);
-    % fileparts differs from ircambeat's notion of extension, taking the last period as the
-    % start of the extension, not the first.
-    piece_name = strtok(filename, '.');
+    [piece_name, filepath] = basename(beat_markers_filepath);
     pattern_filepath = [filepath '/Pattern/' piece_name '.pattern.xml'];
     
     try
