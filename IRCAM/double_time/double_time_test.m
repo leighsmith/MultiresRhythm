@@ -4,14 +4,15 @@ function [ f_score, precision, recall ] = double_time_test( analysis_dir )
 %   Computes a Weka ARFF file.
 % double_time_test('AllGoodBeatAnalyses')
 
-good_beat_tracking = make_dataset(tilde_expand(['~/Research/Data/IRCAM-Beat/RWC/' analysis_dir]), '.wav.markers.xml', 0);
-fprintf('Data set %s size %d tracks\n', analysis_dir, length(good_beat_tracking));
+root_dir = tilde_expand('~/Research/Data/IRCAM-Beat/RWC/');
 sound_directory_root = tilde_expand('~/Local_Data/RWC_WAV');
+
+good_beat_tracking = make_dataset(tilde_expand([root_dir analysis_dir]), '.wav.markers.xml', 0);
 
 octave_error_filenames = cell(1, 5);
 
 % Read the double time examples.
-octave_errors_fid = fopen(tilde_expand('~/Research/Data/IRCAM-Beat/RWC/octave_errors.txt'), 'r');
+octave_errors_fid = fopen(tilde_expand([root_dir 'octave_errors.txt']), 'r');
 line_index = 1;
 while ~feof(octave_errors_fid)
     octave_error_filenames{line_index} = fgetl(octave_errors_fid);
@@ -57,8 +58,8 @@ likely_double_time = find(double_time_prob > threshold);
 % The computed double time patterns.
 double_time_patterns = corpus_patterns(likely_double_time);
 
-fprintf('Computed double time patterns:\n');
-cellfun(@name, double_time_patterns, 'UniformOutput', false)
+double_time_filenames = cellfun(@name, double_time_patterns, 'UniformOutput', false);
+
 % octave_error_patterns = pattern_for_corpus(octave_error_filenames, tilde_expand(sound_directory_root));
 % cellfun(@name, octave_error_patterns, 'UniformOutput', false)
 
@@ -71,20 +72,27 @@ figure();
 bar([ground_truth * 4, double_time_prob]);
 
 correct_matches = intersect(likely_double_time, octave_errors_in_corpus);
-fprintf('Number correct %d, ground truth size %d, marked as double time %d\n',...
-    length(correct_matches), length(octave_error_filenames), length(likely_double_time))
 recall = length(correct_matches) / length(octave_error_filenames);
 precision = length(correct_matches) / length(likely_double_time);
 f_score = (2 * precision * recall) / (precision + recall);
 
-write_corpus_as_arff('Double time from rhythm pattern', corpus_patterns, '~/Research/Data/IRCAM-Beat/RWC/Weka_Datasets/doubletime.arff', double_time_probs, ground_truth);
+write_corpus_as_arff('Double time from rhythm pattern', corpus_patterns, [root_dir 'Weka_Datasets/doubletime.arff'], double_time_probs, ground_truth);
 
-% TODO create the directory new, copy in the analyses and then reestimate,
+% create the directory new, copy in the analyses and then reestimate,
 % overwriting the double_time_patterns.
-% copyfile([root_dir analysis_dir], [root_dir 'ReestimatedTempo']);
-reestimate_tempo(double_time_patterns, 'ReestimatedTempo')
+copyfile([root_dir analysis_dir], [root_dir 'ReestimatedTempo']);
+reestimate_tempo(double_time_filenames, 'ReestimatedTempo')
 
-evaluate_corpus_reestimation(analysis_dir);
+evaluate_corpus_reestimation(analysis_dir, 'ReestimatedTempo');
+
+fprintf('Data set %s size %d tracks\n', analysis_dir, length(good_beat_tracking));
+fprintf('Ground truth octave errors:\n');
+cellfun(@disp, octave_error_filenames, 'UniformOutput', false);
+fprintf('Assessed to be double time patterns:\n');
+cellfun(@disp, double_time_filenames, 'UniformOutput', false);
+fprintf('Number correct %d, ground truth size %d, marked as double time %d\n',...
+    length(correct_matches), length(octave_error_filenames), length(likely_double_time))
+fprintf('Precision %.3f Recall %.3f F-Score %.3f\n', precision, recall, f_score);
 
 end
 

@@ -1,35 +1,28 @@
-function [ all_acceptable_files, all_octave_errors ] = good_rwc_subset( analysis_dir )
+function [ good_beat_tracking, all_octave_errors ] = good_rwc_subset( analysis_dir )
 %good_rwc_subset Generate a list of all RWC files which beat track
 %correctly.
 %   Works across the five datasets of RWC.
 
-rwc_dirs = { 'AIST.RWC-MDB-C-2001.BEAT', 'AIST.RWC-MDB-G-2001.BEAT', 'AIST.RWC-MDB-J-2001.BEAT', 'AIST.RWC-MDB-P-2001.BEAT', 'AIST.RWC-MDB-R-2001.BEAT' };
+dir_root = '~/Research/Data/IRCAM-Beat/RWC/';
 
-[acceptable_files, octave_errors] = cellfun(@find_good_beat_analyses, rwc_dirs, 'UniformOutput', false);
-all_acceptable_files = [];
-all_octave_errors = [];
-
-% Gee do I hate Matlab, where is (cons)?
-for i = 1 : length(rwc_dirs)
-   all_acceptable_files = cat(2, all_acceptable_files, acceptable_files{i});
-   all_octave_errors = cat(2, all_octave_errors, octave_errors{i});
-end
-
-octave_error_filenames = cellfun(@basename, all_octave_errors, 'UniformOutput', false);
+annotated_files = make_dataset(tilde_expand([dir_root 'Annotation/']), '.beat.xml', 0);
+% [good_beat_tracking, all_octave_errors] = prune_bad_beat_tracking(tilde_expand([dir_root '/Analysis']), annotated_files);
+[good_beat_tracking, all_octave_errors] = prune_bad_beat_tracking_new('Analysis', annotated_files);
 
 % Create a text file with the octave error names ("the ugly").
-fod = fopen(tilde_expand('~/Research/Data/IRCAM-Beat/RWC/generated_octave_errors.txt'), 'w');
-for i = 1 : length(octave_error_filenames)
-    fprintf(fod, '%s\n', octave_error_filenames{i});
+fod = fopen(tilde_expand([dir_root 'generated_octave_errors.txt']), 'w');
+for i = 1 : length(all_octave_errors)
+    fprintf(fod, '%s\n', basename(all_octave_errors{i}));
 end
 fclose(fod);
 
-good_analyses_directory = tilde_expand(['~/Research/Data/IRCAM-Beat/RWC/' analysis_dir]);
+good_analyses_directory = tilde_expand([dir_root analysis_dir]);
+
 % Create the directory
 mkdir(good_analyses_directory);
-for i = 1 : length(all_acceptable_files)
-    copyfile(all_acceptable_files{i}, good_analyses_directory);
-    [filename, directory] = basename(all_acceptable_files{i});
+for i = 1 : length(good_beat_tracking)
+    copyfile(good_beat_tracking{i}, good_analyses_directory);
+    [filename, directory] = basename(good_beat_tracking{i});
     copyfile([directory, '/', filename, '.wav.bpm.xml'], good_analyses_directory);
 end
 
