@@ -1,5 +1,4 @@
-% -*- Octave -*-
-function [ songScores ] = evaluate_beat_corpus( corpus_song_names, evaluation, analysis_dir )
+function [ songScores ] = evaluate_beat_corpus( corpus_song_names, evaluation, analysis_dir, annotation_dir )
 %evaluate_beat_with_corpus Evaluate the list of tracks in corpus for the given precision_window
 % Evaluate the beats contained in the annotation and analysis files of the
 % given corpus.
@@ -15,14 +14,13 @@ function [ songScores ] = evaluate_beat_corpus( corpus_song_names, evaluation, a
 % Copyright (c) 2009 IRCAM, All Rights Reserved.
 % Permission is only granted to use this code for Quaero evaluation purposes.
 
-corpus_directory_root = '~/Research/Data/IRCAM-Beat/RWC/';
 songScores = zeros(length(corpus_song_names), 3); % precision, recall, f-score.
 
 for corpus_index = 1 : length(corpus_song_names)
     song_name = basename(corpus_song_names{corpus_index});
     
-    annotation_filepath = tilde_expand([corpus_directory_root 'Annotation/' song_name '.beat.xml']);
-    beat_marker_filepath = tilde_expand([corpus_directory_root analysis_dir '/' song_name '.wav.markers.xml']);
+    annotation_filepath = tilde_expand([annotation_dir '/' song_name '.beat.xml']);
+    beat_marker_filepath = tilde_expand([analysis_dir '/' song_name '.wav.markers.xml']);
     
     % print the filename before processing
     fprintf('annotation: %s\n', annotation_filepath)

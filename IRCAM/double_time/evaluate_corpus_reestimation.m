@@ -1,10 +1,8 @@
-function [ reestimated_song_scores, original_song_scores ] = evaluate_corpus_reestimation( analysis_dir, reestimation_dir )
+function [ reestimated_song_scores, original_song_scores ] = evaluate_corpus_reestimation( analysis_dir, reestimation_dir, annotation_dir )
 %beat_tracking_improvement Produces comparison of performance before and
 %after reestimating the tempo for the given patterns identified as octave errors.
 
-root_dir = '~/Research/Data/IRCAM-Beat/RWC/';
-
-analysed_files = make_dataset([root_dir reestimation_dir], '.wav.markers.xml', 0);
+analysed_files = make_dataset(reestimation_dir, '.wav.markers.xml', 0);
 
 % Evaluate how well the beats match the annotations.
 evaluation = Evaluation();
@@ -15,8 +13,8 @@ evaluation.relativePrecision = true;
 evaluation.precisionWindow = 0.15; % Within 15% of the annotated beat position.
 
 % analysis_dir for all good beat tracked analyses.
-original_song_scores = evaluate_beat_corpus(analysed_files, evaluation, analysis_dir);
-reestimated_song_scores = evaluate_beat_corpus(analysed_files, evaluation, reestimation_dir);
+original_song_scores = evaluate_beat_corpus(analysed_files, evaluation, analysis_dir, annotation_dir);
+reestimated_song_scores = evaluate_beat_corpus(analysed_files, evaluation, reestimation_dir, annotation_dir);
 
 % Generate auditions
 % audition_rwc_corpus(reestimation_dir, false)

@@ -6,19 +6,10 @@ function [ f_score, precision, recall ] = double_time_test( analysis_dir )
 
 root_dir = tilde_expand('~/Research/Data/IRCAM-Beat/RWC/');
 sound_directory_root = tilde_expand('~/Local_Data/RWC_WAV');
+absolute_analysis_dir = [root_dir analysis_dir];
+reestimated_dir = [root_dir 'ReestimatedTempo'];
 
-good_beat_tracking = make_dataset(tilde_expand([root_dir analysis_dir]), '.wav.markers.xml', 0);
-
-octave_error_filenames = cell(1, 5);
-
-% Read the double time examples.
-octave_errors_fid = fopen(tilde_expand([root_dir 'octave_errors.txt']), 'r');
-line_index = 1;
-while ~feof(octave_errors_fid)
-    octave_error_filenames{line_index} = fgetl(octave_errors_fid);
-    line_index = line_index + 1;
-end
-fclose(octave_errors_fid);
+good_beat_tracking = make_dataset(absolute_analysis_dir, '.wav.markers.xml', 0);
 
 % Exceptions
 % 'RM-P009' Actually not double time, annotated wrongly.
@@ -64,6 +55,7 @@ double_time_filenames = cellfun(@name, double_time_patterns, 'UniformOutput', fa
 % cellfun(@name, octave_error_patterns, 'UniformOutput', false)
 
 % The ground truth double time patterns.
+octave_error_filenames = octave_error_files([root_dir 'octave_errors.txt']);
 octave_errors_in_corpus = find_patterns(corpus_patterns, octave_error_filenames);
 
 ground_truth = zeros(size(corpus_patterns));
@@ -80,12 +72,12 @@ write_corpus_as_arff('Double time from rhythm pattern', corpus_patterns, [root_d
 
 % create the directory new, copy in the analyses and then reestimate,
 % overwriting the double_time_patterns.
-copyfile([root_dir analysis_dir], [root_dir 'ReestimatedTempo']);
-reestimate_tempo(double_time_filenames, 'ReestimatedTempo')
+copyfile(absolute_analysis_dir, reestimated_dir);
+reestimate_tempo(double_time_filenames, reestimated_dir, absolute_analysis_dir, sound_directory_root)
 
-evaluate_corpus_reestimation(analysis_dir, 'ReestimatedTempo');
+evaluate_corpus_reestimation(absolute_analysis_dir, reestimated_dir, [root_dir 'Annotation']);
 
-fprintf('Data set %s size %d tracks\n', analysis_dir, length(good_beat_tracking));
+fprintf('Data set %s size %d tracks\n', absolute_analysis_dir, length(good_beat_tracking));
 fprintf('Ground truth octave errors:\n');
 cellfun(@disp, octave_error_filenames, 'UniformOutput', false);
 fprintf('Assessed to be double time patterns:\n');
