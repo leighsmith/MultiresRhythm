@@ -2,8 +2,8 @@ function convert_rwc_corpus( directory )
 %convert_rwc_corpus Convert all files in directory from RWC format to IRCAM beat format.
 %   convert_rwc_corpus('AIST.RWC-MDB-P-2001.BEAT')
 
-rwc_dir = tilde_expand(['~/Research/Data/IRCAM-Beat/RWC/Annotation/' directory '.TXT/']);
-ircam_dir = tilde_expand(['~/Research/Data/IRCAM-Beat/RWC/Annotation/' directory '/']);
+rwc_dir = tilde_expand(['~/Research/Data/IRCAM-Beat/RWC/Annotation_orig/' directory '.TXT/']);
+ircam_dir = tilde_expand(['~/Research/Data/IRCAM-Beat/RWC/Annotation_orig/' directory '/']);
 
 beat_file_extension = '.TXT';
 

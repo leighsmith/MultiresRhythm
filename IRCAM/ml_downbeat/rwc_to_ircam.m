@@ -12,14 +12,15 @@ markers = load(rwc_filename);
 times = (markers(:,1) ./ 100) + 0.085;
 beats = (markers(:,3) ./ 48) + 1;
 beats(beats == 9) = 1;
+
 if(max(diff(beats)) > 1)
     fprintf('not all beats annotated\n');
-end
-if(max(beats) <= 4)
+else
+    if(max(beats) > 4)
+        fprintf('unknown time_signature, maximum beat is %d\n', max(beats));
+    end
     time_signature = [max(beats), 4];
     write_ircam_markers(ircam_filename, times, beats, time_signature);
-else
-    fprintf('unknown time_signature, maximum beat is %d\n', max(beats));
 end
 
 end
