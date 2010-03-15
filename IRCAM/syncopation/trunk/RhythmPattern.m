@@ -118,6 +118,12 @@ function plot_metrical_profile(pattern)
     title(sprintf('Reduced metrical profile of %s', pattern.name));
 end
     
+function image_metrical_profile(pattern)    
+    figure();
+    imagesc(pattern.metrical_profile);
+    title(sprintf('Subband metrical profile of %s', pattern.name));
+end
+
 function features = featureVector(pattern)
     % featureVector - Returns a single feature vector from the pattern.
     % A feature vector of the rhythm pattern is a concatenation of the
@@ -172,6 +178,23 @@ function downsampledMetricalProfile = reducedMetricalProfile(pattern)
 % semiquaver resolution.
     downsampleFactor = pattern.metric_tatums_per_beat / pattern.syncopation_tatums_per_beat;    
     downsampledMetricalProfile = sum(reshape(pattern.metrical_profile', downsampleFactor, numel(pattern.metrical_profile) / downsampleFactor)) ./ downsampleFactor;
+end
+
+function singleMetricalProfile = widebandMetricalProfile(pattern)
+% widebandMetricalProfile - Returns a single metrical profile vector, reduced to
+% semiquaver resolution.
+    numOfSpectralBands = size(pattern.metrical_profile, 1);
+    downsampledMetricalProfile = reducedMetricalProfile(pattern);
+    singleMetricalProfile = sum(reshape(downsampledMetricalProfile, numel(downsampledMetricalProfile) / numOfSpectralBands, numOfSpectralBands)') ./ numOfSpectralBands;
+end
+
+
+function beatLevelMetricalProfile = beatProfile(pattern)
+% reducedMetricalProfile - Returns a single metrical profile vector, reduced to
+% semiquaver resolution.
+    numOfSpectralBands = size(pattern.metrical_profile, 1);
+    tatumsPerBeat = reshape(sum(pattern.metrical_profile) ./ numOfSpectralBands, pattern.metric_tatums_per_beat, size(pattern.metrical_profile, 2) / pattern.metric_tatums_per_beat);
+    beatLevelMetricalProfile = sum(tatumsPerBeat) ./ pattern.metric_tatums_per_beat;
 end
 
 function vector_length = featureVectorLength(pattern)
