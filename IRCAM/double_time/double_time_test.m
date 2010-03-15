@@ -1,13 +1,12 @@
-function [ f_score, precision, recall ] = double_time_test( analysis_dir )
+function [ f_score, precision, recall ] = double_time_test( root_dir, analysis_dir, sound_directory_root )
 %double_time_test Tests known good beat tracking examples and a ground truth dataset of
 %examples with octave errors. 
 %   Computes a Weka ARFF file.
-% double_time_test('AllGoodBeatAnalyses')
+% double_time_test('~/Research/Data/IRCAM-Beat/RWC/', 'AllGoodBeatAnalyses', '~/Local_Data/RWC_WAV')
+% double_time_test('~/Research/Data/IRCAM-Beat/EMI_TempoDiscrimination/', 'TempoAnalyses', '~/Research/Data/IRCAM-Beat/EMI_TempoDiscrimination/Audio');
 
-root_dir = tilde_expand('~/Research/Data/IRCAM-Beat/RWC/');
-sound_directory_root = tilde_expand('~/Local_Data/RWC_WAV');
-absolute_analysis_dir = [root_dir analysis_dir];
-reestimated_dir = [root_dir 'ReestimatedTempo'];
+absolute_analysis_dir = [tilde_expand(root_dir) analysis_dir];
+reestimated_dir = [tilde_expand(root_dir) 'ReestimatedTempo'];
 
 good_beat_tracking = make_dataset(absolute_analysis_dir, '.wav.markers.xml', 0);
 
@@ -15,21 +14,10 @@ good_beat_tracking = make_dataset(absolute_analysis_dir, '.wav.markers.xml', 0);
 % 'RM-P009' Actually not double time, annotated wrongly.
 % 'RM-P082' % Starts on correct tempo then doubles halfway through.
 
-% quaver_alternation_prob = 1 - cellfun(@quaver_alternation, corpus_patterns);
-% freq_alternation_prob = 1 - cellfun(@frequency_alternation, corpus_patterns);
-% double_time_prob = quaver_alternation_prob;
-% double_time_prob = freq_alternation_prob;
-% double_time_prob = freq_alternation_prob .* quaver_alternation_prob;
-% double_time_prob = freq_alternation_prob + quaver_alternation_prob;
-% threshold = mean(double_time_prob) + std(double_time_prob);
+[double_time_probs, corpus_patterns] = double_time_of_corpus(good_beat_tracking, tilde_expand(sound_directory_root));
 
-[double_time_probs, corpus_patterns] = double_time_of_corpus(good_beat_tracking, sound_directory_root);
-
-% double_time_prob = double_time_probs(:, 4);
-double_time_prob = double_time_probs(:,2) ./ double_time_probs(:,1);
-% double_time_prob = min(double_time_probs(:,2:3), [], 2) ./ double_time_probs(:,1);
-% double_time_prob = max(double_time_probs(:,2:3), [], 2) ./ double_time_probs(:,1);
-% double_time_prob = (double_time_probs(:,2) + double_time_probs(:,3)) ./ (2 * double_time_probs(:,1));
+% The first column of the probabilities 
+double_time_prob = double_time_probs(:,1);
 
 % double_time_prob = cellfun(@double_time, corpus_patterns);
 % mean(double_time_prob)
@@ -55,7 +43,7 @@ double_time_filenames = cellfun(@name, double_time_patterns, 'UniformOutput', fa
 % cellfun(@name, octave_error_patterns, 'UniformOutput', false)
 
 % The ground truth double time patterns.
-octave_error_filenames = octave_error_files([root_dir 'octave_errors.txt']);
+octave_error_filenames = read_filenames([tilde_expand(root_dir) 'octave_errors.txt']);
 octave_errors_in_corpus = find_patterns(corpus_patterns, octave_error_filenames);
 
 ground_truth = zeros(size(corpus_patterns));
@@ -68,14 +56,15 @@ recall = length(correct_matches) / length(octave_error_filenames);
 precision = length(correct_matches) / length(likely_double_time);
 f_score = (2 * precision * recall) / (precision + recall);
 
-write_corpus_as_arff('Double time from rhythm pattern', corpus_patterns, [root_dir 'Weka_Datasets/doubletime.arff'], double_time_probs, ground_truth);
+write_corpus_as_arff('Double time from rhythm pattern', corpus_patterns, [tilde_expand(root_dir) 'Weka_Datasets/doubletime.arff'], double_time_probs, ground_truth);
 
 % create the directory new, copy in the analyses and then reestimate,
 % overwriting the double_time_patterns.
 copyfile(absolute_analysis_dir, reestimated_dir);
 reestimate_tempo(double_time_filenames, reestimated_dir, absolute_analysis_dir, sound_directory_root)
 
-evaluate_corpus_reestimation(absolute_analysis_dir, reestimated_dir, [root_dir 'Annotation']);
+% evaluate_corpus_reestimation(absolute_analysis_dir, reestimated_dir, [tilde_expand(root_dir) 'Annotation']);
+evaluate_corpus_reestimation_tempo(absolute_analysis_dir, reestimated_dir, [tilde_expand(root_dir) 'EMI_TempoAnnotatedFiles.txt']);
 
 fprintf('Data set %s size %d tracks\n', absolute_analysis_dir, length(good_beat_tracking));
 fprintf('Ground truth octave errors:\n');

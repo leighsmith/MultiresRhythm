@@ -4,7 +4,7 @@ function [ double_time_probs, corpus_rhythm_patterns ] = double_time_of_corpus (
 %   Computes and caches the original time and double time patterns.
 %   Column order for quaver alternation: doubled time, half time, counter phase.
 
-double_time_probs = zeros(length(corpus), 4);
+double_time_probs = zeros(length(corpus), 5);
 corpus_rhythm_patterns = cell(length(corpus),1);
 for piece_index = 1 : length(corpus)
     beat_markers_filepath = corpus{1, piece_index};
@@ -48,15 +48,46 @@ for piece_index = 1 : length(corpus)
     % double_time_probs(piece_index, 3) = double_time(original_pattern, half_time_pattern);
     % double_time_probs(piece_index, 1) = double_time(double_time_pattern, original_pattern);
     
+    original_quaver_alternation = quaver_alternation(original_pattern);
+    double_quaver_alternation = quaver_alternation(double_time_pattern);
+    half_quaver_alternation = quaver_alternation(half_time_pattern);
+    
     % > 1 if there is less quaver alternation at the double rate than the original.
-    double_time_probs(piece_index, 1) = quaver_alternation(original_pattern) / quaver_alternation(double_time_pattern);
+    % double_time_probs(piece_index, 2) = original_quaver_alternation / double_quaver_alternation;
+    
+    % > 1 if there is more quaver alternation at the double rate than the original.
+    double_time_probs(piece_index, 2) = double_quaver_alternation / original_quaver_alternation;
+    
+    double_time_probs(piece_index, 3) = quaver_alternation(counter_phase_pattern) / original_quaver_alternation;
+    
     % > 1 if there is more quaver alternation at the half beat rate than the original.
-    double_time_probs(piece_index, 2) = quaver_alternation(counter_phase_pattern) / quaver_alternation(original_pattern);
-    double_time_probs(piece_index, 3) = quaver_alternation(half_time_pattern) / quaver_alternation(original_pattern);
-
+    double_time_probs(piece_index, 4) = half_quaver_alternation / original_quaver_alternation;
+    
     % double_time_probs(piece_index, 4) = quaver_alternation(half_time_pattern) / quaver_alternation_beats(double_time_pattern);
     % > 1 if the quaver at the half beat rate is greater than the double rate.
-    double_time_probs(piece_index, 4) = (quaver_alternation(half_time_pattern) * quaver_alternation_beats(double_time_pattern)) / (quaver_alternation(original_pattern) ^ 2);
+    double_time_probs(piece_index, 5) = (half_quaver_alternation * quaver_alternation_beats(double_time_pattern)) / (original_quaver_alternation ^ 2);
+
+    % quaver_alternation_prob = 1 - cellfun(@quaver_alternation, corpus_patterns);
+    % freq_alternation_prob = 1 - cellfun(@frequency_alternation, corpus_patterns);
+    % double_time_prob = quaver_alternation_prob;
+    % double_time_prob = freq_alternation_prob;
+    % double_time_prob = freq_alternation_prob .* quaver_alternation_prob;
+    % double_time_prob = freq_alternation_prob + quaver_alternation_prob;
+    % double_time_prob = double_time_probs(:, 4);
+    % double_time_prob = min(double_time_probs(:,2:3), [], 2) ./ double_time_probs(:,1);
+    % double_time_prob = max(double_time_probs(:,2:3), [], 2) ./ double_time_probs(:,1);
+    % double_time_prob = (double_time_probs(:,2) + double_time_probs(:,3)) ./ (2 * double_time_probs(:,1));
+    
+    % Compare the ratio of half time pattern to original pattern against
+    % the original to double quaver ratio.
+    % 
+    % double_time_probs(piece_index, 1) = double_time_probs(:,4) ./ double_time_probs(:,2);
+    double_time_probs(piece_index, 1) = double_time_probs(piece_index,2) + double_time_probs(piece_index,4) - 2;
+    
+    if(double_time_probs(piece_index, 1) > 0)
+        fprintf('%s Candidate to be an octave error\n', original_pattern.name);
+    end
+    
 end
 
 end

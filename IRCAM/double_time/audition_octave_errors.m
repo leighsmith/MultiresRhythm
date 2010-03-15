@@ -3,7 +3,7 @@ function [ output_args ] = audition_octave_errors( octave_errors_file )
 %   Detailed explanation goes here
 
 % Read the double time examples.
-octave_errors_filenames = octave_error_files(octave_errors_file);
+octave_errors_filenames = read_filenames(octave_errors_file);
 
 for i = 1 : length(octave_errors_filenames)
     octave_error_filename = octave_errors_filenames{i};
