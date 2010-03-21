@@ -3,7 +3,7 @@ function convert_rwc_corpus( directory )
 %   convert_rwc_corpus('AIST.RWC-MDB-P-2001.BEAT')
 
 rwc_dir = tilde_expand(['~/Research/Data/IRCAM-Beat/RWC/Annotation_orig/' directory '.TXT/']);
-ircam_dir = tilde_expand(['~/Research/Data/IRCAM-Beat/RWC/Annotation_orig/' directory '/']);
+ircam_dir = tilde_expand('~/Research/Data/IRCAM-Beat/RWC/Annotation/');
 
 beat_file_extension = '.TXT';
 
