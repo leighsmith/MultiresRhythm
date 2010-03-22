@@ -12,9 +12,9 @@ while (song_index <= maximum_examples)
     if (corpus_pathname(1) ~= '.' && ~corpus_files(song_index).isdir && ~strcmp(corpus_pathname, 'README.TXT'))
         filename = basename(corpus_pathname);
         if annotation
-            audition_rwc_file(filename);
+            audition_rwc_file(sprintf('~/Research/Data/IRCAM-Beat/RWC/Annotation/%s.beat.xml', filename), 'annotated');
         else
-            audition_rwc_file(filename, corpus_directory);
+            audition_rwc_file(sprintf('~/Research/Data/IRCAM-Beat/RWC/%s/%s.wav.markers.xml', corpus_directory, filename), 'tracked'));
         end
     end
 

@@ -7,7 +7,7 @@ function [ original_pattern, rhythm_description ] = filtered_pattern( beat_marke
     % numOfSpectralBands = 4;
     numOfSpectralBands = 8;
     [piece_name, filepath] = basename(beat_markers_filepath);
-    pattern_filepath = [filepath '/' pattern_directory '/' piece_name '.pattern.xml'];
+    pattern_filepath = [filepath '/../' pattern_directory '/' piece_name '.pattern.xml'];
     disp(pattern_filepath);
     audio_filepath = [sound_directory_root '/' piece_name '.wav'];
 
@@ -15,7 +15,7 @@ function [ original_pattern, rhythm_description ] = filtered_pattern( beat_marke
         original_pattern = read_pattern(piece_name, pattern_filepath);
         rhythm_description = [];
     catch no_pattern % no pattern found
-        if(nargin < 5)
+        if(nargin < 5 || isempty(rhythm_description))
             fprintf('Reading rhythm description\n');
             rhythm_description = read_rhythm_description(beat_markers_filepath, audio_filepath, odfSpectralBands(numOfSpectralBands));
         end

@@ -1,14 +1,16 @@
-function [ song_scores ] = evaluate_corpus_tempo( analysis_dir, annotated_tempo_file )
+function [ song_scores, octave_errors ] = evaluate_corpus_tempo( analysis_dir, annotated_tempo_file )
 %evaluate_corpus_tempo Returns the scores of tempo matching to the annotated tempi.
 %   Returns those files which are octave errors (according to tempo, not beat tracking).
 
-analysed_files = make_dataset(analysis_dir, '.wav.markers.xml', 0);
+analysed_files = make_dataset(tilde_expand(analysis_dir), '.wav.markers.xml', 0);
 
-fid = fopen(annotated_tempo_file,'r');
+fid = fopen(tilde_expand(annotated_tempo_file), 'r');
 names_and_tempi = textscan(fid, '%q %f');
 annotated_files = names_and_tempi{1};
 annotated_tempi = names_and_tempi{2};
 fclose(fid)
+octave_errors = cell(1, 2);
+octave_error_index = 1;
 
 tempo_threshold = 0.03; % percentage difference from annotated tempo required to past muster.
 dataset_size = length(analysed_files);
@@ -30,6 +32,8 @@ for i = 1 : dataset_size
         octave = log2(tracked_tempo / annotated_tempo);
         if(abs(round(octave) - octave) < tempo_threshold)
             fprintf('but likely octave error\n');
+            octave_errors{octave_error_index} = basename(analysed_files{i});
+            octave_error_index = octave_error_index + 1;
         end
     end
 

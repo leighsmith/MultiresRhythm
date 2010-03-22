@@ -1,9 +1,10 @@
-function [ f_score, precision, recall ] = double_time_test( root_dir, analysis_dir, sound_directory_root )
+function [ f_score, precision, recall ] = double_time_test( root_dir, analysis_dir, sound_directory_root, annotated_tempi_file )
 %double_time_test Tests known good beat tracking examples and a ground truth dataset of
 %examples with octave errors. 
 %   Computes a Weka ARFF file.
+% double_time_test('~/Research/Data/IRCAM-Beat/RWC/', 'ForTempoAnalyses', '~/Local_Data/RWC_WAV', 'RWC_AnnotatedTempi.txt')
 % double_time_test('~/Research/Data/IRCAM-Beat/RWC/', 'AllGoodBeatAnalyses', '~/Local_Data/RWC_WAV')
-% double_time_test('~/Research/Data/IRCAM-Beat/EMI_TempoDiscrimination/', 'TempoAnalyses', '~/Research/Data/IRCAM-Beat/EMI_TempoDiscrimination/Audio');
+% double_time_test('~/Research/Data/IRCAM-Beat/EMI_TempoDiscrimination/', 'TempoAnalyses', '~/Research/Data/IRCAM-Beat/EMI_TempoDiscrimination/Audio', 'EMI_TempoAnnotatedFiles.txt');
 
 absolute_analysis_dir = [tilde_expand(root_dir) analysis_dir];
 reestimated_dir = [tilde_expand(root_dir) 'ReestimatedTempo'];
@@ -63,15 +64,19 @@ write_corpus_as_arff('Double time from rhythm pattern', corpus_patterns, [tilde_
 copyfile(absolute_analysis_dir, reestimated_dir);
 reestimate_tempo(double_time_filenames, reestimated_dir, absolute_analysis_dir, sound_directory_root)
 
-% evaluate_corpus_reestimation(absolute_analysis_dir, reestimated_dir, [tilde_expand(root_dir) 'Annotation']);
-evaluate_corpus_reestimation_tempo(absolute_analysis_dir, reestimated_dir, [tilde_expand(root_dir) 'EMI_TempoAnnotatedFiles.txt']);
+% If an annotated tempo file was not supplied, attempt to derive the evaluation from the annotated beat markers.
+if (nargin < 4)
+    evaluate_corpus_reestimation(absolute_analysis_dir, reestimated_dir, [tilde_expand(root_dir) 'Annotation']);
+else
+    evaluate_corpus_reestimation_tempo(absolute_analysis_dir, reestimated_dir, [tilde_expand(root_dir) annotated_tempi_file]);
+end
 
 fprintf('Data set %s size %d tracks\n', absolute_analysis_dir, length(good_beat_tracking));
-fprintf('Ground truth octave errors:\n');
+fprintf('\nGround truth octave errors:\n');
 cellfun(@disp, octave_error_filenames, 'UniformOutput', false);
-fprintf('Assessed to be double time patterns:\n');
+fprintf('\nAssessed to be double time patterns:\n');
 cellfun(@disp, double_time_filenames, 'UniformOutput', false);
-fprintf('Number correct %d, ground truth size %d, marked as double time %d\n',...
+fprintf('\nNumber correct %d, ground truth size %d, marked as double time %d\n',...
     length(correct_matches), length(octave_error_filenames), length(likely_double_time))
 fprintf('Precision %.3f Recall %.3f F-Score %.3f\n', precision, recall, f_score);
 

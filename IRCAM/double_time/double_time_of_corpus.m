@@ -56,12 +56,12 @@ for piece_index = 1 : length(corpus)
     % double_time_probs(piece_index, 2) = original_quaver_alternation / double_quaver_alternation;
     
     % > 1 if there is more quaver alternation at the double rate than the original.
-    double_time_probs(piece_index, 2) = double_quaver_alternation / original_quaver_alternation;
+    double_time_probs(piece_index, 2) = double_quaver_alternation / (original_quaver_alternation + eps);
     
-    double_time_probs(piece_index, 3) = quaver_alternation(counter_phase_pattern) / original_quaver_alternation;
+    double_time_probs(piece_index, 3) = quaver_alternation(counter_phase_pattern) / (original_quaver_alternation + eps);
     
     % > 1 if there is more quaver alternation at the half beat rate than the original.
-    double_time_probs(piece_index, 4) = half_quaver_alternation / original_quaver_alternation;
+    double_time_probs(piece_index, 4) = half_quaver_alternation / (original_quaver_alternation + eps);
     
     % double_time_probs(piece_index, 4) = quaver_alternation(half_time_pattern) / quaver_alternation_beats(double_time_pattern);
     % > 1 if the quaver at the half beat rate is greater than the double rate.
@@ -79,13 +79,14 @@ for piece_index = 1 : length(corpus)
     % double_time_prob = (double_time_probs(:,2) + double_time_probs(:,3)) ./ (2 * double_time_probs(:,1));
     
     % Compare the ratio of half time pattern to original pattern against
-    % the original to double quaver ratio.
-    % 
-    % double_time_probs(piece_index, 1) = double_time_probs(:,4) ./ double_time_probs(:,2);
-    double_time_probs(piece_index, 1) = double_time_probs(piece_index,2) + double_time_probs(piece_index,4) - 2;
+    % the original to double quaver ratio. 
+    double_time_probs(piece_index, 1) = double_time_probs(piece_index,4) * double_time_probs(piece_index,2);
+    % double_time_probs(piece_index, 1) = double_time_probs(piece_index,2) + double_time_probs(piece_index,4) - 2;
+    
+    double_time_probs(piece_index, :)
     
     if(double_time_probs(piece_index, 1) > 0)
-        fprintf('%s Candidate to be an octave error\n', original_pattern.name);
+        fprintf('%s could be an octave error\n', original_pattern.name);
     end
     
 end
