@@ -8,7 +8,7 @@ fid = fopen(tilde_expand(annotated_tempo_file), 'r');
 names_and_tempi = textscan(fid, '%q %f');
 annotated_files = names_and_tempi{1};
 annotated_tempi = names_and_tempi{2};
-fclose(fid)
+fclose(fid);
 octave_errors = cell(1, 2);
 octave_error_index = 1;
 

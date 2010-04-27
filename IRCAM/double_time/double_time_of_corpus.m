@@ -27,21 +27,34 @@ for piece_index = 1 : length(corpus)
     if(diag_plot('metrical_profiles'))
         figure();
         subplot(4, 1, 1);
-        bar(reducedMetricalProfile(original_pattern));
+        bar_handle = bar(reducedMetricalProfile(original_pattern));
         axis([1, length(reducedMetricalProfile(original_pattern)), 0.0, 1.0]);
-        title(sprintf('Reduced metrical profile of original %s', original_pattern.name));
+        ylabel('Norm. Amp.');
+        axes_handle = get(bar_handle, 'Parent');
+        set(axes_handle,'XTick',[1,17,33,49,65,81,97,113,128]);
+        title(sprintf('Subband metrical profile of original %s', original_pattern.name));
         subplot(4, 1, 2);
-        bar(reducedMetricalProfile(half_time_pattern));
+        bar_handle = bar(reducedMetricalProfile(half_time_pattern));
+        ylabel('Norm. Amp.');
         axis([1, length(reducedMetricalProfile(half_time_pattern)), 0.0, 1.0]);
-        title(sprintf('Reduced metrical profile of half time %s', half_time_pattern.name));
+        axes_handle = get(bar_handle, 'Parent');
+        set(axes_handle,'XTick',[1,17,33,49,65,81,97,113,128]);
+        title(sprintf('Subband metrical profile of half time %s', half_time_pattern.name));
         subplot(4, 1, 3);
-        bar(reducedMetricalProfile(counter_phase_pattern));
+        bar_handle = bar(reducedMetricalProfile(counter_phase_pattern));
+        ylabel('Norm. Amp.');
         axis([1, length(reducedMetricalProfile(counter_phase_pattern)), 0.0, 1.0]);
-        title(sprintf('Reduced metrical profile of counter phase half time %s', counter_phase_pattern.name));
+        axes_handle = get(bar_handle, 'Parent');
+        set(axes_handle,'XTick',[1,17,33,49,65,81,97,113,128]);
+        title(sprintf('Subband metrical profile of counter phase half time %s', counter_phase_pattern.name));
         subplot(4, 1, 4);
-        bar(reducedMetricalProfile(double_time_pattern));
+        bar_handle = bar(reducedMetricalProfile(double_time_pattern));
+        ylabel('Norm. Amp.');
         axis([1, length(reducedMetricalProfile(double_time_pattern)), 0.0, 1.0]);
-        title(sprintf('Reduced metrical profile of double time %s', double_time_pattern.name));
+        axes_handle = get(bar_handle, 'Parent');
+        set(axes_handle,'XTick',[1,17,33,49,65,81,97,113,128]);
+        title(sprintf('Subband metrical profile of double time %s', double_time_pattern.name));
+        xlabel('Metric Location (semiquavers 1/16) x Frequency');
     end
     
     % double_time_probs(piece_index, 2) = double_time(original_pattern, counter_phase_pattern);
@@ -51,21 +64,30 @@ for piece_index = 1 : length(corpus)
     original_quaver_alternation = quaver_alternation(original_pattern);
     double_quaver_alternation = quaver_alternation(double_time_pattern);
     half_quaver_alternation = quaver_alternation(half_time_pattern);
+    counter_phase_alternation = quaver_alternation(counter_phase_pattern);
     
+    % Compare the ratio of half time pattern to original pattern against
+    % the original to double quaver ratio.
+    % double_time_probs(piece_index, 1) = double_time_probs(piece_index,4) * double_time_probs(piece_index,2);
+    % double_time_probs(piece_index, 1) = double_time_probs(piece_index,2) + double_time_probs(piece_index,4) - 2;
+    double_time_probs(piece_index, 1) = ((half_quaver_alternation + counter_phase_alternation) / 2 + double_quaver_alternation) / (original_quaver_alternation + eps);
+        
     % > 1 if there is less quaver alternation at the double rate than the original.
     % double_time_probs(piece_index, 2) = original_quaver_alternation / double_quaver_alternation;
-    
+    double_time_probs(piece_index, 2) = original_quaver_alternation;
+        
     % > 1 if there is more quaver alternation at the double rate than the original.
-    double_time_probs(piece_index, 2) = double_quaver_alternation / (original_quaver_alternation + eps);
-    
-    double_time_probs(piece_index, 3) = quaver_alternation(counter_phase_pattern) / (original_quaver_alternation + eps);
+    double_time_probs(piece_index, 3) = double_quaver_alternation / (original_quaver_alternation + eps);
     
     % > 1 if there is more quaver alternation at the half beat rate than the original.
     double_time_probs(piece_index, 4) = half_quaver_alternation / (original_quaver_alternation + eps);
     
-    % double_time_probs(piece_index, 4) = quaver_alternation(half_time_pattern) / quaver_alternation_beats(double_time_pattern);
+    double_time_probs(piece_index, 5) = counter_phase_alternation / (original_quaver_alternation + eps);
+    
+    % double_time_probs(piece_index, 1) = quaver_alternation(half_time_pattern) / quaver_alternation_beats(double_time_pattern);
     % > 1 if the quaver at the half beat rate is greater than the double rate.
-    double_time_probs(piece_index, 5) = (half_quaver_alternation * quaver_alternation_beats(double_time_pattern)) / (original_quaver_alternation ^ 2);
+    % double_time_probs(piece_index, 1) = (half_quaver_alternation * quaver_alternation_beats(double_time_pattern)) / (original_quaver_alternation ^ 2);
+    % double_time_probs(piece_index, 1) = (half_quaver_alternation + double_quaver_alternation) / (original_quaver_alternation + eps);
 
     % quaver_alternation_prob = 1 - cellfun(@quaver_alternation, corpus_patterns);
     % freq_alternation_prob = 1 - cellfun(@frequency_alternation, corpus_patterns);
@@ -75,17 +97,12 @@ for piece_index = 1 : length(corpus)
     % double_time_prob = freq_alternation_prob + quaver_alternation_prob;
     % double_time_prob = double_time_probs(:, 4);
     % double_time_prob = min(double_time_probs(:,2:3), [], 2) ./ double_time_probs(:,1);
-    % double_time_prob = max(double_time_probs(:,2:3), [], 2) ./ double_time_probs(:,1);
-    % double_time_prob = (double_time_probs(:,2) + double_time_probs(:,3)) ./ (2 * double_time_probs(:,1));
-    
-    % Compare the ratio of half time pattern to original pattern against
-    % the original to double quaver ratio. 
-    double_time_probs(piece_index, 1) = double_time_probs(piece_index,4) * double_time_probs(piece_index,2);
-    % double_time_probs(piece_index, 1) = double_time_probs(piece_index,2) + double_time_probs(piece_index,4) - 2;
+    % double_time_prob = max(double_time_probs(:,2:3), [], 2) ./ double_time_probs(:,1);    
+ 
     
     double_time_probs(piece_index, :)
     
-    if(double_time_probs(piece_index, 1) > 0)
+    if(double_time_probs(piece_index, 1) > 1)
         fprintf('%s could be an octave error\n', original_pattern.name);
     end
     

@@ -14,10 +14,11 @@ function write_corpus_as_arff( title, corpus_patterns, filename, double_time_pro
         %for metricalProfileIndex = 1 : metricalProfileLength
         %    write_vector_description(arff, sprintf('MetricalProfileBand%d', metricalProfileIndex), 1:16);
         %end
+        fprintf(arff, '@ATTRIBUTE CombinedQuaverAlternation numeric\n');
+        fprintf(arff, '@ATTRIBUTE OriginalQuaverAlternation numeric\n');
         fprintf(arff, '@ATTRIBUTE DoubledTimeQuaverAlternation numeric\n');
         fprintf(arff, '@ATTRIBUTE HalfTimeQuaverAlternation numeric\n');
         fprintf(arff, '@ATTRIBUTE CounterPhaseQuaverAlternation numeric\n');
-        fprintf(arff, '@ATTRIBUTE CombinedQuaverAlternation numeric\n');
         fprintf(arff, '@ATTRIBUTE DoubleTime {0,1}\n\n');
 
         fprintf(arff, '@DATA\n');

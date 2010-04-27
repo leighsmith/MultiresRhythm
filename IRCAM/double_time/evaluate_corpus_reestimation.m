@@ -25,13 +25,13 @@ display_scores(reestimation_dir, analysed_files, reestimated_song_scores, evalua
 end
 
 function display_scores(corpus_name, filenames, scoresPerTrack, precisionWindow)
-    [number_of_octave_errors, octave_error_types] = octave_errors(scoresPerTrack);
+    [number_of_octave_errors, those_octave_errors] = octave_errors(scoresPerTrack);
     
     meanScores = mean(scoresPerTrack);
     fprintf('Accuracy measure for %s precision window %.3f octave errors %d/%d Mean Precision %.3f Recall %.3f F-score %.3f\n', ...
         corpus_name, precisionWindow, number_of_octave_errors, size(scoresPerTrack, 1), meanScores(1), meanScores(2), meanScores(3));
 
-    octave_error_files = filenames(find(octave_error_types ~= 0));
+    octave_error_files = filenames(find(those_octave_errors));
     fprintf('Files with octave errors:\n');
     cellfun(@disp, octave_error_files, 'UniformOutput', false);
 end

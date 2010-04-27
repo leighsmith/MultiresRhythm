@@ -2,8 +2,10 @@ function [ f_score, precision, recall ] = double_time_test( root_dir, analysis_d
 %double_time_test Tests known good beat tracking examples and a ground truth dataset of
 %examples with octave errors. 
 %   Computes a Weka ARFF file.
-% double_time_test('~/Research/Data/IRCAM-Beat/RWC/', 'ForTempoAnalyses', '~/Local_Data/RWC_WAV', 'RWC_AnnotatedTempi.txt')
-% double_time_test('~/Research/Data/IRCAM-Beat/RWC/', 'AllGoodBeatAnalyses', '~/Local_Data/RWC_WAV')
+% BT Good:  double_time_test('~/Research/Data/IRCAM-Beat/RWC/', 'GoodAnalyses', '~/Local_Data/RWC_WAV')
+% BT Full:  double_time_test('~/Research/Data/IRCAM-Beat/RWC/', 'FullAnalyses', '~/Local_Data/RWC_WAV')
+% BPM Good: double_time_test('~/Research/Data/IRCAM-Beat/RWC/', 'GoodAnalyses', '~/Local_Data/RWC_WAV', 'RWC_AnnotatedTempi.txt')
+% BPM Full: double_time_test('~/Research/Data/IRCAM-Beat/RWC/', 'FullAnalyses', '~/Local_Data/RWC_WAV', 'RWC_AnnotatedTempi.txt')
 % double_time_test('~/Research/Data/IRCAM-Beat/EMI_TempoDiscrimination/', 'TempoAnalyses', '~/Research/Data/IRCAM-Beat/EMI_TempoDiscrimination/Audio', 'EMI_TempoAnnotatedFiles.txt');
 
 absolute_analysis_dir = [tilde_expand(root_dir) analysis_dir];
@@ -59,10 +61,16 @@ f_score = (2 * precision * recall) / (precision + recall);
 
 write_corpus_as_arff('Double time from rhythm pattern', corpus_patterns, [tilde_expand(root_dir) 'Weka_Datasets/doubletime.arff'], double_time_probs, ground_truth);
 
-% create the directory new, copy in the analyses and then reestimate,
-% overwriting the double_time_patterns.
-copyfile(absolute_analysis_dir, reestimated_dir);
-reestimate_tempo(double_time_filenames, reestimated_dir, absolute_analysis_dir, sound_directory_root)
+if (0) % To force the reestimation, otherwise, just assume nothing changed.
+    % create the directory new, copy in the analyses and then reestimate,
+    % overwriting the double_time_patterns.
+    status = rmdir(reestimated_dir, 's');
+    if(~status)
+        mkdir(reestimated_dir);
+    end
+    copyfile(absolute_analysis_dir, reestimated_dir);
+    reestimate_tempo(double_time_filenames, reestimated_dir, absolute_analysis_dir, sound_directory_root)
+end
 
 % If an annotated tempo file was not supplied, attempt to derive the evaluation from the annotated beat markers.
 if (nargin < 4)
