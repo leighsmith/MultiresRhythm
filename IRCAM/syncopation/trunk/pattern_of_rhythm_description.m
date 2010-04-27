@@ -25,7 +25,7 @@ for subBandIndex = 1 : size(rhythm_description.odfs, 1)
     % handle class.
     % setSyncopation(pattern, syncopation_profile); 
     pattern.syncopation(subBandIndex,:) = syncopation_profile;
-    %% fprintf('syncopation_profile %s~%', syncopation_profile)
+    % fprintf('syncopation_profile %s~%', syncopation_profile)
     
     if (diag_plot('syncopation_profile'))
         plot_pattern(pattern);

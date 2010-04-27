@@ -7,7 +7,16 @@ function [ silence_score ] = silence_score_mean( silence_evaluation_region, comp
 epsilon = 0.0001;
 threshold = 3.0; % Number of standard deviations above the mean to be sure it is an onset.
 
-mean_ratios = mean(silence_evaluation_region) / (comparison_region_mean + threshold * comparison_region_std + epsilon);
+% There is a corner case where silence_evaluation_region can be empty if the beat
+% tracker has gone nuts and marked very fast beats. This causes havoc as
+% the duration of a tatum is rounded down to zero and causes the mean to start
+% barfing NaNs. Therefore we just check the case and return a silence probability of 1.
+
+if(isempty(silence_evaluation_region))
+    mean_ratios = 0;
+else
+    mean_ratios = mean(silence_evaluation_region) / (comparison_region_mean + threshold * comparison_region_std + epsilon);
+end
 
 % Clip the ratio at 1, anything above this is clearly an onset.
 if (mean_ratios > 1)

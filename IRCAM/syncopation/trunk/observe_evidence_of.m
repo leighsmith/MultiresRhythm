@@ -9,10 +9,11 @@ beat_times = rhythm_description.beat_times;
 beats_per_measure = rhythm_description.beats_per_measure;
 sample_rate = rhythm_description.sample_rate;
 
-%% Convert beat_times in seconds to durations of each beat in samples.
+% Convert beat_times in seconds to durations of each beat in samples.
 beat_durations = round(diff(beat_times) * sample_rate);
-%% Reduce by one measure to ensure the last search region is a full two bars,
-%% avoiding a bias in the feature_estimator towards starting beats.
+
+% Reduce by one measure to ensure the last search region is a full two bars,
+% avoiding a bias in the feature_estimator towards starting beats.
 number_of_measures = floor(length(beat_durations) / beats_per_measure) - 1; % floor avoids partial bars
 feature_estimates = zeros((beats_per_measure * subdivisions_of_beat), number_of_measures);
 
@@ -28,13 +29,13 @@ for measure_index = 1 : number_of_measures
     % fprintf('Measure %3d start sample %d seconds %f\n', measure_index, start_sample, start_sample / sample_rate);
     % fprintf('beat duration in samples %s = %.3f\n', sprintf('%.3f ', beat_durations_in_measure), bar_duration);
 
-    %% collect probabilities of the feature occuring at each measure
-    %% location. These can be of the form of a normalised probability
-    %% across the measure, or a probability for each tatum, depending on
-    %% the feature_estimator.
+    % collect probabilities of the feature occuring at each measure
+    % location. These can be of the form of a normalised probability
+    % across the measure, or a probability for each tatum, depending on
+    % the feature_estimator.
     feature_probabilities = feature_estimator(rhythm_odf, start_sample, measure_index, beat_durations_in_measure, subdivisions_of_beat);
 
-    % fprintf('Feature %s probabilities %s sum = %f\n', feature_estimator, sprintf('%.5f ', feature_probabilities), sum(feature_probabilities));
+    % fprintf('Feature %s probabilities %s sum = %f\n', func2str(feature_estimator), sprintf('%.5f ', feature_probabilities), sum(feature_probabilities));
    
     if (diag_plot('gap_evaluation') && ismember(measures_to_plot, measure_index))
        search_region = rhythm_odf(start_sample : min(length(rhythm_odf), start_sample + (bar_duration * 2) - 1));
@@ -54,7 +55,6 @@ for measure_index = 1 : number_of_measures
     % collect likelihood in feature_estimates
     feature_estimates(:, measure_index) = feature_probabilities;
 end
-
 
 end
 

@@ -1,6 +1,6 @@
 function [ similarity_matrix, corpus_patterns ] = rhythm_similarity_of_annotated_corpus(corpus_name)
 %rhythm_similarity_of_annotated_corpus Returns the similarity matrix of the corpus named by corpus_name.
-% for example: corpus_similarity('Quaero_Selection');
+% for example: rhythm_similarity_of_annotated_corpus('Quaero_Selection');
 % $Id$
 
 % The directories we work on.
