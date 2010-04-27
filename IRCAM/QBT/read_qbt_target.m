@@ -8,7 +8,7 @@ beat_markers_filepath = [rhythm_directory_root 'Analysis/' filename '.wav.marker
 
 audio_filepath = [sound_directory_root filename '.wav'];
 
-rhythm_description = read_analysed_rhythm(beat_markers_filepath, audio_filepath);
+rhythm_description = read_rhythm_description(beat_markers_filepath, audio_filepath);
 
 end
 
