@@ -1,8 +1,13 @@
-function [wideband_odf, subband_odfs] = odf_of_signal(audio_signal, original_sample_rate, subband_ranges)
+function [wideband_odf, odf_sr, subband_odfs] = odf_of_signal(audio_signal, original_sample_rate, subband_ranges)
 %odf_of_signal - Returns the onset detection function, given an audio signal sampled at original_sample_rate
 %
 % $Id$
+
+% TODO, perhaps return an object that preserves the state (i.e spectrum etc), otherwise
+% just return the spectral centroid alone. Should test on some synthesized broadband
+% sounds, i.e a synth sound with known F0.
     
+
     % The sample rate of the downsampled signal.
     analysis_sample_rate = 11025.0; % In Hertz.
     % The sample rate of the onset detection function.
@@ -48,6 +53,7 @@ function [wideband_odf, subband_odfs] = odf_of_signal(audio_signal, original_sam
     % processes. We should quantify the factor we save using a downsampled time axis.
     % Particularly if instead we are processing a 10 second window rather than the entire signal.
     downsampled_spectrum = spectrum; % postpone the downsampling for now.
+    odf_sr = 172.27; % how?
     
     % TODO Determine maximum spectral energy and short circuit if it is below the minimum.
     
@@ -78,16 +84,17 @@ function [wideband_odf, subband_odfs] = odf_of_signal(audio_signal, original_sam
     wideband_odf = normalise_odf(wideband_odf);
     
     % Plotting
+    plot_region = 1:300;
     subplot(3,1,1);
-    imagesc(spectrum);
+    imagesc(spectrum(:,plot_region));
     title(sprintf('Spectrogram of %s', 'signal'));
     subplot(3,1,2);
-    plot(wideband_odf);
+    plot(wideband_odf(plot_region));
     title(sprintf('Normalised ODF of %s', 'signal'));
-    axis([0 length(wideband_odf) 0 7]);
+    axis([plot_region(1) plot_region(end) 0 7]);
     subplot(3,1,3);
-    plot(centroid);
+    plot(centroid(plot_region));
     title(sprintf('Spectral Centroid of %s', 'signal'));
-    axis([0 size(spectrum, 2) min(centroid)-1 max(centroid)+1]);
+    axis([plot_region(1) plot_region(end) min(centroid)-1 max(centroid)+1]);
 end
 

@@ -1,5 +1,5 @@
 function [windowed_spectrum] = spectrum_of_window(short_term_signal, window)
-% odf_of_window - From the given windowed signal, return the onset detection function
+% spectrum_of_window - From the given windowed signal, return the onset detection function
 % and spectrum. 
 % Computes a short term spectral analysis via an FFT. Sums the spectrum over given
 % subbands.
