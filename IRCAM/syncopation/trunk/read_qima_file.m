@@ -17,8 +17,12 @@ for marker_index = 0 : markers.getLength() - 1
         beat_type = beattypes.item(0); % perhaps getFirstChild()
         % getAttribute returns Java Strings, convert them to standard
         % Matlab integers and floats.
-        beat_index = str2num(beat_type.getAttribute('beat').toCharArray());
-        beat_time = str2double(marker_node.getAttribute('time').toCharArray());
+        % beat_index = str2num(beat_type.getAttribute('beat').toCharArray());
+        % beat_time = str2double(marker_node.getAttribute('time').toCharArray());
+        % Octave is more forgiving in conversion between Java and Octave strings.
+        % Perhaps use char() for matlab and Octave compatibility?
+        beat_index = str2num(beat_type.getAttribute('beat'));
+        beat_time = str2double(marker_node.getAttribute('time'));
         if(beat_index ~= 0)
             % fprintf('beat %d time %d\n', beat_index, beat_time)
             % collect beats numbers and times in seconds.

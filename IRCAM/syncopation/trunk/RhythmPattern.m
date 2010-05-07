@@ -1,37 +1,34 @@
-classdef RhythmPattern
 %RhythmPattern Holds a description of the rhythmic pattern defining a complete musical piece.
 % (We may need more than one per piece for dramatically varying pieces). 
 %
 % $Id$       
 %
+
 % The pattern includes the metrical profile and the profile of syncopation
 % per measure, and the hypermetrical profile over several measures.
-properties
-    name = '';
+% Factory method.
+function new_pattern = RhythmPattern(name)
+    if(nargin < 1)
+        new_pattern.name = '';
+    else
+        new_pattern.name = name;
     % We use beats per measure as a pattern feature, rather than full meter
     % so that matching can still occur with some some compatible meters.
-    beats_per_measure = 4; 
-    syncopation = [];
-    syncopation_tatums_per_beat = 4; % to 1/16th subdivisions.
+    new_pattern.beats_per_measure = 4; 
+    new_pattern.syncopation = [];
+    new_pattern.syncopation_tatums_per_beat = 4; % to 1/16th subdivisions.
     % Those tatums which are non-zero on at least one pattern in the corpus.
-    principle_syncopation_tatums = []; 
-    metrical_profile = [];
-    metric_tatums_per_beat = 16;  % to 1/64th subdivisions.
-    hypermetrical_profile = [];
-    phrase_length = 4; % hypermetrical profile length in measures (bars)
-    tempo = 0; % This makes the profiles tempo dependent.
-    anacrusis = 0; % Phase of the beat the first downbeat starts on.
-    periodicities = [];
-    style = ''; % a rhythmic style classification.
+    new_pattern.principle_syncopation_tatums = []; 
+    new_pattern.metrical_profile = [];
+    new_pattern.metric_tatums_per_beat = 16;  % to 1/64th subdivisions.
+    new_pattern.hypermetrical_profile = [];
+    new_pattern.phrase_length = 4; % hypermetrical profile length in measures (bars)
+    new_pattern.tempo = 0; % This makes the profiles tempo dependent.
+    new_pattern.anacrusis = 0; % Phase of the beat the first downbeat starts on.
+    new_pattern.periodicities = [];
+    new_pattern.style = ''; % a rhythmic style classification.
 end
     
-methods
-
-function new_pattern = RhythmPattern(name)
-    % Factory method.
-    new_pattern.name = name;
-end
-
 function new_pattern = setSyncopation(pattern, syncopation)
     pattern.syncopation = syncopation;
     new_pattern = pattern;
@@ -233,8 +230,3 @@ end
 function features = tempoMeasure(pattern)
     features = [pattern.tempo];
 end
-
-end % methods
-
-end % classdef
-

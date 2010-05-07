@@ -30,8 +30,8 @@ function [ new_pattern ] = read_pattern(filename, pattern_filepath)
     end
     
     hypermetrical_profiles = pattern_document.getElementsByTagName('hypermetrical-description');
-    if (hypermetrical_profiles.length() ~= 0)
-        for descriptionIndex = 1 : metrical_profiles.length()
+    if (hypermetrical_profiles.getLength() ~= 0)
+        for descriptionIndex = 1 : metrical_profiles.getLength()
             hypermetrical_profile = hypermetrical_profiles.item(0);
             new_pattern.hypermetrical_profile = read_metrical_profile(hypermetrical_profile);
         end
@@ -40,7 +40,7 @@ function [ new_pattern ] = read_pattern(filename, pattern_filepath)
     end
     
     tempo_elements = pattern_document.getElementsByTagName('tempo');
-    if (tempo_elements.length() ~= 0)
+    if (tempo_elements.getLength() ~= 0)
         first_tempo_element = tempo_elements.item(0);
         new_pattern.tempo = str2double(char(first_tempo_element.getAttribute('bpm')));
     else
@@ -48,7 +48,7 @@ function [ new_pattern ] = read_pattern(filename, pattern_filepath)
     end
     
     anacrusis_elements = pattern_document.getElementsByTagName('anacrusis');
-    if (anacrusis_elements.length() ~= 0)
+    if (anacrusis_elements.getLength() ~= 0)
         first_anacrusis_element = anacrusis_elements.item(0);
         new_pattern.anacrusis = str2double(char(first_anacrusis_element.getAttribute('beats')));
     else
@@ -56,13 +56,12 @@ function [ new_pattern ] = read_pattern(filename, pattern_filepath)
     end
 
     measure_elements = pattern_document.getElementsByTagName('measure-duration');
-    if (measure_elements.length() ~= 0)
+    if (measure_elements.getLength() ~= 0)
         first_measure_element = measure_elements.item(0);
         new_pattern.beats_per_measure = str2double(char(first_measure_element.getAttribute('beats')));
     else
         fprintf('Missing measure format');
     end
-
 
 end
 
