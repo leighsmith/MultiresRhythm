@@ -1,70 +1,68 @@
-function [wideband_odf, odf_sr, subband_odfs] = odf_of_signal(audio_signal, original_sample_rate, subband_ranges)
+function [wideband_odf, ODF_sample_rate, subband_odfs] = odf_of_signal(audio_signal, original_sample_rate, subband_ranges)
 %odf_of_signal - Returns the onset detection function, given an audio signal sampled at original_sample_rate
-%
+% Sums the spectrum over given subbands.
 % $Id$
 
 % TODO, perhaps return an object that preserves the state (i.e spectrum etc), otherwise
 % just return the spectral centroid alone. Should test on some synthesized broadband
 % sounds, i.e a synth sound with known F0.
     
+    plotting = true;
 
     % The sample rate of the downsampled signal.
     analysis_sample_rate = 11025.0; % In Hertz.
-    % The sample rate of the onset detection function.
-    % Peeters uses 64, corresponds to 172.2656Hz, interval 5.8mS.
-    ODF_sample_rate = 64.0 / analysis_sample_rate;
-
+    % The hop size determines the number of frames, specifies the window advance as the
+    % number of samples to overlap each window.
+    % Peeters uses 64 samples corresponding to 172.2656Hz, interval 5.8mS for 11.25KHz analysis sample rate.
+    % 128 Corresponds to 11.6mS.
+    hop_size = 64; 
     % Number of samples processed in each spectral window.
     % Grosche & Muller use 256, corresponding to 23mS.
     window_size = 1024; % Corresponds to 92.78mS. Used by Peeters.
-    % Number of samples to overlap each window.
-    hop_size = 128; % Corresponds to 11.6mS.
+
+    % The sample rate of the onset detection function.
+    ODF_sample_rate = analysis_sample_rate / hop_size;
 
     window_in_seconds = window_size / analysis_sample_rate;
     if (original_sample_rate < analysis_sample_rate)
         fprintf(stderr, 'sample rate %f is below minimum required %f\n', original_sample_rate, analysis_sample_rate);
-        return
+        return;
     end
 
     % Make mono before resampling to hopefully speed things up a bit.
-    mono_audio_signal = sum(audio_signal, 2) / 2.0;
+    num_audio_channels = columns(audio_signal); % determine from signal.
+    mono_audio_signal = sum(audio_signal, 2) / num_audio_channels;
     downsampled_signal = resample(mono_audio_signal, analysis_sample_rate, original_sample_rate);
-        
-    signal_length = length(downsampled_signal);
-    wideband_odf = zeros(1, signal_length); % TODO, needs to be downsampled to ODF
-    subband_odfs = zeros(size(subband_ranges, 1), signal_length);  % TODO, needs to be downsampled to ODF
-
-    % Debugging to operate on a single window
-    % window_start_sample = 4000; % Fortran base 1 indexing, sigh.
-    % windowed_signal = downsampled_signal(window_start_sample : window_start_sample + window_size);
-    % windowed_spectrum = spectrum_of_window(windowed_signal);
+    
+    % The spectrum calculation will compute with a hop that produces the ODF_sample_rate.
     spectrum = spectrum_of_signal(downsampled_signal, window_size, hop_size);
     
-    % TODO downsample spectrum to the ODF_sample_rate
-    % TODO Remove the DC component (0th coefficient) when computing the spectral energy flux.
+    % Since the energy is calculated over the entire window, the first ODF sample is
+    % computed from the window centered over the audio sample half the window length.
+    % TODO however, it seems like a full window is consumed, but why?
+    % ODF_start_seconds = window_size / (2 * analysis_sample_rate);
+    ODF_start_seconds = window_size / analysis_sample_rate;
+    ODF_start_padding = ODF_start_seconds * ODF_sample_rate
+    
+    % Remove the DC component (0th coefficient) when computing the spectral energy flux.
+    spectrum(1,:) = 0;
     
     % Peeters smooths between each successive spectral band using a 3 element moving
     % average. This is needed if we are down sampling the frequency resolution, or if
     % we downsample the time axis, since that will introduce discontinuities in the
-    % spectral coefficient axis.
-    
-    % TODO perhaps a better way is to produce the ODF then downsample it. This uses more
-    % data and requires more to be processed, but does not require two filtering
-    % processes. We should quantify the factor we save using a downsampled time axis.
-    % Particularly if instead we are processing a 10 second window rather than the entire signal.
-    downsampled_spectrum = spectrum; % postpone the downsampling for now.
-    odf_sr = 172.27; % how?
+    % spectral coefficient axis. Not clear this is needed.
     
     % TODO Determine maximum spectral energy and short circuit if it is below the minimum.
     
     % Peeters sets a further threshold -50dB below maximum energy level.
     
-    % Peeters low pass filters over time.
+    % TODO Peeters low pass filters over time.
     % Butterworth? center frequency 10Hz, order=5, ODF_sample_rate.
+    filtered_spectrum = spectrum; % postpone the filtering for now.
     
     
     % High pass filter using a simple first order differentiator.
-    spectrum_derivative = diff(downsampled_spectrum, 1, 2);
+    spectrum_derivative = diff(filtered_spectrum, 1, 2);
     
     % Half wave rectification
     % rectified_spectrum = (spectrum_derivative > 0) .* spectrum_derivative;
@@ -79,22 +77,26 @@ function [wideband_odf, odf_sr, subband_odfs] = odf_of_signal(audio_signal, orig
     % TODO Use a weighting on the summation across bands
     wideband_odf = sum(rectified_spectrum);
 
-    % TODO create subband_odf;
+    % create the subband ODFs
+    subband_odfs = spectral_subband_odfs(rectified_spectrum, subband_ranges, analysis_sample_rate);
     
     wideband_odf = normalise_odf(wideband_odf);
     
     % Plotting
-    plot_region = 1:300;
-    subplot(3,1,1);
-    imagesc(spectrum(:,plot_region));
-    title(sprintf('Spectrogram of %s', 'signal'));
-    subplot(3,1,2);
-    plot(wideband_odf(plot_region));
-    title(sprintf('Normalised ODF of %s', 'signal'));
-    axis([plot_region(1) plot_region(end) 0 7]);
-    subplot(3,1,3);
-    plot(centroid(plot_region));
-    title(sprintf('Spectral Centroid of %s', 'signal'));
-    axis([plot_region(1) plot_region(end) min(centroid)-1 max(centroid)+1]);
+    if(plotting)
+        plot_region = 1:300;
+        subplot(3,1,1);
+        % On octave, the image is displayed with the y-axis datum 0 at the top left. 
+        imagesc(flipud(spectrum(:,plot_region)));
+        title(sprintf('Spectrogram of %s', 'signal'));
+        subplot(3,1,2);
+        plot(wideband_odf(plot_region));
+        title(sprintf('Normalised ODF of %s', 'signal'));
+        axis([plot_region(1) plot_region(end) 0 7]);
+        subplot(3,1,3);
+        plot(centroid(plot_region));
+        title(sprintf('Spectral Centroid of %s', 'signal'));
+        axis([plot_region(1) plot_region(end) min(centroid)-1 max(centroid)+1]);
+    end
 end
 
