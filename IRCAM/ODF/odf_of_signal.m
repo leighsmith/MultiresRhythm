@@ -35,7 +35,7 @@ function [wideband_odf, ODF_sample_rate, subband_odfs] = odf_of_signal(audio_sig
     downsampled_signal = resample(mono_audio_signal, analysis_sample_rate, original_sample_rate);
     
     % The spectrum calculation will compute with a hop that produces the ODF_sample_rate.
-    spectrum = spectrum_of_signal(downsampled_signal, window_size, hop_size);
+    spectrum = spectrum_of_signal([zeros(window_size, 1); downsampled_signal], window_size, hop_size);
     
     % Since the energy is calculated over the entire window, the first ODF sample is
     % computed from the window centered over the audio sample half the window length.
@@ -46,18 +46,16 @@ function [wideband_odf, ODF_sample_rate, subband_odfs] = odf_of_signal(audio_sig
     
     % Remove the DC component (0th coefficient) when computing the spectral energy flux.
     spectrum(1,:) = 0;
-    
+
     % Peeters smooths between each successive spectral band using a 3 element moving
     % average. This is needed if we are down sampling the frequency resolution, or if
     % we downsample the time axis, since that will introduce discontinuities in the
     % spectral coefficient axis. Not clear this is needed.
     
-    % TODO Determine maximum spectral energy and short circuit if it is below the minimum.
-    
-    % Peeters sets a further threshold -50dB below maximum energy level.
     
     % TODO Peeters low pass filters over time.
     % Butterworth? center frequency 10Hz, order=5, ODF_sample_rate.
+    % filtered_spectrum = filter_spectrum(threshold_spectral_energy(spectrum));
     filtered_spectrum = spectrum; % postpone the filtering for now.
     
     
@@ -92,7 +90,7 @@ function [wideband_odf, ODF_sample_rate, subband_odfs] = odf_of_signal(audio_sig
         subplot(3,1,2);
         plot(wideband_odf(plot_region));
         title(sprintf('Normalised ODF of %s', 'signal'));
-        axis([plot_region(1) plot_region(end) 0 7]);
+        axis([plot_region(1), plot_region(end), 0, 7]);
         subplot(3,1,3);
         plot(centroid(plot_region));
         title(sprintf('Spectral Centroid of %s', 'signal'));

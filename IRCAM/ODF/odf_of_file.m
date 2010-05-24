@@ -7,7 +7,7 @@ if(nargin < 2)
     % low frequencies & high frequencies
     % subband_range = [[40, 150]; [3000, 4000]];
     % alternatively peep into the frequency spectrum at representative frequencies.
-    subband_ranges = [[60, 100]; [3500, 4000]; [4000, 5512]]; 
+    subband_ranges = [[60, 100]; [3500, 4000]]; 
 end
 
 [audio_signal, sample_rate, resolution] = wavread(tilde_expand(filename));
