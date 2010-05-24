@@ -58,7 +58,7 @@ for subBandIndex = 1 : size(rhythm_description.odfs, 1)
     % Calculate the metrical profile from the silence observations, not the onset observations, so we account for dynamics accentuation.
     % This produces a normalised value for each tatum.
     metrical_profile = 1 - (sum(small_silence_observations, 2)' ./ num_of_measures);
-    %% fprintf('metric profile %s~%', metric_profile)
+    % fprintf('metric profile %s~%', metric_profile)
     % bar(1:16/64:16.75, metrical_profile)
     pattern.metrical_profile(subBandIndex,:) = metrical_profile;
 end

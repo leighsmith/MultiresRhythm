@@ -5,9 +5,9 @@ function [ new_rhythm_description ] = read_rhythm_description( beat_markers_file
 
 % Assign the wideband_odf as the entire spectral energy.
 if(nargin < 3)
-    [wideband_odf, sample_rate, odf_subbands] = odf(audio_filepath);
+    [wideband_odf, sample_rate, odf_subbands] = odf_of_file(audio_filepath);
 else
-    [wideband_odf, sample_rate, odf_subbands] = odf(audio_filepath, subband_ranges);
+    [wideband_odf, sample_rate, odf_subbands] = odf_of_file(audio_filepath, subband_ranges);
 end
 
 % bpm_filepath = [beat_markers_filepath '.wav.bpm.xml'];
