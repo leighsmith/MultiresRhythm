@@ -1,0 +1,51 @@
+This is the source distribution of MultiresRhythm, a library of musical rhythm analysis and modelling routines.
+
+Description
+-----------
+
+This software is most fully described in the author's PhD Thesis:
+
+author =  {Leigh M. Smith},
+title =   {A Multiresolution Time-Frequency Analysis and Interpretation of Musical Rhythm},
+school =  {Department of Computer Science, University of Western Australia},
+year =    1999,
+month =   {June},
+annote =  {\url{http://www.leighsmith.com/Research/Papers/MultiresRhythm.pdf}}
+
+Portability
+-----------
+
+This software was originally developed on an OpenStep machine running
+Octave 2.0.11.
+
+It uses GnuTerm.app (an OpenStep app wrapper around gnuplot) and some .ppm
+display app such as ImageViewer.app. It uses a customised version of
+image.m (which one day may make it back into the Octave distribution,
+and a shellscript called xv which pretends ImageViewer.app is the
+X-windows program.
+
+The system has been tested under Linux RedHat 5.2. In theory any
+machine running Octave will run the code. Matlab support has not been
+tried, but should be straightforward.
+
+Copyright
+---------
+All Rights Reserved (c) 1997-2006
+
+Contact
+-------
+Leigh M. Smith
+Computer Music Laboratory
+Department of Computer Science
+University of Western Australia
+
+leigh@cs.uwa.edu.au or
+leigh@leighsmith.com
+
+Nowdays:
+
+Music Cognition Group
+Institute for Logic, Language and Computation
+Universiteit van Amsterdam
+
+lsmith@science.uva.nl
