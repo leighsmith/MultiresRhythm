@@ -1,0 +1,24 @@
+mkoctfile xmlparse.cc -lexpat
+
+For octave source configure:
+
+./configure --with-blas="-framework Accelerate" CPPFLAGS="-m32 -arch i386 -I/sw/include" LDFLAGS="-arch i386 -L/sw/lib -m32"  FFLAGS="-ff2c" FLIBS="/sw/lib/gcc4.4/lib/libgfortran.dylib"
+
+Need to remove HAVE_LGAMMA_R and HAVE_LGAMMAF_R from config.h
+
+For binary:
+
+/Local/Applications/Octave.app/Contents/Resources/bin/octave
+
+
+For configuring java-1.2.7:
+
+Requires edits to configure.base
+
+export CFLAGS="-arch i386"
+export CXXFLAGS="-arch i386"
+export CPPFLAGS="-arch i386"
+export LDFLAGS="-arch i386"
+sh ./configure
+
+

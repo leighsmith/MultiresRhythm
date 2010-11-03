@@ -143,29 +143,29 @@
 ;;; (mapcar #'sonify-corpus *ircam-downbeats*)
 ;;; (sonify-corpus "Quaero" (nth 0 *ircam-downbeats*))
 
-(defun sonify-annotation (ircam-annotation-path original-sound-path accompaniment-directory
-				&key (clap-sample-file (correct-clap-file original-sound-path)))
-  "Make the annotated downbeats audible"
-  (let* ((downbeats (read-annotated-downbeats ircam-annotation-path))
-	 (accompaniment-sound-path (make-pathname :directory accompaniment-directory
+(defun sonify-quaero-beat (ircam-annotation-path original-sound-path accompaniment-directory
+			   &key (downbeats nil) (clap-sample-file (correct-clap-file original-sound-path)))
+  "Make the beats or downbeats in the Quaero format file audible"
+  (let* ((accompaniment-sound-path (make-pathname :directory accompaniment-directory
 						  :name (concatenate 'string (pathname-name original-sound-path) "_mixed")
 						  :type "wav")))
     (multires-rhythm:save-rhythm-mix accompaniment-sound-path 
 				     original-sound-path 
-				     downbeats
+				     (if downbeats 
+					 (downbeat:read-annotated-downbeats ircam-annotation-path) 
+					 (downbeat::read-annotated-beats ircam-annotation-path))
 				     :clap-sample-file clap-sample-file)
     (format t "Wrote mix as soundfile ~a~%" accompaniment-sound-path)))
 
 (defun sonify-quaero-annotation (annotation-filepath &key (audio-directory *quaero-audio-directory*))
   "Creates a sonification from the annotation-pathspec, which can have a relative directory component"
-  (sonify-annotation annotation-filepath
-		     (merge-pathnames audio-directory
-				      (make-pathname :directory (pathname-directory annotation-filepath)
-						     :name (pathname-name (pathname-name annotation-filepath))
+  (sonify-quaero-beat annotation-filepath
+		      (merge-pathnames audio-directory
+				       (make-pathname :directory (pathname-directory annotation-filepath)
+						      :name (pathname-name (pathname-name annotation-filepath))
 						     :type "wav"))
-		     ;; (merge-pathnames (make-pathname :directory '(:relative "Quaero" "Verification"))
-		     ;; *rhythm-data-directory*)
-		     "/Volumes/iDisk/Research/Data/IRCAM-Beat/Quaero/Verification"))
+		      (merge-pathnames (make-pathname :directory '(:relative "Quaero" "Verification")) 
+				       *rhythm-data-directory*)))
 
 (defun sonify-random-sample (max-number)
   "Sonify a random sample of the annotations for evaluation"

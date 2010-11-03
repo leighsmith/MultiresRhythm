@@ -142,7 +142,7 @@
   "Return a list of the beat descriptors, or nil if it is ill-formed"
   (let ((beat-type (dom:item (dom:get-elements-by-tag-name marker-node "beattype") 0)))
     (if beat-type
-	(read-from-string (dom:get-attribute beat-type "b")) ;; TODO needs changing to new format.
+	(read-from-string (dom:get-attribute beat-type "beat"))
 	nil)))
 
 (defun read-ircam-annotation (filepath &key (marker-name "marker"))

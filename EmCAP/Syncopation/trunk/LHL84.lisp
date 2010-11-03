@@ -56,10 +56,12 @@
   (setf rhythm (append rhythm '(1)))
   (loop with salience = (funcall metric-salience meter)
      for position from 0 below (length salience)
-     when (and (note? (elt rhythm position))             ; note,
-	       (not (note? (elt rhythm (1+ position))))) ; followed by rest
-     collect (syncopation (elt salience position)        ; metric-salience note
-			  (metric-salience-rest position rhythm salience))))
+     for syncopation-score = (if (and (note? (elt rhythm position))             ; note,
+				      (not (note? (elt rhythm (1+ position))))) ; followed by rest
+				 (syncopation (elt salience position)        ; metric-salience note
+					      (metric-salience-rest position rhythm salience))
+				 0)
+     collect syncopation-score))
 
 (defun calculate-syncopations (onsets meter &optional (metric-salience 'lh-metric-salience))
   "Return list of syncopation strengths"
@@ -90,6 +92,7 @@
 
 ;;; Plot the hierarchies:
 (defun plot-hierarchy (meter meter-name)
+  (reset-plot)
   (plot-command "set title font \"Times,24\"")
   (plot-command "set xlabel font \"Times,24\"")
   (plot-command "set ylabel font \"Times,24\"")
@@ -98,14 +101,14 @@
   (plot-command "set style fill solid 1.0 border -1")
   (plot-command "set xtics 1,1") ;; TODO kludged, not general!
   (plot (make-narray (lh-metric-salience meter))
-	(.iseq 1 16) ; nil
+	(.iseq 1 (length (lh-metric-salience meter)))
 	:xlabel "Metrical location" 
 	:ylabel "Salience"
-	:label "Metrical Strength"
-	:style "linespoints linewidth 3 linetype 3 pointtype 4"
+	:legends '("Metrical Strength")
+	:styles '("linespoints linewidth 3 linetype 3 pointtype 4")
 	:title (format nil "LH&L Metrical Hierarchy for ~a" meter-name) :reset nil :aspect-ratio 0.7))
 
-;; (plot-hierarchy '(2 2 2 2) "4/4")
+;; (plot-hierarchy '(2 2 2 2) "4/4")a
 
 ;; (plot (nlisp::list-to-array (lh-metric-salience '(2 2 3))) nil 
 ;;       :xlabel "Metrical location" 
