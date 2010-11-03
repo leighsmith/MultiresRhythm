@@ -1,0 +1,14 @@
+* local-phase-congruency able to recompute using trig to catch boundary conditions?
+* ridge extraction using energy measure, not just single continuity.
+* Tempo selection of ridges or weighting.
+Currently weighting will reduce the energy of a
+ridge but will not stop that ridge being selected. The selection criteria therefore
+needs a height weighting, but this seems contradicted by some of the examples,
+i.e. agogic grouping.
+* sound file reading/writing code. - Surely the MusicKit or at least, libsndfile with CFFI.
+* MIDI file import & export
+* Create a preprocessing audio onset detector:
+Sub-band filter, Rectify, LP smooth, differentiate, half-wave rectify & find the peak of
+the signal region over a moving time limited window (use a DoG?)
+* Merge image writing Lisp code into nlisp to simplify distribution.
+* Generate labelled ridge plots using image.

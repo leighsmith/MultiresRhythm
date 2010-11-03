@@ -1,0 +1,72 @@
+-*- Outline -*-
+
+* local-phase-congruency able to recompute using trig to catch boundary conditions?
+* MIDI file import & export
+Via scorefiles?
+
+* Create a preprocessing audio onset detector:
+Sub-band filter, Rectify, LP smooth, differentiate, half-wave rectify & find the peak of
+the signal region over a moving time limited window (use a DoG?)
+Probably just implement Plymouth's model.
+
+* Perceptual Onsets:
+** Check unlimited cumulative sum vs. a windowed (leaky) integrating store.
+** Check use of ridge persistency, instead of just scale persistency.
+** Check GSL for cumsum etc.
+** Fix print-object for (.rseq2 0 9 10)
+** Gaussian weighting evaluation:
+res4_1 works
+res4_2 works
+res4_3 doesn't
+** Try picking local extrema regardless of how they relate to the beat.
+** Make find-downbeat more robust to non-impulse rhythms. Don't allow crashes!
+** Don't start clapping until the beat is strongly determined.
+** Need bass drum accompaniment of tactus. Use two different tactus or subdivide tactus?
+** Should tactus be incorporated into multires-analysis class?
+
+* Expectancies
+** Implement multiscale autocorrelation = Build version of rhythmACF in lisp.
+** Use dyadic cwt and subdivide rhythm into dyadic chunks, say 2048 samples (10.24 seconds) so it avoids the padding issue.
+** Correct the padding of nearly dyadic signals.
+** Improve peak picking, either maximum of a sliding window, parabolic (quadratic lagrange) interpolation, or Gaussian mixture model.
+** Check phase congruency on perceptual salience signals.
+
+* ridge extraction using energy measure, not just single continuity.
+* Tempo selection of ridges or weighting.
+Currently weighting will reduce the energy of a
+ridge but will not stop that ridge being selected. The selection criteria therefore
+needs a height weighting, but this seems contradicted by some of the examples,
+i.e. agogic grouping.
+
+* Reduce scale range of cwt.
+Set maximum and minimum scales to do wavelet analysis over.
+
+* Span SBCL processes over grid cluster.
+Need to use file locking when testing & generating output files.
+
+* Recheck why there is a sinusoidal response to icwt single magnitude ridge
+and not a Gaussian.
+
+
+* Create a final ritard example
+check the output when a dyadic vs. a non-dyadic window, may need significant silence.
+
+* Sing to clicktrack?
+Already done with Austrian folksongs.
+
+* (fft (log (abs fft))) pulsewave identity
+
+* Use a curve fitting function from the ridges to unify disjoint ridges.
+
+* Make the wavelet annotation code a web app? 
+Just set up a server, perhaps even the MCG server if the garbage bug is fixed.
+
+* Check examples using Aksak rhythms.
+
+* Check Euclid's GCD Algorithm
+
+* Check Tactus of a minim for three blind mice example.
+
+* Rhythms in non equal ratios but repeating the ratio as a rhythm.
+
+* Should ritard modulating rhythm.
