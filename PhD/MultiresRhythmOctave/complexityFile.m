@@ -1,6 +1,6 @@
 ### -*- Octave -*-
 ###
-### $Id:$
+### $Id$
 ###
 function [magnitude, phase, pc, normalised_pc] = complexityFile(comment, filename)
   rhythm.description = comment;
