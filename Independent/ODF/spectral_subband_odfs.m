@@ -7,7 +7,7 @@ odf_length = size(rectified_spectrum, 2); % The length of the onset detection fu
 subband_odfs = zeros(size(subband_ranges, 1), odf_length);
 
 % Convert subband ranges from frequencies to spectral coefficients & therefore rows.
-% We use twice the spectral bandwidth since it is only the number +ve frequencies.
+% We use twice the spectral bandwidth since it is only the number of +ve frequencies.
 subband_indices = round((subband_ranges / analysis_sample_rate) * 2 * spectral_bandwidth);
 
 for subband_index = 1 : size(subband_indices, 1)

@@ -1,9 +1,15 @@
 function [wideband_odf, ODF_sample_rate, subband_odfs] = odf_of_signal(audio_signal, original_sample_rate, subband_ranges)
 %odf_of_signal - Returns the onset detection function, given an audio signal sampled at original_sample_rate
 % Sums the spectrum over given subbands.
+%
 % $Id$
-
-% TODO, perhaps return an object that preserves the state (i.e spectrum etc), otherwise
+%
+% audio_signal is a PCM audio signal, possibly multichannel (rows).
+% original_sample_rate in Hz.
+% subband_ranges is an n x 2 column matrix, specifying lower and upper bounds of each
+% frequency band in Hz.
+%
+% TODO perhaps return an object that preserves the state (i.e spectrum etc), otherwise
 % just return the spectral centroid alone. Should test on some synthesized broadband
 % sounds, i.e a synth sound with known F0.
     
@@ -11,9 +17,9 @@ function [wideband_odf, ODF_sample_rate, subband_odfs] = odf_of_signal(audio_sig
 
     % The sample rate of the downsampled signal.
     analysis_sample_rate = 11025.0; % In Hertz.
-    % The hop size determines the number of frames, specifies the window advance as the
+    % The hop size determines the number of analysis frames, specifies the window advance as the
     % number of samples to overlap each window.
-    % Peeters uses 64 samples corresponding to 172.2656Hz, interval 5.8mS for 11.25KHz analysis sample rate.
+    % Peeters uses 64 samples corresponding to 172.2656Hz, interval 5.8mS for 11025Hz analysis sample rate.
     % 128 Corresponds to 11.6mS.
     hop_size = 64; 
     % Number of samples processed in each spectral window.
@@ -52,32 +58,32 @@ function [wideband_odf, ODF_sample_rate, subband_odfs] = odf_of_signal(audio_sig
     % we downsample the time axis, since that will introduce discontinuities in the
     % spectral coefficient axis. Not clear this is needed.
     
-    
-    % TODO Peeters low pass filters over time.
-    % Butterworth? center frequency 10Hz, order=5, ODF_sample_rate.
     % filtered_spectrum = filter_spectrum(threshold_spectral_energy(spectrum));
-    filtered_spectrum = spectrum; % postpone the filtering for now.
-    
+    % filtered_spectrum = spectrum; % postpone the filtering for now.
+    filtered_spectrum = filter_spectrum(spectrum);
     
     % High pass filter using a simple first order differentiator.
     spectrum_derivative = diff(filtered_spectrum, 1, 2);
-    
-    % Half wave rectification
+
+    % Half wave rectification. Alternatively we could compute the signal energy by squaring.
     % rectified_spectrum = (spectrum_derivative > 0) .* spectrum_derivative;
     rectified_spectrum = max(spectrum_derivative, 0.0);
 
-    % TODO Perhaps use spectral centroid as a weighting. 
+    % TODO Could use spectral centroid as a weighting. 
     % Generate a centroid measure
     centroid = spectral_centroid(spectrum);
     % In principle the ODF is the magnitude of the total spectral energy at each time
     % window and could be used in calculating a form of spectral centroid.
     
-    % TODO Use a weighting on the summation across bands
+    % TODO Could use a weighting on the summation across bands
     wideband_odf = sum(rectified_spectrum);
 
     % create the subband ODFs
     subband_odfs = spectral_subband_odfs(rectified_spectrum, subband_ranges, analysis_sample_rate);
-    
+
+    size(subband_odfs)
+    size(rectified_spectrum)
+
     wideband_odf = normalise_odf(wideband_odf);
     
     % Plotting
@@ -95,6 +101,7 @@ function [wideband_odf, ODF_sample_rate, subband_odfs] = odf_of_signal(audio_sig
         plot(centroid(plot_region));
         title(sprintf('Spectral Centroid of %s', 'signal'));
         axis([plot_region(1) plot_region(end) min(centroid)-1 max(centroid)+1]);
+        plot_subbands(subband_odfs, plot_region);
     end
 end
 
