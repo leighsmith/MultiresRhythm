@@ -36,7 +36,7 @@ function [wideband_odf, ODF_sample_rate, subband_odfs] = odf_of_signal(audio_sig
     end
 
     % Make mono before resampling to hopefully speed things up a bit.
-    num_audio_channels = columns(audio_signal); % determine from signal.
+    num_audio_channels = size(audio_signal, 2); % determine from signal.
     mono_audio_signal = sum(audio_signal, 2) / num_audio_channels;
     downsampled_signal = resample(mono_audio_signal, analysis_sample_rate, original_sample_rate);
     
