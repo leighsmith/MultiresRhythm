@@ -3,7 +3,7 @@ function y = filter_spectrum(spectrum)
 %
 % Author: Leigh M. Smith <leigh@imagine-research.com>
 %
-% $Id: threshold_spectral_energy.m 5646 2010-05-24 15:54:17Z leighsmi $
+% $Id$
 
     a = [-1.743077, 0.77188];
     b = [0.009859, 0.009085, 0.009859];
