@@ -1,5 +1,8 @@
 function subband_odfs = spectral_subband_odfs(rectified_spectrum, subband_ranges, analysis_sample_rate)
 %spectral_subband_odfs - Calculate the onset detection functions on the spectral subbands.
+%
+% Author: Leigh M. Smith <leigh@imagine-research.com>
+%
 % $Id$
     
 spectral_bandwidth = size(rectified_spectrum, 1); % Num of +ve frequency spectral coefficients.

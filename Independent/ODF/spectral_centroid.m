@@ -3,6 +3,11 @@ function centroid = spectral_centroid(spectrum)
 % point, calculate the weighted mean of frequency bins (Fourier harmonics), weighted by
 % the magnitude of each bin. Assuming bins are numbered from 1 for lowest frequency to
 % highest value for highest frequency.
+%
+% Author: Leigh M. Smith <leigh@imagine-research.com>
+%
+% $Id$
+
     bin_indices = repmat([1 : size(spectrum, 1)]', 1, size(spectrum, 2));
     total_energy = sum(spectrum);
     centroid = sum(spectrum .* bin_indices) ./ total_energy; 

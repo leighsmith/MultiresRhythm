@@ -1,5 +1,8 @@
 function spectrum_thresholded = threshold_spectral_energy(spectrum)
 %threshold_spectral_energy -  
+%
+% Author: Leigh M. Smith <leigh@imagine-research.com>
+%
 % $Id$
     
 % Determine maximum spectral energy TODO short circuit if it is below the minimum.

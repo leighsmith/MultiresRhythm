@@ -1,5 +1,8 @@
 function [spectrum] = spectrum_of_signal(signal, window_size, hop_size)
 %spectrum_of_signal - Compute the STFT spectrum with overlapping hops & windowing.
+%
+% Author: Leigh M. Smith <leigh@imagine-research.com>
+%
 % $Id$
     
     signal_length = length(signal);

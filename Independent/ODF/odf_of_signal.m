@@ -2,6 +2,8 @@ function [wideband_odf, ODF_sample_rate, subband_odfs] = odf_of_signal(audio_sig
 %odf_of_signal - Returns the onset detection function, given an audio signal sampled at original_sample_rate
 % Sums the spectrum over given subbands.
 %
+% Author: Leigh M. Smith <leigh@imagine-research.com>
+%
 % $Id$
 %
 % audio_signal is a PCM audio signal, possibly multichannel (rows).

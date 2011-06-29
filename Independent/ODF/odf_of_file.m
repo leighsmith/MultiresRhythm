@@ -1,8 +1,13 @@
 function [wideband_odf, odf_sr, subband_odfs] = odf_of_file(filename, subband_ranges)
 % odf_of_file Compute an onset detection function from the wav file.
-% [wodf, odf_sr, subband_odfs] = odf_of_file(tilde_expand('~/Research/Data/IRCAM-Beat/RWC_excerpts/Audio/rwc_p_81_excerpt.wav'));
+%
+% Author: Leigh M. Smith <leigh@imagine-research.com>
+%
 % $Id$
 %
+% Example:
+% [wodf, odf_sr, subband_odfs] = odf_of_file(tilde_expand('~/Research/Data/IRCAM-Beat/RWC_excerpts/Audio/rwc_p_81_excerpt.wav'));
+
 
 [audio_signal, sample_rate, resolution] = wavread(tilde_expand(filename));
 

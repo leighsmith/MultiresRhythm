@@ -3,6 +3,9 @@ function [windowed_spectrum] = spectrum_of_window(short_term_signal, window)
 % and spectrum. 
 % Computes a short term spectral analysis via an FFT.
 % short_term_signal is assumed dyadic.
+%
+% Author: Leigh M. Smith <leigh@imagine-research.com>
+%
 % $Id$
     
     % Compresses the magnitude values to approximate perception of

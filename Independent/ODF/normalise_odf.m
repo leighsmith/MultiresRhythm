@@ -1,6 +1,10 @@
 function normalised_odf = normalise_odf (odf)
 %normalise_odf - Normalise the onset detection function.
 % Normalises by dividing by the standard deviation.
+%
+% Author: Leigh M. Smith <leigh@imagine-research.com>
+%
+% $Id$
 
     max_of_odf = max(odf)
     min_of_odf = min(odf)
