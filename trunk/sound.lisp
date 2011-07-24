@@ -155,7 +155,7 @@
 ;; (setf hats (sample-at-times 44100 hihat (make-narray '(0.0 0.33 0.66 0.8))))
 
 (defun save-rhythm-mix (filename-to-write original-rhythm-file clap-times-seconds 
-			&key (clap-sample-file #P"/Volumes/iDisk/Research/Data/Handclap Examples/hihat_closed.aiff")
+			&key (clap-sample-file #P"/Users/leigh/Research/Data/Handclap Examples/hihat_closed.aiff")
 			(clap-amplitudes nil amplitudes-supplied))
   "Mix the sound file original-rhythm-file with the claps marked by clap-sample-file at times clap-times-seconds."
   (let* ((original-rhythm-sound (sound-from-file original-rhythm-file)) ; load original file

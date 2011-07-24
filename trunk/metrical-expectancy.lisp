@@ -415,7 +415,8 @@
 			    (format nil "Ridge persistency of sample random rhythm in ~a meter"
 				    (name rhythm-to-plot)))
     (close-window)
-    (performed-rhythm-expectancies rhythm-to-plot
+    ;; TODO kludged the meter to be 4/4 and 4 bars always. This is wrong.
+    (performed-rhythm-expectancies (list rhythm-to-plot)  (meter-for-name "4/4")
 				   (format nil "RP of ~a" (name rhythm-to-plot))
 				   :expectation-generator #'expectancies-of-rhythm-ridge-persistency)
 ;;     (metrical-rhythm-expectancies (list rhythm-to-plot) meter number-of-bars
