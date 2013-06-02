@@ -1,6 +1,6 @@
 ;;;; -*- Lisp -*-
 ;;;;
-;;;; $Id$
+;;;; $Id: multiresrhythm.asd 5654 2010-11-03 16:19:16Z leighsmi $
 ;;;;
 ;;;; ASDF definition file for multiresolution time-frequency analysis and interpretation of musical rhythm.
 ;;;;
@@ -59,4 +59,6 @@
 	       (:file "meter" :depends-on ("multires_rhythm" "tactus-selection" "expectancies"))
 	       (:file "metrical-expectancy" :depends-on ("expectancies" "martin-trees" "histogram"))
 	       (:file "emcap-expectancy" :depends-on ("expectancies"))
-	       (:file "commandline" :depends-on ("emcap-expectancy"))))
+	       ;(:file "commandline" :depends-on ("emcap-expectancy"))
+))
+
