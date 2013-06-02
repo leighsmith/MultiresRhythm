@@ -1,6 +1,6 @@
 ;;;; -*- Lisp -*-
 ;;;;
-;;;; $Id$
+;;;; $Id: musickit.lisp 5456 2009-03-13 22:34:36Z leighsmi $
 ;;;;
 ;;;; The Common Lisp bridge to Objective C MusicKit classes.
 ;;;;
@@ -11,6 +11,7 @@
 
 (in-package :cl-musickit)
 (use-package :cl-objc)
+;; Need to resolve name conflict of: location, size
 ;; (use-package :objc)
 
 (push "SND" cl-objc:*acronyms*)
@@ -18,17 +19,28 @@
 
 ;;; Forces the internment of alloc etc into the OBJC package.
 (objc-cffi:import-framework "Foundation" t)
+(objc-cffi:import-framework "AppKit" t)
 
 ;; We need a highest level autorelease pool, otherwise many warnings are generated
 (defparameter *top-level-pool* (cl-objc:invoke (cl-objc:invoke 'objc:ns-autorelease-pool objc:alloc) objc:init))
 
-;; TODO perhaps we should check these and attempt to compile them if they don't exist.
+(defun compile-musickit ()
+  "Compiles the MusicKit frameworks. Only needs to be called once to compile the
+frameworks into Common Lisp interfaces."
+  (objc-cffi:compile-framework ("MKPerformSndMIDI"))
+  (objc-cffi:compile-framework ("SndKit"))
+  (objc-cffi:compile-framework ("MKDSP"))
+  (objc-cffi:compile-framework ("MusicKit")))
+
+;; TODO we should check these and attempt to compile them if they don't exist. That should
+;; be done by ASDF, really.
 (objc-cffi:import-framework "MKPerformSndMIDI")
 (objc-cffi:import-framework "SndKit" t) ; T to load the CLOS bindings.
 (objc-cffi:import-framework "MKDSP")
 (objc-cffi:import-framework "MusicKit" t) ; T to load the CLOS bindings.
 
 (defun close-musickit ()
+  "Just releases the top level auto-release pool"
   (cl-objc:invoke *top-level-pool* release))
 
 ;; These values are determined from settings in MKNote.h
@@ -53,14 +65,6 @@
 (defparameter *mk-sys-exclusive* 10)	; MIDI system exclusive string (See MIDI Spec) 
 (defparameter *mk-chan-mode* 11)	; MIDI chan mode msg: takes a MKMidiParVal val 
 (defparameter *mk-sys-real-time* 12)	; MIDI real time msg: takes a MKMidiParVal  
-
-(defun compile-musickit ()
-  "Compiles the MusicKit frameworks. Only needs to be called once to compile the
-frameworks into Common Lisp interfaces."
-  (objc-cffi:compile-framework ("MKPerformSndMIDI"))
-  (objc-cffi:compile-framework ("SndKit"))
-  (objc-cffi:compile-framework ("MKDSP"))
-  (objc-cffi:compile-framework ("MusicKit")))
 
 (defun read-score-named (filename)
   "Read the filename into the score object and return it"
