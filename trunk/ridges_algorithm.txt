@@ -1,0 +1,133 @@
+just a single ridge to deactivate 121
+all-ridges doesn't contain 121 (verified), yet 121 has been repeatedly in
+prev-ridge-scales
+
+Problem is if a ridge diverges into two ridges only differing by tolerance, one of the
+ridges will not be added to the active ridges list. This causes a problem when that ridge
+is deactivated, since it isn't in the active ridges list.
+
+Since the comparison is made between the current and previous scales, this then never
+generates a difference enough to ever add it in anywhere else.
+
+The prev-ridge-scale is matched more than once against the new scales-of-matching-ridges.
+Because matching-ridges matches on the same prev-ridge-scale twice and records the
+scales-of-matching-ridges as both matching, this then matches between the
+current-ridge-scale and the scales-of-matching ridges so that add-new-ridge does not add
+it.
+
+Potentially the solution is to remove the prev-ridge-scale once it has been matched, so it
+does not match again. At the moment, we compute a n x m matrix which is exhaustive and
+probably unnecessary.
+
+
+;; Make the loops limit by tolerance
+(next-unmatched-ridge 0)
+current-ridge across ridge-scales-1
+    while (and (<= (nth next-unmatched-ridge ridge) (+ current-ridge tolerance))
+(< i (length ridge-scales-2)))
+(if 
+
+scales-of-matching-ridges (58 64 79 88 101 120)
+prev-ridge-scales         (57 64 79 88 101 120)
+prev-matching-ridges      (57 64 79 88 101 120)
+scales-of-matching-ridges (64 79 88 101 119 121)
+prev-ridge-scales         (58 64 79 88 101 120)
+prev-matching-ridges      (64 79 88 101 120 120)
+scales-of-matching-ridges (64 79 88 101 119 121)
+prev-ridge-scales         (64 79 88 101 119 121)
+prev-matching-ridges      (64 79 88 101 119 121)
+scales-of-matching-ridges (64 79 88 101 119 121)
+prev-ridge-scales         (64 79 88 101 119 121)
+prev-matching-ridges      (64 79 88 101 119 121)
+
+scales-of-matching-ridges (58 64 79 88 101 120)
+scales-of-matching-ridges (64 79 88 101 119 121)
+scales-of-matching-ridges (64 79 88 101 119 121)
+scales-of-matching-ridges (64 79 88 101 119 121)
+
+
+	 (multiple-value-bind (scales-of-matching-ridges prev-matching-ridges)
+	     (matching-ridges current-ridge-scales prev-ridge-scales)
+
+(matching-ridges '(64 79 88 101 119 121) '(58 64 79 88 101 120))
+;(64 79 88 101 119 121)
+;(64 79 88 101 120 120)
+(set-difference '(58 64 79 88 101 120) '(64 79 88 101 120 120))
+(set-difference prev-ridge-scales prev-matching-ridges)
+
+Created new ridges NIL
+scales-of-matching-ridges (57 64 79 88 101 120)
+prev-ridge-scales (57 64 79 88 101 120)
+prev-matching-ridges (57 64 79 88 101 120)
+Created new ridges NIL
+scales-of-matching-ridges (57 64 79 88 101 120)
+prev-ridge-scales (57 64 79 88 101 120)
+prev-matching-ridges (57 64 79 88 101 120)
+Created new ridges NIL
+scales-of-matching-ridges (58 64 79 88 101 120)
+prev-ridge-scales (57 64 79 88 101 120)
+prev-matching-ridges (57 64 79 88 101 120)
+Created new ridges NIL
+scales-of-matching-ridges (64 79 88 101 119 121)
+prev-ridge-scales (58 64 79 88 101 120)
+prev-matching-ridges (64 79 88 101 120 120)
+Created new ridges NIL
+scales-of-matching-ridges (64 79 88 101 119 121)
+prev-ridge-scales (64 79 88 101 119 121)
+prev-matching-ridges (64 79 88 101 119 121)
+Created new ridges NIL
+scales-of-matching-ridges (64 79 88 101 119 121)
+prev-ridge-scales (64 79 88 101 119 121)
+prev-matching-ridges (64 79 88 101 119 121)
+Created new ridges NIL
+scales-of-matching-ridges (64 79 88 101 119 121)
+prev-ridge-scales (64 79 88 101 119 121)
+prev-matching-ridges (64 79 88 101 119 121)
+Created new ridges NIL
+scales-of-matching-ridges (64 79 88 101 119 121)
+prev-ridge-scales (64 79 88 101 119 121)
+prev-matching-ridges (64 79 88 101 119 121)
+Created new ridges NIL
+
+
+(defun extract-ridges (scale-peaks)
+  "Extract ridges by ``hill trekking''. That is, hike along the tops of the ridges,
+  following the peaks. Returns a list of each ridge in time order (actually reversed)."
+  ;; Moves causally, though there is not really a biological requirement (since the wavelet is non-causal anyway).
+    (loop
+       with time-span = (.array-dimension scale-peaks 1)
+       for current-time-index from 0 below time-span
+       with current-ridge-scales
+       with new-ridges
+       with all-ridges = '()
+       for prev-ridge-scales = '() then current-ridge-scales
+       do
+	 (setf current-ridge-scales (find-scales-of-peaks scale-peaks current-time-index))
+	 ;; (format t "~a~%" current-ridge-scales)
+	 
+         ;; Compute the difference in scale number and height between current-ridge-scales and n previous
+         ;; scales in time. At the moment, n is hardwired as 1. Returns those matched and
+         ;; those matching the previous ridge.
+	 (multiple-value-bind (scales-of-matching-ridges prev-matching-ridges)
+	     (matching-ridges current-ridge-scales prev-ridge-scales)
+
+	   ;;(format t "scales-of-matching-ridges ~a~%prev-ridge-scales ~a~%prev-matching-ridges ~a~%" 
+	   ;; scales-of-matching-ridges prev-ridge-scales prev-matching-ridges)
+	   
+	   ;; Any ridges no longer matching are deemed inactive and are retired from the all-ridges.
+	   ;; TODO (append inactive-ridges (deactivate-ridges active-ridges (set-difference  prev-ridge-scales prev-matching-ridges))
+	   (deactivate-ridges all-ridges (set-difference prev-ridge-scales prev-matching-ridges))
+	   (setf all-ridges (prune-ridges all-ridges)) ; removes tiny ridges.
+	   
+	   ;; All those within the difference threshold become the new state of each
+	   ;; active ridge. Update the history of those ridges.
+	   (update-ridges (remove-if-not #'active all-ridges) prev-matching-ridges scales-of-matching-ridges)
+	   
+	   ;; Those ridges not in scales-of-matching-ridges are new ridges. Add them to
+	   ;; the ridge list.
+	   (setf new-ridges (add-new-ridges (set-difference current-ridge-scales scales-of-matching-ridges) current-time-index))
+	   ;; (format t "Created new ridges ~a~%" new-ridges)
+	   (setf all-ridges (append new-ridges all-ridges)))
+       ;; update-ridges will build the scale lists in reverse time order, so we reverse
+       ;; them before returning them.
+       finally (return (mapcar #'reverse-time all-ridges))))
