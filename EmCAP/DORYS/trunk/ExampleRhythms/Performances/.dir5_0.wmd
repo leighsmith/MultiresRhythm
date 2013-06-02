@@ -1,0 +1,6 @@
+{
+    RootNode = "~/Research/Software/Drumming/DORYS/ExampleRhythms/Performances"; 
+    Toolbar = No; 
+    ViewName = Browser; 
+    WindowFrame = "{{231, 194}, {596, 445}}"; 
+}

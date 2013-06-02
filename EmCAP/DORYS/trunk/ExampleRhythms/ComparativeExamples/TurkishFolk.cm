@@ -1,0 +1,29 @@
+;;; Turkish Folk Song Fragment, 
+;;; from Rosenthal:thesis p16, Prob-2
+;;; originally from Bartok 1976 p149.
+;;; Demonstrating a changing meter
+;; 3/4
+note f3 rhythm e
+note g  rhythm e
+note f  rhythm q
+note g  rhythm e
+; slurred down
+note d  rhythm e
+; with eigth rest?
+;; 2/4
+note f  rhythm e
+note g  rhythm e
+note f  rhythm e
+note g  rhythm e
+;; bar
+note f  rhythm q
+note g  rhythm e
+note d  rhythm e
+; with eight rest?
+;; 3/4
+note f  rhythm e
+note g  rhythm e
+note f  rhythm e
+note g  rhythm e
+note f  rhythm e
+note g  rhythm e

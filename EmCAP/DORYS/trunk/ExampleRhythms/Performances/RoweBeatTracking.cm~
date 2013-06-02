@@ -1,0 +1,9 @@
+;;; -*- Lisp -*-
+;;; Taken from Machine Musicianship figure 3.3.4
+;;;
+;;; performance in milliseconds
+;;;
+
+(setq rowe-performance-ioi '(409 412 402 396 218 201 410))
+
+(setq rowe-quantized (rhythms q q q q e e q q))

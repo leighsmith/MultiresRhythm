@@ -1,0 +1,525 @@
+;;; -*- Lisp -*-
+;;; A database of musical rhythms. 
+;;; My own examples coded as Common Music programs to act as a set
+;;; of stimulus data to compare human and automatic perception
+;;; performances.  Leigh Smith 4/7/95
+
+
+;;; Look at definition of generator et. al as to what I can and can't do
+;;; (probably a macro). Need to decide what to do about defining the output
+;;; instrument class: midi-note, rhythm-onset, rhythm-tone, rhythm-noise etc.
+;;; especially w.r.t using frequency or note values to define pitch.
+
+
+#|
+
+;;; What I want to be able to do:
+I want to be able to accent arbitrary beats in a sequence with a
+phrase lengthening. Probably best to explore by doing this on an
+isochronous sequence. Later extend to take arbitrary patterns and
+create as a class
+
+
+Interpolate the how-much from 0.0 - 0.030
+0.03 heavily apparent at .7 (which should be preferred period)
+0.015 prominant at .35 (double preferred period)
+0.01 at .35
+
+Need to compare dragging (i.e lengthening without correcting vs. correcting
+Compare the amount of accent required when other features are used,
+for instance, pitch and amplitude accenting. I need to build a
+generalised accent model which allows me to describe the dimensions of
+accenting and the rhythm to be communicated. Probably best to think of
+it in object-oriented terms. 
+
+Test examples:
+
+:amplitude no-accent :no-of-beats 4 :agogic-percentage 0.01 :correction
+:canonical-beat (rhythm 'e 85.7) (700ms IOI)
+
+:amplitude no-accent :no-of-beats 4 :agogic-percentage 0.04 :correction
+:canonical-beat (rhythm 'e 85.7) ;(700ms IOI)
+
+vary agogic-percentage (0 to 5%), correction (none or corrected),
+canonical-beat (double and half speed), no-of-beats (2, 3, 4),
+amplitude (no-accent, down-beat, alternating
+
+need to generate both a midi file and a clm file with comments
+embedded giving  parameters
+|#
+
+#|
+
+:agogic-percentage 0.2 shorten no-of-beats 4
+
+
+; length_nocorr.text Correction, downbeat
+; :agogic-percentage 0.2 lengthen no-of-beats 3 correction
+(rhythm 'e 85.7))
+		 (which-beat 3)
+                 (how-much 0.07)
+		 (amplitude-stream (accented-downbeat-amplitudes which-beat))
+		 (rhythm-stream (final-lengthen beat-ioi which-beat how-much))
+		 (duration-stream (fixed-duration beat-ioi which-beat)))
+
+
+
+
+; iso_intensity34.text, intensity accent without agogic or duration accent
+(beat-ioi (rhythm 'e 85.7))
+		 (which-beat 3)
+                 (how-much 0.07)
+		 (amplitude-stream (accented-downbeat-amplitudes which-beat))
+		 (rhythm-stream (isochronous-ioi beat-ioi which-beat how-much))
+		 (duration-stream (fixed-duration beat-ioi which-beat))
+
+
+#|
+Ideally, recode rhythms as multiple items streams composed of single
+item streams for each dimension. This gives us the ability to use them
+in many places. Still need parameterising - probably using defmacro
+|#
+
+;;; One of my own beats in a recurring pattern.
+(setf my-little-rhythm (rhythms q. e e q e))
+
+
+(defmacro rhythm-instrument () 'rhythm-onset)
+
+|#
+
+
+;;;
+;;; 
+
+
+;;; define a multiple item generator to lock rhythmic accenting
+;;; functions together, rhythm, amplitude and duration.
+(defmultiple-item accented-phrase (rhythm amplitude duration)
+  (:element-parser (lambda (rh am du) (list rh am du))))
+
+;;; A generator using multiple-item-streams
+;;; However, we should tuck most of this behind a macro 
+(generator intensity34-to-44 rhythm-onset (length 64 note 'c4)
+	   (vars (beat-ioi (rhythm 'e 85.7))
+		 (which-beat 3)
+                 (how-much 0.07)
+		 (phrase (accented-phrase
+			  (isochronous-ioi beat-ioi which-beat how-much)
+			  (items
+			   (items 0.95 (items 0.75 for 2) for (* 3 4))
+			   (items 0.95 (items 0.75 for 3) for (* 4 3))
+			   (items 0.95 (items 0.75 for 2) for (* 3 10)))
+;			  (items
+;			   (items (expr (accented-downbeat-amplitudes 3)) for 4)
+;			   (items (expr (accented-downbeat-amplitudes 4)) for 3)
+;			   (items (expr (accented-downbeat-amplitudes 3)) for 4))
+			  (legato-accent beat-ioi which-beat how-much))))
+	   (multiple-item-bind (rh am du) (item phrase)
+			       (setf rhythm rh)
+			       (setf amplitude am)
+			       (setf duration du))) 
+
+;;; intensity34_to_44.text
+;;; Compare my method of amplitude-stream generation with duration44-to-34
+;;; Currently I get the result I'm after, but the 44 period is longer
+;;; than I declare.
+(generator old-intensity34-to-44 rhythm-onset (length 32 note 'c4)
+	   (vars (beat-ioi (rhythm 'e 85.7))
+		 (which-beat 3)
+                 (how-much 0.07)
+		 (amplitude-stream (items
+				    (items (accented-downbeat-amplitudes 3) for 18)
+				    (items (accented-downbeat-amplitudes 4) for 16)
+				    (items (accented-downbeat-amplitudes 3) for 16)))
+		 (rhythm-stream (isochronous-ioi beat-ioi which-beat how-much))
+		 (duration-stream (fixed-duration beat-ioi which-beat)))
+   	   (setf rhythm (item rhythm-stream))
+           (setf amplitude (item amplitude-stream))
+	   (setf duration (item duration-stream)))
+
+
+;;; Really we should define our behaviours as named defmultiple-items
+(defmultiple-item unaccented-ritard (rhythm amplitude duration)
+  (:element-parser (lambda (rh am du) (list rh am du))))
+
+(setf ritard-accelerate-tempo-curve
+      (tempo 16 85.7 30 42.0 44 42.0 52 85.7 72 85.7 pulse 'e))
+
+;;; A ritard with equal amplitudes for each beat.
+(generator ritard rhythm-onset (length 72 note 'c4)
+	   (vars (which-beat 4)
+		 (phrase (accented-phrase
+			  (rhythms e tempo ritard-accelerate-tempo-curve)
+			  (isochronous-amplitudes)
+			  (fixed-duration (rhythm 'e 85.7) which-beat))))
+	   (multiple-item-bind (rh am du) (item phrase)
+			       (setf rhythm rh)
+			       (setf amplitude am)
+			       (setf duration du)))
+
+;;; A ritard with the downbeat of every 4 beats accented
+(generator ritard44 rhythm-onset (length 72 note 'c4)
+	   (vars (which-beat 4)
+		 (phrase (accented-phrase
+			  (rhythms e tempo ritard-accelerate-tempo-curve)
+			  (accented-downbeat-amplitudes which-beat)
+			  (fixed-duration (rhythm 'e 85.7) which-beat))))
+	   (multiple-item-bind (rh am du) (item phrase)
+			       (setf rhythm rh)
+			       (setf amplitude am)
+			       (setf duration du)))
+
+;;; duration44_to_34.text
+;;; create an accent by duration and change the meter from 4/4 to 3/4
+;;; This requires all the item streams to be declared in a single
+;;; macro. This misses the opportunity to re-use item streams.
+(generator duration44-to-34 rhythm-energy-square (length 48 note 'c4)
+	   (vars (beat-ioi (rhythm 'e 85.7))
+		 (beat-dur (* beat-ioi 0.5))
+		 (which-beat 3)
+		 (amplitude-stream (isochronous-amplitudes))
+		 (rhythm-stream (isochronous-ioi beat-ioi which-beat nil))
+		 (duration-stream
+			  (items
+			   (items (items 0.24 (items (expr beat-dur) for 3)) for 4)
+			   (items (items 0.24 (items (expr beat-dur) for 2)) for 4)
+			   (items (items 0.24 (items (expr beat-dur) for 3)) for 5))))
+   	   (setf rhythm (item rhythm-stream))
+           (setf amplitude (item amplitude-stream))
+	   (setf duration (item duration-stream)))
+
+
+;		  (items
+;		   (items (items (items beat-dur for 2) 0.2) 
+;				 (expr (+ (expr beat-dur) 0.07))) for 4)
+
+;;; A rhythm mach band? Probably not, but I need some name for the
+;;; damn thing. Here we do some ritards over a couple of ranges before
+;;; speeding up again.
+(generator mach-band rhythm-onset (length 64 note 'c4)
+	   (vars (beat-ioi (rhythm 'q 80.0))
+		 (which-beat 4)
+		 (phrase (accented-phrase
+			  (rhythms e tempo
+				   (tempo 16 160.0 32 80.0 48 80.0
+					  64 60 80 pulse 'q))
+			  (isochronous-amplitudes)
+			  (fixed-duration beat-ioi which-beat))))
+	   (multiple-item-bind (rh am du) (item phrase)
+			       (setf rhythm rh)
+			       (setf amplitude am)
+			       (setf duration du)))
+
+(generator accent-phrase rhythm-onset
+	   (length 64 note 'c4)
+	   (vars (beat-ioi (rhythm 'e 85.7))
+		 (which-beat 3)
+                 (how-much 0.07)
+		 (amplitude-stream (isochronous-amplitudes))
+		 (rhythm-stream (isochronous-ioi beat-ioi which-beat how-much))
+		 (duration-stream (legato-accent beat-ioi which-beat how-much)
+))
+   	   (setf rhythm (item rhythm-stream))
+           (setf amplitude (item amplitude-stream))
+	   (setf duration (item duration-stream)))
+
+(generator meter-change rhythm-onset
+	   (length 64 note 'c4)
+	   (vars (beat-ioi (rhythm 'e 85.7))
+		 (which-beat 3)
+                 (how-much 0.07)
+		 (amplitude-stream (items
+				    (items 0.95 (items 0.75 for 2) for 12)
+				    (items 0.95 (items 0.75 for 3) for 12)
+				    (items 0.95 (items 0.75 for 2) for 30)))
+		 (rhythm-stream (isochronous-ioi beat-ioi which-beat how-much))
+		 (duration-stream (fixed-duration beat-ioi which-beat)))
+   	   (setf rhythm (item rhythm-stream))
+           (setf amplitude (item amplitude-stream))
+	   (setf duration (item duration-stream)))
+
+;;; iso_duration34.text
+;;;
+(generator iso-duration34 rhythm-energy-square (length 32 note 'c4)
+	   (vars (beat-ioi (rhythm 'e 85.7))
+		 (which-beat 3)
+                 (how-much 0.07)
+		 (amplitude-stream (isochronous-amplitudes))
+		 (rhythm-stream (isochronous-ioi beat-ioi which-beat how-much))
+		 (duration-stream (legato-accent beat-ioi which-beat how-much)
+))
+   	   (setf rhythm (item rhythm-stream))
+           (setf amplitude (item amplitude-stream))
+	   (setf duration (item duration-stream)))
+
+
+
+;;; short_corr.text Correction, 
+;;; :agogic-percentage 0.2 shorten no-of-beats 3 correction
+(generator short-corr rhythm-onset (note 'c4)
+	   (vars (beat-ioi (rhythm 'e 80.0))
+		 (which-beat 4)
+                 (how-much 0.07)
+		 (item-1 (final-shorten-and-correct 'four-four beat-ioi
+						    which-beat how-much))
+		 (item-2 (final-shorten-and-correct 'three-four beat-ioi
+						    3 how-much))
+		 (amplitude-stream (isochronous-amplitudes))
+		 (rhythm-stream
+		  (items
+		   (items #@four-four for 3)
+		   (items #@three-four for 5)
+		   (items #@four-four for 3)))
+ 		 (duration-stream (fixed-duration beat-ioi which-beat)))
+   	   (setf rhythm (item rhythm-stream :kill t))
+           (setf amplitude (item amplitude-stream))
+	   (setf duration (item duration-stream)))
+
+;;; lengthen_corr.text Correction, 
+;;; :agogic-percentage 0.2 shorten no-of-beats 3 correction
+(generator lengthen-corr rhythm-onset
+	   (note 'c4)
+	   (vars (beat-ioi (rhythm 'e 80.0))
+		 (which-beat 4)
+                 (how-much 0.02)
+		 (item-1 (final-lengthen-and-correct
+			  'four-four beat-ioi which-beat how-much
+			  :measure-jitter 0.5 :beat-jitter 0.001))
+		 (item-2 (final-lengthen-and-correct
+			  'three-four beat-ioi 3 how-much
+			  :measure-jitter 0.5 :beat-jitter 0.001))
+		 (amplitude-stream (isochronous-amplitudes))
+		 (rhythm-stream
+		  (items
+		   (items #@four-four for 3)
+		   (items #@three-four for 5)
+		   (items #@four-four for 6)))
+ 		 (duration-stream (fixed-duration beat-ioi which-beat)))
+   	   (setf rhythm (item rhythm-stream :kill t))
+           (setf amplitude (item amplitude-stream))
+	   (setf duration (item duration-stream)))
+
+
+;;; try two opposite timing displacements
+(generator shorten-and-lengthen-corr rhythm-onset (note 'c4)
+	   (vars (beat-ioi (rhythm 'e 80.0))
+		 (which-beat 4)
+                 (how-much 0.01)
+		 (item-1 (final-shorten-and-correct 'four-four beat-ioi
+						    which-beat how-much))
+		 (item-2 (final-shorten-and-correct 'three-four beat-ioi
+						    3 how-much))
+		 (item-3 (final-lengthen-and-correct 'four-four-long beat-ioi
+						     which-beat how-much))
+		 (amplitude-stream (isochronous-amplitudes))
+		 (rhythm-stream
+		  (items
+		   (items #@four-four for 3)
+		   (items #@three-four for 5)
+		   (items #@four-four for 3)
+		   (items #@four-four-long for 5)))
+		 (duration-stream (fixed-duration beat-ioi which-beat)))
+   	   (setf rhythm (item rhythm-stream :kill t))
+           (setf amplitude (item amplitude-stream))
+	   (setf duration (item duration-stream)))
+
+
+#|
+;;; short_corr_intensity.text Correction, downbeat
+;;; :agogic-percentage 0.2 shorten no-of-beats 3 correction
+(generator short-corr-intensity rhythm-onset (length 32 note 'c4)
+	   (vars (beat-ioi (rhythm 'e 85.7))
+		 (which-beat 3)
+                 (how-much 0.07)
+		 (amplitude-stream (accented-downbeat-amplitudes which-beat))
+		 (rhythm-stream
+		  (final-shorten-and-correct beat-ioi
+							   which-beat
+							   how-much))
+		 (duration-stream (fixed-duration  beat-ioi which-beat)))
+   	   (setf rhythm (item rhythm-stream))
+           (setf amplitude (item amplitude-stream))
+	   (setf duration (item duration-stream)))
+|#
+
+;;;  short_nocorr.text No correction, downbeat
+;;; :agogic-percentage 0.2 shorten no-of-beats 3 no-correction
+(generator short-nocorr rhythm-onset (length 32 note 'c4)
+	   (vars (beat-ioi (rhythm 'e 85.7))
+		 (which-beat 3)
+                 (how-much 0.07)
+		 (amplitude-stream (accented-downbeat-amplitudes which-beat))
+		 (rhythm-stream (final-shorten beat-ioi which-beat how-much))
+		 (duration-stream (fixed-duration beat-ioi which-beat)))
+   	   (setf rhythm (item rhythm-stream))
+           (setf amplitude (item amplitude-stream))
+	   (setf duration (item duration-stream)))
+
+
+;;; short_nocorr_iso.text No correction, no intensity accent
+;;; :agogic-percentage 0.2 shorten no-of-beats 3 correction
+(generator short-nocorr-iso rhythm-onset (length 32 note 'c4)
+	   (vars (beat-ioi (rhythm 'e 85.7))
+		 (which-beat 3)
+                 (how-much 0.07)
+		 (amplitude-stream (isochronous-amplitudes))
+		 (rhythm-stream (final-shorten beat-ioi which-beat how-much))
+		 (duration-stream (fixed-duration beat-ioi which-beat)))
+   	   (setf rhythm (item rhythm-stream))
+           (setf amplitude (item amplitude-stream))
+	   (setf duration (item duration-stream)))
+
+
+
+;;; Because we are generating a rhythm, i.e. a sense of a pulse, we
+;;; could go on forever, therefore we allow a length to determine when
+;;; we stop.
+(defun accented-rhythmic-phrase (the-start instrument
+					     &key (amplitude 'no-accent)
+					     (no-of-beats 4)
+					     (agogic-percentage 0.01)
+					     correction
+					     canonical-beat)
+  (let ((how-much (* canonical-beat agogic-percentage)))
+    (format t "sprouting accented-rhythmic-phrase at time ~A with ~A agogic~%"
+	  the-start how-much)
+    (sprout
+     (algorithm nil rhythm-onset (start the-start length no-of-beats rhythm 1.0)
+		(vars (beat-ioi canonical-beat)
+		      (amplitude-stream (isochronous-amplitudes))
+		      (rhythm-stream
+		       (phrase-final-lengthening beat-ioi no-of-beats
+						 how-much))
+)
+		(format t "rhythm is ~A" rhythm)
+;		(setf rhythm (item rhythm-stream))
+		(setf rhythm 2.0)
+
+;		(setf amplitude (item amplitude-stream))
+		(setf duration (* beat-ioi 0.5))))))
+
+
+(mute ex1 (length 2)
+      (accented-rhythmic-phrase 0 'rhythm-onset
+				:amplitude 'no-accent
+				:no-of-beats 4
+				:agogic-percentage 0.04
+				:correction 'no-shift
+				:canonical-beat 0.35))
+
+
+(defun fucked (blah)
+    (sprout
+(algorithm acc-alg rhythm-onset (start 0 length 4 note 'c4)
+		(vars (beat-ioi 0.35)
+		      (amplitude-stream (isochronous-amplitudes))
+		      (rhythm-stream
+		       (phrase-final-lengthening beat-ioi 4
+						 0.014)))
+		(setf rhythm (item rhythm-stream))
+		(format t "rhythm is ~A" rhythm)
+		(setf amplitude (item amplitude-stream))
+		(setf duration (* beat-ioi 0.5)))))
+
+(mute ex2 (length 2)
+      (sprout
+       (algorithm nil rhythm-onset (start 0 length 4 note 'c4)
+		  (vars (beat-ioi 0.35)
+			(amplitude-stream (isochronous-amplitudes))
+			(rhythm-stream
+			 (phrase-final-lengthening beat-ioi 4
+						   0.014)))
+		  (setf rhythm (item rhythm-stream))
+		  (format t "rhythm is ~A" rhythm)
+		  (setf amplitude (item amplitude-stream))
+		  (setf duration (* beat-ioi 0.5)))))
+
+;;; agogic_partial_corr.text Correction, 
+;;; We can't simply correct for the agogic timing, as it just makes
+;;; the beat seem late, instead, we correct by half the displacement.
+;;; This produces a pause which is rather confusing for listeners as
+;;; it lacks any longer duration grouping structure.
+(generator agogic-partial-correction rhythm-onset
+	   (note 'c4 duration 0.050)
+	   (vars (beat-ioi (rhythm 'e 80.0))
+		 (which-beat 4)
+                 (how-much 0.01)	;at 0.02 things are out of time.
+		 (item-1 (final-lengthen-and-correct
+			  'four-four beat-ioi which-beat how-much
+			  :correct-ratio 0.5))
+		 (amplitude-stream (isochronous-amplitudes))
+		 (rhythm-stream
+		  (items
+		   (items #@four-four for 15)))
+ 		 (duration-stream (fixed-duration beat-ioi which-beat)))
+   	   (setf rhythm (item rhythm-stream :kill t))
+           (setf amplitude (item amplitude-stream))
+;	   (setf duration (item duration-stream))
+)
+
+;;; todo, implement a low frequency ritardando.
+;;; agogic_partial_corr.text Correction, 
+;;; We can't simply correct for the agogic timing, as it just makes
+;;; the beat seem late, instead, we correct by half the displacement.
+;;; This produces a pause which is rather confusing for listeners as
+;;; it lacks any longer duration grouping structure.
+(generator agogic-partial-correction-ritard rhythm-tone
+ (note 'c4 duration 0.050)
+	   (vars (beat-ioi (rhythm 'e 80.0))
+		 (which-beat 4)
+                 (how-much 0.01)	;at 0.02 things are out of time.
+		 (item-1 (final-lengthen-and-correct
+			  'four-four beat-ioi which-beat how-much
+			  :correct-ratio 0.5))
+		 (amplitude-stream (isochronous-amplitudes))
+		 (rhythm-stream
+		  (items
+		   (items #@four-four for 15))))
+   	   (setf rhythm (item rhythm-stream :kill t))
+           (setf amplitude (item amplitude-stream)))
+
+;;; A complex (yet groupable) sequence which is ritarding to the point
+;;; of lost meter.
+(generator complex-ritard rhythm-onset
+	   (note 'c4 amplitude 0.75 duration 0.25 length 30)
+	   (setf rhythm (item (rhythms e q q. tempo 
+				       (tempo from 60 to 30 in 30 update after) for 30))))
+
+;;; For Rameri, a random rhythm generator, to spot any
+;;; non-orthogonality in our analysis. We specify a random IOI range
+;;; which can exceed the maximum period of our wavelet
+;;; (2048samples/200Hz) so we don't constrain data to lie within a
+;;; rhythmic upper bound (thereby creating an analysable periodicity).
+(generator random-rhythms rhythm-onset (length 20 amplitude 0.95 note 'c4)
+	   (setf rhythm (random 10.24))
+	   (setf duration (/ rhythm 3))) ; meaningless with
+					; rhythm-onset, but we may
+					; want to play it someday...
+		       
+;;; Pulse thread, we should generate a 1000Hz sound file with this to
+;;; ensure the IOI's are 256 samples. This will allow us to see the
+;;; harmonics with respect to a coincident sampling rate.
+(thread pulse ()
+	(dotimes (i 16)
+	  (object rhythm-onset note 'c4 rhythm 0.256 duration 0.256
+		  amplitude 0.95))) 
+
+;;; Generate an accented beat every 4th beat of an otherwise isochronous pulse.
+(generator accented-pulse rhythm-onset 
+	   (length 32 rhythm 0.256 note 'c4 duration 0.256)
+	   (vars (amplitude-stream (accented-downbeat-amplitudes 4)))
+	   (setf amplitude (item amplitude-stream)))
+
+;;;
+;;; Flamenco Rhythm from CD program notes by Paco Pena.
+;;;
+; accents on the (3 6 8 10 12) beats of a 12 beat measure
+; assuming 12/8 meter
+(generator flamenco-canas rhythm-onset
+	   (length 20 amplitude 0.75 duration 0.158)
+	   (setf note (item (notes rest (notes a4 for 5))))
+	   (setf rhythm (item (rhythms q q. q q q e tempo 120))))
+ 
+
+

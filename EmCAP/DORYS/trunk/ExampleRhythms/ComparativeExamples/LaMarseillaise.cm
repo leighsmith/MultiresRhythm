@@ -1,0 +1,19 @@
+;;; Score encoded version of La Marseillaise
+;;; With the melody line.
+;;; Originally taken from Rosenthal's examples
+
+note c4 rhythm s
+note c4 rhythm e.
+note c4 rhythm s
+;; bar
+note f4 rhythm q
+note f4 rhythm q
+note g4 rhythm q
+note g4 rhythm q
+;; bar
+note c5 rhythm h+e.
+note a4 rhythm s
+note f4 rhythm e.
+note f4 rhythm s
+;; bar
+note a4 rhythm e.

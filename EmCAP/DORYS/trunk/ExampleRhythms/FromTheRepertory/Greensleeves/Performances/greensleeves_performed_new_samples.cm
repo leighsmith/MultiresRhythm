@@ -1,0 +1,380 @@
+;;; -*- Lisp -*-
+;;; Three different tempo performances of Greensleeves on a single
+;;; MIDI drum pad without metronome, performer chosen tempo.
+;;;
+((LAMBDA (%CONTAINER%)
+    (ADD-OBJECTS
+      (LIST
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.51968503 :DURATION
+          0.28320313 :RHYTHM 0.2841797
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.7559055 :DURATION
+          0.2890625 :RHYTHM 0.6230469
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.8031496 :DURATION
+          0.29296875 :RHYTHM 0.31054688
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.51968503 :DURATION
+          0.2919922 :RHYTHM 0.53027344
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.77165353 :DURATION
+          0.1640625 :RHYTHM 0.16503906
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.27559054 :DURATION
+          0.2841797 :RHYTHM 0.28515625
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.86614174 :DURATION
+          0.28808594 :RHYTHM 0.60058594
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.6771653 :DURATION
+          0.29003906 :RHYTHM 0.30273438
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.7322835 :DURATION
+          0.2890625 :RHYTHM 0.5019531
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.8346457 :DURATION
+          0.13183594 :RHYTHM 0.1328125
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.4488189 :DURATION
+          0.2841797 :RHYTHM 0.28515625
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.71653545 :DURATION
+          0.29003906 :RHYTHM 0.5996094
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.71653545 :DURATION
+          0.29003906 :RHYTHM 0.31933594
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.5748032 :DURATION
+          0.27929688 :RHYTHM 0.28027344
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.39370078 :DURATION
+          0.2861328 :RHYTHM 0.296875
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.8346457 :DURATION
+          0.29101563 :RHYTHM 0.3154297
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.7007874 :DURATION
+          0.29101563 :RHYTHM 0.5683594
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.5748032 :DURATION
+          0.29296875 :RHYTHM 0.33398438
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.9133858 :DURATION
+          0.29296875 :RHYTHM 0.5996094
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.984252 :DURATION
+          0.28710938 :RHYTHM 0.32226563
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.62204725 :DURATION
+          0.2919922 :RHYTHM 0.57714844
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.5905512 :DURATION
+          0.29101563 :RHYTHM 0.35839844
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.71653545 :DURATION
+          0.29101563 :RHYTHM 0.47460938
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.44094488 :DURATION
+          0.11328125 :RHYTHM 0.11425781
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.36220473 :DURATION
+          0.28808594 :RHYTHM 0.31054688
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.77165353 :DURATION
+          0.28710938 :RHYTHM 0.5878906
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.8503937 :DURATION
+          0.29296875 :RHYTHM 0.32128906
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.511811 :DURATION
+          0.2890625 :RHYTHM 0.5107422
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.78740156 :DURATION
+          0.12207031 :RHYTHM 0.123046875
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.5905512 :DURATION
+          0.29003906 :RHYTHM 0.3232422
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.8503937 :DURATION
+          0.29296875 :RHYTHM 0.49023438
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.88188976 :DURATION
+          0.13183594 :RHYTHM 0.1328125
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.61417323 :DURATION
+          0.28808594 :RHYTHM 0.3203125
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.8031496 :DURATION
+          0.2939453 :RHYTHM 0.4873047
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.7007874 :DURATION
+          0.15039063 :RHYTHM 0.15136719
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.35433072 :DURATION
+          0.29003906 :RHYTHM 0.30566406
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.7401575 :DURATION
+          0.29296875 :RHYTHM 0.9482422
+        )
+;; duration made same as previous rhythm to pad the beat to it's full duration.
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.6614173 :DURATION
+          0.9482422 :RHYTHM 0.2890625
+      ) )
+      %CONTAINER% NIL :COPY-FIRST NIL
+    )
+    %CONTAINER%
+ )
+  (MAKE-OBJECT '(THREAD GREENSLEEVES-PERFORM-MEDIUM) :ID
+    'GREENSLEEVES-PERFORM-MEDIUM
+) )
+((LAMBDA (%CONTAINER%)
+    (ADD-OBJECTS
+      (LIST
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.4566929 :DURATION
+          0.2890625 :RHYTHM 0.42871094
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.8346457 :DURATION
+          0.2919922 :RHYTHM 0.8574219
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.5511811 :DURATION
+          0.2890625 :RHYTHM 0.42773438
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.511811 :DURATION
+          0.2919922 :RHYTHM 0.6816406
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.5511811 :DURATION
+          0.19238281 :RHYTHM 0.19335938
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.2913386 :DURATION
+          0.28808594 :RHYTHM 0.41210938
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.86614174 :DURATION
+          0.29101563 :RHYTHM 0.84765625
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.68503934 :DURATION
+          0.29101563 :RHYTHM 0.4267578
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.52755904 :DURATION
+          0.28710938 :RHYTHM 0.67285156
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.68503934 :DURATION
+          0.17773438 :RHYTHM 0.17871094
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.47244096 :DURATION
+          0.29003906 :RHYTHM 0.4267578
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.54330707 :DURATION
+          0.2861328 :RHYTHM 0.84277344
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.5905512 :DURATION
+          0.29003906 :RHYTHM 0.40820313
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.54330707 :DURATION
+          0.28808594 :RHYTHM 0.43359375
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.35433072 :DURATION
+          0.28710938 :RHYTHM 0.39453125
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.54330707 :DURATION
+          0.29003906 :RHYTHM 0.43066406
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.8976378 :DURATION
+          0.2919922 :RHYTHM 0.8251953
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.48031497 :DURATION
+          0.28808594 :RHYTHM 0.4169922
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.6456693 :DURATION
+          0.2861328 :RHYTHM 0.85058594
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.5984252 :DURATION
+          0.29101563 :RHYTHM 0.4326172
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.5905512 :DURATION
+          0.2890625 :RHYTHM 0.79589844
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.8503937 :DURATION
+          0.29101563 :RHYTHM 0.43554688
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.9133858 :DURATION
+          0.28710938 :RHYTHM 0.6640625
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.8346457 :DURATION
+          0.16601563 :RHYTHM 0.16699219
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.2519685 :DURATION
+          0.2861328 :RHYTHM 0.42871094
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.4015748 :DURATION
+          0.2890625 :RHYTHM 0.8154297
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.7007874 :DURATION
+          0.28808594 :RHYTHM 0.42773438
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.7559055 :DURATION
+          0.29101563 :RHYTHM 0.66796875
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.48031497 :DURATION
+          0.18164063 :RHYTHM 0.18261719
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.3464567 :DURATION
+          0.2861328 :RHYTHM 0.4296875
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.7007874 :DURATION
+          0.2890625 :RHYTHM 0.6503906
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.5511811 :DURATION 0.1875
+          :RHYTHM 0.18847656
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.35433072 :DURATION
+          0.28808594 :RHYTHM 0.42871094
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.88188976 :DURATION
+          0.29003906 :RHYTHM 0.6669922
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.5984252 :DURATION
+          0.15527344 :RHYTHM 0.15625
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.33070865 :DURATION
+          0.2890625 :RHYTHM 0.41601563
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.71653545 :DURATION
+          0.29101563 :RHYTHM 1.3408203
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.77165353 :DURATION
+          0.29101563 :RHYTHM 0.29101563
+      ) )
+      %CONTAINER% NIL :COPY-FIRST NIL
+    )
+    %CONTAINER%
+ )
+  (MAKE-OBJECT '(THREAD GREENSLEEVES-PERFORM-SLOW) :ID
+    'GREENSLEEVES-PERFORM-SLOW
+) )
+((LAMBDA (%CONTAINER%)
+    (ADD-OBJECTS
+      (LIST
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.88188976 :DURATION
+          0.26171875 :RHYTHM 0.2626953
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.8503937 :DURATION
+          0.28808594 :RHYTHM 0.47851563
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.78740156 :DURATION
+          0.2890625 :RHYTHM 0.296875
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.7007874 :DURATION
+          0.28515625 :RHYTHM 0.36035156
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.1496063 :DURATION
+          0.0029296875 :RHYTHM 0.00390625
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.511811 :DURATION
+          0.10644531 :RHYTHM 0.107421875
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.2519685 :DURATION
+          0.28515625 :RHYTHM 0.28710938
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.54330707 :DURATION
+          0.2919922 :RHYTHM 0.46875
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.8346457 :DURATION
+          0.28125 :RHYTHM 0.28222656
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.78740156 :DURATION
+          0.29003906 :RHYTHM 0.38476563
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.7401575 :DURATION
+          0.10644531 :RHYTHM 0.107421875
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.6771653 :DURATION
+          0.27441406 :RHYTHM 0.27539063
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 1.0 :DURATION 0.28710938
+          :RHYTHM 0.47851563
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.52755904 :DURATION
+          0.27734375 :RHYTHM 0.2783203
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.56692916 :DURATION
+          0.2548828 :RHYTHM 0.25683594
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.5905512 :DURATION 0.25
+          :RHYTHM 0.25097656
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.7401575 :DURATION
+          0.265625 :RHYTHM 0.26660156
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.63779527 :DURATION
+          0.2861328 :RHYTHM 0.49609375
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.6456693 :DURATION
+          0.27539063 :RHYTHM 0.2763672
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.81889766 :DURATION
+          0.2861328 :RHYTHM 0.5029297
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.6771653 :DURATION
+          0.2841797 :RHYTHM 0.28515625
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.68503934 :DURATION
+          0.28808594 :RHYTHM 0.5
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.8976378 :DURATION
+          0.29003906 :RHYTHM 0.29101563
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.88188976 :DURATION
+          0.2861328 :RHYTHM 0.40039063
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.4488189 :DURATION
+          0.09863281 :RHYTHM 0.099609375
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.47244096 :DURATION
+          0.2705078 :RHYTHM 0.27148438
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.78740156 :DURATION
+          0.28808594 :RHYTHM 0.5019531
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.8503937 :DURATION
+          0.265625 :RHYTHM 0.26660156
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.42519686 :DURATION
+          0.2919922 :RHYTHM 0.41210938
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.47244096 :DURATION
+          0.11230469 :RHYTHM 0.11328125
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.42519686 :DURATION
+          0.26367188 :RHYTHM 0.26464844
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.5905512 :DURATION
+          0.2919922 :RHYTHM 0.453125
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.56692916 :DURATION
+          0.11035156 :RHYTHM 0.111328125
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.52755904 :DURATION
+          0.25878906 :RHYTHM 0.25976563
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.8346457 :DURATION
+          0.29003906 :RHYTHM 0.4140625
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.37795275 :DURATION
+          0.11425781 :RHYTHM 0.115234375
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.7322835 :DURATION
+          0.27539063 :RHYTHM 0.27539063
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.88188976 :DURATION
+          0.29101563 :RHYTHM 0.8535156
+        )
+        (MAKE-OBJECT 'sampler 'sample-file "/Local/Users/leigh/Library/Sounds/single_click.snd" 'AMPLITUDE 0.68503934 :DURATION
+          0.2919922 :RHYTHM 0.2919922
+      ) )
+      %CONTAINER% NIL :COPY-FIRST NIL
+    )
+    %CONTAINER%
+ )
+  (MAKE-OBJECT '(THREAD GREENSLEEVES-PERFORM-FAST) :ID
+    'GREENSLEEVES-PERFORM-FAST
+) )

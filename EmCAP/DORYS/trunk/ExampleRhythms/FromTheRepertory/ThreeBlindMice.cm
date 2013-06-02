@@ -1,0 +1,54 @@
+;;; -*- Lisp -*- Three blind mice rhythm, essentially variations over
+;;; an anapest rhythm.  Originally suggested by Todd, O'Boyle and Lee
+;;; 1999, but not explicitly stated.
+
+; midi-note or rhythm-dirac
+
+(in-tempo 140)
+
+(thread three-blind-mice-unaccented ()
+; (tempo (tempo 115 q))
+	;; three blind mice
+	(object rhythm-dirac note 'fs4 rhythm (rhythm 'q) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'e4 rhythm (rhythm 'q) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'd4 rhythm (rhythm 'h) duration 0.1 amplitude 0.9)
+	;; three blind mice
+	(object rhythm-dirac note 'fs4 rhythm (rhythm 'q) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'e4 rhythm (rhythm 'q) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'd4 rhythm (rhythm 'h) duration 0.1 amplitude 0.9)
+	;; see how they run
+	(object rhythm-dirac note 'a4 rhythm (rhythm 'q) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'g4 rhythm (rhythm 'te+te) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'g4 rhythm (rhythm 'te) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'fs4 rhythm (rhythm 'h) duration 0.1 amplitude 0.9)
+	;; see how they run
+	(object rhythm-dirac note 'a4 rhythm (rhythm 'q) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'g4 rhythm (rhythm 'te+te) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'g4 rhythm (rhythm 'te) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'fs4 rhythm (rhythm 'q+te+te) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'a4 rhythm (rhythm 'te) duration 0.1 amplitude 0.9)
+	;; She cut off their tails with a carving knife...
+	(object rhythm-dirac note 'd5 rhythm (rhythm 'te+te) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'd5 rhythm (rhythm 'te) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'cs5 rhythm (rhythm 'te+te) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'cs5 rhythm (rhythm 'te) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'd5 rhythm (rhythm 'te+te) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'a4 rhythm (rhythm 'te) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'a4 rhythm (rhythm 'te+te) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'a4 rhythm (rhythm 'te) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'd5 rhythm (rhythm 'te+te) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'd5 rhythm (rhythm 'te) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'cs5 rhythm (rhythm 'te+te) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'cs5 rhythm (rhythm 'te) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'd5 rhythm (rhythm 'te+te) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'a4 rhythm (rhythm 'te) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'a4 rhythm (rhythm 'te+te) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'g4 rhythm (rhythm 'te) duration 0.1 amplitude 0.9)
+	;; three blind mice
+	(object rhythm-dirac note 'fs4 rhythm (rhythm 'q) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'e4 rhythm (rhythm 'q) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'd4 rhythm (rhythm 'h) duration 0.1 amplitude 0.9)
+	;; three blind mice
+	(object rhythm-dirac note 'fs4 rhythm (rhythm 'q) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'e4 rhythm (rhythm 'q) duration 0.1 amplitude 0.9)
+	(object rhythm-dirac note 'd4 rhythm (rhythm 'h) duration 0.1 amplitude 0.9))

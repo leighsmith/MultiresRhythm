@@ -1,0 +1,133 @@
+;;; A rhythm-onset version of the quantised greensleeves rhythm,
+;;; with an accent and a structurally important beat missing.
+;;; Should produce greensleeves_accent_missing.snd/text
+
+(IN-SYNTAX 'CLM)
+(load "~/Research/Software/Drumming/RhythmRepresentation/Wavelet/GeneratedRhythms/rhythms.fas")
+((LAMBDA (%CONTAINER%)
+    (ADD-OBJECTS
+      (LIST
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.25
+          :RHYTHM 0.5
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'amplitude 0.95 :DURATION 0.5 :RHYTHM
+          1.0
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.25
+          :RHYTHM 0.5
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.375
+          :RHYTHM 0.75
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.125
+          :RHYTHM 0.25
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.25
+          :RHYTHM 0.5
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'amplitude 0.95 :DURATION 0.5 :RHYTHM
+          1.0
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.25
+          :RHYTHM 0.5
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.375
+          :RHYTHM 0.75
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.125
+          :RHYTHM 0.25
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.25
+          :RHYTHM 0.5
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'amplitude 0.95 :DURATION 0.5 :RHYTHM
+          1.0
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.25
+          :RHYTHM 0.5
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.25
+          :RHYTHM 0.5
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.25
+          :RHYTHM 0.5
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.25
+          :RHYTHM 0.5
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'amplitude 0.95 :DURATION 0.5 :RHYTHM
+          1.0
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.25
+          :RHYTHM 0.5
+        )
+
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.5 :RHYTHM
+          1.0
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.25
+          :RHYTHM 1.5
+        )
+; Below is our missing note:
+; Above, we have added it's rhythm to the previous rhythm
+;        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.95 :DURATION 0.5
+;          :RHYTHM 1.0
+;        )
+
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.25
+          :RHYTHM 0.5
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.375
+          :RHYTHM 0.75
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.125
+          :RHYTHM 0.25
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.25
+          :RHYTHM 0.5
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'amplitude 0.95 :DURATION 0.5 :RHYTHM
+          1.0
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.25
+          :RHYTHM 0.5
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.375
+          :RHYTHM 0.75
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.125
+          :RHYTHM 0.25
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.25
+          :RHYTHM 0.5
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'amplitude 0.95 :DURATION 0.375
+          :RHYTHM 0.75
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.125
+          :RHYTHM 0.25
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.25
+          :RHYTHM 0.5
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.25
+          :RHYTHM 0.5
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.25
+          :RHYTHM 0.5
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.25
+          :RHYTHM 0.5
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'amplitude 0.95 :DURATION 0.75
+          :RHYTHM 1.5
+        )
+        (MAKE-OBJECT 'rhythm-onset 'note 'c4 'AMPLITUDE 0.75 :DURATION 0.5 :RHYTHM
+          1.0
+      ) )
+      %CONTAINER% NIL :COPY-FIRST NIL
+    )
+    %CONTAINER%
+ )
+  (MAKE-OBJECT '(THREAD GREENSLEEVES) :ID 'GREENSLEEVES)
+)
