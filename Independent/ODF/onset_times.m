@@ -17,7 +17,7 @@ function onsets_seconds = onset_times(filename)
   allPeaks = peaks(wodf_diff);
 
   bigPeaks = (wodf_diff .* allPeaks) > (std(wodf_diff) * threshold);
-  onset_times = find(bigPeaks)
+  onset_times = find(bigPeaks);
   % All values will be moved forward one because of the 1st order difference.
   % Also, we've found the peaks of the relative difference, however, what we want are the
   % attack onset times preceding these. Therefore the compensation descends from the peaks to
