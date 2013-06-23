@@ -6,7 +6,6 @@ function [windowed_spectrum] = spectrum_of_window(short_term_signal, window)
 %
 % Author: Leigh M. Smith <leigh@imagine-research.com>
 %
-% $Id$
     
     % Compresses the magnitude values to approximate perception of
     % intensity. As used by Klapuri, Eronen & Astola and Grosche & Muller.

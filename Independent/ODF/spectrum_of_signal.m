@@ -17,8 +17,6 @@ function [spectrum] = spectrum_of_signal(signal, window_size, hop_size)
     while (window_start_sample + window_size < signal_length)
         % fprintf('window %d: [%d : %d]\n', window_index, window_start_sample, window_start_sample + window_size - 1);
         windowed_signal = signal(window_start_sample : window_start_sample + window_size - 1);
-	% TODO To guard against DC shifts which can cause huge spectral differences, we should
-	% remove the average of each window.
         spectrum(:, window_index) = spectrum_of_window(windowed_signal, window);
         window_start_sample = window_start_sample + hop_size;
         window_index = window_index + 1;
