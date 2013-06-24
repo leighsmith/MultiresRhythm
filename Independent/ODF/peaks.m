@@ -1,4 +1,4 @@
-## -*- octave -*-
+% -*- octave -*-
 function peaks = peaks(signal,minimum)
   signalPlus = shift(signal, 1);
   signalMinus = shift(signal, -1);
