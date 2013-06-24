@@ -2,11 +2,12 @@
 % test_onsets("jw_prelude3.wav")
 function test_onsets(inputSoundPath)
 %
-  marked_onset_times = onset_times(inputSoundPath);
-
   [audio_signal, sample_rate, resolution] = wavread(tilde_expand(inputSoundPath));
   num_audio_channels = size(audio_signal, 2); % determine from signal.
   mono_audio_signal = sum(audio_signal, 2) / num_audio_channels;
+
+  marked_onset_times = onset_times(mono_audio_signal, sample_rate);
+
   figure()
   % plot(mono_audio_signal, "1")
   plot(mono_audio_signal, "1", marked_onset_times .* sample_rate, ones(1,length(marked_onset_times)), "2^")

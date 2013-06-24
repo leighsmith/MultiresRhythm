@@ -4,7 +4,8 @@ function save_rhythm_mix (filename_to_write, original_rhythm_file, clap_times_se
     if(nargin < 5)
         clap_amplitudes = 1;
     end
-    [original_rhythm_sound, original_sr, dynamic_resolution] = wavread(original_rhythm_file); % load original file
+    % load original file
+    [original_rhythm_sound, original_sr, dynamic_resolution] = wavread(tilde_expand(original_rhythm_file));
 
     if (nargin < 4)
         clap_sample_file = tilde_expand('~/Research/Data/Handclap Examples/hihat_closed.wav');
