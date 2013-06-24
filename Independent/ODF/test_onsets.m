@@ -15,5 +15,5 @@ function marked_onset_times = test_onsets(inputSoundPath)
   beep = sinetone(880, sample_rate, 0.050, 0.8);
   % wavwrite(beep, sample_rate, "/tmp/beep.wav");
   [dir, filename, ext] = fileparts(inputSoundPath);
-  save_rhythm_mix([dir, filename, "_onsets.wav"], inputSoundPath, marked_onset_times, beep);
+  save_rhythm_mix([dir, "/", filename, "_onsets.wav"], inputSoundPath, marked_onset_times, beep);
 end
