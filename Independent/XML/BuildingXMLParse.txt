@@ -22,3 +22,142 @@ export LDFLAGS="-arch i386"
 sh ./configure
 
 
+For octave 3.4.0 x64 source configure:
+
+cd ~/SysDev/octave-3.4.0 
+export FINK_PREFIX="/sw64"
+export PREFIX="/usr/local/bin"
+export OPTFLAGS="-O2 -g"
+export LDFLAGS="-L$FINK_PREFIX/lib -L/usr/lib -m64"
+export CFLAGS="-I$FINK_PREFIX/include $OPTFLAGS -m64"
+export CXXFLAGS=$CFLAGS
+export CPPFLAGS=$CXXFLAGS                                                                                                                                                                    
+export ACLOCAL_FLAGS="-I$FINK_PREFIX/share/aclocal"
+export PKG_CONFIG_PATH="$FINK_PREFIX/lib/pkgconfig"
+export CPPFLAGS=$CXXFLAGS 
+export ACLOCAL_FLAGS="-I$FINK_PREFIX/share/aclocal"
+export PKG_CONFIG_PATH="$FINK_PREFIX/lib/pkgconfig"
+export PATH="$FINK_PREFIX/var/lib/fink/path-prefix-10.6/:$PATH"
+export MACOSX_DEPLOYMENT_TARGET=10.5                                                                                                                                                         
+export PATH="$FINK_PREFIX/lib/flex/bin:$PATH"
+export CPPFLAGS="-I$FINK_PREFIX/lib/flex/include $CPPFLAGS"
+export LDFLAGS="-L$FINK_PREFIX/lib/flex/lib $LDFLAGS"
+export CC="gcc-fsf-4.5"
+export CPP="cpp-fsf-4.5"
+export CXX="g++-fsf-4.5"
+export F77="/sw64/bin/gfortran-fsf-4.5"
+export FLIBS="-lgfortran -lgfortranbegin"
+export FFLAGS="$OPTFLAGS -m64"
+export CPPFLAGS="$CPPFLAGS -I$FINK_PREFIX/include/freetype2 \
+                           -I$FINK_PREFIX/include/qhull \
+                           -I/usr/include"
+export CXXFLAGS="$CXXFLAGS -D_THREAD_SAFE -D_REENTRANT"
+./configure --prefix=$PREFIX \
+            --libexecdir='${prefix}/lib' \
+	    --with-blas="-Wl,atlas"
+
+configure:
+
+Octave is now configured for x86_64-apple-darwin10.7.0
+
+  Source directory:            .
+  Installation prefix:         /usr/local/bin
+  C compiler:                  gcc-fsf-4.5   -Wall -W -Wshadow -Wformat -Wpointer-arith -Wmissing-prototypes -Wstrict-prototypes -Wwrite-strings -Wcast-align -Wcast-qual -I/sw64/include -O2 -g -m64 -D_THREAD_SAFE -pthread
+  C++ compiler:                g++-fsf-4.5  -I/sw64/include -I/sw64/include/freetype2 -I/sw64/include -I/usr/X11/include    -Wall -W -Wshadow -Wold-style-cast -Wformat -Wpointer-arith -Wwrite-strings -Wcast-align -Wcast-qual -I/sw64/include -O2 -g -m64 -D_THREAD_SAFE -D_REENTRANT
+  Fortran compiler:            /sw64/bin/gfortran-fsf-4.5 -O2 -g -m64
+  Fortran libraries:           -lgfortran -lgfortranbegin
+  Lex libraries:               
+  LIBS:                        -lm  
+
+  AMD CPPFLAGS:                
+  AMD LDFLAGS:                 
+  AMD libraries:               -lamd
+  BLAS libraries:              -lcblas -lf77blas -latlas
+  CAMD CPPFLAGS:               
+  CAMD LDFLAGS:                
+  CAMD libraries:              -lcamd
+  CARBON libraries:            
+  CCOLAMD CPPFLAGS:            
+  CCOLAMD LDFLAGS:             
+  CCOLAMD libraries:           -lccolamd
+  CHOLMOD CPPFLAGS:            
+  CHOLMOD LDFLAGS:             
+  CHOLMOD libraries:           -lcholmod
+  COLAMD CPPFLAGS:             
+  COLAMD LDFLAGS:              
+  COLAMD libraries:            -lcolamd
+  CURL CPPFLAGS:               
+  CURL LDFLAGS:                
+  CURL libraries:              -lcurl
+  CXSPARSE CPPFLAGS:           
+  CXSPARSE LDFLAGS:            
+  CXSPARSE libraries:          -lcxsparse
+  DL libraries:                -ldl
+  FFTW3 CPPFLAGS:              
+  FFTW3 LDFLAGS:               
+  FFTW3 libraries:             -lfftw3
+  FFTW3F CPPFLAGS:             
+  FFTW3F LDFLAGS:              
+  FFTW3F libraries:            -lfftw3f
+  fontconfig CFLAGS:           -I/usr/X11/include  
+  fontconfig LIBS:             -L/usr/X11/lib -lfontconfig
+  FT2_CFLAGS:                  -I/sw64/include/freetype2 -I/sw64/include
+  FT2_LIBS:                    -L/sw64/lib -lfreetype -lz -Wl,-framework,CoreServices -Wl,-framework,ApplicationServices
+  GLPK CPPFLAGS:               
+  GLPK LDFLAGS:                
+  GLPK libraries:              -lglpk
+  graphics CFLAGS:             
+  graphics LIBS:               
+  Magick++ CPPFLAGS:           
+  Magick++ LDFLAGS:            
+  Magick++ libraries:          
+  HDF5 CPPFLAGS:               
+  HDF5 LDFLAGS:                
+  HDF5 libraries:              -lhdf5
+  LAPACK libraries:            -llapack
+  OPENGL libraries:            -L/usr/X11/lib -lfontconfig -Wl,-framework -Wl,OpenGL
+  PTHREAD flags:               -D_THREAD_SAFE -pthread
+  PTHREAD libraries:           
+  QHULL CPPFLAGS:              
+  QHULL LDFLAGS:               
+  QHULL libraries:             -lqhull
+  QRUPDATE libraries:          
+  READLINE libraries:          -lreadline
+  REGEX libraries:             -L/sw64/lib -lpcre
+  TERM libraries:              -lncurses
+  UMFPACK libraries:           -lumfpack
+  X11 include flags:           
+  X11 libraries:               -L/usr/X11/lib -lX11
+  Z CPPFLAGS:                  
+  Z LDFLAGS:                   
+  Z libraries:                 -lz
+
+  Default pager:               less
+  gnuplot:                     gnuplot
+
+  Do internal array bounds checking:  false
+  Build static libraries:             false
+  Build shared libraries:             true
+  Dynamic Linking:                    true (dlopen)
+  Include support for GNU readline:   true
+  64-bit array dims and indexing:     false
+
+configure: WARNING: qrupdate not found.  The QR & Cholesky updating functions will be slow.
+configure: WARNING: GraphicsMagick++ library not found.  The imread function for reading image files will not be fully functional.
+configure: WARNING: FLTK does not have OpenGL support.  Native graphics will be disabled.
+configure: WARNING: 
+configure: WARNING: I didn't find the necessary libraries to compile native
+configure: WARNING: graphics.  It isn't necessary to have native graphics,
+configure: WARNING: but you will need to have gnuplot installed or you won't
+configure: WARNING: be able to use any of Octave's plotting commands
+configure: WARNING: 
+configure: 
+configure: NOTE: libraries may be skipped if a library is not found OR
+configure: NOTE: if the library on your system is missing required features.
+
+nosferatu ~/SysDev/octave-3.4.0[208]> make
+
+./configure --with-blas="-framework Accelerate" CPPFLAGS="-m64 -arch x86_64 -I/sw64/include" LDFLAGS="/sw64/lib/gcc4.4/lib/libstdc++.dylib -arch x86_64 -L/sw64/lib -m64"  FFLAGS="-ff2c" FLIBS="/sw64/lib/gcc4.4/lib/libgfortran.dylib"
+
+
+less /Local/Applications/Octave.app/Contents/Resources/bin/mkoctfile-3.4.0
