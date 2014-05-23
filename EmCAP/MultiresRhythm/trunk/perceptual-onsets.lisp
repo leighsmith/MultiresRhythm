@@ -3,7 +3,7 @@
 ;;;; $Id$
 ;;;;
 ;;;; Functions for reading and processing the perceptual salience signals produced by the
-;;;; Plymouth model.
+;;;; Plymouth model and equivalently the onset detection functions.
 ;;;;
 ;;;; In nlisp (Matlab-like Common Lisp library www.nlisp.info)
 ;;;;
@@ -17,14 +17,14 @@
 (in-package :multires-rhythm)
 (use-package :nlisp)
 
-(defclass salience-trace-rhythm (rhythm)
+(defclass odf-rhythm (rhythm)
   ((odf :initarg :odf :accessor odf :initform (make-double-array '(1)))) ; Onset detection function
   (:documentation "A subclass of rhythm that holds the full salience trace in addition to the onset data."))
 
 ;; (setf ps (perceptual-salience-rhythm "Research/Sources/OtherResearchers/UoP/AuditorySaliencyModel/ines1.saliency" "Research/Sources/OtherResearchers/UoP/AuditorySaliencyModel/ines1.onsets" :weighted t))
 ;; (setf res1 (perceptual-onsets-to-rhythm "res1/res1_1_resp_text" "res1/res1_1_pOnsets" :weighted t))
 
-(defmethod plot-rhythm ((rhythm-to-plot salience-trace-rhythm) &key 
+(defmethod plot-rhythm ((rhythm-to-plot odf-rhythm) &key 
 			(reset t) (time-in-seconds nil) (title ""))
   (if reset (reset-plot))
   (if time-in-seconds
@@ -54,66 +54,68 @@
 				      (sample-rate 200)
 				      (start-from-beat 0) 
 				      (beat-multiple 1))
-  (let* ((salience-trace-rhythm (perceptual-salience-rhythm saliency-path onsets-path
+  (let* ((odf-rhythm (perceptual-salience-rhythm saliency-path onsets-path
 							    :weighted nil :sample-rate sample-rate))
-	 (salience-trace-claps (if (/= beat-multiple 1)
-				   (clap-to-rhythm salience-trace-rhythm 
-						   :start-from-beat start-from-beat
-						   :beat-multiple beat-multiple
-						   :tactus-selector #'create-weighted-beat-ridge)
-				   (clap-to-rhythm salience-trace-rhythm 
-						   :start-from-beat start-from-beat
-						   :tactus-selector #'create-weighted-beat-ridge)))
-;;					       :tactus-selector #'create-beat-ridge)))
+	 (odf-claps (if (/= beat-multiple 1)
+			(clap-to-rhythm odf-rhythm 
+					:start-from-beat start-from-beat
+					:beat-multiple beat-multiple
+					:tactus-selector #'create-weighted-beat-ridge)
+			(clap-to-rhythm odf-rhythm 
+					:start-from-beat start-from-beat
+					:tactus-selector #'create-weighted-beat-ridge)))
+;;				       :tactus-selector #'select-probable-beat-ridge))
+;;				       :tactus-selector #'create-weighted-windowed-beat-ridge))
+;;				       :tactus-selector #'create-beat-ridge)))
 ;; Not used:
-;;					       :tactus-selector #'create-weighted-windowed-beat-ridge))
-;;					       :tactus-selector #'select-longest-lowest-tactus)))
-;;					       :tactus-selector #'select-tactus-by-beat-multiple)))
-;;					       :tactus-selector #'create-bar-ridge)))
-;;					       :tactus-selector #'create-beat-multiple-ridge)))
+;;				       :tactus-selector #'create-weighted-windowed-beat-ridge))
+;;				       :tactus-selector #'select-longest-lowest-tactus)))
+;;				       :tactus-selector #'select-tactus-by-beat-multiple)))
+;;				       :tactus-selector #'create-bar-ridge)))
+;;				       :tactus-selector #'create-beat-multiple-ridge)))
 	 ;; TODO gotta be a better way for division than making it a double-float.
-	 (clap-times-in-seconds (./ salience-trace-claps (* 1d0 (sample-rate salience-trace-rhythm)))))
+	 (clap-times-in-seconds (./ odf-claps (* 1d0 (sample-rate odf-rhythm)))))
     (diag-plot 'perceptual-salience
-      (plot-rhythm salience-trace-rhythm))
+      (plot-rhythm odf-rhythm))
     (diag-plot 'onsets ;; Plot the salience trace, the produced onsets, & zero phase.
-      (plot-claps salience-trace-rhythm 
-		  (.find (onset-time-signal salience-trace-rhythm))
+      (plot-claps odf-rhythm 
+		  (.find (onset-time-signal odf-rhythm))
 		  ;; empty phase
-		  (make-double-array (duration-in-samples salience-trace-rhythm))
-		  :signal-name (format nil "perceptual onsets plot of ~a" (name salience-trace-rhythm))))
+		  (make-double-array (duration-in-samples odf-rhythm))
+		  :signal-name (format nil "perceptual onsets plot of ~a" (name odf-rhythm))))
 
     ;; TODO Should have a save-rhythm-and-claps method specialised on
-    ;; salience-trace-rhythm that uses the weighted onsets rhythm so that we know the
+    ;; odf-rhythm that uses the weighted onsets rhythm so that we know the
     ;; onsets are as the detector computes them.
-    ;; (save-rhythm-and-claps salience-trace-rhythm salience-trace-claps)
+    ;; (save-rhythm-and-claps odf-rhythm odf-claps)
     ;; (format t "Wrote rhythm as scorefile ~a~%" ) ; TODO
     ;; just write out the claps as a scorefile alone:
-    ;; (save-rhythm (make-instance 'rhythm salience-trace-claps))
-    (format t "Beat times of ~a in seconds:~%~a~%" (name salience-trace-rhythm) clap-times-in-seconds)
-    (format t "Tempo estimate: ~,2f BPM~%" (tempo-from-claps salience-trace-claps (sample-rate salience-trace-rhythm)))
+    ;; (save-rhythm (make-instance 'rhythm odf-claps))
+    (format t "Beat times of ~a in seconds:~%~a~%" (name odf-rhythm) clap-times-in-seconds)
+    (format t "Tempo estimate: ~,2f BPM~%" (tempo-from-claps odf-claps (sample-rate odf-rhythm)))
     ;; Make the perceptual onset detector results audible
     (save-rhythm-mix accompaniment-sound-path original-sound-path clap-times-in-seconds
-		     :clap-sample-file #P"/Volumes/iDisk/Research/Data/Handclap Examples/cowbell.aiff")
+		     :clap-sample-file #P"/Users/leigh/Research/Data/Handclap Examples/cowbell.aiff")
     (format t "Wrote mix as soundfile ~a~%" accompaniment-sound-path)))
 
 ;;; TODO This should be replaced when we integrate Plymouth's onsets thresholding function
 ;;; into our code.
-;; (defmethod onset-time-of-note ((rhythm salience-trace-rhythm) note-numbers)
+;; (defmethod onset-time-of-note ((rhythm odf-rhythm) note-numbers)
 ;;   "Returns the sample number of the beat-number'th beat in the given rhythm"
 ;;   (let* ((onsets-rhythm (make-instance 'rhythm 
 ;; 				       :time-signal (onset-time-signal rhythm)
 ;; 				       :sample-rate (sample-rate rhythm))))
 ;;     (onset-time-of-note onsets-rhythm note-numbers)))
 
-(defmethod onset-time-of-note ((rhythm-to-analyse salience-trace-rhythm) (note-numbers n-array))
+(defmethod onset-time-of-note ((rhythm-to-analyse odf-rhythm) (note-numbers n-array))
   "Returns the sample number of the beat-number'th beat in the given rhythm"
   (.arefs (.find (onset-time-signal rhythm-to-analyse)) note-numbers))
 
-(defmethod onset-time-of-note ((rhythm-to-analyse salience-trace-rhythm) note-number)
+(defmethod onset-time-of-note ((rhythm-to-analyse odf-rhythm) note-number)
   "Returns the sample number of the beat-number'th beat in the given rhythm"
   (.aref (.find (onset-time-signal rhythm-to-analyse)) note-number))
 
-(defmethod onsets-in-samples ((rhythm-to-analyse salience-trace-rhythm))
+(defmethod onsets-in-samples ((rhythm-to-analyse odf-rhythm))
   (.find (onset-time-signal rhythm-to-analyse)))
 
 (defun remove-double-onsets (rhythm onset-times &key (filter-window-in-seconds 0.05))
@@ -133,7 +135,7 @@
 	       (to-remove (.+ within-window (.floor first-are-greater))))
 	  (remove-arefs onset-times (.remove-duplicates to-remove))))))
 
-(defmethod subset-of-rhythm ((rhythm-to-subset salience-trace-rhythm) time-region)
+(defmethod subset-of-rhythm ((rhythm-to-subset odf-rhythm) time-region)
   "Subset the ODF as well as the onset-time-signal"
   (let ((subset-rhythm (call-next-method rhythm-to-subset time-region)))
     ;; TODO we put the time region inside a list to appease .subarray when working on a vector.
@@ -204,29 +206,29 @@
 	     (significant windowed-signal :threshold threshold))
      finally (return windowed-significance)))
 
-(defmethod onsets-of-salience ((odf-rhythm salience-trace-rhythm))
+(defmethod onsets-of-salience ((rhythm-for-onsets odf-rhythm))
   "Determine the onset times from the salience trace"
-  (let* (;; (a (analysis-of-rhythm odf-rhythm))
+  (let* (;; (a (analysis-of-rhythm rhythm-for-onsets))
 	 ;; (npc (phase-congruency a)) ; if we include phase congruency to filter the ODF-RHYTHM.
-	 ;; (filtered-odf (.* (normalise (odf odf-rhythm)) npc))
-	 (filtered-odf (odf odf-rhythm))
+	 ;; (filtered-odf (.* (normalise (odf rhythm-for-onsets)) npc))
+	 (filtered-odf (odf rhythm-for-onsets))
 	 (onset-signal (.* (windowed-significance filtered-odf :threshold 0.75
-						  :window-length (floor (* 3.0d0 (sample-rate odf-rhythm))))
+						  :window-length (floor (* 3.0d0 (sample-rate rhythm-for-onsets))))
 			   (extrema-points-vector filtered-odf)))
 	 (onset-times (.find onset-signal)))
     (diag-plot 'onset-signal 
       (plot (list (normalise filtered-odf) onset-signal) nil :aspect-ratio 0.2))
-    (remove-double-onsets odf-rhythm onset-times)))
+    (remove-double-onsets rhythm-for-onsets onset-times)))
 ;; onset-times))
 
 (defun rhythm-from-odf (salience-filepath &key (sample-rate 200.0d0) (description "") (weighted t))
-  "Reads the onset detection function (perceptual salience) data and returns a salience-trace-rhythm instance.
+  "Reads the onset detection function (perceptual salience) data and returns a odf-rhythm instance.
     Weighted keyword produces onsets which are weighted by relative values of the saliency measure."
   (let* ((perceptual-salience-matrix (.load salience-filepath :format :text))
 	 (perceptual-salience (.column perceptual-salience-matrix 0))
 	 (perceptual-salience-rhythm
 	  ;; Even though we have assumed rhythm is a set of dirac fns, we can cheat a bit.
-	  (make-instance 'salience-trace-rhythm 
+	  (make-instance 'odf-rhythm 
 			 :name (pathname-name salience-filepath)
 			 :description description
 			 :odf perceptual-salience
@@ -249,7 +251,7 @@
 
 (defun perceptual-salience-rhythm (salience-filepath onsets-filepath &key 
 				      (sample-rate 200) (description "") (weighted t))
-  "Reads the salience data and returns a salience-trace-rhythm instance. Weighted keyword
+  "Reads the salience data and returns a odf-rhythm instance. Weighted keyword
    produces onsets which are weighted by relative values of the saliency measure."
   (let* ((perceptual-salience-matrix (.load salience-filepath :format :text))
 	 (perceptual-onsets (.load onsets-filepath :format :text))
@@ -263,7 +265,7 @@
 	      (.column perceptual-onsets 1)
 	      (make-double-array (.length onset-times) :initial-element 1.0d0)))
     ;; Even though we have assumed rhythm is a set of dirac fns, we can cheat a bit.
-    (make-instance 'salience-trace-rhythm 
+    (make-instance 'odf-rhythm 
 		   :name (pathname-name salience-filepath)
 		   :description description
 		   :odf perceptual-salience
