@@ -151,7 +151,7 @@
 		   :sound-signal full-duration
 		   :sample-rate sample-rate)))
 
-;; (setf hihat (sound-from-file #P"/Volumes/iDisk/Research/Data/Handclap Examples/hihat_closed.aiff"))
+;; (setf hihat (sound-from-file #P"/Users/leigh/Research/Data/Handclap Examples/hihat_closed.aiff"))
 ;; (setf hats (sample-at-times 44100 hihat (make-narray '(0.0 0.33 0.66 0.8))))
 
 (defun save-rhythm-mix (filename-to-write original-rhythm-file clap-times-seconds 
@@ -174,7 +174,7 @@
     (normalise clapping-mix)
     (save-to-file clapping-mix filename-to-write)))
 
-;; (save-rhythm-mix #P"/Users/leigh/test-hats.wav" #P"/Volumes/iDisk/Research/Data/PerceptualOnsets/res1/res1_3.wav" (make-narray '(0.0 0.33 0.66 0.8)))
+;; (save-rhythm-mix #P"/Users/leigh/test-hats.wav" #P"/Users/leigh/Research/Data/PerceptualOnsets/res1/res1_3.wav" (make-narray '(0.0 0.33 0.66 0.8)))
 
 
 ;; (setf down-sampled (.floor (.* (onset-times jw-clicks) 200)))

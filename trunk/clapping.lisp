@@ -36,7 +36,7 @@
   (let* ((foot-tap-phase (phase-of tactus rhythm-scaleogram))
 	 ;; Note the phase of the oscillating sinusoid at the beat to start tapping from.
 	 (down-beat-sample (onset-time-of-note original-rhythm start-from-beat))
-	 (event-shift-samples (* event-shift (sample-rate original-rhythm)))
+	 (event-shift-samples (round (* event-shift (sample-rate original-rhythm))))
 	 ;; add event-shift parameter.
 	 (clap-on-phase-datum (.aref foot-tap-phase (+ down-beat-sample event-shift-samples)))
 	 (phases-to-find (if (< beat-multiple 1.0)
