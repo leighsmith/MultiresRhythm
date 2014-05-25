@@ -1,8 +1,0 @@
-* local-phase-congruency able to recompute using trig to catch boundary conditions?
-* ridge extraction using energy measure, not just single continuity.
-* shift
-* sound file reading/writing code. - Surely the MusicKit or at least, libsndfile with CFFI.
-* Phase issue, going strange on isochronous rhythms?
-* NLISP print-object: print just subset of array unless a keyword is given :full
-* Tempo selectivity
-* Number of ridges as a measure of relative complexity?

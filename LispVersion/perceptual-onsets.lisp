@@ -1,7 +1,5 @@
 ;;;; -*- Lisp -*-
 ;;;;
-;;;; $Id$
-;;;;
 ;;;; Functions for reading and processing the perceptual salience signals produced by the
 ;;;; Plymouth model and equivalently the onset detection functions.
 ;;;;
