@@ -38,10 +38,10 @@
      for rhythm in rhythms
      for index = 1 then (1+ index)
      do (write-as-audio rhythm
-			(make-pathname :directory "/Volumes/iDisk/Research/Data/RicardsOnsetTests/UnAccented/"
+			(make-pathname :directory "/Users/leigh/Research/Data/RicardsOnsetTests/UnAccented/"
 				       :name (format nil "~a-~d" name index)
 				       :type "wav")
-			#P"/Volumes/iDisk/Research/Data/Handclap Examples/hihat_closed.aiff")))
+			#P"/Users/leigh/Research/Data/Handclap Examples/hihat_closed.aiff")))
 
 (defun intervals-of-performed-rhythms (rhythm
 				     ;; #'last-onset-expectations last-expectations-no-integrate
@@ -359,8 +359,8 @@
   (let* ((analysis (analysis-of-rhythm rhythm-to-plot :padding #'causal-pad))
 	 (ridge-persistency (ridge-persistency-of (skeleton analysis))))
     (write-as-audio rhythm-to-plot
-		    #P"/Volumes/iDisk/Research/Data/RicardsOnsetTests/test_sound.wav"
-		    #P"/Volumes/iDisk/Research/Data/Handclap Examples/hihat_closed.aiff")
+		    #P"/Users/leigh/Research/Data/RicardsOnsetTests/test_sound.wav"
+		    #P"/Users/leigh/Research/Data/Handclap Examples/hihat_closed.aiff")
     ;; (plot-interval-histogram (interval-histogram (list iois-of-rhythm)) (name rhythm-to-plot)) 
     (plot-binned-histogram (make-narray iois-of-rhythm) 
 			   (format nil "Intervals in ~a" (name rhythm-to-plot)) :bin-size 1)
@@ -394,9 +394,10 @@
   (let* ((analysis (analysis-of-rhythm rhythm-to-plot :padding #'causal-pad))
 	 (relative-iois (intervals-as-ratios rhythm-to-plot))
 	 (ridge-persistency (unweighted-ridge-persistency-of analysis)))
+    ;; TODO remove from plotting
     (write-as-audio rhythm-to-plot
-		    #P"/Volumes/iDisk/Research/Data/RicardsOnsetTests/test_sound.wav"
-		    #P"/Volumes/iDisk/Research/Data/Handclap Examples/hihat_closed.aiff")
+		    #P"/Users/leigh/Research/Data/RicardsOnsetTests/test_sound.wav"
+		    #P"/Users/leigh/Research/Data/Handclap Examples/hihat_closed.aiff")
     ;; (plot-interval-histogram (interval-histogram (list iois-of-rhythm)) (name rhythm-to-plot)) 
     (plot-binned-histogram relative-iois 
 			   (format nil "Intervals in ~a" (name rhythm-to-plot)) :bin-size 1)

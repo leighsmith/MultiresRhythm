@@ -1,12 +1,10 @@
 ;;;; -*- Lisp -*-
 ;;;;
-;;;; $Id$
-;;;;
 ;;;; Defines the package and the exported symbols.
 ;;;;
-;;;; By Leigh M. Smith <Leigh.Smith@ircam.fr> 
+;;;; By Leigh M. Smith <leigh@leighsmith.com> 
 ;;;;
-;;;; Copyright (c) 2008
+;;;; Copyright (c) 2008-2014, All Rights Reserved.
 ;;;;
 
 (defpackage #:multires-rhythm 
@@ -26,8 +24,10 @@
 	   :scale-from-period
 	   :time-support
 	   :clap-to-rhythm
+	   :clap-to-odf-file
 	   :save-scorefile
-	   :generate-executable
+	   :generate-expectancy-executable
+	   :generate-beat-track-executable
 	   :make-histogram
 	   :add-to-histogram
 	   :get-histogram

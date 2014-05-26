@@ -95,7 +95,7 @@ CL-USER> (require 'multiresrhythm)
 Run SBCL from the command line (not within SLIME) and generate the executable with:
 
 <pre>
-CL-USER> (multires-rhythm:generate-executable)
+CL-USER> (multires-rhythm:generate-expectancy-executable)
 </pre>
 
 This will create a large single executable binary named "emem-expect-mrr"

@@ -1,16 +1,14 @@
 ;;;; -*- Lisp -*-
 ;;;;
-;;;; $Id: multiresrhythm.asd 5654 2010-11-03 16:19:16Z leighsmi $
-;;;;
 ;;;; ASDF definition file for multiresolution time-frequency analysis and interpretation of musical rhythm.
 ;;;;
-;;;; by Leigh M. Smith <lsmith@science.uva.nl> 
+;;;; by Leigh M. Smith <leigh@leighsmith.com> 
 ;;;;
-;;;; Copyright (c) 2006, 2007 All Rights Reserved.
+;;;; Copyright (c) 2006-2014, All Rights Reserved.
 ;;;;
 ;;;; In nlisp (Matlab-alike Common Lisp library www.nlisp.info)
 ;;;;
-;;;; Known to work on SBCL 1.0.10
+;;;; Known to work on SBCL 1.0.18
 ;;;;
 ;;;; See for background:
 ;;;;   author =  {Leigh M. Smith},
@@ -28,10 +26,10 @@
   :description "A Multiresolution Time-Frequency Analysis and Interpretation of Musical Rhythm"
   :version "2.8"
   :author "Leigh M. Smith"
-  :license "Copyright (c) 2005-2009"
+  :license "Copyright (c) 2005-2014"
   :depends-on (:nlisp :cli-parser)
-  :properties ((#:author-email . "Leigh.Smith@ircam.fr")
-	       (#:date . "2009")	; Compute this automatically?
+  :properties ((#:author-email . "leigh@leighsmith.com")
+	       (#:date . "2014")	; Compute this automatically?
 	       ((#:albert #:output-dir) . "documentation")
 	       ((#:albert #:formats) . ("docbook")))
   :serial t
@@ -59,6 +57,6 @@
 	       (:file "meter" :depends-on ("multires_rhythm" "tactus-selection" "expectancies"))
 	       (:file "metrical-expectancy" :depends-on ("expectancies" "martin-trees" "histogram"))
 	       (:file "emcap-expectancy" :depends-on ("expectancies"))
-	       ;(:file "commandline" :depends-on ("emcap-expectancy"))
+	       (:file "commandline" :depends-on ("emcap-expectancy" "perceptual-onsets"))
 ))
 

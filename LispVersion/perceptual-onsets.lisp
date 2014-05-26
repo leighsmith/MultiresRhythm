@@ -1,13 +1,13 @@
 ;;;; -*- Lisp -*-
 ;;;;
 ;;;; Functions for reading and processing the perceptual salience signals produced by the
-;;;; Plymouth model and equivalently the onset detection functions.
+;;;; Plymouth auditory model and equivalently other onset detection functions read as a file.
 ;;;;
 ;;;; In nlisp (Matlab-like Common Lisp library www.nlisp.info)
 ;;;;
-;;;; By Leigh M. Smith <lsmith@science.uva.nl> 
+;;;; By Leigh M. Smith <leigh@leighsmith.com> 
 ;;;;
-;;;; Copyright (c) 2007
+;;;; Copyright (c) 2007-2014, All Rights Reserved
 ;;;;
 
 (declaim (optimize (speed 0) (safety 3) (debug 3)))
@@ -47,14 +47,16 @@
 ;; (intervals-in-samples (nlisp::array-to-list (.column perceptual-onsets 0)) :sample-rate 100)
 ;; (onsets-to-grid (nlisp::array-to-list (.floor (.column perceptual-onsets 0))))
 
-(defun clap-to-salience-rhythm-files (saliency-path onsets-path original-sound-path accompaniment-sound-path
-				      &key 
-				      (sample-rate 200)
-				      (start-from-beat 0) 
-				      (beat-multiple 1))
-  (let* ((odf-rhythm (perceptual-salience-rhythm saliency-path onsets-path
-							    :weighted nil :sample-rate sample-rate))
-	 (odf-claps (if (/= beat-multiple 1)
+;;; TODO make mixing and clapping outputs conditional on the parameters being supplied.
+(defun clap-to-odf-file (odf-path clap-file-path original-sound-path accompaniment-sound-path
+			 &key 
+			   (onsets-path nil)
+			   (sample-rate 200)
+			   (start-from-beat 0) 
+			   (beat-multiple 1))
+  "Evaluation routine using a supplied ODF file, sample rate and audio file, generates a clap file and a mix file"
+  (let* ((odf-rhythm (rhythm-from-odf odf-path :sample-rate sample-rate :description "log-novelty"))
+	 (clap-times (if (/= beat-multiple 1)
 			(clap-to-rhythm odf-rhythm 
 					:start-from-beat start-from-beat
 					:beat-multiple beat-multiple
@@ -72,7 +74,7 @@
 ;;				       :tactus-selector #'create-bar-ridge)))
 ;;				       :tactus-selector #'create-beat-multiple-ridge)))
 	 ;; TODO gotta be a better way for division than making it a double-float.
-	 (clap-times-in-seconds (./ odf-claps (* 1d0 (sample-rate odf-rhythm)))))
+	 (clap-times-in-seconds (./ clap-times (* 1d0 (sample-rate odf-rhythm)))))
     (diag-plot 'perceptual-salience
       (plot-rhythm odf-rhythm))
     (diag-plot 'onsets ;; Plot the salience trace, the produced onsets, & zero phase.
@@ -85,12 +87,15 @@
     ;; TODO Should have a save-rhythm-and-claps method specialised on
     ;; odf-rhythm that uses the weighted onsets rhythm so that we know the
     ;; onsets are as the detector computes them.
-    ;; (save-rhythm-and-claps odf-rhythm odf-claps)
+    ;; (save-rhythm-and-claps odf-rhythm clap-times)
     ;; (format t "Wrote rhythm as scorefile ~a~%" ) ; TODO
     ;; just write out the claps as a scorefile alone:
-    ;; (save-rhythm (make-instance 'rhythm odf-claps))
+    ;; (save-rhythm (make-instance 'rhythm clap-times))
+    ;; TODO write out clap times as text file. Bodged up for now.
+    (.save clap-times-in-seconds clap-file-path :format :text)
+
     (format t "Beat times of ~a in seconds:~%~a~%" (name odf-rhythm) clap-times-in-seconds)
-    (format t "Tempo estimate: ~,2f BPM~%" (tempo-from-claps odf-claps (sample-rate odf-rhythm)))
+    (format t "Tempo estimate: ~,2f BPM~%" (tempo-from-claps clap-times (sample-rate odf-rhythm)))
     ;; Make the perceptual onset detector results audible
     (save-rhythm-mix accompaniment-sound-path original-sound-path clap-times-in-seconds
 		     :clap-sample-file #P"/Users/leigh/Research/Data/Handclap Examples/cowbell.aiff")
@@ -249,8 +254,8 @@
 
 (defun perceptual-salience-rhythm (salience-filepath onsets-filepath &key 
 				      (sample-rate 200) (description "") (weighted t))
-  "Reads the salience data and returns a odf-rhythm instance. Weighted keyword
-   produces onsets which are weighted by relative values of the saliency measure."
+  "Reads the Plymouth salience data and returns a odf-rhythm instance. 
+   Weighted keyword produces onsets which are weighted by relative values of the saliency measure."
   (let* ((perceptual-salience-matrix (.load salience-filepath :format :text))
 	 (perceptual-onsets (.load onsets-filepath :format :text))
 	 (perceptual-salience (.column perceptual-salience-matrix 0))

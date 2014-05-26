@@ -1,7 +1,5 @@
 ;;;; -*- Lisp -*-
 ;;;;
-;;;; $Id$
-;;;;
 ;;;; Expectancy File I/O
 ;;;;
 ;;;; In nlisp (Matlab-alike Common Lisp library www.nlisp.info)
