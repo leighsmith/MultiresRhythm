@@ -1,9 +1,6 @@
-%% -*- Octave -*-
-function [magnitude, phase] = dyadic_cwt(inputData, waveletsPerOct, maximumTimePeriod)
 %% Continuous Wavelet transform in Fourier Domain
 %% hacked up in Octave (matlab-alike)
 %%
-%% $Id$
 %% By Leigh Smith, 6/2/1998
 %%
 %% Uses the MorletWaveletFourier function to give us a scaled version
@@ -14,6 +11,8 @@ function [magnitude, phase] = dyadic_cwt(inputData, waveletsPerOct, maximumTimeP
 %% still be representing the wavelets in the freq and time domains
 %% meaningfully.
 %%
+%% -*- Octave -*-
+function [magnitude, phase] = dyadic_cwt(inputData, waveletsPerOct, maximumTimePeriod)
   nScale = scaleFromPeriod(maximumTimePeriod, waveletsPerOct)
   nTime = length(inputData);
 
