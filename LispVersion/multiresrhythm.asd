@@ -40,6 +40,7 @@
 	       (:file "sound")
 	       (:file "histogram")
 	       (:file "martin-trees")
+	       (:file "viterbi")
 	       (:file "skeleton" :depends-on ("ridges"))
 	       (:file "plotting" :depends-on ("ridges" "signalprocessing"))
 	       (:file "rhythm" :depends-on ("scorefile" "plotting" "signalprocessing" "sound"))
@@ -48,7 +49,7 @@
 	       (:file "multires_rhythm" 
 		      :depends-on ("cwt" "skeleton" "plotting" "rhythm" "signalprocessing" "tempo"))
 	       (:file "scaleogram_plotting" :depends-on ("multires_rhythm" "cwt" "rhythm" "plotting"))
-	       (:file "tactus-selection" :depends-on ("multires_rhythm" "scaleogram_plotting"))
+	       (:file "tactus-selection" :depends-on ("multires_rhythm" "scaleogram_plotting" "viterbi"))
 	       (:file "rhythm-matching" :depends-on ("signalprocessing"))
 	       (:file "downbeat" :depends-on ("multires_rhythm"))
 	       (:file "clapping" :depends-on ("multires_rhythm" "downbeat" "tactus-selection" "cwt"))
