@@ -4,9 +4,9 @@
 ;;;;
 ;;;; In nlisp (Matlab-alike Common Lisp library www.nlisp.info)
 ;;;;
-;;;; By Leigh M. Smith <lsmith@science.uva.nl> 
+;;;; By Leigh M. Smith <leigh@leighsmith.com> 
 ;;;;
-;;;; Copyright (c) 2007
+;;;; Copyright (c) 2007-2014, All Rights Reserved.
 ;;;;
 
 (in-package :multires-rhythm)
@@ -172,6 +172,7 @@
 	   nil))
     0))
 
+;;; This must be run using an SBCL not run within SLIME.
 (defun generate-beat-track-executable ()
   "Call this to generate an executable and die"
   #+sbcl (sb-ext:save-lisp-and-die "mrr-beat-track" :executable t :toplevel #'beat-tracking-command-line-parser))

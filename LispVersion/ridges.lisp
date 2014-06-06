@@ -383,7 +383,7 @@
   (let* ((time-in-samples (.array-dimension time-frequency-plane 1))
 	 ;; Convert the ridge scales into time-frequency row-major indices. Ensure that if
 	 ;; a ridge has been given which exceeds the TF plane length, we clip the insertion.
-	 (insertion-end (- (min (duration-in-samples ridge-to-insert) time-in-samples) 1))
+	 (insertion-end (- time-in-samples 1))
 	 (row-major-indices (.+ (.* (.arefs (scales-as-array ridge-to-insert) (.iseq 0 insertion-end))
 				    time-in-samples)
 				(.iseq (start-sample ridge-to-insert) 

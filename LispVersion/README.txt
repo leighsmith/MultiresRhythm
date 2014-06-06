@@ -1,8 +1,6 @@
-MultiresRhythm V2.7 README
-Leigh M. Smith <lsmith@science.uva.nl>
+MultiresRhythm V2.8 README
+Leigh M. Smith <leigh@leighsmith.com>
 2008/05/15
-
-$Id$
 
 This is the Common Lisp implementation of MultiresRhythm, a representation of musical
 rhythm using continuous wavelet transforms. The distribution consists of a library
@@ -73,7 +71,12 @@ package in order to test these:
 CL-USER> (in-package :multires-rhythm)
 MULTIRES-RHYTHM> (clap-to-iois "local-timing" '(17 17 20.5 13.5 17 17))
 
+To generate a binary:
+
+CL-USER> (require 'multiresrhythm)
+CL-USER> (multires-rhythm:generate-beat-track-executable)
+
 Distribution:
 
-Copyright (c) 2006-2008 All rights reserved. Leigh M. Smith
+Copyright (c) 2006-2014 All rights reserved. Leigh M. Smith
 Please contact me before distributing beyond the EmCAP web site.
