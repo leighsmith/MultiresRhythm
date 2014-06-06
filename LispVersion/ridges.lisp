@@ -383,9 +383,14 @@
 			 &key (constant-value 1.0d0)) 
   "Insert the given ridge into the time-frequency plane, overwriting existing values with constant-value"
   (let* ((time-in-samples (.array-dimension time-frequency-plane 1))
-	 (row-major-indices (.+ (.* (scales-as-array ridge-to-insert) time-in-samples) 
+	 ;; Convert the ridge scales into time-frequency row-major indices. Ensure that if
+	 ;; a ridge has been given which exceeds the TF plane length, we clip the insertion.
+	 (insertion-end (- (min (duration-in-samples ridge-to-insert) time-in-samples) 1))
+	 (row-major-indices (.+ (.* (.arefs (scales-as-array ridge-to-insert) (.iseq 0 insertion-end))
+				    time-in-samples)
 				(.iseq (start-sample ridge-to-insert) 
-				       (+ (start-sample ridge-to-insert) (duration-in-samples ridge-to-insert) -1)))))
+				       (+ (start-sample ridge-to-insert) insertion-end)))))
+    (format t "generated indices ~a~%" row-major-indices)
     (map nil 
 	 (lambda (row-major-index) (setf (row-major-aref (val time-frequency-plane) row-major-index) constant-value)) 
 	 (val row-major-indices))

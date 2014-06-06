@@ -19,7 +19,7 @@
   ((odf :initarg :odf :accessor odf :initform (make-double-array '(1)))) ; Onset detection function
   (:documentation "A subclass of rhythm that holds the full salience trace in addition to the onset data."))
 
-;; (setf ps (perceptual-salience-rhythm "Research/Sources/OtherResearchers/UoP/AuditorySaliencyModel/ines1.saliency" "Research/Sources/OtherResearchers/UoP/AuditorySaliencyModel/ines1.onsets" :weighted t))
+;; (setf ps (odf-rhythm "Research/Sources/OtherResearchers/UoP/AuditorySaliencyModel/ines1.saliency" "Research/Sources/OtherResearchers/UoP/AuditorySaliencyModel/ines1.onsets" :weighted t))
 ;; (setf res1 (perceptual-onsets-to-rhythm "res1/res1_1_resp_text" "res1/res1_1_pOnsets" :weighted t))
 
 (defmethod plot-rhythm ((rhythm-to-plot odf-rhythm) &key 
@@ -50,29 +50,30 @@
 ;;; TODO make mixing and clapping outputs conditional on the parameters being supplied.
 (defun clap-to-odf-file (odf-path clap-file-path original-sound-path accompaniment-sound-path
 			 &key 
-			   (onsets-path nil)
 			   (sample-rate 200)
 			   (start-from-beat 0) 
 			   (beat-multiple 1))
   "Evaluation routine using a supplied ODF file, sample rate and audio file, generates a clap file and a mix file"
   (let* ((odf-rhythm (rhythm-from-odf odf-path :sample-rate sample-rate :description "log-novelty"))
+	 ;; Tactus selector options:
+	 ;; #'create-weighted-beat-ridge - uses a absolute tempo weighted filter.
+	 ;; #'select-probable-beat-ridge - uses Viterbi decoding of likely ridges.
+	 ;; Not used:
+	 ;; #'create-weighted-windowed-beat-ridge
+	 ;; #'create-beat-ridge
+	 ;; #'select-longest-lowest-tactus
+	 ;; #'select-tactus-by-beat-multiple
+	 ;; #'create-bar-ridge
+	 ;; #'create-beat-multiple-ridge
+	 (tactus-selector #'select-probable-beat-ridge)
 	 (clap-times (if (/= beat-multiple 1)
 			(clap-to-rhythm odf-rhythm 
 					:start-from-beat start-from-beat
 					:beat-multiple beat-multiple
-					:tactus-selector #'create-weighted-beat-ridge)
+					:tactus-selector tactus-selector)
 			(clap-to-rhythm odf-rhythm 
 					:start-from-beat start-from-beat
-					:tactus-selector #'create-weighted-beat-ridge)))
-;;				       :tactus-selector #'select-probable-beat-ridge))
-;;				       :tactus-selector #'create-weighted-windowed-beat-ridge))
-;;				       :tactus-selector #'create-beat-ridge)))
-;; Not used:
-;;				       :tactus-selector #'create-weighted-windowed-beat-ridge))
-;;				       :tactus-selector #'select-longest-lowest-tactus)))
-;;				       :tactus-selector #'select-tactus-by-beat-multiple)))
-;;				       :tactus-selector #'create-bar-ridge)))
-;;				       :tactus-selector #'create-beat-multiple-ridge)))
+					:tactus-selector tactus-selector)))
 	 ;; TODO gotta be a better way for division than making it a double-float.
 	 (clap-times-in-seconds (./ clap-times (* 1d0 (sample-rate odf-rhythm)))))
     (diag-plot 'perceptual-salience
@@ -209,7 +210,7 @@
 	     (significant windowed-signal :threshold threshold))
      finally (return windowed-significance)))
 
-(defmethod onsets-of-salience ((rhythm-for-onsets odf-rhythm))
+(defmethod onsets-from-odf ((rhythm-for-onsets odf-rhythm))
   "Determine the onset times from the salience trace"
   (let* (;; (a (analysis-of-rhythm rhythm-for-onsets))
 	 ;; (npc (phase-congruency a)) ; if we include phase congruency to filter the ODF-RHYTHM.
@@ -227,23 +228,23 @@
 (defun rhythm-from-odf (salience-filepath &key (sample-rate 200.0d0) (description "") (weighted t))
   "Reads the onset detection function (perceptual salience) data and returns a odf-rhythm instance.
     Weighted keyword produces onsets which are weighted by relative values of the saliency measure."
-  (let* ((perceptual-salience-matrix (.load salience-filepath :format :text))
-	 (perceptual-salience (.column perceptual-salience-matrix 0))
-	 (perceptual-salience-rhythm
+  (let* ((the-odf-matrix (.load salience-filepath :format :text))
+	 (the-odf (.column the-odf-matrix 0))
+	 (the-odf-rhythm
 	  ;; Even though we have assumed rhythm is a set of dirac fns, we can cheat a bit.
 	  (make-instance 'odf-rhythm 
 			 :name (pathname-name salience-filepath)
 			 :description description
-			 :odf perceptual-salience
-			 :onset-time-signal (make-double-array (.length perceptual-salience))
+			 :odf the-odf
+			 :onset-time-signal (make-double-array (.length the-odf))
 			 :sample-rate sample-rate))
-	 (onset-indices (onsets-of-salience perceptual-salience-rhythm)))
+	 (onset-indices (onsets-from-odf the-odf-rhythm)))
     ;; Assign the onsets from the computed times derived from the salience trace.
-    (setf (.arefs (onset-time-signal perceptual-salience-rhythm) onset-indices)
+    (setf (.arefs (onset-time-signal the-odf-rhythm) onset-indices)
 	  (if weighted
-	      (.arefs perceptual-salience onset-indices)
+	      (.arefs the-odf onset-indices)
 	      (make-double-array (.length onset-indices) :initial-element 1d0)))
-    perceptual-salience-rhythm))
+    the-odf-rhythm))
 
 (defun rhythm-from-ircam-odf (&rest params)
   "IRCAMbeat ODF has 100mS silence appended onto the audio file before calculating the
@@ -252,8 +253,12 @@
 	 (raw-odf (apply #'rhythm-from-odf params)))
     (subset-of-rhythm raw-odf (list (round (* leading-silence-seconds (sample-rate raw-odf))) t))))
 
-(defun perceptual-salience-rhythm (salience-filepath onsets-filepath &key 
-				      (sample-rate 200) (description "") (weighted t))
+(defun plymouth-perceptual-salience-rhythm (salience-filepath 
+					    onsets-filepath 
+					    &key 
+					      (sample-rate 200) 
+					      (description "")
+					      (weighted t))
   "Reads the Plymouth salience data and returns a odf-rhythm instance. 
    Weighted keyword produces onsets which are weighted by relative values of the saliency measure."
   (let* ((perceptual-salience-matrix (.load salience-filepath :format :text))
@@ -274,3 +279,10 @@
 		   :odf perceptual-salience
 		   :onset-time-signal onset-time-signal
 		   :sample-rate sample-rate)))
+
+;;; A specialised version of the scaleogram computation for ODF rhythm signals.
+(defmethod scaleogram-of-rhythm ((analysis-rhythm odf-rhythm) &key (voices-per-octave 16)
+				 (padding #'mirror-pad))
+  "Scaleogram of ODF rhythms should analyse the ODF, rather than onsets determined from that."
+  (format t "Length of rhythm \"~a\" is ~f seconds~%" (name analysis-rhythm) (duration analysis-rhythm))
+  (cwt (odf analysis-rhythm) voices-per-octave :padding padding))

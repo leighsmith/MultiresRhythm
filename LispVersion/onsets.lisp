@@ -14,7 +14,7 @@
 (in-package :multires-rhythm)
 (use-package :nlisp)
 
-(setf rwc95 (multires-rhythm::perceptual-salience-rhythm
+(setf rwc95 (multires-rhythm::plymouth-perceptual-salience-rhythm
 	#P"/Volumes/iDisk/Research/Data/IRCAM-Beat/rwc_p_95.odf"
 	#P"/Volumes/iDisk/Research/Data/IRCAM-Beat/rwc_p_95_new.onsets" :sample-rate 172.27d0
 	:weighted nil))

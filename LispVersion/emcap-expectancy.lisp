@@ -97,7 +97,7 @@
 (defun last-expectancy-of-salience (saliency-filepath onset-times-filepath output-filepath
 				    &key (sample-rate 200.0d0)) 
   "Computes the expectancies at the last moment in the file from the perceptual salience trace"
-  (let* ((times-as-rhythm (perceptual-salience-rhythm saliency-filepath onset-times-filepath :sample-rate sample-rate))
+  (let* ((times-as-rhythm (plymouth-perceptual-salience-rhythm saliency-filepath onset-times-filepath :sample-rate sample-rate))
 	 (expectancies-at-times (expectancies-of-rhythm times-as-rhythm)))
     (with-open-file (expectancy-file output-filepath :direction :output :if-exists :supersede)
       (write-expectancies-to-stream (last expectancies-at-times) sample-rate expectancy-file))))

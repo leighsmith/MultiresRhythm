@@ -1,7 +1,5 @@
 ;;;; -*- Lisp -*-
 ;;;;
-;;;; $Id$
-;;;;
 ;;;; Functions for plotting various signals.
 ;;;;
 ;;;; In nlisp (Matlab-like Common Lisp library www.nlisp.info)
@@ -297,12 +295,12 @@ colourmap, suitable for use by NLISP's palette-defined function."
 	   :reset nil
 	   :aspect-ratio aspect-ratio)))
 
-(defun highlighted-ridges-image (ridges tf-plane window-dimensions title &key
+(defun highlighted-ridges-image (ridges tf-plane window-dimensions title xlabel &key
 				 (maximum-colour-value 255d0)
 				 (aspect-ratio 0.15)
 				 (palette :greyscale-highlight)
-				 (xlabel "Time (Seconds)"))
-  "Plot the tf-plane in greyscale and the ridges in red. Dark values are higher valued, lighter values are lower valued."
+				 (units "Seconds"))
+  "Plot the TF-plane in greyscale and the ridges in red. Dark values are higher valued, lighter values are lower valued."
   (let* ((max-ridge-colours (1- maximum-colour-value))
 	 (plotable-ridges (.* (.normalise tf-plane) max-ridge-colours)))
     (dolist (ridge ridges) 
@@ -312,11 +310,11 @@ colourmap, suitable for use by NLISP's palette-defined function."
     (image (.flip plotable-ridges) nil nil
 	   :title (format nil "Skeleton of ~a" title)
 	   :xlabel xlabel
-	   :ylabel "Scale as IOI Range\\n(Seconds)"
+	   :ylabel (format nil "Scale as IOI Range\\n(~a)" units)
 	   :reset nil
 	   :aspect-ratio aspect-ratio)))
 
-(defun ridges-on-phase-image (ridges phase magnitude window-dimensions title &key 
+(defun ridges-on-phase-image (ridges phase magnitude window-dimensions title xlabel &key 
 			      (maximum-colour-value 255d0)
 			      (aspect-ratio 0.15)
 			      (palette :spectral-highlight))

@@ -143,16 +143,16 @@ collect (.aref peak-scales (argmax (.* normalized-precision peak-heights))) into
 ;;void gsl_interp_free (gsl_interp * interp)
 
 
-(setf res4_2-trace-rhythm (perceptual-salience-rhythm "res4/res4_2_resp_text"
-							 "res4/res4_2_pOnsets_text"
-							 :weighted nil))
+(setf res4_2-trace-rhythm (plymouth-perceptual-salience-rhythm "res4/res4_2_resp_text"
+							       "res4/res4_2_pOnsets_text"
+							       :weighted nil))
 (setf anal (analysis-of-rhythm salience-trace-rhythm))
 (setf likely-ridges (confidence-and-precision anal))
 (plot-image #'magnitude-image (list likely-ridges) '((1.0 0.5) (0.0 0.3)) "")
 
-(setf res4_3-trace-rhythm (perceptual-salience-rhythm "res4/res4_3_resp_text"
-							 "res4/res4_3_pOnsets_text"
-							 :weighted nil))
+(setf res4_3-trace-rhythm (plymouth-perceptual-salience-rhythm "res4/res4_3_resp_text"
+							       "res4/res4_3_pOnsets_text"
+							       :weighted nil))
 (setf anal (analysis-of-rhythm res4_3-trace-rhythm))
 (setf likely-ridges (confidence-and-precision anal))
 
