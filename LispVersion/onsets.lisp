@@ -1,14 +1,12 @@
 ;;;; -*- Lisp -*-
 ;;;;
-;;;; $Id: sound.lisp 5372 2008-11-07 10:20:32Z leigh $
-;;;;
 ;;;; Functions for detecting onsets.
 ;;;;
 ;;;; In nlisp (Matlab-like Common Lisp library www.nlisp.info)
 ;;;;
-;;;; By Leigh M. Smith <Leigh.Smith@ircam.fr> 
+;;;; By Leigh M. Smith <leigh@leighsmith.com> 
 ;;;;
-;;;; Copyright (c) 2008 All Rights Reserved.
+;;;; Copyright (c) 2008-2014, All Rights Reserved.
 ;;;;
 
 (in-package :multires-rhythm)

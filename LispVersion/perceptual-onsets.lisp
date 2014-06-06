@@ -65,7 +65,8 @@
 	 ;; #'select-tactus-by-beat-multiple
 	 ;; #'create-bar-ridge
 	 ;; #'create-beat-multiple-ridge
-	 (tactus-selector #'select-probable-beat-ridge)
+	 ;; (tactus-selector #'select-probable-beat-ridge)
+	 (tactus-selector #'create-weighted-beat-ridge)
 	 (clap-times (if (/= beat-multiple 1)
 			(clap-to-rhythm odf-rhythm 
 					:start-from-beat start-from-beat

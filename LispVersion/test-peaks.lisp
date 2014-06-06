@@ -1,3 +1,14 @@
+;;;; -*- Lisp -*-
+;;;;
+;;;; Functions for plotting various signals.
+;;;;
+;;;; In nlisp (Matlab-like Common Lisp library www.nlisp.info)
+;;;;
+;;;; By Leigh M. Smith <leigh@leighsmith.com> 
+;;;;
+;;;; Copyright (c) 2006-2014, All Rights Reserved.
+;;;;
+
 (in-package :multires-rhythm)
 
 

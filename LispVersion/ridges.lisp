@@ -1,12 +1,10 @@
 ;;;; -*- Lisp -*-
 ;;;;
-;;;; $Id$
-;;;; 
 ;;;; Multiresolution ridge extraction.
 ;;;;
-;;;; By Leigh M. Smith <lsmith@science.uva.nl> 
+;;;; By Leigh M. Smith <leigh@leighsmith.com> 
 ;;;;
-;;;; Copyright (c) 2006
+;;;; Copyright (c) 2006-2014, All Rights Reserved.
 ;;;;
 ;;;; In nlisp (Matlab-alike Common Lisp library www.nlisp.info)
 ;;;;
