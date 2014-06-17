@@ -139,6 +139,7 @@
 			     '((1.0 0.5) (0.0 0.0))
 			     axes-labels))
 		 :title title
+		 ;; :title (format nil "Scaleogram Magnitude of ~a" title)
 		 :time-axis-decimation time-axis-decimation)))
 
 (defmethod plot-cwt-of-rhythm ((scaleogram-to-plot scaleogram) (analysis-rhythm rhythm) &key 

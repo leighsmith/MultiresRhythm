@@ -270,6 +270,10 @@ colourmap, suitable for use by NLISP's palette-defined function."
 	 :reset nil
 	 :aspect-ratio aspect-ratio))
 
+(defun coloured-magnitude-image (magnitude window-dimensions title xlabel)
+  "Just a coloured version of the image until we can pass through parameters directly"
+  (magnitude-image magnitude window-dimensions title xlabel :palette :jet))
+
 (defun plotable-phase (phase magnitude maximum-colour-value &key (magnitude-minimum-for-phase-plot 0.001))
   "Phase assumed [-pi -> pi], map it to [1 -> maximum-colour-value].
    When magnitude < magnitude-minimum, set the phase to 0."
@@ -278,7 +282,7 @@ colourmap, suitable for use by NLISP's palette-defined function."
 		      (1- maximum-colour-value)) 1.0))))
 
 ;; TODO: would be nice to use saturation to indicate magnitude value on the phase plot.
-(defun phase-image (phase magnitude window-dimensions title &key
+(defun phase-image (phase magnitude window-dimensions title xlabel &key
 		    (maximum-colour-value 255d0)
 		    (aspect-ratio 0.15)
 		    (palette :spectral)
@@ -290,7 +294,7 @@ colourmap, suitable for use by NLISP's palette-defined function."
     (set-plot-palette palette)
     (image (.flip plotable-phase) nil nil
 	   :title (format nil "Scaleogram Phase of ~a" title)
-	   :xlabel (format nil "Time (~a)" units) 
+	   :xlabel xlabel
 	   :ylabel (format nil "Scale as IOI Range\\n(~a)" units)
 	   :reset nil
 	   :aspect-ratio aspect-ratio)))
@@ -308,7 +312,7 @@ colourmap, suitable for use by NLISP's palette-defined function."
     (set-colour-box plotable-ridges window-dimensions)
     (set-plot-palette palette)
     (image (.flip plotable-ridges) nil nil
-	   :title (format nil "Skeleton of ~a" title)
+	   :title title
 	   :xlabel xlabel
 	   :ylabel (format nil "Scale as IOI Range\\n(~a)" units)
 	   :reset nil

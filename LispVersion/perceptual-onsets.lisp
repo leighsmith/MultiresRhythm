@@ -52,22 +52,23 @@
 			 &key 
 			   (sample-rate 200)
 			   (start-from-beat 0) 
-			   (beat-multiple 1))
+			   (beat-multiple 1 multiple-supplied-p))
   "Evaluation routine using a supplied ODF file, sample rate and audio file, generates a clap file and a mix file"
   (let* ((odf-rhythm (rhythm-from-odf odf-path :sample-rate sample-rate :description "log-novelty"))
 	 ;; Tactus selector options:
 	 ;; #'create-weighted-beat-ridge - uses a absolute tempo weighted filter.
 	 ;; #'select-probable-beat-ridge - uses Viterbi decoding of likely ridges.
+	 ;; #'select-longest-lowest-tactus
+	 ;; #'select-longest-highest-tactus
 	 ;; Not used:
 	 ;; #'create-weighted-windowed-beat-ridge
 	 ;; #'create-beat-ridge
-	 ;; #'select-longest-lowest-tactus
 	 ;; #'select-tactus-by-beat-multiple
 	 ;; #'create-bar-ridge
 	 ;; #'create-beat-multiple-ridge
-	 ;; (tactus-selector #'select-probable-beat-ridge)
+	 ;; (tactus-selector #'select-longest-lowest-tactus)
 	 (tactus-selector #'create-weighted-beat-ridge)
-	 (clap-times (if (/= beat-multiple 1)
+	 (clap-times (if multiple-supplied-p
 			(clap-to-rhythm odf-rhythm 
 					:start-from-beat start-from-beat
 					:beat-multiple beat-multiple
@@ -77,7 +78,7 @@
 					:tactus-selector tactus-selector)))
 	 ;; TODO gotta be a better way for division than making it a double-float.
 	 (clap-times-in-seconds (./ clap-times (* 1d0 (sample-rate odf-rhythm)))))
-    (diag-plot 'perceptual-salience
+    (diag-plot 'odf
       (plot-rhythm odf-rhythm))
     (diag-plot 'onsets ;; Plot the salience trace, the produced onsets, & zero phase.
       (plot-claps odf-rhythm 

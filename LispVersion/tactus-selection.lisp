@@ -1,14 +1,12 @@
 ;;;; -*- Lisp -*-
 ;;;;
-;;;; $Id$
-;;;;
 ;;;; Functions for selecting the tactus given the rhythm and multiresolution analysis.
 ;;;;
 ;;;; In nlisp (Matlab-like Common Lisp library www.nlisp.info)
 ;;;;
-;;;; By Leigh M. Smith <lsmith@science.uva.nl> 
+;;;; By Leigh M. Smith <leigh@leighsmith.com> 
 ;;;;
-;;;; Copyright (c) 2007
+;;;; Copyright (c) 2007-2014, All Rights Reserved.
 ;;;;
 
 (in-package :multires-rhythm)
@@ -26,22 +24,36 @@
 (defgeneric select-longest-lowest-tactus (rhythm-to-analyse analysis)
   (:documentation "Returns the longest duration and lowest scale ridge."))
 
+(defgeneric select-longest-highest-tactus (rhythm-to-analyse analysis)
+  (:documentation "Returns the longest duration and highest scale ridge."))
+
 (defgeneric create-weighted-beat-ridge (rhythm-to-analyse analysis)
   (:documentation "Returns the ridge by cumulative evidence with absolute tempo weighting"))
 
+(defgeneric select-probable-tactus (rhythm-to-analyse analysis)
+  (:documentation "Returns the ridge by probabilistic modelling"))
+
 ;;; Implementation
 
-(defmethod select-longest-lowest-tactus ((performed-rhythm rhythm) (rhythm-analysis multires-analysis))
-  "Returns the longest duration and lowest scale ridge."
+(defmethod select-longest-tactus ((performed-rhythm rhythm) (rhythm-analysis multires-analysis) &key (scale-order #'>))
+  "Returns the longest duration and either highest or lowest scale ridge."
   (let* ((skeleton-to-analyse (skeleton rhythm-analysis))
 	 (max-ridge (make-instance 'ridge)))
     (dolist (ridge (ridges skeleton-to-analyse))
       (if (or (> (duration-in-samples ridge) (duration-in-samples max-ridge))
 	      ;; average-scale returns scale numbers indexed from the highest scales, so 
 	      (and (eql (duration-in-samples ridge) (duration-in-samples max-ridge))
-		   (> (average-scale ridge) (average-scale max-ridge))))
+		   (funcall scale-order (average-scale ridge) (average-scale max-ridge))))
 	  (setf max-ridge ridge)))
     (list max-ridge)))
+
+(defmethod select-longest-lowest-tactus ((performed-rhythm rhythm) (rhythm-analysis multires-analysis))
+  "Returns the longest duration and lowest scale ridge."
+  (select-longest-tactus performed-rhythm rhythm-analysis :scale-order #'>))
+
+(defmethod select-longest-highest-tactus ((performed-rhythm rhythm) (rhythm-analysis multires-analysis))
+  "Returns the longest duration and highest scale ridge"
+  (select-longest-tactus performed-rhythm rhythm-analysis :scale-order #'<))
 
 (defun max-scale-of-profile (scale-profile &key (neighbourhood-size 3))
   "Given a profile of scales at a given time point, estimate the fractional scale maximum"
@@ -65,6 +77,58 @@
 				    :start-sample 0 ; TODO could be when beat period is confirmed.
 				    :scales beat-scales))))
 
+(defun steady-rhythm-transition-probabilities (number-of-scales &key 
+						 (tempo-waver-low 0.95d0)
+						 (tempo-waver-hi 0.75d0)
+						 (tempo-change-prob 0.1d0))
+  "Generate a scale transition probability matrix that favours remaining on the same
+  scale, progressively penalising larger transitions. tempo-waver-lo and hi specify
+  the ratio of path inertia away from the path that is acceptable for 1 and 2 scales respectively."
+  ;; Layout the path steady rhythm transitions in relative terms w.r.t staying on the same
+  ;; path (the diagonal of the transition matrix), then normalise to become a probablity
+  ;; distribution. This is easier as it takes into account edges of the transition matrix.
+
+  ;; Calculate the probability the tempo will jump to any other scale other than a 1 or 2
+  ;; scale deviation either side of the same scale. This means all other scales other than
+  ;; those 5.
+  (let* ((scale-change-prob (/ (* (- 1.0d0 tempo-change-prob) tempo-change-prob)
+			       (- number-of-scales 5)))
+	 (transition-probs (make-double-array (list number-of-scales number-of-scales)
+					      :initial-element scale-change-prob)))
+    ;; Now assign the inertia entries.
+    (loop
+       for row-index from 0 below number-of-scales 
+       for transition-row = (.row transition-probs row-index)
+       do
+	 (setf (.aref transition-probs row-index row-index) 1.0d0)
+	 (if (< row-index (- number-of-scales 2))
+	     (setf (.aref transition-probs row-index (+ row-index 1)) tempo-waver-low))
+	 (if (>= row-index 1)
+	     (setf (.aref transition-probs row-index (- row-index 1)) tempo-waver-low))
+	 (if (< row-index (- number-of-scales 3))
+	     (setf (.aref transition-probs row-index (+ row-index 2)) tempo-waver-hi))
+	 (if (>= row-index 2)
+	     (setf (.aref transition-probs row-index (- row-index 2)) tempo-waver-hi))
+       ;; Now scale each row to sum to 1.0, making it a probability distribution.
+       ;; TODO do this per row.
+	 (setf (.row transition-probs row-index) (./ transition-row (.sum transition-row))))
+    transition-probs))
+
+;; Models ridge extraction as a hidden Markov model, with the ridge extracted as the
+;; hidden state. The scaleogram-probabilities are the observation probability distribution 
+;; for each scale. tempo-beat-preference is the initial state probability distribution.
+(defun select-probable-ridge (scaleogram-magnitudes tempo-beat-preference &key (path-inertia 0.9d0))
+  "Returns the ridge which is most likely based on observations reflected in the
+   scaleogram magnitude observation matrix, initialised by the tempo beat preference. 
+   Path-inertia is the probability of staying on the same path."
+  (let* ((number-of-scales (.row-count scaleogram-magnitudes))
+	 ;; normalise the magnitudes at each time window into observation probabilities.
+	 (scaleogram-probabilities (probability-distribution scaleogram-magnitudes))
+	 (transition-probs (steady-rhythm-transition-probabilities number-of-scales
+								   :tempo-change-prob (- 1.0d0 path-inertia)))
+	 (state-path (viterbi tempo-beat-preference scaleogram-probabilities transition-probs)))
+    (make-instance 'ridge :start-sample 0 :scales (nlisp::array-to-list state-path))))
+
 (defmethod create-weighted-beat-ridge ((rhythm-to-analyse rhythm) (analysis multires-analysis))
   "Creates a ridge using the maximum value of the cumulative sum of the scaleogram energy"
   (let* ((scaleogram (scaleogram analysis))
@@ -76,10 +140,11 @@
 							  :octaves-per-stddev 1.0))
  	 (weighted-persistency-profile (.* cumulative-scale-persistency tempo-beat-preference)))
     (diag-plot 'weighted-beat-ridge
-      (plot-image #'magnitude-image (list weighted-persistency-profile) '((1.0 0.5) (0.0 0.3))
+      (plot-image #'coloured-magnitude-image (list weighted-persistency-profile) '((1.0 0.5) (0.0 0.3))
 		  (axes-labelled-in-seconds scaleogram sample-rate 4)
 		  :title (format nil "weighted persistency profile of ~a" (name rhythm-to-analyse))))
-    (ridges-of-max-scales weighted-persistency-profile)))
+    ;; (ridges-of-max-scales weighted-persistency-profile)
+    (select-probable-ridge weighted-persistency-profile (.column tempo-beat-preference 0))))
 
 (defmethod weighted-persistency-beat-ridge ((rhythm-to-analyse rhythm) (analysis multires-analysis))
   "Creates a ridge using the maximum value of the cumulative sum of the normalised ridges"
@@ -160,7 +225,7 @@
 	 (salient-scale (preferred-tempo-scale vpo sample-rate))
 	 (tempo-beat-preference (tempo-salience-weighting salient-scale (.array-dimensions windowed-scale-persistency)))
  	 (weighted-persistency-profile (.* windowed-scale-persistency tempo-beat-preference)))
-    (image weighted-persistency-profile nil nil :aspect-ratio 0.2)
+    (image (.flip weighted-persistency-profile) nil nil :aspect-ratio 0.2 :title "weighted persistency profile")
     (ridges-of-max-scales weighted-persistency-profile)))
 
 ;;; Can return bar-scale to emulate create-beat-ridge
@@ -223,7 +288,7 @@
 ;; 				      :start-sample 0 ; could be when beat period is confirmed.
 ;; 				      :scales beat-scales)))))
 
-(defmethod select-probable-beat-ridge ((performed-rhythm rhythm) (rhythm-analysis multires-analysis))
+(defmethod select-probable-tactus ((performed-rhythm rhythm) (rhythm-analysis multires-analysis))
   "Returns the ridge with most evidence using Viterbi decoding to trace the ridge"
   (let* ((path-inertia 0.9d0) ;; Probability of staying on the same path.
 	 (scaleogram (scaleogram rhythm-analysis))
@@ -232,15 +297,13 @@
 	 (number-of-scales (.row-count scaleogram-magnitude))
 	 (salient-scale (preferred-tempo-scale vpo (sample-rate rhythm-analysis)))
 	 (stddev-span 10.0) ; Match the mean to a span across -5 < mean < 5 standard deviations.
-	 ;; Create a Gaussian envelope spanning the number of scales.
+	 ;; Create a Gaussian envelope spanning the number of scales. But this should be
+	 ;; normalised to accumulate to 1.0.
 	 (tempo-beat-preference (gaussian-envelope number-of-scales 
 						   :mean (- (/ (* stddev-span salient-scale) number-of-scales) 
 							    (/ stddev-span 2.0))
-						   :stddev (/ (* vpo stddev-span) number-of-scales)))
-	 (transition-probs (make-double-array (list number-of-scales number-of-scales)
-					      :initial-element (/ (- 1.0d0 path-inertia) (1- number-of-scales))))
-	 (state-path (viterbi tempo-beat-preference scaleogram-magnitude transition-probs)))
-    (make-instance 'ridge :start-sample 0 :scales (nlisp::array-to-list state-path))))
+						   :stddev (/ (* vpo stddev-span) number-of-scales))))
+    (select-probable-ridge scaleogram-magnitude tempo-beat-preference :path-inertia path-inertia)))
 
 (defmethod choose-tactus ((analysis-rhythm rhythm) (analysis multires-analysis)
 			  &key (tactus-selector #'select-longest-lowest-tactus))

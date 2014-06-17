@@ -65,6 +65,9 @@
 (defgeneric read-scaleogram-from (file-stream-or-name)
   (:documentation "Read the scaleogram contained in the named file or given stream"))
 
+(defgeneric probability-distribution (scaleogram)
+  (:documentation "Returns a probability distribution at each time point across the magnitudes of the scaleogram"))
+
 ;;;; Methods
 
 (defmethod number-of-scales ((scaleogram-to-analyse scaleogram))
@@ -196,6 +199,23 @@
 	  (.- (time-support lowest-scales voices-per-octave) time-periods))))
 
 ;; (.+ 360 (make-narray (uncertainty-of-period 360 16)))   
+
+(defmethod probability-distribution ((scaleogram-magnitudes n-double-array))
+  "Returns a probability distribution by normalising the scaleogram magnitudes at each time point"
+  (loop
+     with scaleogram-probabilities = (make-double-array (.array-dimensions scaleogram-magnitudes))
+     for time from 0 below (.array-dimension scaleogram-magnitudes 1)
+     for scale-profile = (.column scaleogram-magnitudes time)
+     do (setf (.column scaleogram-probabilities time) (./ scale-profile (.sum scale-profile)))
+     finally (return scaleogram-probabilities)))
+
+(defmethod probability-distribution ((scaleogram-for-prob scaleogram))
+  "Returns a probability distribution by normalising the magnitudes of the scaleogram at each time point"
+  (probability-distribution (scaleogram-magnitude scaleogram-for-prob)))
+
+;;;
+;;; CWT routines
+;;;
 
 ;;; Dyadic version assumes the input data is a power of 2.
 (defun dyadic-cwt (input-data wavelets-per-octave maximum-time-period 
@@ -471,9 +491,9 @@
 			     (insert-ridge ridge empty-magnitude :constant-value 1d0))))
     ;; TODO To be completely correct the original padded output from dyadic-cwt should be used
     ;; for input to the dyadic-icwt.
-    ;; TODO create a scalogram
+    ;; TODO create a scaleogram
     ;; (clamped-magnitude-scaleogram (copy-instance rhythm-scaleogram))
-    ;; (setf (scaleogram-magnitude clamped-magnitude-scalogram) ridges-mag)
+    ;; (setf (scaleogram-magnitude clamped-magnitude-scaleogram) ridges-mag)
     ;; (icwt clamped-magnitude-scaleogram)
     ;; Use the modified magnitude and original phase to compute a sinusoid and it's
     ;; Hilbert transform, from that, determine the phase of the sinusoid.
@@ -523,4 +543,5 @@
 ;;   "Reads just the dimensions of the scaleogram contained in the named file. 
 ;; This is *much* quicker than reading the two matrices."
 ;;     )
+
 

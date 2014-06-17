@@ -57,6 +57,8 @@
     (diag-plot 'tap-phase 
       (plot foot-tap-phase nil 
 	    :title (format nil "Foot tap phase of ~a" (name original-rhythm))
+	    :ylabel "Phase"
+	    :xlabel "Time (Samples)"
 	    :aspect-ratio 0.2))
     ;; (format t "maximum foot tap phase ~a~%" (.max foot-tap-phase))
     (format t "phase values to search for ~a~%" phases-to-find)

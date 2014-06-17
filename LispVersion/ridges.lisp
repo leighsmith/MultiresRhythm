@@ -388,7 +388,7 @@
 				    time-in-samples)
 				(.iseq (start-sample ridge-to-insert) 
 				       (+ (start-sample ridge-to-insert) insertion-end)))))
-    (format t "generated indices ~a~%" row-major-indices)
+    ;; (format t "generated indices ~a~%" row-major-indices)
     (map nil 
 	 (lambda (row-major-index) (setf (row-major-aref (val time-frequency-plane) row-major-index) constant-value)) 
 	 (val row-major-indices))
