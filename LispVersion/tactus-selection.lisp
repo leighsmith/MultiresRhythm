@@ -138,13 +138,14 @@
 	 (salient-scale (preferred-tempo-scale vpo sample-rate))
 	 (tempo-beat-preference (tempo-salience-weighting salient-scale (.array-dimensions cumulative-scale-persistency)
 							  :octaves-per-stddev 1.0))
+	 (tempo-preference-profile (./ (.column tempo-beat-preference 0) (.sum (.column tempo-beat-preference 0))))
  	 (weighted-persistency-profile (.* cumulative-scale-persistency tempo-beat-preference)))
     (diag-plot 'weighted-beat-ridge
       (plot-image #'coloured-magnitude-image (list weighted-persistency-profile) '((1.0 0.5) (0.0 0.3))
 		  (axes-labelled-in-seconds scaleogram sample-rate 4)
 		  :title (format nil "weighted persistency profile of ~a" (name rhythm-to-analyse))))
     ;; (ridges-of-max-scales weighted-persistency-profile)
-    (select-probable-ridge weighted-persistency-profile (.column tempo-beat-preference 0))))
+    (select-probable-ridge weighted-persistency-profile tempo-preference-profile)))
 
 (defmethod weighted-persistency-beat-ridge ((rhythm-to-analyse rhythm) (analysis multires-analysis))
   "Creates a ridge using the maximum value of the cumulative sum of the normalised ridges"
@@ -294,16 +295,13 @@
 	 (scaleogram (scaleogram rhythm-analysis))
 	 (vpo (voices-per-octave scaleogram))
 	 (scaleogram-magnitude (scaleogram-magnitude scaleogram))
-	 (number-of-scales (.row-count scaleogram-magnitude))
 	 (salient-scale (preferred-tempo-scale vpo (sample-rate rhythm-analysis)))
-	 (stddev-span 10.0) ; Match the mean to a span across -5 < mean < 5 standard deviations.
-	 ;; Create a Gaussian envelope spanning the number of scales. But this should be
-	 ;; normalised to accumulate to 1.0.
-	 (tempo-beat-preference (gaussian-envelope number-of-scales 
-						   :mean (- (/ (* stddev-span salient-scale) number-of-scales) 
-							    (/ stddev-span 2.0))
-						   :stddev (/ (* vpo stddev-span) number-of-scales))))
-    (select-probable-ridge scaleogram-magnitude tempo-beat-preference :path-inertia path-inertia)))
+	 ;; Create a Gaussian envelope spanning the number of scales. 
+	 (tempo-beat-preference (tempo-salience-weighting salient-scale (.array-dimensions scaleogram-magnitude)
+							  :octaves-per-stddev 1.0))
+	 ;; Normalise to a probability distribution
+	 (tempo-preference-profile (./ (.column tempo-beat-preference 0) (.sum (.column tempo-beat-preference 0)))))
+    (select-probable-ridge (.* scaleogram-magnitude tempo-beat-preference) tempo-preference-profile :path-inertia path-inertia)))
 
 (defmethod choose-tactus ((analysis-rhythm rhythm) (analysis multires-analysis)
 			  &key (tactus-selector #'select-longest-lowest-tactus))
