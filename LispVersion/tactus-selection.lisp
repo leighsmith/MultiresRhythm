@@ -84,35 +84,34 @@
   "Generate a scale transition probability matrix that favours remaining on the same
   scale, progressively penalising larger transitions. tempo-waver-lo and hi specify
   the ratio of path inertia away from the path that is acceptable for 1 and 2 scales respectively."
-  ;; Layout the path steady rhythm transitions in relative terms w.r.t staying on the same
-  ;; path (the diagonal of the transition matrix), then normalise to become a probablity
-  ;; distribution. This is easier as it takes into account edges of the transition matrix.
-
-  ;; Calculate the probability the tempo will jump to any other scale other than a 1 or 2
-  ;; scale deviation either side of the same scale. This means all other scales other than
-  ;; those 5.
-  (let* ((scale-change-prob (/ (* (- 1.0d0 tempo-change-prob) tempo-change-prob)
-			       (- number-of-scales 5)))
-	 (transition-probs (make-double-array (list number-of-scales number-of-scales)
-					      :initial-element scale-change-prob)))
     ;; Now assign the inertia entries.
     (loop
+       ;; Layout the path steady rhythm transitions in relative terms w.r.t staying on the same
+       ;; path (the diagonal of the transition matrix), then normalise to become a probablity
+       ;; distribution. This is easier as it takes into account edges of the transition matrix.
+       with scale-change-prob = (/ (* (- 1.0d0 tempo-change-prob) tempo-change-prob)
+				   (- number-of-scales 5))
+       ;; Calculate the probability the tempo will jump to any other scale other than a 1 or 2
+       ;; scale deviation either side of the same scale. This means all other scales other than
+       ;; those 5.
+       with transition-probs = (make-double-array (list number-of-scales number-of-scales)
+						  :initial-element scale-change-prob)
        for row-index from 0 below number-of-scales 
        for transition-row = (.row transition-probs row-index)
-       do
-	 (setf (.aref transition-probs row-index row-index) 1.0d0)
+       do 
+	 (setf (.aref transition-row row-index) 1.0d0)
 	 (if (< row-index (- number-of-scales 2))
-	     (setf (.aref transition-probs row-index (+ row-index 1)) tempo-waver-low))
+	     (setf (.aref transition-row (+ row-index 1)) tempo-waver-low))
 	 (if (>= row-index 1)
-	     (setf (.aref transition-probs row-index (- row-index 1)) tempo-waver-low))
+	     (setf (.aref transition-row (- row-index 1)) tempo-waver-low))
 	 (if (< row-index (- number-of-scales 3))
-	     (setf (.aref transition-probs row-index (+ row-index 2)) tempo-waver-hi))
+	     (setf (.aref transition-row (+ row-index 2)) tempo-waver-hi))
 	 (if (>= row-index 2)
-	     (setf (.aref transition-probs row-index (- row-index 2)) tempo-waver-hi))
+	     (setf (.aref transition-row (- row-index 2)) tempo-waver-hi))
        ;; Now scale each row to sum to 1.0, making it a probability distribution.
        ;; TODO do this per row.
-	 (setf (.row transition-probs row-index) (./ transition-row (.sum transition-row))))
-    transition-probs))
+	 (setf (.row transition-probs row-index) (./ transition-row (.sum transition-row)))
+       finally (return transition-probs)))
 
 ;; Models ridge extraction as a hidden Markov model, with the ridge extracted as the
 ;; hidden state. The scaleogram-probabilities are the observation probability distribution 
@@ -127,6 +126,10 @@
 	 (transition-probs (steady-rhythm-transition-probabilities number-of-scales
 								   :tempo-change-prob (- 1.0d0 path-inertia)))
 	 (state-path (viterbi tempo-beat-preference scaleogram-probabilities transition-probs)))
+    (diag-plot 'scaleogram-probabilities
+      (plot-magnitude scaleogram-probabilities))
+    (diag-plot 'transition-probabilities
+      (image transition-probs nil nil))
     (make-instance 'ridge :start-sample 0 :scales (nlisp::array-to-list state-path))))
 
 (defmethod create-weighted-beat-ridge ((rhythm-to-analyse rhythm) (analysis multires-analysis))
@@ -137,7 +140,7 @@
 	 (sample-rate (sample-rate rhythm-to-analyse))
 	 (salient-scale (preferred-tempo-scale vpo sample-rate))
 	 (tempo-beat-preference (tempo-salience-weighting salient-scale (.array-dimensions cumulative-scale-persistency)
-							  :octaves-per-stddev 1.0))
+							  :octaves-per-stddev 0.8))
 	 (tempo-preference-profile (./ (.column tempo-beat-preference 0) (.sum (.column tempo-beat-preference 0))))
  	 (weighted-persistency-profile (.* cumulative-scale-persistency tempo-beat-preference)))
     (diag-plot 'weighted-beat-ridge
@@ -145,7 +148,7 @@
 		  (axes-labelled-in-seconds scaleogram sample-rate 4)
 		  :title (format nil "weighted persistency profile of ~a" (name rhythm-to-analyse))))
     ;; (ridges-of-max-scales weighted-persistency-profile)
-    (select-probable-ridge weighted-persistency-profile tempo-preference-profile)))
+    (select-probable-ridge weighted-persistency-profile tempo-preference-profile :path-inertia 0.97)))
 
 (defmethod weighted-persistency-beat-ridge ((rhythm-to-analyse rhythm) (analysis multires-analysis))
   "Creates a ridge using the maximum value of the cumulative sum of the normalised ridges"
@@ -291,14 +294,14 @@
 
 (defmethod select-probable-tactus ((performed-rhythm rhythm) (rhythm-analysis multires-analysis))
   "Returns the ridge with most evidence using Viterbi decoding to trace the ridge"
-  (let* ((path-inertia 0.9d0) ;; Probability of staying on the same path.
+  (let* ((path-inertia 0.95d0) ;; Probability of staying on the same path.
 	 (scaleogram (scaleogram rhythm-analysis))
 	 (vpo (voices-per-octave scaleogram))
 	 (scaleogram-magnitude (scaleogram-magnitude scaleogram))
 	 (salient-scale (preferred-tempo-scale vpo (sample-rate rhythm-analysis)))
 	 ;; Create a Gaussian envelope spanning the number of scales. 
 	 (tempo-beat-preference (tempo-salience-weighting salient-scale (.array-dimensions scaleogram-magnitude)
-							  :octaves-per-stddev 1.0))
+							  :octaves-per-stddev 0.8))
 	 ;; Normalise to a probability distribution
 	 (tempo-preference-profile (./ (.column tempo-beat-preference 0) (.sum (.column tempo-beat-preference 0)))))
     (select-probable-ridge (.* scaleogram-magnitude tempo-beat-preference) tempo-preference-profile :path-inertia path-inertia)))
