@@ -1,1 +1,0 @@
-function db = decibel(absval)

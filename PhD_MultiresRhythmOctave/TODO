@@ -1,7 +1,0 @@
-MorletWavelet(16, 2) produces a time support of about 70.
-MorletWaveletFFT(64, 2) is pretty close in resolution. It's wrapped
-around, but that is just ifft()'s behaviour. Its much lower in
-amplitude, +/-1 vs +/- 0.05.
-
-Need to find regions of phase congruency - where PC is high over the
-widest number of scales

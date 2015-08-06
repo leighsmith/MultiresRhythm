@@ -1,1 +1,0 @@
-mixscorefiles -i p1cmaj_treble.score -i p1cmaj_tenor.score -i p1cmaj_bass.score -i p1cmaj_extra.score -o p1cmaj.score
