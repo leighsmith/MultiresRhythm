@@ -78,8 +78,8 @@
 				    :scales beat-scales))))
 
 (defun steady-rhythm-transition-probabilities (number-of-scales &key 
-						 (tempo-waver-low 0.95d0)
-						 (tempo-waver-hi 0.75d0)
+						 (tempo-waver-low 0.8d0)
+						 (tempo-waver-hi 0.15d0)
 						 (tempo-change-prob 0.1d0))
   "Generate a scale transition probability matrix that favours remaining on the same
   scale, progressively penalising larger transitions. tempo-waver-lo and hi specify
@@ -117,9 +117,9 @@
 ;; hidden state. The scaleogram-probabilities are the observation probability distribution 
 ;; for each scale. tempo-beat-preference is the initial state probability distribution.
 (defun select-probable-ridge (scaleogram-magnitudes tempo-beat-preference &key (path-inertia 0.9d0))
-  "Returns the ridge which is most likely based on observations reflected in the
+  "Returns the ridge which is most likely, based on observations reflected in the
    scaleogram magnitude observation matrix, initialised by the tempo beat preference. 
-   Path-inertia is the probability of staying on the same path."
+   Path-inertia is the probability of staying on the same tempo."
   (let* ((number-of-scales (.row-count scaleogram-magnitudes))
 	 ;; normalise the magnitudes at each time window into observation probabilities.
 	 (scaleogram-probabilities (probability-distribution scaleogram-magnitudes))
@@ -127,7 +127,13 @@
 								   :tempo-change-prob (- 1.0d0 path-inertia)))
 	 (state-path (viterbi tempo-beat-preference scaleogram-probabilities transition-probs)))
     (diag-plot 'scaleogram-probabilities
-      (plot-magnitude scaleogram-probabilities))
+      ;; (plot-magnitude scaleogram-probabilities))
+      (plot-image #'highlighted-ridges-image
+		  (list (list (make-instance 'ridge :start-sample 0 :scales (nlisp::array-to-list state-path))) scaleogram-probabilities)
+		  '((1.0 0.5) (0.0 0.0))
+		  ""))
+    (diag-plot 'scaleogram-probability-profile
+      (plot (.reverse (.column scaleogram-probabilities 480)) nil :title (format nil "scale at 480 ~a~%" (.aref state-path 480))))
     (diag-plot 'transition-probabilities
       (image transition-probs nil nil))
     (make-instance 'ridge :start-sample 0 :scales (nlisp::array-to-list state-path))))

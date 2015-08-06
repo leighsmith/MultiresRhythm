@@ -9,7 +9,7 @@
 ;;;;
 ;;;; By Leigh M. Smith <leigh@leighsmith.com> 
 ;;;;
-;;;; Copyright (c) 2009 All Rights Reserved.
+;;;; Copyright (c) 2009-2014, All Rights Reserved.
 ;;;;
 
 ;; (declaim (optimize (speed 3) (safety 0) (debug 0)))
